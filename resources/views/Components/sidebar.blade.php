@@ -84,7 +84,7 @@
                 <!-- Submenu -->
                 <ul id="purchasing-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="#" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
+                        <a href="{{ route('supplier.index') }}" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
                             <i class="fas fa-industry w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
                             <span class="font-medium">Supplier</span>
                         </a>
@@ -265,7 +265,7 @@
                 <!-- Submenu -->
                 <ul id="mobile-purchasing-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
+                        <a href="{{ route('supplier.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
                             <i class="fas fa-industry w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
                             <span class="font-medium">Supplier</span>
                         </a>

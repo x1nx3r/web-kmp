@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('bahan_baku_klien_id')->constrained('bahan_baku_klien')->onDelete('cascade');
             $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('cascade');
             $table->decimal('harga_per_satuan', 15, 2);
+            $table->integer('spesifikasi')->nullable();
             $table->text('catatan')->nullable();
             $table->timestamps();
             $table->softDeletes();

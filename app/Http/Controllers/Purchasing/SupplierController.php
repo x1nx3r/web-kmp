@@ -24,7 +24,7 @@ class SupplierController extends Controller
 
         $suppliers = $query->orderBy('nama', 'asc')->paginate(10);
 
-        return view('Pages.purchasing.supplier', compact('suppliers'));
+        return view('pages.purchasing.supplier', compact('suppliers'));
     }
 
     // Method untuk store, update, delete bisa ditambahkan nanti

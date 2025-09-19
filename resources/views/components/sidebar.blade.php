@@ -51,7 +51,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
+                        <a href="{{ route('klien.index') }}" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
                             <i class="fas fa-users w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
                             <span class="font-medium">Daftar Klien</span>
                         </a>

@@ -20,9 +20,10 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
-        // Call SupplierSeeder
+        // Call Seeders
         $this->call([
             SupplierSeeder::class,
+            KlienSeeder::class,
         ]);
     }
 }

@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Klien extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'nama',
+        'cabang',
+        'no_hp'
+    ];
+
+    protected $dates = ['deleted_at'];
+
+    // Scope untuk search
+    public function scopeSearch($query, $search)
+    {
+        return $query->where('nama', 'like', '%' . $search . '%')
+                    ->orWhere('cabang', 'like', '%' . $search . '%')
+                    ->orWhere('no_hp', 'like', '%' . $search . '%');
+    }
+
+    // Relationship dengan Purchase Orders
+    public function purchaseOrders()
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
+}

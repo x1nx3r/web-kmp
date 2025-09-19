@@ -18,7 +18,7 @@
         <ul class="space-y-1 px-4">
             <!-- Dashboard -->
             <li>
-                <a href="#" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group bg-green-200 text-green-800">
+                <a href="#" class="flex items-center space-x-3 text-green-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group bg-green-200">
                     <i class="fas fa-tachometer-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
                     <span class="font-medium">Dashboard</span>
                 </a>
@@ -232,7 +232,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
+                        <a href="{{ route('klien.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
                             <i class="fas fa-users w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
                             <span class="font-medium">Daftar Klien</span>
                         </a>

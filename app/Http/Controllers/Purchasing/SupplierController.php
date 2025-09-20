@@ -24,6 +24,14 @@ class SupplierController extends Controller
         return view('pages.purchasing.supplier', compact('suppliers'));
     }
 
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        return view('pages.purchasing.supplier.tambah');
+    }
+
     // Method untuk store, update, delete bisa ditambahkan nanti
     public function store(Request $request)
     {

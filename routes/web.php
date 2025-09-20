@@ -13,6 +13,7 @@ Route::get('/dashboard', function () {
 
 // Supplier routes
 Route::get('/supplier', [SupplierController::class, 'index'])->name('supplier.index');
+Route::get('/supplier/create', [SupplierController::class, 'create'])->name('supplier.create');
 Route::post('/supplier', [SupplierController::class, 'store'])->name('supplier.store');
 Route::get('/supplier/{supplier}', [SupplierController::class, 'show'])->name('supplier.show');
 Route::put('/supplier/{supplier}', [SupplierController::class, 'update'])->name('supplier.update');

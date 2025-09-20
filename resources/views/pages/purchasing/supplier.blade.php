@@ -88,10 +88,11 @@
                     </label>
                     <select name="bahan_baku" id="bahanBakuFilter" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFilters()">
                         <option value="">Semua Bahan Baku</option>
-                        <option value="bahan_baku_a" {{ request('bahan_baku') == 'bahan_baku_a' ? 'selected' : '' }}>Bahan Baku A</option>
-                        <option value="bahan_baku_b" {{ request('bahan_baku') == 'bahan_baku_b' ? 'selected' : '' }}>Bahan Baku B</option>
-                        <option value="bahan_baku_c" {{ request('bahan_baku') == 'bahan_baku_c' ? 'selected' : '' }}>Bahan Baku C</option>
-                        <option value="bahan_baku_d" {{ request('bahan_baku') == 'bahan_baku_d' ? 'selected' : '' }}>Bahan Baku D</option>
+                        @if(isset($bahanBakuList))
+                            @foreach($bahanBakuList as $bahan)
+                                <option value="{{ $bahan['value'] }}" {{ request('bahan_baku') == $bahan['value'] ? 'selected' : '' }}>{{ $bahan['label'] }}</option>
+                            @endforeach
+                        @endif
                     </select>
                 </div>
             </div>
@@ -138,10 +139,10 @@
                             </p>
                         </div>
                         <div class="flex items-center space-x-1">
-                            <span class="text-xs font-bold text-green-600">{{ $supplier->total_produk ?? 0 }}</span>
+                            <span class="text-xs font-bold text-green-600">{{ $supplier->bahanBakuSuppliers->count() }}</span>
                             <span class="text-xs text-green-600">Bahan</span>
                             <span class="mx-1 text-gray-300">|</span>
-                            <span class="text-xs font-bold text-blue-600">{{ $supplier->total_barang ?? 0 }}</span>
+                            <span class="text-xs font-bold text-blue-600">{{ number_format($supplier->bahanBakuSuppliers->sum('stok'), 0, ',', '.') }}</span>
                             <span class="text-xs text-blue-600">Stok</span>
                         </div>
                     </div>
@@ -158,7 +159,7 @@
                         </div>
                         <div class="flex items-center text-xs text-gray-600">
                             <i class="fas fa-user-tie w-4 text-green-500 mr-2"></i>
-                            <span class="truncate">{{ $supplier->pic_purchasing ?? 'Belum ditentukan' }}</span>
+                            <span class="truncate">{{ $supplier->picPurchasing->nama ?? 'Belum ditentukan' }}</span>
                         </div>
                     </div>
                 </div>
@@ -207,11 +208,11 @@
                         {{-- Right Section: Stats --}}
                         <div class="flex items-center space-x-6">
                             <div class="text-center bg-green-50 rounded-lg px-4 py-3 border border-green-200">
-                                <p class="text-2xl font-bold text-green-600">{{ $supplier->total_produk ?? 0 }}</p>
+                                <p class="text-2xl font-bold text-green-600">{{ $supplier->bahanBakuSuppliers->count() }}</p>
                                 <p class="text-xs text-green-700 font-medium">Total Bahan Baku</p>
                             </div>
                             <div class="text-center bg-blue-50 rounded-lg px-4 py-3 border border-blue-200">
-                                <p class="text-2xl font-bold text-blue-600">{{ $supplier->total_barang ?? 0 }}</p>
+                                <p class="text-2xl font-bold text-blue-600">{{ number_format($supplier->bahanBakuSuppliers->sum('stok'), 0, ',', '.') }}</p>
                                 <p class="text-xs text-blue-700 font-medium">Total Stok</p>
                             </div>
                         </div>
@@ -249,7 +250,7 @@
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-xs text-green-600 uppercase tracking-wide font-bold mb-1">PIC Purchasing</p>
-                                    <p class="text-sm text-gray-900 font-medium truncate">{{ $supplier->pic_purchasing ?? 'Belum ditentukan' }}</p>
+                                    <p class="text-sm text-gray-900 font-medium truncate">{{ $supplier->picPurchasing->nama ?? 'Belum ditentukan' }}</p>
                                 </div>
                             </div>
                         </div>

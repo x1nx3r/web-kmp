@@ -14,7 +14,8 @@ class Supplier extends Model
         'nama',
         'slug',
         'alamat',
-        'no_hp'
+        'no_hp',
+        'pic_purchasing_id'
     ];
 
     protected $dates = ['deleted_at'];
@@ -25,6 +26,14 @@ class Supplier extends Model
     public function bahanBakuSuppliers()
     {
         return $this->hasMany(BahanBakuSupplier::class);
+    }
+
+    /**
+     * Relasi ke User (PIC Purchasing)
+     */
+    public function picPurchasing()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'pic_purchasing_id');
     }
 
     /**
@@ -48,6 +57,9 @@ class Supplier extends Model
     {
         return $query->where('nama', 'like', '%' . $search . '%')
                     ->orWhere('alamat', 'like', '%' . $search . '%')
-                    ->orWhere('no_hp', 'like', '%' . $search . '%');
+                    ->orWhere('no_hp', 'like', '%' . $search . '%')
+                    ->orWhereHas('picPurchasing', function($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', '%' . $search . '%');
+                    });
     }
 }

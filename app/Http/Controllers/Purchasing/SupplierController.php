@@ -10,16 +10,72 @@ class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Supplier::with('bahanBakuSuppliers');
+        $query = Supplier::with(['bahanBakuSuppliers' => function($q) {
+            $q->orderBy('nama', 'asc');
+        }, 'picPurchasing']);
 
         // Search functionality
         if ($request->has('search') && $request->search != '') {
-            $query->search($request->search);
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('alamat', 'like', "%{$search}%")
+                  ->orWhere('no_hp', 'like', "%{$search}%")
+                  ->orWhereHas('picPurchasing', function($subQuery) use ($search) {
+                      $subQuery->where('nama', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('bahanBakuSuppliers', function($subQuery) use ($search) {
+                      $subQuery->where('nama', 'like', "%{$search}%");
+                  });
+            });
         }
 
-        $suppliers = $query->orderBy('nama', 'asc')->paginate(5);
+        // Filter by specific bahan baku
+        if ($request->has('bahan_baku') && $request->bahan_baku != '') {
+            $bahanBaku = str_replace('_', ' ', $request->bahan_baku);
+            $query->whereHas('bahanBakuSuppliers', function($subQuery) use ($bahanBaku) {
+                $subQuery->where('nama', 'like', "%{$bahanBaku}%");
+            });
+        }
 
-        return view('pages.purchasing.supplier', compact('suppliers'));
+        // Sort by bahan baku count
+        if ($request->has('sort_bahan_baku') && $request->sort_bahan_baku != '') {
+            $sortDirection = $request->sort_bahan_baku == 'terbanyak' ? 'desc' : 'asc';
+            $query->withCount('bahanBakuSuppliers')->orderBy('bahan_baku_suppliers_count', $sortDirection);
+        }
+
+        // Sort by total stock
+        if ($request->has('sort_stok') && $request->sort_stok != '') {
+            $sortDirection = $request->sort_stok == 'terbanyak' ? 'desc' : 'asc';
+            $query->withSum('bahanBakuSuppliers', 'stok')->orderBy('bahan_baku_suppliers_sum_stok', $sortDirection);
+        }
+
+        // Default ordering if no specific sort applied
+        if (!$request->has('sort_bahan_baku') && !$request->has('sort_stok')) {
+            $query->orderBy('nama', 'asc');
+        }
+
+        $suppliers = $query->paginate(5);
+
+        // Get unique bahan baku names for filter dropdown
+        $bahanBakuList = \App\Models\BahanBakuSupplier::select('nama')
+            ->distinct()
+            ->orderBy('nama')
+            ->pluck('nama')
+            ->map(function($nama) {
+                return [
+                    'value' => strtolower(str_replace(' ', '_', $nama)),
+                    'label' => $nama
+                ];
+            });
+
+        // Get purchasing users for PIC dropdown (jika diperlukan di form)
+        $purchasingUsers = \App\Models\User::where('role', 'purchasing')
+            ->orWhere('role', 'admin')
+            ->orderBy('nama')
+            ->get();
+
+        return view('pages.purchasing.supplier', compact('suppliers', 'bahanBakuList', 'purchasingUsers'));
     }
 
     /**

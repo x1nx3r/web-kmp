@@ -71,8 +71,8 @@ jobs:
         DB_DATABASE: database/database.sqlite
 
     # Run Tests
-    - name: Execute Tests (Parallel)
+    - name: Execute Tests
       env:
         DB_CONNECTION: sqlite
         DB_DATABASE: database/database.sqlite
-      run: php artisan test --parallel
+      run: php artisan test

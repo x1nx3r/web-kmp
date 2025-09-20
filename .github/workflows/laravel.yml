@@ -70,6 +70,10 @@ jobs:
         DB_CONNECTION: sqlite
         DB_DATABASE: database/database.sqlite
 
+    # Build the frontend
+    - name: Build the frontend
+      run: npm run build
+    
     # Run Tests
     - name: Execute Tests
       env:

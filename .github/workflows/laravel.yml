@@ -16,8 +16,8 @@ jobs:
     # Setup PHP
     - uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.0'
-        extensions: mbstring, bcmath, pdo_sqlite
+        php-version: '8.4'
+        extensions: ctype, dom, fileinfo, filter, hash, iconv, json, libxml, mbstring, openssl, pcre, phar, session, tokenizer, xml, xmlwriter, bcmath, pdo_sqlite, gd
         coverage: none
 
     # Cache composer dependencies

@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Marketing\KlienController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -8,3 +10,17 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     return view('pages.dashboard');
 })->name('dashboard');
+
+// Supplier routes
+Route::get('/supplier', [SupplierController::class, 'index'])->name('supplier.index');
+Route::post('/supplier', [SupplierController::class, 'store'])->name('supplier.store');
+Route::get('/supplier/{supplier}', [SupplierController::class, 'show'])->name('supplier.show');
+Route::put('/supplier/{supplier}', [SupplierController::class, 'update'])->name('supplier.update');
+Route::delete('/supplier/{supplier}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
+
+// Klien routes
+Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');
+Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
+Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
+Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
+Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');

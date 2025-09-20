@@ -17,12 +17,9 @@ class SupplierController extends Controller
             $query->search($request->search);
         }
 
-        // Filter by status (jika diperlukan nanti)
-        if ($request->has('status') && $request->status != '') {
-            // Bisa ditambahkan filter status nanti
-        }
+    
 
-        $suppliers = $query->orderBy('nama', 'asc')->paginate(10);
+        $suppliers = $query->orderBy('nama', 'asc')->paginate(5);
 
         return view('pages.purchasing.supplier', compact('suppliers'));
     }

@@ -179,7 +179,7 @@
                             <button type="button" class="w-6 h-6 flex items-center justify-center text-yellow-600 bg-yellow-50 rounded" disabled>
                                 <i class="fas fa-edit text-xs"></i>
                             </button>
-                            <button type="button" class="w-6 h-6 flex items-center justify-center text-red-600 bg-red-50 rounded" disabled>
+                            <button type="button" class="w-6 h-6 flex items-center justify-center text-red-600 bg-red-50 rounded" onclick="openDeleteModal({{ $supplier->id }}, '{{ $supplier->nama }}')">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
                         </div>
@@ -280,7 +280,7 @@
                                     <i class="fas fa-edit text-sm" title="Edit"></i>
                                 </button>
                                 
-                                <button type="button" class="w-10 h-10 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-all duration-200 transform hover:scale-105" disabled>
+                                <button type="button" class="w-10 h-10 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-all duration-200 transform hover:scale-105" onclick="openDeleteModal({{ $supplier->id }}, '{{ $supplier->nama }}')">
                                     <i class="fas fa-trash text-sm" title="Hapus"></i>
                                 </button>
                             </div>
@@ -297,49 +297,71 @@
                             <div class="space-y-2 max-h-32 overflow-y-auto">
                                 <div class="bg-white rounded p-2 border-l-2 border-green-400">
                                     <div class="flex justify-between items-center">
-                                        <div class="flex items-center">
+                                        <div class="flex items-center flex-1">
                                             <i class="fas fa-cube text-green-600 text-xs mr-2"></i>
-                                            <div>
+                                            <div class="flex-1">
                                                 <p class="text-xs font-bold text-gray-900">Bahan Baku A</p>
                                                 <p class="text-xs text-gray-600">Stok: 150 KG</p>
                                             </div>
                                         </div>
-                                        <div class="text-right">
+                                        <div class="text-right mr-2">
                                             <p class="text-xs font-bold text-green-700">Rp 25.000</p>
                                             <p class="text-xs text-green-600">per KG</p>
                                         </div>
+                                        <button type="button" 
+                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 1)"
+                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
+                                                title="Lihat Riwayat Harga">
+                                            <i class="fas fa-chart-line text-xs mr-1"></i>
+                                            <span>Detail Harga</span>
+                                        </button>
                                     </div>
                                 </div>
                                 
                                 <div class="bg-white rounded p-2 border-l-2 border-blue-400">
                                     <div class="flex justify-between items-center">
-                                        <div class="flex items-center">
+                                        <div class="flex items-center flex-1">
                                             <i class="fas fa-cube text-blue-600 text-xs mr-2"></i>
-                                            <div>
+                                            <div class="flex-1">
                                                 <p class="text-xs font-bold text-gray-900">Bahan Baku B</p>
                                                 <p class="text-xs text-gray-600">Stok: 200 KG</p>
                                             </div>
                                         </div>
-                                        <div class="text-right">
+                                        <div class="text-right mr-2">
                                             <p class="text-xs font-bold text-blue-700">Rp 15.000</p>
                                             <p class="text-xs text-blue-600">per KG</p>
                                         </div>
+                                        <button type="button" 
+                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 2)"
+                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
+                                                title="Lihat Riwayat Harga">
+                                            <i class="fas fa-chart-line text-xs mr-1"></i>
+                                            <span>Detail Harga</span>
+                                        </button>
                                     </div>
                                 </div>
                                 
                                 <div class="bg-white rounded p-2 border-l-2 border-purple-400">
                                     <div class="flex justify-between items-center">
-                                        <div class="flex items-center">
+                                        <div class="flex items-center flex-1">
                                             <i class="fas fa-cube text-purple-600 text-xs mr-2"></i>
-                                            <div>
+                                            <div class="flex-1">
                                                 <p class="text-xs font-bold text-gray-900">Bahan Baku C</p>
                                                 <p class="text-xs text-gray-600">Stok: 75 KG</p>
                                             </div>
                                         </div>
-                                        <div class="text-right">
+                                        <div class="text-right mr-2">
                                             <p class="text-xs font-bold text-purple-700">Rp 30.000</p>
                                             <p class="text-xs text-purple-600">per KG</p>
                                         </div>
+                                        <button type="button" 
+                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 3)"
+                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
+                                                title="Lihat Riwayat Harga">
+                                                
+                                            <i class="fas fa-chart-line text-xs mr-1"></i>
+                                            <span>Detail Harga</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -369,10 +391,17 @@
                                                 </p>
                                             </div>
                                         </div>
-                                        <div class="text-right bg-green-50 rounded-lg px-3 py-2">
+                                        <div class="text-right bg-green-50 rounded-lg px-3 py-2 mr-3">
                                             <p class="text-sm font-bold text-green-700">Rp 25.000</p>
                                             <p class="text-xs text-green-600">per KG</p>
                                         </div>
+                                        <button type="button" 
+                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 1)"
+                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
+                                                title="Lihat Riwayat Harga">
+                                            <i class="fas fa-chart-line text-sm mr-2"></i>
+                                            <span>Detail Harga</span>
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -390,10 +419,17 @@
                                                 </p>
                                             </div>
                                         </div>
-                                        <div class="text-right bg-blue-50 rounded-lg px-3 py-2">
+                                        <div class="text-right bg-blue-50 rounded-lg px-3 py-2 mr-3">
                                             <p class="text-sm font-bold text-blue-700">Rp 15.000</p>
                                             <p class="text-xs text-blue-600">per KG</p>
                                         </div>
+                                        <button type="button" 
+                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 2)"
+                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
+                                                title="Lihat Riwayat Harga">
+                                            <i class="fas fa-chart-line text-sm mr-2"></i>
+                                            <span>Detail Harga</span>
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -411,10 +447,17 @@
                                                 </p>
                                             </div>
                                         </div>
-                                        <div class="text-right bg-purple-50 rounded-lg px-3 py-2">
+                                        <div class="text-right bg-purple-50 rounded-lg px-3 py-2 mr-3">
                                             <p class="text-sm font-bold text-purple-700">Rp 30.000</p>
                                             <p class="text-xs text-purple-600">per KG</p>
                                         </div>
+                                        <button type="button" 
+                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 3)"
+                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
+                                                title="Lihat Riwayat Harga">
+                                            <i class="fas fa-chart-line text-sm mr-2"></i>
+                                            <span>Detail Harga</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -456,6 +499,59 @@
             </p>
         </div>
     @endif
+</div>
+
+{{-- Delete Confirmation Modal --}}
+<div id="deleteModal" class="fixed inset-0  bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden backdrop-blur-xs">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 sm:w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            {{-- Modal Header --}}
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900">Konfirmasi Hapus</h3>
+                </div>
+                <button type="button" onclick="closeDeleteModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            {{-- Modal Body --}}
+            <div class="mb-6">
+                <p class="text-sm text-gray-600 mb-3">
+                    Apakah Anda yakin ingin menghapus supplier berikut?
+                </p>
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div class="flex items-center">
+                        <i class="fas fa-building text-red-500 mr-2"></i>
+                        <span class="font-semibold text-red-800" id="supplierNameToDelete">-</span>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-3">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Tindakan ini tidak dapat dibatalkan dan akan menghapus semua data terkait supplier ini.
+                </p>
+            </div>
+            
+            {{-- Modal Footer --}}
+            <div class="flex items-center justify-end space-x-3">
+                <button type="button" 
+                        onclick="closeDeleteModal()" 
+                        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-lg transition-all duration-200 text-sm font-semibold">
+                    <i class="fas fa-times mr-2"></i>
+                    Batal
+                </button>
+                <button type="button" 
+                        onclick="confirmDelete()" 
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg text-sm font-semibold">
+                    <i class="fas fa-trash mr-2"></i>
+                    Hapus Supplier
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @endsection
@@ -580,6 +676,91 @@ document.addEventListener('DOMContentLoaded', function() {
     const bahanBaku = document.getElementById('bahanBakuFilter').value;
 
     showActiveFilters(search, sortBahanBaku, sortStok, bahanBaku);
+});
+
+// Redirect to price history page
+function redirectToRiwayatHarga(supplierId, bahanBakuId) {
+    // Map bahan baku IDs to slugs for demo purposes
+    const bahanBakuMap = {
+        1: 'bahan-baku-a',
+        2: 'bahan-baku-b', 
+        3: 'bahan-baku-c',
+        4: 'bahan-baku-d'
+    };
+    
+    const bahanBakuSlug = bahanBakuMap[bahanBakuId] || 'bahan-baku-a';
+    const url = `/supplier/${supplierId}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
+    window.location.href = url;
+}
+
+// Delete modal functions
+let supplierIdToDelete = null;
+
+function openDeleteModal(supplierId, supplierName) {
+    supplierIdToDelete = supplierId;
+    document.getElementById('supplierNameToDelete').textContent = supplierName;
+    document.getElementById('deleteModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeDeleteModal() {
+    supplierIdToDelete = null;
+    document.getElementById('deleteModal').classList.add('hidden');
+    document.body.style.overflow = 'auto'; // Restore scrolling
+}
+
+function confirmDelete() {
+    if (supplierIdToDelete) {
+        // Show loading state
+        const deleteButton = event.target;
+        const originalText = deleteButton.innerHTML;
+        deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus...';
+        deleteButton.disabled = true;
+        
+        // Simulate API call (replace with actual API call)
+        setTimeout(() => {
+            // Here you would make an actual API call to delete the supplier
+            // For now, we'll just show a success message and close the modal
+            
+            // Example API call:
+            // fetch(`/supplier/${supplierIdToDelete}`, {
+            //     method: 'DELETE',
+            //     headers: {
+            //         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            //         'Content-Type': 'application/json',
+            //     },
+            // }).then(response => {
+            //     if (response.ok) {
+            //         window.location.reload();
+            //     }
+            // });
+            
+            alert('Supplier berhasil dihapus!');
+            closeDeleteModal();
+            
+            // Reset button state
+            deleteButton.innerHTML = originalText;
+            deleteButton.disabled = false;
+            
+            // Optionally reload the page or remove the supplier from the list
+            // window.location.reload();
+        }, 1500);
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('deleteModal');
+    if (event.target === modal) {
+        closeDeleteModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeDeleteModal();
+    }
 });
 
 // Add custom CSS for animations

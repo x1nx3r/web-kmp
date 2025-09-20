@@ -19,6 +19,30 @@ class Supplier extends Model
 
     protected $dates = ['deleted_at'];
 
+    /**
+     * Relasi ke BahanBakuSupplier
+     */
+    public function bahanBakuSuppliers()
+    {
+        return $this->hasMany(BahanBakuSupplier::class);
+    }
+
+    /**
+     * Accessor untuk total bahan baku
+     */
+    public function getTotalProdukAttribute()
+    {
+        return $this->bahanBakuSuppliers()->count();
+    }
+
+    /**
+     * Accessor untuk total stok
+     */
+    public function getTotalBarangAttribute()
+    {
+        return $this->bahanBakuSuppliers()->sum('stok');
+    }
+
     // Scope untuk search
     public function scopeSearch($query, $search)
     {

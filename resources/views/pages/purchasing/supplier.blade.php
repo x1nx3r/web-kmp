@@ -295,75 +295,39 @@
                         <div class="block sm:hidden p-3">
                             <h4 class="text-sm font-bold text-green-800 mb-2">Bahan Baku & Harga</h4>
                             <div class="space-y-2 max-h-32 overflow-y-auto">
-                                <div class="bg-white rounded p-2 border-l-2 border-green-400">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex items-center flex-1">
-                                            <i class="fas fa-cube text-green-600 text-xs mr-2"></i>
-                                            <div class="flex-1">
-                                                <p class="text-xs font-bold text-gray-900">Bahan Baku A</p>
-                                                <p class="text-xs text-gray-600">Stok: 150 KG</p>
+                                @forelse($supplier->bahanBakuSuppliers as $index => $bahanBaku)
+                                    @php
+                                        $colors = ['green', 'blue', 'purple', 'orange', 'red'];
+                                        $color = $colors[$index % count($colors)];
+                                    @endphp
+                                    <div class="bg-white rounded p-2 border-l-2 border-{{ $color }}-400">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center flex-1">
+                                                <i class="fas fa-cube text-{{ $color }}-600 text-xs mr-2"></i>
+                                                <div class="flex-1">
+                                                    <p class="text-xs font-bold text-gray-900">{{ $bahanBaku->nama }}</p>
+                                                    <p class="text-xs text-gray-600">Stok: {{ number_format($bahanBaku->stok, 0, ',', '.') }} {{ $bahanBaku->satuan }}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="text-right mr-2">
-                                            <p class="text-xs font-bold text-green-700">Rp 25.000</p>
-                                            <p class="text-xs text-green-600">per KG</p>
-                                        </div>
-                                        <button type="button" 
-                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 1)"
-                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
-                                                title="Lihat Riwayat Harga">
-                                            <i class="fas fa-chart-line text-xs mr-1"></i>
-                                            <span>Detail Harga</span>
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div class="bg-white rounded p-2 border-l-2 border-blue-400">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex items-center flex-1">
-                                            <i class="fas fa-cube text-blue-600 text-xs mr-2"></i>
-                                            <div class="flex-1">
-                                                <p class="text-xs font-bold text-gray-900">Bahan Baku B</p>
-                                                <p class="text-xs text-gray-600">Stok: 200 KG</p>
+                                            <div class="text-right mr-2">
+                                                <p class="text-xs font-bold text-{{ $color }}-700">Rp {{ number_format($bahanBaku->harga_per_satuan, 0, ',', '.') }}</p>
+                                                <p class="text-xs text-{{ $color }}-600">per {{ $bahanBaku->satuan }}</p>
                                             </div>
+                                            <button type="button" 
+                                                    onclick="redirectToRiwayatHarga({{ $supplier->id }}, {{ $bahanBaku->id }})"
+                                                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
+                                                    title="Lihat Riwayat Harga">
+                                                <i class="fas fa-chart-line text-xs mr-1"></i>
+                                                <span>Detail Harga</span>
+                                            </button>
                                         </div>
-                                        <div class="text-right mr-2">
-                                            <p class="text-xs font-bold text-blue-700">Rp 15.000</p>
-                                            <p class="text-xs text-blue-600">per KG</p>
-                                        </div>
-                                        <button type="button" 
-                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 2)"
-                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
-                                                title="Lihat Riwayat Harga">
-                                            <i class="fas fa-chart-line text-xs mr-1"></i>
-                                            <span>Detail Harga</span>
-                                        </button>
                                     </div>
-                                </div>
-                                
-                                <div class="bg-white rounded p-2 border-l-2 border-purple-400">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex items-center flex-1">
-                                            <i class="fas fa-cube text-purple-600 text-xs mr-2"></i>
-                                            <div class="flex-1">
-                                                <p class="text-xs font-bold text-gray-900">Bahan Baku C</p>
-                                                <p class="text-xs text-gray-600">Stok: 75 KG</p>
-                                            </div>
-                                        </div>
-                                        <div class="text-right mr-2">
-                                            <p class="text-xs font-bold text-purple-700">Rp 30.000</p>
-                                            <p class="text-xs text-purple-600">per KG</p>
-                                        </div>
-                                        <button type="button" 
-                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 3)"
-                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
-                                                title="Lihat Riwayat Harga">
-                                                
-                                            <i class="fas fa-chart-line text-xs mr-1"></i>
-                                            <span>Detail Harga</span>
-                                        </button>
+                                @empty
+                                    <div class="bg-white rounded p-3 text-center">
+                                        <i class="fas fa-inbox text-gray-400 mb-2"></i>
+                                        <p class="text-xs text-gray-500">Belum ada bahan baku terdaftar</p>
                                     </div>
-                                </div>
+                                @endforelse
                             </div>
                         </div>
 
@@ -376,90 +340,45 @@
                                 Daftar Bahan Baku & Harga
                             </h4>
                             <div class="space-y-3 max-h-64 overflow-y-auto">
-                                {{-- Sample products (replace with actual data) --}}
-                                <div class="bg-white rounded-lg p-4 border-l-4 border-green-400 shadow-sm hover:shadow-md transition-shadow">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex-1 flex items-center">
-                                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                                                <i class="fas fa-cube text-green-600 text-sm"></i>
+                                @forelse($supplier->bahanBakuSuppliers as $index => $bahanBaku)
+                                    @php
+                                        $colors = ['green', 'blue', 'purple', 'orange', 'red'];
+                                        $color = $colors[$index % count($colors)];
+                                    @endphp
+                                    <div class="bg-white rounded-lg p-4 border-l-4 border-{{ $color }}-400 shadow-sm hover:shadow-md transition-shadow">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex-1 flex items-center">
+                                                <div class="w-10 h-10 bg-{{ $color }}-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                                                    <i class="fas fa-cube text-{{ $color }}-600 text-sm"></i>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm font-bold text-gray-900">{{ $bahanBaku->nama }}</p>
+                                                    <p class="text-xs text-gray-600 flex items-center">
+                                                        <i class="fas fa-boxes mr-1 text-{{ $color }}-500"></i>
+                                                        Stok: {{ number_format($bahanBaku->stok, 0, ',', '.') }} {{ $bahanBaku->satuan }}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-sm font-bold text-gray-900">Bahan Baku A</p>
-                                                <p class="text-xs text-gray-600 flex items-center">
-                                                    <i class="fas fa-boxes mr-1 text-green-500"></i>
-                                                    Stok: 150 KG
-                                                </p>
+                                            <div class="text-right bg-{{ $color }}-50 rounded-lg px-3 py-2 mr-3">
+                                                <p class="text-sm font-bold text-{{ $color }}-700">Rp {{ number_format($bahanBaku->harga_per_satuan, 0, ',', '.') }}</p>
+                                                <p class="text-xs text-{{ $color }}-600">per {{ $bahanBaku->satuan }}</p>
                                             </div>
+                                            <button type="button" 
+                                                    onclick="redirectToRiwayatHarga({{ $supplier->id }}, {{ $bahanBaku->id }})"
+                                                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
+                                                    title="Lihat Riwayat Harga">
+                                                <i class="fas fa-chart-line text-sm mr-2"></i>
+                                                <span>Detail Harga</span>
+                                            </button>
                                         </div>
-                                        <div class="text-right bg-green-50 rounded-lg px-3 py-2 mr-3">
-                                            <p class="text-sm font-bold text-green-700">Rp 25.000</p>
-                                            <p class="text-xs text-green-600">per KG</p>
-                                        </div>
-                                        <button type="button" 
-                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 1)"
-                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
-                                                title="Lihat Riwayat Harga">
-                                            <i class="fas fa-chart-line text-sm mr-2"></i>
-                                            <span>Detail Harga</span>
-                                        </button>
                                     </div>
-                                </div>
-                                
-                                <div class="bg-white rounded-lg p-4 border-l-4 border-blue-400 shadow-sm hover:shadow-md transition-shadow">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex-1 flex items-center">
-                                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                                                <i class="fas fa-cube text-blue-600 text-sm"></i>
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-sm font-bold text-gray-900">Bahan Baku B</p>
-                                                <p class="text-xs text-gray-600 flex items-center">
-                                                    <i class="fas fa-boxes mr-1 text-blue-500"></i>
-                                                    Stok: 200 KG
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="text-right bg-blue-50 rounded-lg px-3 py-2 mr-3">
-                                            <p class="text-sm font-bold text-blue-700">Rp 15.000</p>
-                                            <p class="text-xs text-blue-600">per KG</p>
-                                        </div>
-                                        <button type="button" 
-                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 2)"
-                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
-                                                title="Lihat Riwayat Harga">
-                                            <i class="fas fa-chart-line text-sm mr-2"></i>
-                                            <span>Detail Harga</span>
-                                        </button>
+                                @empty
+                                    <div class="bg-white rounded-lg p-6 text-center">
+                                        <i class="fas fa-inbox text-4xl text-gray-400 mb-3"></i>
+                                        <p class="text-sm text-gray-500 font-medium">Belum ada bahan baku terdaftar</p>
+                                        <p class="text-xs text-gray-400 mt-1">Silakan tambahkan bahan baku untuk supplier ini</p>
                                     </div>
-                                </div>
-                                
-                                <div class="bg-white rounded-lg p-4 border-l-4 border-purple-400 shadow-sm hover:shadow-md transition-shadow">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex-1 flex items-center">
-                                            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                                                <i class="fas fa-cube text-purple-600 text-sm"></i>
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-sm font-bold text-gray-900">Bahan Baku C</p>
-                                                <p class="text-xs text-gray-600 flex items-center">
-                                                    <i class="fas fa-boxes mr-1 text-purple-500"></i>
-                                                    Stok: 75 KG
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="text-right bg-purple-50 rounded-lg px-3 py-2 mr-3">
-                                            <p class="text-sm font-bold text-purple-700">Rp 30.000</p>
-                                            <p class="text-xs text-purple-600">per KG</p>
-                                        </div>
-                                        <button type="button" 
-                                                onclick="redirectToRiwayatHarga({{ $supplier->id }}, 3)"
-                                                class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
-                                                title="Lihat Riwayat Harga">
-                                            <i class="fas fa-chart-line text-sm mr-2"></i>
-                                            <span>Detail Harga</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                @endforelse
                             </div>
                         </div>
                     </div>

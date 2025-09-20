@@ -10,14 +10,12 @@ class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Supplier::query();
+        $query = Supplier::with('bahanBakuSuppliers');
 
         // Search functionality
         if ($request->has('search') && $request->search != '') {
             $query->search($request->search);
         }
-
-    
 
         $suppliers = $query->orderBy('nama', 'asc')->paginate(5);
 

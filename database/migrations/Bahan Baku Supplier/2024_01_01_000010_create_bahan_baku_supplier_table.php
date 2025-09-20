@@ -13,16 +13,16 @@ return new class extends Migration
     {
         Schema::create('bahan_baku_supplier', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('bahan_baku_klien_id')->constrained('bahan_baku_klien')->onDelete('cascade');
             $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('cascade');
+            $table->string('nama')->nullable();
             $table->decimal('harga_per_satuan', 15, 2);
-            $table->integer('spesifikasi')->nullable();
-            $table->text('catatan')->nullable();
+            $table->string('satuan')->nullable();
+            $table->decimal('stok', 15, 2)->default(0);
             $table->timestamps();
             $table->softDeletes();
             
-            // Unique constraint untuk mencegah duplikasi
-            $table->unique(['bahan_baku_klien_id', 'supplier_id'], 'bahan_baku_supplier_unique');
+            // Unique constraint untuk mencegah duplikasi nama bahan baku per supplier
+            $table->unique(['supplier_id', 'nama'], 'supplier_bahan_baku_unique');
         });
     }
 

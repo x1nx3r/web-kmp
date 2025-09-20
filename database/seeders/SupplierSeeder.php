@@ -16,6 +16,7 @@ class SupplierSeeder extends Seeder
         $suppliers = [
             [
                 'nama' => 'PT Sumber Alam Jaya',
+                'slug' => 'pt-sumber-alam-jaya',
                 'alamat' => 'Jl. Raya Industri No. 123, Jakarta Timur',
                 'no_hp' => '081234567890',
                 'created_at' => now(),
@@ -23,6 +24,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'nama' => 'CV Mitra Bangunan',
+                'slug' => 'cv-mitra-bangunan',
                 'alamat' => 'Jl. Sudirman No. 45, Bandung',
                 'no_hp' => '081298765432',
                 'created_at' => now(),
@@ -30,6 +32,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'nama' => 'UD Sentosa Makmur',
+                'slug' => 'ud-sentosa-makmur',
                 'alamat' => 'Jl. Diponegoro No. 67, Surabaya',
                 'no_hp' => '081356789012',
                 'created_at' => now(),
@@ -37,6 +40,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'nama' => 'PT Karya Utama',
+                'slug' => 'pt-karya-utama',
                 'alamat' => 'Jl. Gatot Subroto No. 89, Medan',
                 'no_hp' => '081445678901',
                 'created_at' => now(),
@@ -44,6 +48,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'nama' => 'CV Berkah Sejahtera',
+                'slug' => 'cv-berkah-sejahtera',
                 'alamat' => 'Jl. Ahmad Yani No. 12, Yogyakarta',
                 'no_hp' => '081567890123',
                 'created_at' => now(),
@@ -51,6 +56,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'nama' => 'PT Global Supply',
+                'slug' => 'pt-global-supply',
                 'alamat' => 'Jl. Thamrin No. 234, Jakarta Pusat',
                 'no_hp' => '081678901234',
                 'created_at' => now(),
@@ -58,6 +64,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'nama' => 'UD Sumber Rejeki',
+                'slug' => 'ud-sumber-rejeki',
                 'alamat' => 'Jl. Malioboro No. 56, Yogyakarta',
                 'no_hp' => '081789012345',
                 'created_at' => now(),
@@ -65,6 +72,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'nama' => 'CV Mandiri Jaya',
+                'slug' => 'cv-mandiri-jaya',
                 'alamat' => 'Jl. Pahlawan No. 78, Semarang',
                 'no_hp' => '081890123456',
                 'created_at' => now(),

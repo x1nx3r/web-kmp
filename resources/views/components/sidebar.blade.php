@@ -18,25 +18,25 @@
         <ul class="space-y-1 px-4">
             <!-- Dashboard -->
             <li>
-                <a href="#" class="flex items-center space-x-3 text-green-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group bg-green-200">
-                    <i class="fas fa-tachometer-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                <a href="#" class="flex items-center space-x-3 {{ request()->routeIs('dashboard') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                    <i class="fas fa-tachometer-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('dashboard') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Dashboard</span>
                 </a>
             </li>
 
             <!-- Laporan -->
             <li>
-                <a href="#" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
-                    <i class="fas fa-file-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                <a href="#" class="flex items-center space-x-3 {{ request()->routeIs('laporan.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                    <i class="fas fa-file-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('laporan.*') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Laporan</span>
                 </a>
             </li>
 
             <!-- Marketing Dropdown -->
             <li>
-                <button onclick="toggleDropdown('marketing')" class="flex items-center justify-between w-full text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleDropdown('marketing')" class="flex items-center justify-between w-full {{ request()->routeIs('klien.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Marketing</span>
                     </div>
                     <i id="marketing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -51,8 +51,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('klien.index') }}" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-users w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('klien.index') }}" class="flex items-center space-x-3 {{ request()->routeIs('klien.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-users w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Daftar Klien</span>
                         </a>
                     </li>
@@ -73,9 +73,9 @@
 
             <!-- Purchasing Dropdown -->
             <li>
-                <button onclick="toggleDropdown('purchasing')" class="flex items-center justify-between w-full text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleDropdown('purchasing')" class="flex items-center justify-between w-full {{ request()->routeIs('supplier.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                        <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Purchasing</span>
                     </div>
                     <i id="purchasing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -84,8 +84,8 @@
                 <!-- Submenu -->
                 <ul id="purchasing-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="{{ route('supplier.index') }}" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-industry w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('supplier.index') }}" class="flex items-center space-x-3 {{ request()->routeIs('supplier.*') ? 'text-green-800 bg-green-100' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-industry w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Supplier</span>
                         </a>
                     </li>
@@ -199,8 +199,8 @@
         <ul class="space-y-1 px-4">
             <!-- Dashboard -->
             <li>
-                <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-green-800 hover:text-green-900 rounded-xl px-4 py-3 transition-all group bg-green-200">
-                    <i class="fas fa-tachometer-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('dashboard') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                    <i class="fas fa-tachometer-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('dashboard') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Dashboard</span>
                 </a>
             </li>
@@ -215,9 +215,9 @@
 
             <!-- Marketing Dropdown -->
             <li>
-                <button onclick="toggleMobileDropdown('marketing')" class="flex items-center justify-between w-full text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleMobileDropdown('marketing')" class="flex items-center justify-between w-full {{ request()->routeIs('klien.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Marketing</span>
                     </div>
                     <i id="mobile-marketing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -232,8 +232,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('klien.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-users w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('klien.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('klien.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-users w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Daftar Klien</span>
                         </a>
                     </li>
@@ -254,9 +254,9 @@
 
             <!-- Purchasing Dropdown -->
             <li>
-                <button onclick="toggleMobileDropdown('purchasing')" class="flex items-center justify-between w-full text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleMobileDropdown('purchasing')" class="flex items-center justify-between w-full {{ request()->routeIs('supplier.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                        <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Purchasing</span>
                     </div>
                     <i id="mobile-purchasing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -265,8 +265,8 @@
                 <!-- Submenu -->
                 <ul id="mobile-purchasing-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="{{ route('supplier.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-industry w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('supplier.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('supplier.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-industry w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Supplier</span>
                         </a>
                     </li>
@@ -396,4 +396,45 @@ function handleLogout() {
         alert('Logout berhasil! (Ini hanya demo)');
     }
 }
+
+// Auto-expand menu based on current route
+document.addEventListener('DOMContentLoaded', function() {
+    const currentPath = window.location.pathname;
+    
+    // Auto-expand purchasing menu if on supplier pages
+    if (currentPath.includes('/supplier')) {
+        const purchasingMenu = document.getElementById('purchasing-menu');
+        const purchasingChevron = document.getElementById('purchasing-chevron');
+        const mobilePurchasingMenu = document.getElementById('mobile-purchasing-menu');
+        const mobilePurchasingChevron = document.getElementById('mobile-purchasing-chevron');
+        
+        if (purchasingMenu) {
+            purchasingMenu.classList.remove('hidden');
+            purchasingChevron.classList.add('rotate-180');
+        }
+        
+        if (mobilePurchasingMenu) {
+            mobilePurchasingMenu.classList.remove('hidden');
+            mobilePurchasingChevron.classList.add('rotate-180');
+        }
+    }
+    
+    // Auto-expand marketing menu if on klien pages
+    if (currentPath.includes('/klien')) {
+        const marketingMenu = document.getElementById('marketing-menu');
+        const marketingChevron = document.getElementById('marketing-chevron');
+        const mobileMarketingMenu = document.getElementById('mobile-marketing-menu');
+        const mobileMarketingChevron = document.getElementById('mobile-marketing-chevron');
+        
+        if (marketingMenu) {
+            marketingMenu.classList.remove('hidden');
+            marketingChevron.classList.add('rotate-180');
+        }
+        
+        if (mobileMarketingMenu) {
+            mobileMarketingMenu.classList.remove('hidden');
+            mobileMarketingChevron.classList.add('rotate-180');
+        }
+    }
+});
 </script>

@@ -14,8 +14,10 @@ return new class extends Migration
         Schema::create('suppliers', function (Blueprint $table) {
             $table->id();
             $table->string('nama');
+            $table->string('slug');
             $table->string('alamat')->nullable();
             $table->string('no_hp')->nullable();
+            $table->foreignId('pic_purchasing_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -10,7 +10,7 @@
                     <img src="{{ asset('assets/image/logo/ptkmp-logo.png') }}" alt="Logo KMP" class="w-full h-full object-contain">
                 </div>
                 <div class="text-gray-800">
-                    <h1 class="text-lg font-bold">PT. Kamil Maju Persada</h1>
+                    <h1 class="text-xs  md:text-lg md:font-bold">PT. Kamil Maju Persada</h1>
                 </div>
             </div>
         </div>

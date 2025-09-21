@@ -23,8 +23,27 @@
     </a>
 </div>
 
+{{-- Display Validation Errors --}}
+@if ($errors->any())
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+        <strong class="font-bold">Ada kesalahan dalam input:</strong>
+        <ul class="mt-2">
+            @foreach ($errors->all() as $error)
+                <li class="list-disc list-inside">{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+{{-- Display Success Message --}}
+@if (session('success'))
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+        {{ session('success') }}
+    </div>
+@endif
+
 {{-- Form Container --}}
-<form action="{{ route('supplier.update', $supplier->id ?? 1) }}" method="POST" class="space-y-6">
+<form action="{{ route('supplier.update', $supplier->slug) }}" method="POST" class="space-y-6">
     @csrf
     @method('PUT')
     
@@ -45,7 +64,7 @@
                     Nama Supplier <span class="text-red-500">*</span>
                 </label>
                 <input type="text" name="nama" id="nama" required
-                       value="{{ $supplier->nama ?? 'PT. Supplier Demo' }}"
+                       value="{{ $supplier->nama }}"
                        placeholder="Masukkan nama supplier..."
                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200">
             </div>
@@ -58,7 +77,7 @@
                 </label>
                 <textarea name="alamat" id="alamat" rows="3"
                           placeholder="Masukkan alamat lengkap supplier..."
-                          class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200 resize-none">{{ $supplier->alamat ?? 'Jl. Contoh No. 123, Jakarta Selatan' }}</textarea>
+                          class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200 resize-none">{{ $supplier->alamat }}</textarea>
             </div>
 
             {{-- No HP --}}
@@ -68,26 +87,27 @@
                     Nomor HP/Telepon
                 </label>
                 <input type="tel" name="no_hp" id="no_hp"
-                       value="{{ $supplier->no_hp ?? '081234567890' }}"
+                       value="{{ $supplier->no_hp }}"
                        placeholder="Contoh: 08123456789"
                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200">
             </div>
 
             {{-- PIC Purchasing --}}
             <div>
-                <label for="pic_purchasing" class="block text-sm font-semibold text-green-700 mb-2">
+                <label for="pic_purchasing_id" class="block text-sm font-semibold text-green-700 mb-2">
                     <i class="fas fa-user-tie mr-2 text-green-500"></i>
                     PIC Purchasing
                 </label>
-                <select name="pic_purchasing" id="pic_purchasing"
+                <select name="pic_purchasing_id" id="pic_purchasing_id"
                         class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200">
                     <option value="">Pilih PIC Purchasing</option>
-                    <option value="1" {{ ($supplier->pic_purchasing ?? '3') == '1' ? 'selected' : '' }}>Ahmad Rizki - Purchasing Manager</option>
-                    <option value="2" {{ ($supplier->pic_purchasing ?? '3') == '2' ? 'selected' : '' }}>Siti Nurhaliza - Senior Purchasing</option>
-                    <option value="3" {{ ($supplier->pic_purchasing ?? '3') == '3' ? 'selected' : '' }}>Budi Santoso - Purchasing Officer</option>
-                    <option value="4" {{ ($supplier->pic_purchasing ?? '3') == '4' ? 'selected' : '' }}>Rina Wati - Junior Purchasing</option>
-                    <option value="5" {{ ($supplier->pic_purchasing ?? '3') == '5' ? 'selected' : '' }}>Dedi Kurniawan - Procurement Specialist</option>
-                    <option value="6" {{ ($supplier->pic_purchasing ?? '3') == '6' ? 'selected' : '' }}>Maya Sari - Purchasing Assistant</option>
+                    @if(isset($purchasingUsers))
+                        @foreach($purchasingUsers as $user)
+                            <option value="{{ $user->id }}" {{ $supplier->pic_purchasing_id == $user->id ? 'selected' : '' }}>
+                                {{ $user->nama }} ({{ ucfirst($user->role) }})
+                            </option>
+                        @endforeach
+                    @endif
                 </select>
             </div>
         </div>
@@ -110,169 +130,95 @@
         </div>
 
         <div id="bahan-baku-container" class="space-y-3 sm:space-y-4">
-            {{-- Demo Bahan Baku Items --}}
-            <div class="bahan-baku-item bg-gradient-to-r from-green-50 to-green-50 rounded-lg p-3 sm:p-4 border-l-4 border-green-500">
-                <div class="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 class="text-sm sm:text-lg font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-cube text-green-600 mr-1 sm:mr-2 text-sm"></i>
-                        <span class="hidden sm:inline">Bahan Baku 1</span>
-                        <span class="sm:hidden">BB 1</span>
-                    </h3>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="showDetailModal(this)" 
-                                class="text-green-600 hover:text-green-800 hover:bg-green-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
-                                title="Lihat Detail">
-                            <i class="fas fa-eye text-xs sm:text-sm"></i>
-                        </button>
-                        <button type="button" onclick="removeBahanBaku(this)" 
-                                class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
-                                title="Hapus">
-                            <i class="fas fa-trash text-xs sm:text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                    <div class="sm:col-span-2 lg:col-span-1">
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-tag mr-1 text-green-500 text-xs"></i>
-                            <span class="hidden sm:inline">Nama Bahan Baku</span>
-                            <span class="sm:hidden">Nama</span>
-                        </label>
-                        <input type="text" name="bahan_baku[0][nama]"
-                               value="Tepung Terigu Premium"
-                               placeholder="Contoh: Tepung Terigu"
-                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-weight-hanging mr-1 text-green-500 text-xs"></i>
-                            Satuan
-                        </label>
-                        <select name="bahan_baku[0][satuan]"
-                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
-                            <option value="">Pilih Satuan</option>
-                            <option value="kg" selected>KG</option>
-                            <option value="ton">Ton</option>
-                            <option value="liter">L</option>
-                            <option value="pcs">PCS</option>
-                            <option value="pack">Pack</option>
-                            <option value="box">Box</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-money-bill-wave mr-1 text-green-500 text-xs"></i>
-                            <span class="hidden sm:inline">Harga per Satuan</span>
-                            <span class="sm:hidden">Harga</span>
-                        </label>
-                        <div class="relative">
-                            <span class="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-xs sm:text-sm">Rp</span>
-                            <input type="text" name="bahan_baku[0][harga]" 
-                                   value="12.500"
-                                   placeholder="0"
-                                   class="currency-input w-full pl-8 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
+            {{-- Render existing bahan baku items from database --}}
+            @foreach($supplier->bahanBakuSuppliers as $index => $bahanBaku)
+                @php
+                    $colors = ['green', 'blue', 'purple', 'yellow', 'red', 'indigo'];
+                    $color = $colors[$index % count($colors)];
+                @endphp
+                <div class="bahan-baku-item bg-gradient-to-r from-{{ $color }}-50 to-{{ $color == 'green' ? 'blue' : 'green' }}-50 rounded-lg p-3 sm:p-4 border-l-4 border-{{ $color }}-500">
+                    <div class="flex items-center justify-between mb-3 sm:mb-4">
+                        <h3 class="text-sm sm:text-lg font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-cube text-{{ $color }}-600 mr-1 sm:mr-2 text-sm"></i>
+                            <span class="hidden sm:inline">Bahan Baku {{ $index + 1 }}</span>
+                            <span class="sm:hidden">BB {{ $index + 1 }}</span>
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="showDetailModal(this)" 
+                                    class="text-green-600 hover:text-green-800 hover:bg-green-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
+                                    title="Lihat Detail">
+                                <i class="fas fa-eye text-xs sm:text-sm"></i>
+                            </button>
+                            <button type="button" onclick="removeBahanBaku(this)" 
+                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
+                                    title="Hapus">
+                                <i class="fas fa-trash text-xs sm:text-sm"></i>
+                            </button>
                         </div>
                     </div>
                     
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-warehouse mr-1 text-green-500 text-xs"></i>
-                            <span class="hidden sm:inline">Stok Tersedia</span>
-                            <span class="sm:hidden">Stok</span>
-                        </label>
-                        <input type="text" name="bahan_baku[0][stok]"
-                               value="1.000"
-                               placeholder="0"
-                               class="number-input w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
-                    </div>
-                </div>
-            </div>
-
-            {{-- Demo Bahan Baku Item 2 --}}
-            <div class="bahan-baku-item bg-gradient-to-r from-green-50 to-purple-50 rounded-lg p-3 sm:p-4 border-l-4 border-green-500">
-                <div class="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 class="text-sm sm:text-lg font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-cube text-green-600 mr-1 sm:mr-2 text-sm"></i>
-                        <span class="hidden sm:inline">Bahan Baku 2</span>
-                        <span class="sm:hidden">BB 2</span>
-                    </h3>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="showDetailModal(this)" 
-                                class="text-green-600 hover:text-green-800 hover:bg-green-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
-                                title="Lihat Detail">
-                            <i class="fas fa-eye text-xs sm:text-sm"></i>
-                        </button>
-                        <button type="button" onclick="removeBahanBaku(this)" 
-                                class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
-                                title="Hapus">
-                            <i class="fas fa-trash text-xs sm:text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                    <div class="sm:col-span-2 lg:col-span-1">
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-tag mr-1 text-green-500 text-xs"></i>
-                            <span class="hidden sm:inline">Nama Bahan Baku</span>
-                            <span class="sm:hidden">Nama</span>
-                        </label>
-                        <input type="text" name="bahan_baku[1][nama]"
-                               value="Gula Pasir Halus"
-                               placeholder="Contoh: Gula Pasir"
-                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-weight-hanging mr-1 text-green-500 text-xs"></i>
-                            Satuan
-                        </label>
-                        <select name="bahan_baku[1][satuan]"
-                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
-                            <option value="">Pilih Satuan</option>
-                            <option value="kg" selected>KG</option>
-                            <option value="gram">GR</option>
-                            <option value="ton">Ton</option>
-                            <option value="liter">L</option>
-                            <option value="ml">ML</option>
-                            <option value="pcs">PCS</option>
-                            <option value="pack">Pack</option>
-                            <option value="box">Box</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-money-bill-wave mr-1 text-green-500 text-xs"></i>
-                            <span class="hidden sm:inline">Harga per Satuan</span>
-                            <span class="sm:hidden">Harga</span>
-                        </label>
-                        <div class="relative">
-                            <span class="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-xs sm:text-sm">Rp</span>
-                            <input type="text" name="bahan_baku[1][harga]" 
-                                   value="15.000"
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                        <div class="sm:col-span-2 lg:col-span-1">
+                            <label class="block text-xs sm:text-sm font-semibold text-{{ $color }}-700 mb-1 sm:mb-2">
+                                <i class="fas fa-tag mr-1 text-{{ $color }}-500 text-xs"></i>
+                                <span class="hidden sm:inline">Nama Bahan Baku</span>
+                                <span class="sm:hidden">Nama</span>
+                            </label>
+                            <input type="text" name="bahan_baku[{{ $index }}][nama]"
+                                   value="{{ $bahanBaku->nama }}"
+                                   placeholder="Contoh: Tepung Terigu"
+                                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-{{ $color }}-200 focus:border-{{ $color }}-500 bg-white transition-all duration-200">
+                            <input type="hidden" name="bahan_baku[{{ $index }}][id]" value="{{ $bahanBaku->id }}">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-{{ $color }}-700 mb-1 sm:mb-2">
+                                <i class="fas fa-weight-hanging mr-1 text-{{ $color }}-500 text-xs"></i>
+                                Satuan
+                            </label>
+                            <select name="bahan_baku[{{ $index }}][satuan]"
+                                    class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-{{ $color }}-200 focus:border-{{ $color }}-500 bg-white transition-all duration-200">
+                                <option value="">Pilih Satuan</option>
+                                <option value="kg" {{ $bahanBaku->satuan == 'kg' ? 'selected' : '' }}>KG</option>
+                                <option value="gram" {{ $bahanBaku->satuan == 'gram' ? 'selected' : '' }}>GR</option>
+                                <option value="ton" {{ $bahanBaku->satuan == 'ton' ? 'selected' : '' }}>Ton</option>
+                                <option value="liter" {{ $bahanBaku->satuan == 'liter' ? 'selected' : '' }}>L</option>
+                                <option value="ml" {{ $bahanBaku->satuan == 'ml' ? 'selected' : '' }}>ML</option>
+                                <option value="pcs" {{ $bahanBaku->satuan == 'pcs' ? 'selected' : '' }}>PCS</option>
+                                <option value="pack" {{ $bahanBaku->satuan == 'pack' ? 'selected' : '' }}>Pack</option>
+                                <option value="box" {{ $bahanBaku->satuan == 'box' ? 'selected' : '' }}>Box</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-{{ $color }}-700 mb-1 sm:mb-2">
+                                <i class="fas fa-money-bill-wave mr-1 text-{{ $color }}-500 text-xs"></i>
+                                <span class="hidden sm:inline">Harga per Satuan</span>
+                                <span class="sm:hidden">Harga</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-xs sm:text-sm">Rp</span>
+                                <input type="text" name="bahan_baku[{{ $index }}][harga_per_satuan]" 
+                                       value="{{ number_format($bahanBaku->harga_per_satuan, 0, ',', '.') }}"
+                                       placeholder="0"
+                                       class="currency-input w-full pl-8 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-{{ $color }}-200 focus:border-{{ $color }}-500 bg-white transition-all duration-200">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-{{ $color }}-700 mb-1 sm:mb-2">
+                                <i class="fas fa-warehouse mr-1 text-{{ $color }}-500 text-xs"></i>
+                                <span class="hidden sm:inline">Stok Tersedia</span>
+                                <span class="sm:hidden">Stok</span>
+                            </label>
+                            <input type="text" name="bahan_baku[{{ $index }}][stok]"
+                                   value="{{ number_format($bahanBaku->stok, 0, ',', '.') }}"
                                    placeholder="0"
-                                   class="currency-input w-full pl-8 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
+                                   class="number-input w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-{{ $color }}-200 focus:border-{{ $color }}-500 bg-white transition-all duration-200">
                         </div>
                     </div>
-                    
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-warehouse mr-1 text-green-500 text-xs"></i>
-                            <span class="hidden sm:inline">Stok Tersedia</span>
-                            <span class="sm:hidden">Stok</span>
-                        </label>
-                        <input type="text" name="bahan_baku[1][stok]"
-                               value="500"
-                               placeholder="0"
-                               class="number-input w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
-                    </div>
                 </div>
-            </div>
+            @endforeach
         </div>
     </div>
 
@@ -463,7 +409,7 @@ function addBahanBaku() {
                     </label>
                     <div class="relative">
                         <span class="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-xs sm:text-sm">Rp</span>
-                        <input type="text" name="bahan_baku[${newIndex}][harga]"
+                        <input type="text" name="bahan_baku[${newIndex}][harga_per_satuan]"
                                placeholder="0"
                                class="currency-input w-full pl-8 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg ${colors.focus} bg-white transition-all duration-200">
                     </div>
@@ -588,18 +534,23 @@ function confirmSave() {
     
     currencyInputs.forEach(input => {
         if (input.value) {
+            // Remove dots from formatted numbers
             input.value = unformatNumber(input.value);
         }
     });
     
     numberInputs.forEach(input => {
         if (input.value) {
+            // Remove dots from formatted numbers  
             input.value = unformatNumber(input.value);
         }
     });
     
-    // Submit the form
-    document.querySelector('form').submit();
+    // Add a small delay to ensure formatting is complete
+    setTimeout(() => {
+        // Submit the form
+        document.querySelector('form').submit();
+    }, 100);
 }
 
 // Detail modal functions
@@ -710,9 +661,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Form validation
+// Form validation with modal confirmation
 document.querySelector('form').addEventListener('submit', function(e) {
-    e.preventDefault();
+    e.preventDefault(); // Always prevent default to show modal
     
     // Only validate required fields (nama supplier)
     const namaSupplier = document.getElementById('nama');

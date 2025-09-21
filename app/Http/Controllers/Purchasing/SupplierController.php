@@ -6,6 +6,7 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class SupplierController extends Controller
@@ -172,12 +173,121 @@ class SupplierController extends Controller
 
     public function edit(Supplier $supplier)
     {
-        return view('pages.purchasing.supplier.edit', compact('supplier'));
+        // Get purchasing users for PIC dropdown
+        $purchasingUsers = \App\Models\User::where('role', 'purchasing')
+            ->orWhere('role', 'admin')
+            ->get();
+            
+        return view('pages.purchasing.supplier.edit', compact('supplier', 'purchasingUsers'));
     }
 
     public function update(Request $request, Supplier $supplier)
     {
-        // Akan diimplementasi nanti
+        // Debug logging
+        Log::info('Supplier Update Request', [
+            'supplier_id' => $supplier->id,
+            'nama' => $request->nama,
+            'bahan_baku_count' => $request->has('bahan_baku') ? count($request->bahan_baku) : 0,
+            'bahan_baku_data' => $request->bahan_baku
+        ]);
+
+        // Validation
+        $request->validate([
+            'nama' => 'required|string|max:255',
+            'alamat' => 'nullable|string',
+            'no_hp' => 'nullable|string|max:20',
+            'pic_purchasing_id' => 'nullable|exists:users,id',
+            'bahan_baku' => 'nullable|array',
+            'bahan_baku.*.nama' => 'required_with:bahan_baku|string|max:255',
+            'bahan_baku.*.satuan' => 'required_with:bahan_baku|string|max:50',
+            'bahan_baku.*.harga_per_satuan' => 'required_with:bahan_baku|numeric|min:0',
+            'bahan_baku.*.stok' => 'required_with:bahan_baku|numeric|min:0',
+        ], [
+            'nama.required' => 'Nama supplier harus diisi',
+            'bahan_baku.*.nama.required_with' => 'Nama bahan baku harus diisi',
+            'bahan_baku.*.satuan.required_with' => 'Satuan bahan baku harus dipilih',
+            'bahan_baku.*.harga_per_satuan.required_with' => 'Harga per satuan harus diisi',
+            'bahan_baku.*.stok.required_with' => 'Stok harus diisi',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Generate unique slug if name changed
+            $slug = $supplier->slug;
+            if ($request->nama !== $supplier->nama) {
+                $baseSlug = Str::slug($request->nama);
+                $slug = $baseSlug;
+                $counter = 1;
+
+                // Check if slug exists and make it unique (excluding current supplier)
+                while (Supplier::where('slug', $slug)->where('id', '!=', $supplier->id)->exists()) {
+                    $slug = $baseSlug . '-' . $counter;
+                    $counter++;
+                }
+            }
+
+            // Update supplier
+            $supplier->update([
+                'nama' => $request->nama,
+                'slug' => $slug,
+                'alamat' => $request->alamat,
+                'no_hp' => $request->no_hp,
+                'pic_purchasing_id' => $request->pic_purchasing_id,
+            ]);
+
+            // Handle bahan baku updates - use upsert approach to avoid duplicate key errors
+            $existingBahanBaku = $supplier->bahanBakuSuppliers()->get()->keyBy('nama');
+            $submittedNames = [];
+
+            // Update or create bahan baku from form data
+            if ($request->has('bahan_baku') && is_array($request->bahan_baku)) {
+                foreach ($request->bahan_baku as $bahanBaku) {
+                    if (!empty($bahanBaku['nama']) && !empty($bahanBaku['satuan'])) {
+                        $nama = trim($bahanBaku['nama']);
+                        $submittedNames[] = $nama;
+
+                        // Clean up numeric values
+                        $hargaPerSatuan = str_replace(['.', ','], '', $bahanBaku['harga_per_satuan'] ?? '0');
+                        $stok = str_replace(['.', ','], '', $bahanBaku['stok'] ?? '0');
+
+                        $bahanBakuData = [
+                            'nama' => $nama,
+                            'satuan' => $bahanBaku['satuan'],
+                            'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
+                            'stok' => is_numeric($stok) ? $stok : 0,
+                        ];
+
+                        // Check if this bahan baku already exists for this supplier
+                        if ($existingBahanBaku->has($nama)) {
+                            // Update existing
+                            $existingBahanBaku[$nama]->update($bahanBakuData);
+                        } else {
+                            // Create new
+                            $supplier->bahanBakuSuppliers()->create($bahanBakuData);
+                        }
+                    }
+                }
+            }
+
+            // Delete bahan baku that were removed from the form
+            $supplier->bahanBakuSuppliers()
+                ->whereNotIn('nama', $submittedNames)
+                ->delete();
+
+            DB::commit();
+
+            $bahanBakuCount = $request->has('bahan_baku') ? count(array_filter($request->bahan_baku, function($item) {
+                return !empty($item['nama']);
+            })) : 0;
+
+            return redirect()->route('supplier.index')
+                ->with('success', 'Supplier berhasil diperbarui dengan ' . $bahanBakuCount . ' bahan baku');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->withInput()->withErrors(['error' => 'Gagal mengupdate supplier: ' . $e->getMessage()]);
+        }
     }
 
     public function destroy(Supplier $supplier)

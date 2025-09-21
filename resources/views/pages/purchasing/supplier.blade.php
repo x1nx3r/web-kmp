@@ -218,9 +218,9 @@
                         
                         <div class="flex items-center space-x-2">
                             <span class="text-xs text-gray-500">{{ $supplier->updated_at->format('d/m/Y') }}</span>
-                            <button type="button" class="w-6 h-6 flex items-center justify-center text-yellow-600 bg-yellow-50 rounded" disabled>
+                            <a href="{{ route('supplier.edit', $supplier->slug) }}" class="w-6 h-6 flex items-center justify-center text-yellow-600 bg-yellow-50 rounded hover:bg-yellow-100 transition-colors" title="Edit">
                                 <i class="fas fa-edit text-xs"></i>
-                            </button>
+                            </a>
                             <button type="button" class="w-6 h-6 flex items-center justify-center text-red-600 bg-red-50 rounded" onclick="openDeleteModal({{ $supplier->id }}, '{{ $supplier->nama }}')">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
@@ -318,9 +318,9 @@
 
                             {{-- Action Buttons --}}
                             <div class="flex items-center space-x-2">
-                                <button type="button" class="w-10 h-10 flex items-center justify-center text-yellow-600 hover:text-white bg-yellow-50 hover:bg-yellow-600 rounded-lg transition-all duration-200 transform hover:scale-105" disabled>
-                                    <i class="fas fa-edit text-sm" title="Edit"></i>
-                                </button>
+                                <a href="{{ route('supplier.edit', $supplier->slug) }}" class="w-10 h-10 flex items-center justify-center text-yellow-600 hover:text-white bg-yellow-50 hover:bg-yellow-600 rounded-lg transition-all duration-200 transform hover:scale-105" title="Edit">
+                                    <i class="fas fa-edit text-sm"></i>
+                                </a>
                                 
                                 <button type="button" class="w-10 h-10 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-all duration-200 transform hover:scale-105" onclick="openDeleteModal({{ $supplier->id }}, '{{ $supplier->nama }}')">
                                     <i class="fas fa-trash text-sm" title="Hapus"></i>

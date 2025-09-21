@@ -401,4 +401,238 @@ class SupplierControllerTest extends TestCase
         $suppliers = $response->viewData('suppliers');
         $this->assertNotNull($suppliers);
     }
+
+    /** @test */
+    public function it_can_display_edit_supplier_page()
+    {
+        $user = User::factory()->create([
+            'nama' => 'Test User',
+            'email' => 'test@example.com',
+            'role' => 'purchasing',
+            'status' => 'aktif',
+        ]);
+
+        $supplier = Supplier::create([
+            'nama' => 'Test Supplier',
+            'slug' => 'test-supplier',
+            'alamat' => 'Test Address',
+            'no_hp' => '081234567890',
+            'pic_purchasing_id' => $user->id,
+        ]);
+
+        $bahanBaku = BahanBakuSupplier::create([
+            'supplier_id' => $supplier->id,
+            'nama' => 'Bahan Baku Test',
+            'satuan' => 'kg',
+            'harga_per_satuan' => 10000,
+            'stok' => 100,
+        ]);
+
+        $response = $this->get("/supplier/{$supplier->slug}/edit");
+
+        $response->assertStatus(200);
+        $response->assertViewIs('pages.purchasing.supplier.edit');
+        $response->assertViewHas('supplier');
+        $response->assertViewHas('purchasingUsers');
+        
+        // Check that the supplier data is passed correctly
+        $supplierData = $response->viewData('supplier');
+        $this->assertEquals($supplier->id, $supplierData->id);
+        $this->assertEquals($supplier->nama, $supplierData->nama);
+        $this->assertEquals($supplier->alamat, $supplierData->alamat);
+    }
+
+    /** @test */
+    public function it_can_update_supplier()
+    {
+        $user = User::factory()->create([
+            'nama' => 'Test User',
+            'email' => 'test@example.com',
+            'role' => 'purchasing',
+            'status' => 'aktif',
+        ]);
+
+        $supplier = Supplier::create([
+            'nama' => 'Original Supplier',
+            'slug' => 'original-supplier',
+            'alamat' => 'Original Address',
+            'no_hp' => '081111111111',
+            'pic_purchasing_id' => $user->id,
+        ]);
+
+        $originalBahanBaku = BahanBakuSupplier::create([
+            'supplier_id' => $supplier->id,
+            'nama' => 'Original Bahan Baku',
+            'satuan' => 'kg',
+            'harga_per_satuan' => 10000,
+            'stok' => 100,
+        ]);
+
+        $updateData = [
+            'nama' => 'Updated Supplier',
+            'alamat' => 'Updated Address',
+            'no_hp' => '082222222222',
+            'pic_purchasing_id' => $user->id,
+            'bahan_baku' => [
+                [
+                    'nama' => 'Updated Bahan Baku',
+                    'satuan' => 'gram',
+                    'harga_per_satuan' => '15.000',
+                    'stok' => '200',
+                ],
+                [
+                    'nama' => 'New Bahan Baku',
+                    'satuan' => 'liter',
+                    'harga_per_satuan' => '20.000',
+                    'stok' => '50',
+                ]
+            ]
+        ];
+
+        $response = $this->put("/supplier/{$supplier->slug}", $updateData);
+
+        $response->assertStatus(302);
+        $response->assertRedirect(route('supplier.index'));
+        $response->assertSessionHas('success');
+
+        // Check that supplier was updated
+        $supplier->refresh();
+        $this->assertEquals('Updated Supplier', $supplier->nama);
+        $this->assertEquals('updated-supplier', $supplier->slug); // Slug should update when name changes
+        $this->assertEquals('Updated Address', $supplier->alamat);
+        $this->assertEquals('082222222222', $supplier->no_hp);
+
+        // Check that bahan baku were updated (old ones deleted, new ones created)
+        $this->assertEquals(2, $supplier->bahanBakuSuppliers()->count());
+        
+        $bahanBakuNames = $supplier->bahanBakuSuppliers()->pluck('nama')->toArray();
+        $this->assertContains('Updated Bahan Baku', $bahanBakuNames);
+        $this->assertContains('New Bahan Baku', $bahanBakuNames);
+        $this->assertNotContains('Original Bahan Baku', $bahanBakuNames);
+    }
+
+    /** @test */
+    public function it_generates_unique_slug_when_updating_supplier_name()
+    {
+        $user = User::factory()->create([
+            'nama' => 'Test User',
+            'email' => 'test@example.com',
+            'role' => 'purchasing',
+            'status' => 'aktif',
+        ]);
+
+        // Create existing supplier with the target name
+        $existingSupplier = Supplier::create([
+            'nama' => 'Target Supplier',
+            'slug' => 'target-supplier',
+        ]);
+
+        // Create supplier to update
+        $supplier = Supplier::create([
+            'nama' => 'Original Supplier',
+            'slug' => 'original-supplier',
+            'pic_purchasing_id' => $user->id,
+        ]);
+
+        BahanBakuSupplier::create([
+            'supplier_id' => $supplier->id,
+            'nama' => 'Test Bahan Baku',
+            'satuan' => 'kg',
+            'harga_per_satuan' => 10000,
+            'stok' => 100,
+        ]);
+
+        $updateData = [
+            'nama' => 'Target Supplier', // Same as existing supplier
+            'alamat' => 'Test Address',
+            'no_hp' => '081234567890',
+            'pic_purchasing_id' => $user->id,
+            'bahan_baku' => [
+                [
+                    'nama' => 'Test Bahan Baku',
+                    'satuan' => 'kg',
+                    'harga_per_satuan' => '10.000',
+                    'stok' => '100',
+                ]
+            ]
+        ];
+
+        $response = $this->put("/supplier/{$supplier->slug}", $updateData);
+
+        $response->assertStatus(302);
+        $response->assertRedirect(route('supplier.index'));
+
+        $supplier->refresh();
+        $this->assertEquals('Target Supplier', $supplier->nama);
+        $this->assertEquals('target-supplier-1', $supplier->slug); // Should have unique suffix
+    }
+
+    /** @test */
+    public function it_keeps_same_slug_when_name_doesnt_change()
+    {
+        $user = User::factory()->create([
+            'nama' => 'Test User',
+            'email' => 'test@example.com',
+            'role' => 'purchasing',
+            'status' => 'aktif',
+        ]);
+
+        $supplier = Supplier::create([
+            'nama' => 'Test Supplier',
+            'slug' => 'test-supplier',
+            'alamat' => 'Original Address',
+            'pic_purchasing_id' => $user->id,
+        ]);
+
+        BahanBakuSupplier::create([
+            'supplier_id' => $supplier->id,
+            'nama' => 'Test Bahan Baku',
+            'satuan' => 'kg',
+            'harga_per_satuan' => 10000,
+            'stok' => 100,
+        ]);
+
+        $updateData = [
+            'nama' => 'Test Supplier', // Same name
+            'alamat' => 'Updated Address', // Different address
+            'no_hp' => '081234567890',
+            'pic_purchasing_id' => $user->id,
+            'bahan_baku' => [
+                [
+                    'nama' => 'Test Bahan Baku',
+                    'satuan' => 'kg',
+                    'harga_per_satuan' => '10.000',
+                    'stok' => '100',
+                ]
+            ]
+        ];
+
+        $response = $this->put("/supplier/{$supplier->slug}", $updateData);
+
+        $response->assertStatus(302);
+        $supplier->refresh();
+        
+        $this->assertEquals('Test Supplier', $supplier->nama);
+        $this->assertEquals('test-supplier', $supplier->slug); // Should keep same slug
+        $this->assertEquals('Updated Address', $supplier->alamat); // Address should be updated
+    }
+
+    /** @test */
+    public function it_validates_required_fields_when_updating_supplier()
+    {
+        $supplier = Supplier::create([
+            'nama' => 'Test Supplier',
+            'slug' => 'test-supplier',
+        ]);
+
+        $updateData = [
+            'nama' => '', // Empty required field
+            'bahan_baku' => [] // Empty required array
+        ];
+
+        $response = $this->put("/supplier/{$supplier->slug}", $updateData);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors(['nama', 'bahan_baku']);
+    }
 }

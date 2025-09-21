@@ -15,10 +15,10 @@ Route::get('/dashboard', function () {
 Route::get('/supplier', [SupplierController::class, 'index'])->name('supplier.index');
 Route::get('/supplier/create', [SupplierController::class, 'create'])->name('supplier.create');
 Route::post('/supplier', [SupplierController::class, 'store'])->name('supplier.store');
-Route::get('/supplier/{supplier}', [SupplierController::class, 'show'])->name('supplier.show');
-Route::get('/supplier/{supplier}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
-Route::put('/supplier/{supplier}', [SupplierController::class, 'update'])->name('supplier.update');
-Route::delete('/supplier/{supplier}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
+Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->name('supplier.show');
+Route::get('/supplier/{supplier:slug}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
+Route::put('/supplier/{supplier:slug}', [SupplierController::class, 'update'])->name('supplier.update');
+Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
 Route::get('/supplier/{supplier}/bahan-baku/{bahanBaku}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
 
 // Klien routes

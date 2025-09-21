@@ -21,6 +21,14 @@ class Supplier extends Model
     protected $dates = ['deleted_at'];
 
     /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
+
+    /**
      * Relasi ke BahanBakuSupplier
      */
     public function bahanBakuSuppliers()

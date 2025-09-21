@@ -145,6 +145,7 @@
                         </h3>
                         <div class="flex items-center gap-2">
                             <button type="button" onclick="showDetailModal(this)" 
+                                    data-bahan-baku-slug="{{ $bahanBaku->slug }}"
                                     class="text-green-600 hover:text-green-800 hover:bg-green-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
                                     title="Lihat Detail">
                                 <i class="fas fa-eye text-xs sm:text-sm"></i>
@@ -358,8 +359,10 @@ function addBahanBaku() {
                 </h3>
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="showDetailModal(this)" 
-                            class="text-green-600 hover:text-green-800 hover:bg-green-100 p-1.5 sm:p-2 rounded-full transition-all duration-200" 
-                            title="Lihat Detail">
+                            data-bahan-baku-slug=""
+                            class="text-gray-400 p-1.5 sm:p-2 rounded-full cursor-not-allowed" 
+                            title="Simpan data terlebih dahulu untuk melihat riwayat harga"
+                            disabled>
                         <i class="fas fa-eye text-xs sm:text-sm"></i>
                     </button>
                     <button type="button" onclick="removeBahanBaku(this)" 
@@ -556,25 +559,21 @@ function confirmSave() {
 // Detail modal functions
 // Detail modal functions - now redirects to price history
 function showDetailModal(button) {
-    // Get bahan baku item data
-    const bahanBakuItem = button.closest('.bahan-baku-item');
-    const bahanBakuItems = document.querySelectorAll('.bahan-baku-item');
-    let bahanBakuId = 1; // default
+    // Get bahan baku slug from the button's data attribute
+    const bahanBakuSlug = button.getAttribute('data-bahan-baku-slug');
     
-    // Find the index of this bahan baku item to use as ID
-    bahanBakuItems.forEach((item, index) => {
-        if (item === bahanBakuItem) {
-            bahanBakuId = index + 1;
-        }
-    });
+    if (!bahanBakuSlug || bahanBakuSlug.trim() === '') {
+        alert('Harap simpan data bahan baku terlebih dahulu untuk melihat riwayat harga');
+        return;
+    }
     
-    // Get supplier ID from the form action URL
+    // Get supplier slug from the form action URL
     const form = document.querySelector('form');
     const actionUrl = form.getAttribute('action');
-    const supplierId = actionUrl.match(/supplier\/(\d+)/)?.[1] || 1;
+    const supplierSlug = actionUrl.match(/supplier\/([^\/]+)/)?.[1] || '{{ $supplier->slug }}';
     
-    // Redirect to price history page
-    const url = `/supplier/${supplierId}/bahan-baku/${bahanBakuId}/riwayat-harga`;
+    // Redirect to price history page using slugs
+    const url = `/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
     window.location.href = url;
 }
 

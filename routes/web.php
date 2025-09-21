@@ -19,7 +19,7 @@ Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->na
 Route::get('/supplier/{supplier:slug}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
 Route::put('/supplier/{supplier:slug}', [SupplierController::class, 'update'])->name('supplier.update');
 Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
-Route::get('/supplier/{supplier}/bahan-baku/{bahanBaku}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
+Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
 
 // Klien routes
 Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');

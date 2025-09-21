@@ -13,6 +13,14 @@ class BahanBakuSupplierSeeder extends Seeder
      */
     public function run(): void
     {
+        // Update slug untuk bahan baku yang sudah ada tapi belum memiliki slug
+        $bahanBakuTanpaSlug = BahanBakuSupplier::whereNull('slug')->orWhere('slug', '')->get();
+        
+        foreach ($bahanBakuTanpaSlug as $bahanBaku) {
+            $slug = BahanBakuSupplier::generateUniqueSlug($bahanBaku->nama, $bahanBaku->supplier_id, $bahanBaku->id);
+            $bahanBaku->update(['slug' => $slug]);
+        }
+        
         // Ambil semua supplier
         $suppliers = Supplier::all();
 
@@ -57,13 +65,28 @@ class BahanBakuSupplierSeeder extends Seeder
             $selectedBahanBaku = collect($bahanBakuData)->random(rand(2, 3));
             
             foreach ($selectedBahanBaku as $bahanBaku) {
-                BahanBakuSupplier::create([
-                    'supplier_id' => $supplier->id,
-                    'nama' => $bahanBaku['nama'],
-                    'satuan' => $bahanBaku['satuan'],
-                    'harga_per_satuan' => rand($bahanBaku['harga_min'], $bahanBaku['harga_max']),
-                    'stok' => rand($bahanBaku['stok_min'], $bahanBaku['stok_max']),
-                ]);
+                // Cek apakah bahan baku ini sudah ada untuk supplier ini
+                $existingBahanBaku = BahanBakuSupplier::where('supplier_id', $supplier->id)
+                    ->where('nama', $bahanBaku['nama'])
+                    ->first();
+                
+                if (!$existingBahanBaku) {
+                    // Generate unique slug for this bahan baku
+                    $slug = BahanBakuSupplier::generateUniqueSlug($bahanBaku['nama'], $supplier->id);
+                    
+                    BahanBakuSupplier::create([
+                        'supplier_id' => $supplier->id,
+                        'nama' => $bahanBaku['nama'],
+                        'slug' => $slug,
+                        'satuan' => $bahanBaku['satuan'],
+                        'harga_per_satuan' => rand($bahanBaku['harga_min'], $bahanBaku['harga_max']),
+                        'stok' => rand($bahanBaku['stok_min'], $bahanBaku['stok_max']),
+                    ]);
+                } else if (empty($existingBahanBaku->slug)) {
+                    // Update slug jika bahan baku sudah ada tapi belum memiliki slug
+                    $slug = BahanBakuSupplier::generateUniqueSlug($existingBahanBaku->nama, $existingBahanBaku->supplier_id, $existingBahanBaku->id);
+                    $existingBahanBaku->update(['slug' => $slug]);
+                }
             }
         }
     }

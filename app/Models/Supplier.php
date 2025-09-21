@@ -73,4 +73,19 @@ class Supplier extends Model
                         $subQuery->where('nama', 'like', '%' . $search . '%');
                     });
     }
+
+    /**
+     * Resolve child route binding for nested routes
+     */
+    public function resolveChildRouteBinding($childType, $value, $field)
+    {
+        switch ($childType) {
+            case 'bahanBaku':
+                return $this->bahanBakuSuppliers()
+                    ->where($field ?? 'slug', $value)
+                    ->first();
+            default:
+                return null;
+        }
+    }
 }

@@ -15,6 +15,7 @@ class BahanBakuSupplier extends Model
     protected $fillable = [
         'supplier_id',
         'nama',
+        'slug',
         'harga_per_satuan',
         'satuan',
         'stok'
@@ -28,11 +29,73 @@ class BahanBakuSupplier extends Model
     protected $dates = ['deleted_at'];
 
     /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
+
+    /**
+     * Generate unique slug for bahan baku
+     */
+    public static function generateUniqueSlug($nama, $supplierId, $excludeId = null)
+    {
+        $baseSlug = \Str::slug($nama);
+        $slug = $baseSlug;
+        $counter = 1;
+
+        // Cek unik secara global, bukan per supplier
+        $query = self::where('slug', $slug);
+        
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        while ($query->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+            
+            $query = self::where('slug', $slug);
+            if ($excludeId) {
+                $query->where('id', '!=', $excludeId);
+            }
+        }
+
+        return $slug;
+    }
+
+    /**
      * Relasi ke Supplier
      */
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * Relasi ke RiwayatHarga
+     */
+    public function riwayatHarga()
+    {
+        return $this->hasMany(RiwayatHargaBahanBaku::class, 'bahan_baku_supplier_id')->orderBy('tanggal_perubahan', 'desc');
+    }
+
+    /**
+     * Get riwayat harga dalam format untuk grafik
+     */
+    public function getRiwayatHargaForChart()
+    {
+        return $this->riwayatHarga()
+            ->select('harga_baru as harga', 'tanggal_perubahan as tanggal')
+            ->orderBy('tanggal_perubahan', 'asc')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'harga' => (float) $item->harga,
+                    'tanggal' => $item->tanggal->format('Y-m-d')
+                ];
+            })->toArray();
     }
 
     /**

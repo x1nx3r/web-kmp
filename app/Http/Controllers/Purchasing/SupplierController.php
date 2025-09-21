@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Purchasing;
 
 use App\Models\Supplier;
+use App\Models\BahanBakuSupplier;
+use App\Models\RiwayatHargaBahanBaku;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
@@ -146,12 +148,27 @@ class SupplierController extends Controller
 
             // Create bahan baku for supplier
             foreach ($request->bahan_baku as $bahanBaku) {
-                $supplier->bahanBakuSuppliers()->create([
+                $hargaPerSatuan = str_replace('.', '', $bahanBaku['harga_per_satuan']); // Remove thousand separators
+                $stok = str_replace('.', '', $bahanBaku['stok']); // Remove thousand separators
+                
+                // Generate unique slug
+                $slug = \App\Models\BahanBakuSupplier::generateUniqueSlug($bahanBaku['nama'], $supplier->id);
+                
+                $newBahanBaku = $supplier->bahanBakuSuppliers()->create([
                     'nama' => $bahanBaku['nama'],
+                    'slug' => $slug,
                     'satuan' => $bahanBaku['satuan'],
-                    'harga_per_satuan' => str_replace('.', '', $bahanBaku['harga_per_satuan']), // Remove thousand separators
-                    'stok' => str_replace('.', '', $bahanBaku['stok']), // Remove thousand separators
+                    'harga_per_satuan' => $hargaPerSatuan,
+                    'stok' => $stok,
                 ]);
+
+                // Catat riwayat harga untuk bahan baku baru
+                RiwayatHargaBahanBaku::catatPerubahanHarga(
+                    $newBahanBaku->id,
+                    null, // harga lama = null karena bahan baku baru
+                    $hargaPerSatuan,
+                    "Data awal bahan baku '{$bahanBaku['nama']}' untuk supplier '{$supplier->nama}'"
+                );
             }
 
             DB::commit();
@@ -253,6 +270,7 @@ class SupplierController extends Controller
 
                         $bahanBakuData = [
                             'nama' => $nama,
+                            'slug' => \App\Models\BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id, $existingBahanBaku->has($nama) ? $existingBahanBaku[$nama]->id : null),
                             'satuan' => $bahanBaku['satuan'],
                             'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
                             'stok' => is_numeric($stok) ? $stok : 0,
@@ -260,11 +278,33 @@ class SupplierController extends Controller
 
                         // Check if this bahan baku already exists for this supplier
                         if ($existingBahanBaku->has($nama)) {
-                            // Update existing
-                            $existingBahanBaku[$nama]->update($bahanBakuData);
+                            // Update existing bahan baku
+                            $bahanBakuToUpdate = $existingBahanBaku[$nama];
+                            $hargaLama = (float) $bahanBakuToUpdate->harga_per_satuan;
+                            $hargaBaru = (float) $hargaPerSatuan;
+                            
+                            $bahanBakuToUpdate->update($bahanBakuData);
+                            
+                            // Catat riwayat harga jika ada perubahan harga
+                            if ($hargaLama != $hargaBaru) {
+                                RiwayatHargaBahanBaku::catatPerubahanHarga(
+                                    $bahanBakuToUpdate->id,
+                                    $hargaLama,
+                                    $hargaBaru,
+                                    "Update harga bahan baku '{$nama}' melalui edit supplier"
+                                );
+                            }
                         } else {
-                            // Create new
-                            $supplier->bahanBakuSuppliers()->create($bahanBakuData);
+                            // Create new bahan baku
+                            $newBahanBaku = $supplier->bahanBakuSuppliers()->create($bahanBakuData);
+                            
+                            // Catat riwayat harga untuk bahan baku baru
+                            RiwayatHargaBahanBaku::catatPerubahanHarga(
+                                $newBahanBaku->id,
+                                null, // harga lama = null karena bahan baku baru
+                                (float) $hargaPerSatuan,
+                                "Bahan baku baru '{$nama}' ditambahkan ke supplier '{$supplier->nama}'"
+                            );
                         }
                     }
                 }
@@ -327,48 +367,79 @@ class SupplierController extends Controller
         }
     }
 
-    public function riwayatHarga($supplier, $bahanBaku)
+    public function riwayatHarga(Supplier $supplier, BahanBakuSupplier $bahanBaku)
     {
-        // Demo data untuk riwayat harga
+        // Debug logging
+        Log::info('RiwayatHarga Request', [
+            'supplier_id' => $supplier->id,
+            'supplier_slug' => $supplier->slug,
+            'bahan_baku_id' => $bahanBaku->id,
+            'bahan_baku_slug' => $bahanBaku->slug
+        ]);
+        
+        // Pastikan bahan baku ini milik supplier yang benar
+        if ($bahanBaku->supplier_id !== $supplier->id) {
+            abort(404, 'Bahan baku tidak ditemukan untuk supplier ini');
+        }
+        
+        // Get riwayat harga dari database
+        $riwayatHarga = $bahanBaku->riwayatHarga()
+            ->orderBy('tanggal_perubahan', 'asc')
+            ->get();
+
+        // Jika tidak ada riwayat, buat entry pertama dari harga saat ini
+        if ($riwayatHarga->isEmpty()) {
+            RiwayatHargaBahanBaku::catatPerubahanHarga(
+                $bahanBaku->id,
+                null,
+                (float) $bahanBaku->harga_per_satuan,
+                "Data riwayat awal untuk bahan baku '{$bahanBaku->nama}'"
+            );
+            
+            // Refresh riwayat harga setelah dibuat
+            $riwayatHarga = $bahanBaku->riwayatHarga()
+                ->orderBy('tanggal_perubahan', 'asc')
+                ->get();
+        }
+
+        // Format data supplier
         $supplierData = (object) [
-            'id' => $supplier,
-            'nama' => 'PT. Supplier Demo'
+            'id' => $supplier->id,
+            'nama' => $supplier->nama,
+            'slug' => $supplier->slug
         ];
 
+        // Format data bahan baku
         $bahanBakuData = (object) [
-            'id' => $bahanBaku,
-            'nama' => $bahanBaku == 1 ? 'Tepung Terigu Premium' : 'Gula Pasir Halus',
-            'satuan' => 'KG',
-            'supplier_nama' => 'PT. Supplier Demo'
+            'id' => $bahanBaku->id,
+            'nama' => $bahanBaku->nama,
+            'satuan' => $bahanBaku->satuan,
+            'supplier_nama' => $supplier->nama,
+            'harga_saat_ini' => (float) $bahanBaku->harga_per_satuan,
+            'stok_saat_ini' => (float) $bahanBaku->stok
         ];
 
-        // Demo data riwayat harga (berdasarkan tanggal spesifik)
-        $riwayatHarga = [
-            ['tanggal' => '2024-01-05', 'harga' => 10500],
-            ['tanggal' => '2024-01-18', 'harga' => 10800],
-            ['tanggal' => '2024-02-02', 'harga' => 11000],
-            ['tanggal' => '2024-02-15', 'harga' => 10750],
-            ['tanggal' => '2024-03-08', 'harga' => 11200],
-            ['tanggal' => '2024-03-22', 'harga' => 11500],
-            ['tanggal' => '2024-04-12', 'harga' => 12000],
-            ['tanggal' => '2024-04-28', 'harga' => 11800],
-            ['tanggal' => '2024-05-10', 'harga' => 12300],
-            ['tanggal' => '2024-05-25', 'harga' => 12100],
-            ['tanggal' => '2024-06-07', 'harga' => 12500],
-            ['tanggal' => '2024-06-20', 'harga' => 12700],
-            ['tanggal' => '2024-07-03', 'harga' => 12200],
-            ['tanggal' => '2024-07-18', 'harga' => 12400],
-            ['tanggal' => '2024-08-05', 'harga' => 12800],
-            ['tanggal' => '2024-08-22', 'harga' => 13000],
-            ['tanggal' => '2024-09-08', 'harga' => 12900],
-            ['tanggal' => '2024-09-25', 'harga' => 13200],
-            ['tanggal' => '2024-10-10', 'harga' => 13100],
-            ['tanggal' => '2024-10-28', 'harga' => 13400],
-            ['tanggal' => '2024-11-12', 'harga' => 13300],
-            ['tanggal' => '2024-11-30', 'harga' => 13600],
-            ['tanggal' => '2024-12-15', 'harga' => 13800],
-            ['tanggal' => '2025-01-08', 'harga' => 14000]
-        ];
+        // Format data riwayat harga untuk view
+        $riwayatHarga = $riwayatHarga->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'tanggal' => $item->tanggal_perubahan->format('Y-m-d'),
+                'harga' => (float) $item->harga_baru,
+                'harga_lama' => $item->harga_lama ? (float) $item->harga_lama : null,
+                'selisih_harga' => (float) $item->selisih_harga,
+                'persentase_perubahan' => (float) $item->persentase_perubahan,
+                'tipe_perubahan' => $item->tipe_perubahan,
+                'keterangan' => $item->keterangan,
+                'formatted_tanggal' => $item->tanggal_perubahan->format('d M Y'),
+                'formatted_hari' => $item->tanggal_perubahan->format('l'),
+                'formatted_harga' => number_format((float) $item->harga_baru, 0, ',', '.'),
+                'formatted_harga_lama' => $item->harga_lama ? number_format((float) $item->harga_lama, 0, ',', '.') : null,
+                'formatted_selisih' => number_format(abs((float) $item->selisih_harga), 0, ',', '.'),
+                'color_class' => $item->color_class,
+                'badge_class' => $item->badge_class,
+                'icon' => $item->icon,
+            ];
+        })->toArray();
 
         return view('pages.purchasing.supplier.riwayat-harga', compact('supplierData', 'bahanBakuData', 'riwayatHarga'));
     }

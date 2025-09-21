@@ -66,7 +66,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Harga Saat Ini</p>
-                <p class="text-2xl font-bold text-blue-600">Rp {{ number_format(end($riwayatHarga)['harga'], 0, ',', '.') }}</p>
+                <p class="text-2xl font-bold text-blue-600">Rp {{ number_format($bahanBakuData->harga_saat_ini, 0, ',', '.') }}</p>
             </div>
             <div class="p-3 bg-blue-100 rounded-full">
                 <i class="fas fa-money-bill-wave text-blue-500"></i>
@@ -79,7 +79,22 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Harga Tertinggi</p>
-                <p class="text-2xl font-bold text-red-600">Rp {{ number_format(max(array_column($riwayatHarga, 'harga')), 0, ',', '.') }}</p>
+                <p class="text-2xl font-bold text-red-600">
+                    @if(!empty($riwayatHarga))
+                        @php
+                            $hargaList = array_column($riwayatHarga, 'harga');
+                            // Sort to make sure we get the right max/min values
+                            sort($hargaList);
+                        @endphp
+                        @if(!empty($hargaList))
+                            Rp {{ number_format(max($hargaList), 0, ',', '.') }}
+                        @else
+                            Rp {{ number_format($bahanBakuData->harga_saat_ini, 0, ',', '.') }}
+                        @endif
+                    @else
+                        Rp {{ number_format($bahanBakuData->harga_saat_ini, 0, ',', '.') }}
+                    @endif
+                </p>
             </div>
             <div class="p-3 bg-red-100 rounded-full">
                 <i class="fas fa-arrow-up text-red-500"></i>
@@ -92,7 +107,22 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Harga Terendah</p>
-                <p class="text-2xl font-bold text-green-600">Rp {{ number_format(min(array_column($riwayatHarga, 'harga')), 0, ',', '.') }}</p>
+                <p class="text-2xl font-bold text-green-600">
+                    @if(!empty($riwayatHarga))
+                        @php
+                            $hargaList = array_column($riwayatHarga, 'harga');
+                            // Sort to make sure we get the right max/min values
+                            sort($hargaList);
+                        @endphp
+                        @if(!empty($hargaList))
+                            Rp {{ number_format(min($hargaList), 0, ',', '.') }}
+                        @else
+                            Rp {{ number_format($bahanBakuData->harga_saat_ini, 0, ',', '.') }}
+                        @endif
+                    @else
+                        Rp {{ number_format($bahanBakuData->harga_saat_ini, 0, ',', '.') }}
+                    @endif
+                </p>
             </div>
             <div class="p-3 bg-green-100 rounded-full">
                 <i class="fas fa-arrow-down text-green-500"></i>
@@ -102,23 +132,34 @@
     
     {{-- Price Trend --}}
     @php
-        $firstPrice = $riwayatHarga[0]['harga'];
-        $lastPrice = end($riwayatHarga)['harga'];
-        $trend = $lastPrice > $firstPrice ? 'naik' : ($lastPrice < $firstPrice ? 'turun' : 'stabil');
-        $trendPercentage = $firstPrice > 0 ? round((($lastPrice - $firstPrice) / $firstPrice) * 100, 2) : 0;
-        $daysDiff = \Carbon\Carbon::parse($riwayatHarga[0]['tanggal'])->diffInDays(\Carbon\Carbon::parse(end($riwayatHarga)['tanggal']));
+        if (!empty($riwayatHarga)) {
+            // Sort riwayat harga by date to ensure correct order
+            usort($riwayatHarga, function($a, $b) {
+                return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+            });
+            
+            $firstPrice = $riwayatHarga[0]['harga'];
+            $lastPrice = end($riwayatHarga)['harga'];
+            $trend = $lastPrice > $firstPrice ? 'naik' : ($lastPrice < $firstPrice ? 'turun' : 'stabil');
+            $trendPercentage = $firstPrice > 0 ? round((($lastPrice - $firstPrice) / $firstPrice) * 100, 2) : 0;
+            $daysDiff = \Carbon\Carbon::parse($riwayatHarga[0]['tanggal'])->diffInDays(\Carbon\Carbon::parse(end($riwayatHarga)['tanggal']));
+        } else {
+            $trend = 'stabil';
+            $trendPercentage = 0;
+            $daysDiff = 0;
+        }
     @endphp
-    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 {{ $trend == 'naik' ? 'border-orange-500' : ($trend == 'turun' ? 'border-blue-500' : 'border-gray-500') }}">
+    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 {{ $trend == 'naik' ? 'border-green-500' : ($trend == 'turun' ? 'border-red-500' : 'border-gray-500') }}">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Trend ({{ $daysDiff }} hari)</p>
-                <p class="text-lg font-bold {{ $trend == 'naik' ? 'text-orange-600' : ($trend == 'turun' ? 'text-blue-600' : 'text-gray-600') }}">
+                <p class="text-lg font-bold {{ $trend == 'naik' ? 'text-green-600' : ($trend == 'turun' ? 'text-red-600' : 'text-gray-600') }}">
                     {{ $trend == 'naik' ? '+' : ($trend == 'turun' ? '' : '') }}{{ $trendPercentage }}%
                 </p>
                 <p class="text-xs text-gray-500 capitalize">{{ $trend }}</p>
             </div>
-            <div class="p-3 {{ $trend == 'naik' ? 'bg-orange-100' : ($trend == 'turun' ? 'bg-blue-100' : 'bg-gray-100') }} rounded-full">
-                <i class="fas fa-chart-line {{ $trend == 'naik' ? 'text-orange-500' : ($trend == 'turun' ? 'text-blue-500' : 'text-gray-500') }}"></i>
+            <div class="p-3 {{ $trend == 'naik' ? 'bg-green-100' : ($trend == 'turun' ? 'bg-red-100' : 'bg-gray-100') }} rounded-full">
+                <i class="fas fa-chart-line {{ $trend == 'naik' ? 'text-green-500' : ($trend == 'turun' ? 'text-red-500' : 'text-gray-500') }}"></i>
             </div>
         </div>
     </div>
@@ -159,7 +200,7 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @foreach($riwayatHarga as $index => $item)
+                @forelse($riwayatHarga as $index => $item)
                     @php
                         $prevPrice = $index > 0 ? $riwayatHarga[$index - 1]['harga'] : null;
                         $change = $prevPrice ? $item['harga'] - $prevPrice : 0;
@@ -168,43 +209,41 @@
                     <tr class="hover:bg-gray-50 transition-colors duration-150">
                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
                         <td class="px-4 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ \Carbon\Carbon::parse($item['tanggal'])->format('d M Y') }}</div>
-                            <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($item['tanggal'])->format('l') }}</div>
+                            <div class="text-sm font-medium text-gray-900">{{ $item['formatted_tanggal'] }}</div>
+                            <div class="text-xs text-gray-500">{{ $item['formatted_hari'] }}</div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap">
-                            <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($item['harga'], 0, ',', '.') }}</div>
+                            <div class="text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap">
-                            @if($change > 0)
-                                <div class="text-sm text-red-600 font-medium">+Rp {{ number_format($change, 0, ',', '.') }}</div>
-                                <div class="text-xs text-red-500">+{{ $changePercent }}%</div>
-                            @elseif($change < 0)
-                                <div class="text-sm text-green-600 font-medium">-Rp {{ number_format(abs($change), 0, ',', '.') }}</div>
-                                <div class="text-xs text-green-500">{{ $changePercent }}%</div>
+                            @if($item['tipe_perubahan'] === 'naik')
+                                <div class="text-sm text-green-600 font-medium">+Rp {{ $item['formatted_selisih'] }}</div>
+                                <div class="text-xs text-green-500">+{{ number_format($item['persentase_perubahan'], 2) }}%</div>
+                            @elseif($item['tipe_perubahan'] === 'turun')
+                                <div class="text-sm text-red-600 font-medium">-Rp {{ $item['formatted_selisih'] }}</div>
+                                <div class="text-xs text-red-500">{{ number_format($item['persentase_perubahan'], 2) }}%</div>
                             @else
-                                <div class="text-sm text-gray-500">Data Pertama</div>
+                                <div class="text-sm text-gray-500">{{ $item['tipe_perubahan'] === 'awal' ? 'Data Pertama' : 'Tidak Ada Perubahan' }}</div>
                             @endif
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap">
-                            @if($change > 0)
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                    <i class="fas fa-arrow-up mr-1"></i>
-                                    Naik
-                                </span>
-                            @elseif($change < 0)
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                    <i class="fas fa-arrow-down mr-1"></i>
-                                    Turun
-                                </span>
-                            @else
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                                    <i class="fas fa-minus mr-1"></i>
-                                    Awal
-                                </span>
-                            @endif
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $item['badge_class'] }}">
+                                <i class="{{ $item['icon'] }} mr-1"></i>
+                                {{ ucfirst($item['tipe_perubahan']) }}
+                            </span>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-chart-line text-4xl text-gray-300 mb-4"></i>
+                                <p class="text-lg font-medium">Belum ada data riwayat harga</p>
+                                <p class="text-sm">Data riwayat harga akan muncul setelah ada perubahan harga</p>
+                            </div>
+                        </td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
@@ -217,7 +256,20 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Data untuk chart
-    const priceData = @json($riwayatHarga);
+    let priceData = @json($riwayatHarga);
+    
+    // Check if data is empty
+    if (!priceData || priceData.length === 0) {
+        // Show message instead of chart
+        document.getElementById('priceChart').style.display = 'none';
+        const chartContainer = document.getElementById('priceChart').parentElement;
+        chartContainer.innerHTML = '<div class="flex items-center justify-center h-64"><p class="text-gray-500 text-lg">Belum ada data riwayat harga</p></div>';
+        return;
+    }
+    
+    // Sort data by date chronologically (oldest to newest)
+    priceData.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+    
     const labels = priceData.map(item => {
         const date = new Date(item.tanggal);
         return date.toLocaleDateString('id-ID', { 

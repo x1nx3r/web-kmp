@@ -356,7 +356,7 @@
                                                 <p class="text-xs text-{{ $color }}-600">per {{ $bahanBaku->satuan }}</p>
                                             </div>
                                             <button type="button" 
-                                                    onclick="redirectToRiwayatHarga({{ $supplier->id }}, {{ $bahanBaku->id }})"
+                                                    onclick="redirectToRiwayatHarga('{{ $supplier->slug }}', '{{ $bahanBaku->slug }}')"
                                                     class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
                                                     title="Lihat Riwayat Harga">
                                                 <i class="fas fa-chart-line text-xs mr-1"></i>
@@ -406,7 +406,7 @@
                                                 <p class="text-xs text-{{ $color }}-600">per {{ $bahanBaku->satuan }}</p>
                                             </div>
                                             <button type="button" 
-                                                    onclick="redirectToRiwayatHarga({{ $supplier->id }}, {{ $bahanBaku->id }})"
+                                                    onclick="redirectToRiwayatHarga('{{ $supplier->slug }}', '{{ $bahanBaku->slug }}')"
                                                     class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
                                                     title="Lihat Riwayat Harga">
                                                 <i class="fas fa-chart-line text-sm mr-2"></i>
@@ -640,17 +640,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Redirect to price history page
-function redirectToRiwayatHarga(supplierId, bahanBakuId) {
-    // Map bahan baku IDs to slugs for demo purposes
-    const bahanBakuMap = {
-        1: 'bahan-baku-a',
-        2: 'bahan-baku-b', 
-        3: 'bahan-baku-c',
-        4: 'bahan-baku-d'
-    };
-    
-    const bahanBakuSlug = bahanBakuMap[bahanBakuId] || 'bahan-baku-a';
-    const url = `/supplier/${supplierId}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
+function redirectToRiwayatHarga(supplierSlug, bahanBakuSlug) {
+    const url = `/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
     window.location.href = url;
 }
 

@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             SupplierSeeder::class,
             KlienSeeder::class,
             BahanBakuSupplierSeeder::class,
+            RiwayatHargaBahanBakuSeeder::class,
         ]);
     }
 }

@@ -2,6 +2,47 @@
 @section('title', 'Supplier - Kamil Maju Persada')
 @section('content')
 
+{{-- Flash Messages --}}
+@if(session('success'))
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 sm:mb-6 flex items-start">
+        <div class="flex-shrink-0">
+            <i class="fas fa-check-circle text-green-400 text-xl"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm font-medium text-green-800">
+                {{ session('success') }}
+            </p>
+        </div>
+        <div class="ml-auto pl-3">
+            <div class="-mx-1.5 -my-1.5">
+                <button type="button" onclick="this.parentElement.parentElement.parentElement.style.display='none'" class="inline-flex bg-green-50 rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 sm:mb-6 flex items-start">
+        <div class="flex-shrink-0">
+            <i class="fas fa-exclamation-circle text-red-400 text-xl"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm font-medium text-red-800">
+                {{ session('error') }}
+            </p>
+        </div>
+        <div class="ml-auto pl-3">
+            <div class="-mx-1.5 -my-1.5">
+                <button type="button" onclick="this.parentElement.parentElement.parentElement.style.display='none'" class="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+@endif
+
 {{-- Welcome Banner --}}
 <div class="bg-green-800 rounded-xl sm:rounded-2xl p-3 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 text-white shadow-lg mt-2 sm:mt-4 lg:mt-4">
     <div class="flex items-center justify-between">

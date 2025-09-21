@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Purchasing;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SupplierController extends Controller
 {
@@ -83,13 +85,84 @@ class SupplierController extends Controller
      */
     public function create()
     {
-        return view('pages.purchasing.supplier.tambah');
+        // Get purchasing users for PIC dropdown
+        $purchasingUsers = \App\Models\User::where('role', 'purchasing')
+            ->orWhere('role', 'admin')
+            ->orderBy('nama')
+            ->get();
+
+        return view('pages.purchasing.supplier.tambah', compact('purchasingUsers'));
     }
 
-    // Method untuk store, update, delete bisa ditambahkan nanti
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
-        // Akan diimplementasi nanti
+        // Validation
+        $request->validate([
+            'nama' => 'required|string|max:255',
+            'alamat' => 'nullable|string',
+            'no_hp' => 'nullable|string|max:20',
+            'pic_purchasing_id' => 'nullable|exists:users,id',
+            'bahan_baku' => 'required|array|min:1',
+            'bahan_baku.*.nama' => 'required|string|max:255',
+            'bahan_baku.*.satuan' => 'required|string|max:50',
+            'bahan_baku.*.harga_per_satuan' => 'required|numeric|min:0',
+            'bahan_baku.*.stok' => 'required|numeric|min:0',
+        ], [
+            'nama.required' => 'Nama supplier harus diisi',
+            'bahan_baku.required' => 'Minimal satu bahan baku harus ditambahkan',
+            'bahan_baku.min' => 'Minimal satu bahan baku harus ditambahkan',
+            'bahan_baku.*.nama.required' => 'Nama bahan baku harus diisi',
+            'bahan_baku.*.satuan.required' => 'Satuan bahan baku harus dipilih',
+            'bahan_baku.*.harga_per_satuan.required' => 'Harga per satuan harus diisi',
+            'bahan_baku.*.stok.required' => 'Stok harus diisi',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Generate unique slug
+            $baseSlug = Str::slug($request->nama);
+            $slug = $baseSlug;
+            $counter = 1;
+
+            // Check if slug exists and make it unique
+            while (Supplier::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $counter;
+                $counter++;
+            }
+
+            // Create supplier
+            $supplier = Supplier::create([
+                'nama' => $request->nama,
+                'slug' => $slug,
+                'alamat' => $request->alamat,
+                'no_hp' => $request->no_hp,
+                'pic_purchasing_id' => $request->pic_purchasing_id,
+            ]);
+
+            // Create bahan baku for supplier
+            foreach ($request->bahan_baku as $bahanBaku) {
+                $supplier->bahanBakuSuppliers()->create([
+                    'nama' => $bahanBaku['nama'],
+                    'satuan' => $bahanBaku['satuan'],
+                    'harga_per_satuan' => str_replace('.', '', $bahanBaku['harga_per_satuan']), // Remove thousand separators
+                    'stok' => str_replace('.', '', $bahanBaku['stok']), // Remove thousand separators
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('supplier.index')
+                ->with('success', 'Supplier berhasil ditambahkan dengan ' . count($request->bahan_baku) . ' bahan baku');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->withInput()
+                ->with('error', 'Gagal menyimpan supplier: ' . $e->getMessage());
+        }
     }
 
     public function show(Supplier $supplier)

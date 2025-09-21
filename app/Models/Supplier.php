@@ -59,7 +59,10 @@ class Supplier extends Model
                     ->orWhere('alamat', 'like', '%' . $search . '%')
                     ->orWhere('no_hp', 'like', '%' . $search . '%')
                     ->orWhereHas('picPurchasing', function($subQuery) use ($search) {
-                        $subQuery->where('name', 'like', '%' . $search . '%');
+                        $subQuery->where('nama', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('bahanBakuSuppliers', function($subQuery) use ($search) {
+                        $subQuery->where('nama', 'like', '%' . $search . '%');
                     });
     }
 }

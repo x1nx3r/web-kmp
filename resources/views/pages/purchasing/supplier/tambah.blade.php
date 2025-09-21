@@ -72,19 +72,18 @@
 
             {{-- PIC Purchasing --}}
             <div>
-                <label for="pic_purchasing" class="block text-sm font-semibold text-green-700 mb-2">
+                <label for="pic_purchasing_id" class="block text-sm font-semibold text-green-700 mb-2">
                     <i class="fas fa-user-tie mr-2 text-green-500"></i>
                     PIC Purchasing
                 </label>
-                <select name="pic_purchasing" id="pic_purchasing"
+                <select name="pic_purchasing_id" id="pic_purchasing_id"
                         class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200">
                     <option value="">Pilih PIC Purchasing</option>
-                    <option value="1">Ahmad Rizki - Purchasing Manager</option>
-                    <option value="2">Siti Nurhaliza - Senior Purchasing</option>
-                    <option value="3">Budi Santoso - Purchasing Officer</option>
-                    <option value="4">Rina Wati - Junior Purchasing</option>
-                    <option value="5">Dedi Kurniawan - Procurement Specialist</option>
-                    <option value="6">Maya Sari - Purchasing Assistant</option>
+                    @if(isset($purchasingUsers))
+                        @foreach($purchasingUsers as $user)
+                            <option value="{{ $user->id }}">{{ $user->nama }} ({{ ucfirst($user->role) }})</option>
+                        @endforeach
+                    @endif
                 </select>
             </div>
         </div>
@@ -113,7 +112,7 @@
                     <h3 class="text-sm sm:text-lg font-bold text-gray-800 flex items-center">
                         <i class="fas fa-cube text-green-600 mr-1 sm:mr-2 text-sm"></i>
                         <span class="hidden sm:inline">Bahan Baku 1</span>
-                        <span class="sm:hidden">BB #1</span>
+                        <span class="sm:hidden">BB 1</span>
                     </h3>
                     <button type="button" onclick="removeBahanBaku(this)" 
                             class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1.5 sm:p-2 rounded-full transition-all duration-200">
@@ -160,7 +159,7 @@
                         </label>
                         <div class="relative">
                             <span class="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-xs sm:text-sm">Rp</span>
-                            <input type="text" name="bahan_baku[0][harga]" 
+                            <input type="text" name="bahan_baku[0][harga_per_satuan]" 
                                    placeholder="0"
                                    class="currency-input w-full pl-8 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
                         </div>
@@ -312,8 +311,8 @@ function addBahanBaku() {
             <div class="flex items-center justify-between mb-3 sm:mb-4">
                 <h3 class="text-sm sm:text-lg font-bold text-gray-800 flex items-center">
                     <i class="fas fa-cube ${colors.icon} mr-1 sm:mr-2 text-sm"></i>
-                    <span class="hidden sm:inline">Bahan Baku #${newNumber}</span>
-                    <span class="sm:hidden">BB #${newNumber}</span>
+                    <span class="hidden sm:inline">Bahan Baku ${newNumber}</span>
+                    <span class="sm:hidden">BB ${newNumber}</span>
                 </h3>
                 <button type="button" onclick="removeBahanBaku(this)" 
                         class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1.5 sm:p-2 rounded-full transition-all duration-200">
@@ -360,7 +359,7 @@ function addBahanBaku() {
                     </label>
                     <div class="relative">
                         <span class="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-xs sm:text-sm">Rp</span>
-                        <input type="text" name="bahan_baku[${newIndex}][harga]"
+                        <input type="text" name="bahan_baku[${newIndex}][harga_per_satuan]"
                                placeholder="0"
                                class="currency-input w-full pl-8 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg ${colors.focus} bg-white transition-all duration-200">
                     </div>
@@ -426,8 +425,8 @@ function updateBahanBakuNumbers() {
         const icon = title.querySelector('i');
         title.innerHTML = `
             ${icon.outerHTML}
-            <span class="hidden sm:inline">Bahan Baku #${index + 1}</span>
-            <span class="sm:hidden">BB #${index + 1}</span>
+            <span class="hidden sm:inline">Bahan Baku ${index + 1}</span>
+            <span class="sm:hidden">BB ${index + 1}</span>
         `;
         
         // Update name attributes for form inputs

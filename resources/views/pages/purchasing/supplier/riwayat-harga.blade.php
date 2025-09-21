@@ -3,14 +3,14 @@
 @section('content')
 
 {{-- Welcome Banner --}}
-<div class="bg-gradient-to-r from-indigo-800 to-purple-800 rounded-xl sm:rounded-2xl p-3 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 text-white shadow-lg mt-2 sm:mt-4 lg:mt-4">
+<div class="bg-green-800  rounded-xl sm:rounded-2xl p-3 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 text-white shadow-lg mt-2 sm:mt-4 lg:mt-4">
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Riwayat Harga Harian</h1>
             <p class="text-white text-xs sm:text-base lg:text-lg">Perubahan harga per tanggal: {{ $bahanBakuData->nama }} dari {{ $supplierData->nama }}</p>
         </div>
         <div class="hidden lg:block">
-            <i class="fas fa-chart-line text-6xl text-white opacity-20"></i>
+            <i class="fas fa-chart-line text-6xl text-white"></i>
         </div>
     </div>
 </div>
@@ -24,62 +24,62 @@
 </div>
 
 {{-- Bahan Baku Info Card --}}
-<div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200 mb-6">
-    <div class="flex items-center mb-4">
-        <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
-            <i class="fas fa-cube text-white text-sm"></i>
+<div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-6 border border-gray-200 mb-4 sm:mb-6">
+    <div class="flex items-center mb-3 sm:mb-4">
+        <div class="w-6 h-6 sm:w-8 sm:h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
+            <i class="fas fa-cube text-white text-xs sm:text-sm"></i>
         </div>
-        <h2 class="text-lg sm:text-xl font-bold text-indigo-800">Informasi Bahan Baku</h2>
+        <h2 class="text-base sm:text-lg lg:text-xl font-bold text-indigo-800">Informasi Bahan Baku</h2>
     </div>
     
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-            <div class="flex items-center mb-2">
-                <i class="fas fa-tag text-blue-500 mr-2"></i>
-                <span class="text-sm font-semibold text-blue-700">Nama Bahan Baku</span>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+            <div class="flex items-center mb-1 sm:mb-2">
+                <i class="fas fa-tag text-blue-500 mr-1 sm:mr-2 text-xs sm:text-sm"></i>
+                <span class="text-xs sm:text-sm font-semibold text-blue-700">Nama Bahan Baku</span>
             </div>
-            <p class="text-lg font-bold text-gray-800">{{ $bahanBakuData->nama }}</p>
+            <p class="text-sm sm:text-lg font-bold text-gray-800">{{ $bahanBakuData->nama }}</p>
         </div>
         
-        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-            <div class="flex items-center mb-2">
-                <i class="fas fa-weight-hanging text-green-500 mr-2"></i>
-                <span class="text-sm font-semibold text-green-700">Satuan</span>
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 sm:p-4 border border-green-200">
+            <div class="flex items-center mb-1 sm:mb-2">
+                <i class="fas fa-weight-hanging text-green-500 mr-1 sm:mr-2 text-xs sm:text-sm"></i>
+                <span class="text-xs sm:text-sm font-semibold text-green-700">Satuan</span>
             </div>
-            <p class="text-lg font-bold text-gray-800">{{ $bahanBakuData->satuan }}</p>
+            <p class="text-sm sm:text-lg font-bold text-gray-800">{{ $bahanBakuData->satuan }}</p>
         </div>
         
-        <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
-            <div class="flex items-center mb-2">
-                <i class="fas fa-building text-purple-500 mr-2"></i>
-                <span class="text-sm font-semibold text-purple-700">Supplier</span>
+        <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3 sm:p-4 border border-purple-200">
+            <div class="flex items-center mb-1 sm:mb-2">
+                <i class="fas fa-building text-purple-500 mr-1 sm:mr-2 text-xs sm:text-sm"></i>
+                <span class="text-xs sm:text-sm font-semibold text-purple-700">Supplier</span>
             </div>
-            <p class="text-lg font-bold text-gray-800">{{ $bahanBakuData->supplier_nama }}</p>
+            <p class="text-sm sm:text-lg font-bold text-gray-800">{{ $bahanBakuData->supplier_nama }}</p>
         </div>
     </div>
 </div>
 
 {{-- Price Statistics Cards --}}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
     {{-- Current Price --}}
-    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
+    <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 border-l-4 border-blue-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm font-medium text-gray-600">Harga Saat Ini</p>
-                <p class="text-2xl font-bold text-blue-600">Rp {{ number_format($bahanBakuData->harga_saat_ini, 0, ',', '.') }}</p>
+                <p class="text-xs sm:text-sm font-medium text-gray-600">Harga Saat Ini</p>
+                <p class="text-lg sm:text-2xl font-bold text-blue-600">Rp {{ number_format($bahanBakuData->harga_saat_ini, 0, ',', '.') }}</p>
             </div>
-            <div class="p-3 bg-blue-100 rounded-full">
-                <i class="fas fa-money-bill-wave text-blue-500"></i>
+            <div class="p-2 sm:p-3 bg-blue-100 rounded-full">
+                <i class="fas fa-money-bill-wave text-blue-500 text-sm sm:text-base"></i>
             </div>
         </div>
     </div>
     
     {{-- Highest Price --}}
-    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-red-500">
+    <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 border-l-4 border-red-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm font-medium text-gray-600">Harga Tertinggi</p>
-                <p class="text-2xl font-bold text-red-600">
+                <p class="text-xs sm:text-sm font-medium text-gray-600">Harga Tertinggi</p>
+                <p class="text-lg sm:text-2xl font-bold text-red-600">
                     @if(!empty($riwayatHarga))
                         @php
                             $hargaList = array_column($riwayatHarga, 'harga');
@@ -96,18 +96,18 @@
                     @endif
                 </p>
             </div>
-            <div class="p-3 bg-red-100 rounded-full">
-                <i class="fas fa-arrow-up text-red-500"></i>
+            <div class="p-2 sm:p-3 bg-red-100 rounded-full">
+                <i class="fas fa-arrow-up text-red-500 text-sm sm:text-base"></i>
             </div>
         </div>
     </div>
     
     {{-- Lowest Price --}}
-    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
+    <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 border-l-4 border-green-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm font-medium text-gray-600">Harga Terendah</p>
-                <p class="text-2xl font-bold text-green-600">
+                <p class="text-xs sm:text-sm font-medium text-gray-600">Harga Terendah</p>
+                <p class="text-lg sm:text-2xl font-bold text-green-600">
                     @if(!empty($riwayatHarga))
                         @php
                             $hargaList = array_column($riwayatHarga, 'harga');
@@ -124,8 +124,8 @@
                     @endif
                 </p>
             </div>
-            <div class="p-3 bg-green-100 rounded-full">
-                <i class="fas fa-arrow-down text-green-500"></i>
+            <div class="p-2 sm:p-3 bg-green-100 rounded-full">
+                <i class="fas fa-arrow-down text-green-500 text-sm sm:text-base"></i>
             </div>
         </div>
     </div>
@@ -149,54 +149,54 @@
             $daysDiff = 0;
         }
     @endphp
-    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 {{ $trend == 'naik' ? 'border-green-500' : ($trend == 'turun' ? 'border-red-500' : 'border-gray-500') }}">
+    <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 border-l-4 {{ $trend == 'naik' ? 'border-green-500' : ($trend == 'turun' ? 'border-red-500' : 'border-gray-500') }}">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm font-medium text-gray-600">Trend ({{ $daysDiff }} hari)</p>
-                <p class="text-lg font-bold {{ $trend == 'naik' ? 'text-green-600' : ($trend == 'turun' ? 'text-red-600' : 'text-gray-600') }}">
+                <p class="text-xs sm:text-sm font-medium text-gray-600">Trend ({{ $daysDiff }} hari)</p>
+                <p class="text-base sm:text-lg font-bold {{ $trend == 'naik' ? 'text-green-600' : ($trend == 'turun' ? 'text-red-600' : 'text-gray-600') }}">
                     {{ $trend == 'naik' ? '+' : ($trend == 'turun' ? '' : '') }}{{ $trendPercentage }}%
                 </p>
                 <p class="text-xs text-gray-500 capitalize">{{ $trend }}</p>
             </div>
-            <div class="p-3 {{ $trend == 'naik' ? 'bg-green-100' : ($trend == 'turun' ? 'bg-red-100' : 'bg-gray-100') }} rounded-full">
-                <i class="fas fa-chart-line {{ $trend == 'naik' ? 'text-green-500' : ($trend == 'turun' ? 'text-red-500' : 'text-gray-500') }}"></i>
+            <div class="p-2 sm:p-3 {{ $trend == 'naik' ? 'bg-green-100' : ($trend == 'turun' ? 'bg-red-100' : 'bg-gray-100') }} rounded-full">
+                <i class="fas fa-chart-line {{ $trend == 'naik' ? 'text-green-500' : ($trend == 'turun' ? 'text-red-500' : 'text-gray-500') }} text-sm sm:text-base"></i>
             </div>
         </div>
     </div>
 </div>
 
 {{-- Price Chart --}}
-<div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200 mb-6">
-    <div class="flex items-center mb-6">
-        <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mr-3">
-            <i class="fas fa-chart-line text-white text-sm"></i>
+<div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-6 border border-gray-200 mb-4 sm:mb-6">
+    <div class="flex items-center mb-3 sm:mb-6">
+        <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
+            <i class="fas fa-chart-line text-white text-xs sm:text-sm"></i>
         </div>
-        <h2 class="text-lg sm:text-xl font-bold text-purple-800">Grafik Perubahan Harga Harian</h2>
+        <h2 class="text-base sm:text-lg lg:text-xl font-bold text-purple-800">Grafik Perubahan Harga Harian</h2>
     </div>
     
-    <div class="relative h-64 sm:h-80">
+    <div class="relative h-48 sm:h-64 lg:h-80">
         <canvas id="priceChart" class="w-full h-full"></canvas>
     </div>
 </div>
 
 {{-- Price History Table --}}
-<div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
-    <div class="flex items-center mb-6">
-        <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mr-3">
-            <i class="fas fa-history text-white text-sm"></i>
+<div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-6 border border-gray-200">
+    <div class="flex items-center mb-3 sm:mb-6">
+        <div class="w-6 h-6 sm:w-8 sm:h-8 bg-emerald-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
+            <i class="fas fa-history text-white text-xs sm:text-sm"></i>
         </div>
-        <h2 class="text-lg sm:text-xl font-bold text-emerald-800">Riwayat Perubahan Harga per Tanggal</h2>
+        <h2 class="text-base sm:text-lg lg:text-xl font-bold text-emerald-800">Riwayat Perubahan Harga per Tanggal</h2>
     </div>
     
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Update</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perubahan</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                    <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
+                    <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perubahan</th>
+                    <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -207,39 +207,40 @@
                         $changePercent = $prevPrice ? round(($change / $prevPrice) * 100, 2) : 0;
                     @endphp
                     <tr class="hover:bg-gray-50 transition-colors duration-150">
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ $item['formatted_tanggal'] }}</div>
-                            <div class="text-xs text-gray-500">{{ $item['formatted_hari'] }}</div>
+                        <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{{ $index + 1 }}</td>
+                        <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
+                            <div class="text-xs sm:text-sm font-medium text-gray-900">{{ $item['formatted_tanggal'] }}</div>
+                            <div class="text-xs text-gray-500 hidden sm:block">{{ $item['formatted_hari'] }}</div>
                         </td>
-                        <td class="px-4 py-4 whitespace-nowrap">
-                            <div class="text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
+                        <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
+                            <div class="text-xs sm:text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
                         </td>
-                        <td class="px-4 py-4 whitespace-nowrap">
+                        <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
                             @if($item['tipe_perubahan'] === 'naik')
-                                <div class="text-sm text-green-600 font-medium">+Rp {{ $item['formatted_selisih'] }}</div>
+                                <div class="text-xs sm:text-sm text-green-600 font-medium">+Rp {{ $item['formatted_selisih'] }}</div>
                                 <div class="text-xs text-green-500">+{{ number_format($item['persentase_perubahan'], 2) }}%</div>
                             @elseif($item['tipe_perubahan'] === 'turun')
-                                <div class="text-sm text-red-600 font-medium">-Rp {{ $item['formatted_selisih'] }}</div>
+                                <div class="text-xs sm:text-sm text-red-600 font-medium">-Rp {{ $item['formatted_selisih'] }}</div>
                                 <div class="text-xs text-red-500">{{ number_format($item['persentase_perubahan'], 2) }}%</div>
                             @else
-                                <div class="text-sm text-gray-500">{{ $item['tipe_perubahan'] === 'awal' ? 'Data Pertama' : 'Tidak Ada Perubahan' }}</div>
+                                <div class="text-xs sm:text-sm text-gray-500">{{ $item['tipe_perubahan'] === 'awal' ? 'Data Pertama' : 'Tidak Ada Perubahan' }}</div>
                             @endif
                         </td>
-                        <td class="px-4 py-4 whitespace-nowrap">
-                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $item['badge_class'] }}">
+                        <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
+                            <span class="inline-flex px-1 sm:px-2 py-1 text-xs font-semibold rounded-full {{ $item['badge_class'] }}">
                                 <i class="{{ $item['icon'] }} mr-1"></i>
-                                {{ ucfirst($item['tipe_perubahan']) }}
+                                <span class="hidden sm:inline">{{ ucfirst($item['tipe_perubahan']) }}</span>
+                                <span class="sm:hidden">{{ substr($item['tipe_perubahan'], 0, 1) }}</span>
                             </span>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="5" class="px-2 sm:px-4 py-6 sm:py-8 text-center text-gray-500">
                             <div class="flex flex-col items-center">
-                                <i class="fas fa-chart-line text-4xl text-gray-300 mb-4"></i>
-                                <p class="text-lg font-medium">Belum ada data riwayat harga</p>
-                                <p class="text-sm">Data riwayat harga akan muncul setelah ada perubahan harga</p>
+                                <i class="fas fa-chart-line text-2xl sm:text-4xl text-gray-300 mb-2 sm:mb-4"></i>
+                                <p class="text-sm sm:text-lg font-medium">Belum ada data riwayat harga</p>
+                                <p class="text-xs sm:text-sm">Data riwayat harga akan muncul setelah ada perubahan harga</p>
                             </div>
                         </td>
                     </tr>

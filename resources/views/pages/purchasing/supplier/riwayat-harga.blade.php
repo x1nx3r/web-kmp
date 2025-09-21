@@ -2,18 +2,15 @@
 @section('title', 'Riwayat Harga Bahan Baku - Kamil Maju Persada')
 @section('content')
 
-{{-- Welcome Banner --}}
-<div class="bg-green-800  rounded-xl sm:rounded-2xl p-3 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 text-white shadow-lg mt-2 sm:mt-4 lg:mt-4">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Riwayat Harga Harian</h1>
-            <p class="text-white text-xs sm:text-base lg:text-lg">Perubahan harga per tanggal: {{ $bahanBakuData->nama }} dari {{ $supplierData->nama }}</p>
-        </div>
-        <div class="hidden lg:block">
-            <i class="fas fa-chart-line text-6xl text-white"></i>
-        </div>
-    </div>
-</div>
+
+<x-welcome-banner title="Riwayat Harga Bahan Baku" :subtitle="$bahanBakuData->nama . ' dari ' . $supplierData->nama" icon="fas fa-chart-line" />
+{{-- Breadcrumb --}}
+<x-breadcrumb :items="[
+    ['title' => 'Purchasing', 'url' => '#'],
+    ['title' => 'Supplier', 'url' => route('supplier.index')],
+    ['title' => $supplierData->nama, 'url' => route('supplier.edit', $supplierData->slug)],
+    'Riwayat Harga: ' . $bahanBakuData->nama
+]" />
 
 {{-- Back Button --}}
 <div class="mb-4 sm:mb-6">

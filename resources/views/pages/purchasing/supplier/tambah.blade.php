@@ -2,19 +2,15 @@
 @section('title', 'Tambah Supplier - Kamil Maju Persada')
 @section('content')
 
-{{-- Welcome Banner --}}
-<div class="bg-green-800 rounded-xl sm:rounded-2xl p-3 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 text-white shadow-lg mt-2 sm:mt-4 lg:mt-4">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Tambah Supplier</h1>
-            <p class="text-white text-xs sm:text-base lg:text-lg">Menambahkan data supplier baru beserta bahan baku yang disediakan</p>
-        </div>
-        <div class="hidden lg:block">
-            <i class="fas fa-plus-circle text-6xl text-white"></i>
-        </div>
-    </div>
-</div>
 
+
+<x-welcome-banner title="Tambah Supplier" subtitle="Menambahkan data supplier baru beserta bahan baku yang disediakan" icon="fas fa-plus-circle" />
+{{-- Breadcrumb --}}
+<x-breadcrumb :items="[
+    ['title' => 'Purchasing', 'url' => '#'],
+    ['title' => 'Supplier', 'url' => route('supplier.index')],
+    'Tambah Supplier'
+]" />
 {{-- Back Button --}}
 <div class="mb-4 sm:mb-6">
     <a href="{{ route('supplier.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">

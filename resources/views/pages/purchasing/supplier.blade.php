@@ -2,6 +2,8 @@
 @section('title', 'Supplier - Kamil Maju Persada')
 @section('content')
 
+
+
 {{-- Flash Messages --}}
 @if(session('success'))
     <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 sm:mb-6 flex items-start">
@@ -43,19 +45,12 @@
     </div>
 @endif
 
-{{-- Welcome Banner --}}
-<div class="bg-green-800 rounded-xl sm:rounded-2xl p-3 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 text-white shadow-lg mt-2 sm:mt-4 lg:mt-4">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Supplier</h1>
-            <p class="text-white text-xs sm:text-base lg:text-lg">Kelola data supplier perusahaan</p>
-        </div>
-        <div class="hidden lg:block">
-            <i class="fas fa-industry text-6xl text-white"></i>
-        </div>
-    </div>
-</div>
-
+<x-welcome-banner title="Supplier" subtitle="Kelola data supplier perusahaan" icon="fas fa-industry" />
+{{-- Breadcrumb --}}
+<x-breadcrumb :items="[
+    ['title' => 'Purchasing', 'url' => '#'],
+    'Supplier'
+]" />
 {{-- Search and Filter Section --}}
 <div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-6 mb-3 sm:mb-6">
     <div class="space-y-3 sm:space-y-6">

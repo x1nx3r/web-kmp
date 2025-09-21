@@ -2,18 +2,14 @@
 @section('title', 'Edit Supplier - Kamil Maju Persada')
 @section('content')
 
-{{-- Welcome Banner --}}
-<div class="bg-green-800 rounded-xl sm:rounded-2xl p-3 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 text-white shadow-lg mt-2 sm:mt-4 lg:mt-4">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Edit Supplier</h1>
-            <p class="text-white text-xs sm:text-base lg:text-lg">Mengedit data supplier dan bahan baku yang disediakan</p>
-        </div>
-        <div class="hidden lg:block">
-            <i class="fas fa-edit text-6xl text-white"></i>
-        </div>
-    </div>
-</div>
+
+<x-welcome-banner title="Edit Supplier" subtitle="Mengedit data supplier dan bahan baku yang disediakan" icon="fas fa-edit" />
+{{-- Breadcrumb --}}
+<x-breadcrumb :items="[
+    ['title' => 'Purchasing', 'url' => '#'],
+    ['title' => 'Supplier', 'url' => route('supplier.index')],
+    'Edit Supplier: ' . $supplier->nama
+]" />
 
 {{-- Back Button --}}
 <div class="mb-4 sm:mb-6">

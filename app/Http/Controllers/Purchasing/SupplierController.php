@@ -292,7 +292,39 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
-        // Akan diimplementasi nanti
+        try {
+            DB::beginTransaction();
+
+            // Log the deletion attempt
+            Log::info('Supplier Delete Request', [
+                'supplier_id' => $supplier->id,
+                'supplier_nama' => $supplier->nama,
+                'bahan_baku_count' => $supplier->bahanBakuSuppliers->count()
+            ]);
+
+            // Delete related bahan baku first (due to foreign key constraints)
+            $bahanBakuCount = $supplier->bahanBakuSuppliers->count();
+            $supplier->bahanBakuSuppliers()->delete();
+
+            // Delete the supplier
+            $supplierName = $supplier->nama;
+            $supplier->delete();
+
+            DB::commit();
+
+            return redirect()->route('supplier.index')
+                ->with('success', "Supplier '{$supplierName}' berhasil dihapus beserta {$bahanBakuCount} bahan baku terkait");
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            Log::error('Supplier Delete Error', [
+                'supplier_id' => $supplier->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->with('error', 'Gagal menghapus supplier: ' . $e->getMessage());
+        }
     }
 
     public function riwayatHarga($supplier, $bahanBaku)

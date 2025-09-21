@@ -221,7 +221,7 @@
                             <a href="{{ route('supplier.edit', $supplier->slug) }}" class="w-6 h-6 flex items-center justify-center text-yellow-600 bg-yellow-50 rounded hover:bg-yellow-100 transition-colors" title="Edit">
                                 <i class="fas fa-edit text-xs"></i>
                             </a>
-                            <button type="button" class="w-6 h-6 flex items-center justify-center text-red-600 bg-red-50 rounded" onclick="openDeleteModal({{ $supplier->id }}, '{{ $supplier->nama }}')">
+                            <button type="button" class="w-6 h-6 flex items-center justify-center text-red-600 bg-red-50 rounded" onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
                         </div>
@@ -322,7 +322,7 @@
                                     <i class="fas fa-edit text-sm"></i>
                                 </a>
                                 
-                                <button type="button" class="w-10 h-10 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-all duration-200 transform hover:scale-105" onclick="openDeleteModal({{ $supplier->id }}, '{{ $supplier->nama }}')">
+                                <button type="button" class="w-10 h-10 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-all duration-200 transform hover:scale-105" onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')">
                                     <i class="fas fa-trash text-sm" title="Hapus"></i>
                                 </button>
                             </div>
@@ -655,57 +655,58 @@ function redirectToRiwayatHarga(supplierId, bahanBakuId) {
 }
 
 // Delete modal functions
-let supplierIdToDelete = null;
+let supplierSlugToDelete = null;
 
-function openDeleteModal(supplierId, supplierName) {
-    supplierIdToDelete = supplierId;
+function openDeleteModal(supplierSlug, supplierName) {
+    supplierSlugToDelete = supplierSlug;
     document.getElementById('supplierNameToDelete').textContent = supplierName;
     document.getElementById('deleteModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden'; // Prevent background scrolling
 }
 
 function closeDeleteModal() {
-    supplierIdToDelete = null;
+    supplierSlugToDelete = null;
     document.getElementById('deleteModal').classList.add('hidden');
     document.body.style.overflow = 'auto'; // Restore scrolling
 }
 
 function confirmDelete() {
-    if (supplierIdToDelete) {
+    if (supplierSlugToDelete) {
         // Show loading state
         const deleteButton = event.target;
         const originalText = deleteButton.innerHTML;
         deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus...';
         deleteButton.disabled = true;
         
-        // Simulate API call (replace with actual API call)
-        setTimeout(() => {
-            // Here you would make an actual API call to delete the supplier
-            // For now, we'll just show a success message and close the modal
-            
-            // Example API call:
-            // fetch(`/supplier/${supplierIdToDelete}`, {
-            //     method: 'DELETE',
-            //     headers: {
-            //         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            //         'Content-Type': 'application/json',
-            //     },
-            // }).then(response => {
-            //     if (response.ok) {
-            //         window.location.reload();
-            //     }
-            // });
-            
-            alert('Supplier berhasil dihapus!');
-            closeDeleteModal();
-            
-            // Reset button state
-            deleteButton.innerHTML = originalText;
-            deleteButton.disabled = false;
-            
-            // Optionally reload the page or remove the supplier from the list
-            // window.location.reload();
-        }, 1500);
+        // Create and submit delete form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/supplier/${supplierSlugToDelete}`;
+        form.style.display = 'none';
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken.getAttribute('content');
+            form.appendChild(csrfInput);
+        }
+        
+        // Add DELETE method
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        // Append form to body and submit
+        document.body.appendChild(form);
+        form.submit();
+    } else {
+        alert('Error: Tidak dapat menghapus supplier. Data tidak lengkap.');
+        closeDeleteModal();
     }
 }
 

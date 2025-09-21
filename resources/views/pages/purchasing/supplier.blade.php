@@ -424,24 +424,73 @@
         </div>
         
         {{-- Pagination --}}
-        <div class="mt-6 sm:mt-8 bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                {{-- Pagination Info --}}
-                <div class="text-xs sm:text-sm text-gray-700 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                    <div class="flex items-center">
-                        <i class="fas fa-info-circle text-green-500 mr-2"></i>
-                        <span class="font-medium">
-                            Menampilkan {{ $suppliers->firstItem() ?? 0 }} - {{ $suppliers->lastItem() ?? 0 }} 
-                            dari {{ $suppliers->total() }} supplier
-                        </span>
+        @if($suppliers->hasPages())
+            <div class="bg-white rounded-lg shadow-sm p-4 mt-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+                    {{-- Pagination Info --}}
+                    <div class="flex items-center text-sm text-gray-700">
+                        <span class="mr-2">Menampilkan</span>
+                        <span class="font-medium text-green-600">{{ $suppliers->firstItem() ?? 0 }}</span>
+                        <span class="mx-1">sampai</span>
+                        <span class="font-medium text-green-600">{{ $suppliers->lastItem() ?? 0 }}</span>
+                        <span class="mx-1">dari</span>
+                        <span class="font-medium text-green-600">{{ $suppliers->total() }}</span>
+                        <span class="ml-1">supplier</span>
                     </div>
-                    
-                {{-- Pagination Links --}}
-                <div class="flex justify-center sm:justify-end">
-                    {{ $suppliers->appends(request()->query())->links() }}
+
+                    {{-- Pagination Links --}}
+                    <div class="flex items-center space-x-1">
+                        {{-- Previous Page --}}
+                        @if ($suppliers->onFirstPage())
+                            <span class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                                <i class="fas fa-chevron-left mr-1"></i>
+                                Sebelumnya
+                            </span>
+                        @else
+                            <a href="{{ $suppliers->previousPageUrl() }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
+                                <i class="fas fa-chevron-left mr-1"></i>
+                                Sebelumnya
+                            </a>
+                        @endif
+
+                        {{-- Page Numbers --}}
+                        @if($suppliers->lastPage() > 1)
+                            <div class="hidden sm:flex items-center space-x-1">
+                                @foreach ($suppliers->getUrlRange(1, $suppliers->lastPage()) as $page => $url)
+                                    @if ($page == $suppliers->currentPage())
+                                        <span class="px-3 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-lg">
+                                            {{ $page }}
+                                        </span>
+                                    @else
+                                        <a href="{{ $url }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
+                                            {{ $page }}
+                                        </a>
+                                    @endif
+                                @endforeach
+                            </div>
+
+                            {{-- Mobile Page Indicator --}}
+                            <div class="sm:hidden px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-lg">
+                                {{ $suppliers->currentPage() }} / {{ $suppliers->lastPage() }}
+                            </div>
+                        @endif
+
+                        {{-- Next Page --}}
+                        @if ($suppliers->hasMorePages())
+                            <a href="{{ $suppliers->nextPageUrl() }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
+                                Selanjutnya
+                                <i class="fas fa-chevron-right ml-1"></i>
+                            </a>
+                        @else
+                            <span class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                                Selanjutnya
+                                <i class="fas fa-chevron-right ml-1"></i>
+                            </span>
+                        @endif
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
     @else
         <div class="text-center py-12">
             <i class="fas fa-inbox text-4xl text-gray-400 mb-4"></i>

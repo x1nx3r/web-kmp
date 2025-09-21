@@ -146,8 +146,8 @@
         </h2>
         <div class="flex items-center space-x-4 text-sm">
             <span class="flex items-center">
-                <span class="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-                <span class="text-green-700 font-medium" id="activeCount">{{ $users->where('status', 'aktif')->count() }} Aktif</span>
+                <span class="w-3 h-3 bg-blue-500 rounded-full mr-1"></span>
+                <span class="text-blue-700 font-medium" id="activeCount">{{ $users->where('status', 'aktif')->count() }} Aktif</span>
             </span>
             <span class="flex items-center">
                 <span class="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
@@ -244,7 +244,7 @@
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 @if($user->status == 'aktif')
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
                                         <i class="fas fa-check-circle mr-1"></i>
                                         Aktif
                                     </span>
@@ -268,9 +268,6 @@
                                     </button>
                                     <button onclick="editUser({{ $user->id }})" class="text-yellow-600 hover:text-yellow-900 p-2 rounded-full hover:bg-yellow-100 transition-all duration-200" title="Edit">
                                         <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="toggleUserStatus({{ $user->id }}, '{{ $user->status }}')" class="text-green-600 hover:text-green-900 p-2 rounded-full hover:bg-green-100 transition-all duration-200" title="{{ $user->status == 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }}">
-                                        <i class="fas fa-{{ $user->status == 'aktif' ? 'user-times' : 'user-check' }}"></i>
                                     </button>
                                     <button onclick="deleteUser({{ $user->id }})" class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-red-100 transition-all duration-200" title="Hapus">
                                         <i class="fas fa-trash"></i>
@@ -316,7 +313,7 @@
                             </div>
                             <div class="flex-shrink-0 ml-2">
                                 @if($user->status == 'aktif')
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
                                         <i class="fas fa-check-circle mr-1"></i>
                                         Aktif
                                     </span>
@@ -365,9 +362,6 @@
                                 </button>
                                 <button onclick="editUser({{ $user->id }})" class="text-yellow-600 hover:text-yellow-900 p-1 rounded hover:bg-yellow-100 transition-all duration-200" title="Edit">
                                     <i class="fas fa-edit text-xs"></i>
-                                </button>
-                                <button onclick="toggleUserStatus({{ $user->id }}, '{{ $user->status }}')" class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100 transition-all duration-200" title="{{ $user->status == 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }}">
-                                    <i class="fas fa-{{ $user->status == 'aktif' ? 'user-times' : 'user-check' }} text-xs"></i>
                                 </button>
                                 <button onclick="deleteUser({{ $user->id }})" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition-all duration-200" title="Hapus">
                                     <i class="fas fa-trash text-xs"></i>
@@ -581,7 +575,7 @@ function goToPage(page) {
 
 // Modal and action functions (placeholder)
 function openCreateModal() {
-    alert('Fitur tambah akun akan diimplementasi');
+    openUserCreateModal();
 }
 
 function viewUser(id) {
@@ -589,22 +583,11 @@ function viewUser(id) {
 }
 
 function editUser(id) {
-    alert(`Edit user ID: ${id}`);
-}
-
-function toggleUserStatus(id, currentStatus) {
-    const newStatus = currentStatus === 'aktif' ? 'tidak_aktif' : 'aktif';
-    const actionText = newStatus === 'aktif' ? 'mengaktifkan' : 'menonaktifkan';
-    
-    if (confirm(`Apakah Anda yakin ingin ${actionText} akun ini?`)) {
-        alert(`Status user ID ${id} akan diubah menjadi ${newStatus}`);
-    }
+    openUserEditModal(id);
 }
 
 function deleteUser(id) {
-    if (confirm('Apakah Anda yakin ingin menghapus akun ini? Tindakan ini tidak dapat dibatalkan.')) {
-        alert(`User ID ${id} akan dihapus`);
-    }
+    openUserDeleteModal(id);
 }
 
 // Initialize
@@ -618,3 +601,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {{-- Include Modal Components --}}
 @include('pages.pengelolaan-akun-components.detail')
+@include('pages.pengelolaan-akun-components.edit')
+@include('pages.pengelolaan-akun-components.tambah')
+@include('pages.pengelolaan-akun-components.hapus')

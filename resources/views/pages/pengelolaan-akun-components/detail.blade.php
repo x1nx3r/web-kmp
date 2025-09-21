@@ -9,15 +9,15 @@
 
         <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full mx-2 sm:mx-auto max-h-[90vh] overflow-y-auto">
             {{-- Modal Header --}}
-            <div class="bg-gradient-to-r from-green-50 to-green-100 px-4 sm:px-6 py-3 sm:py-4 border-b border-green-200">
+            <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-4 sm:px-6 py-3 sm:py-4 border-b border-blue-200">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-2 sm:space-x-3">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-full flex items-center justify-center">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center">
                             <i class="fas fa-user text-white text-sm sm:text-lg"></i>
                         </div>
                         <div>
-                            <h3 class="text-base sm:text-lg font-bold text-green-800" id="modalUserName">Detail Akun</h3>
-                            <p class="text-xs sm:text-sm text-green-600" id="modalUserRole">Informasi lengkap pengguna</p>
+                            <h3 class="text-base sm:text-lg font-bold text-blue-800" id="modalUserName">Detail Akun</h3>
+                            <p class="text-xs sm:text-sm text-blue-600" id="modalUserRole">Informasi lengkap pengguna</p>
                         </div>
                     </div>
                     <button type="button" onclick="closeUserDetailModal()" class="bg-white rounded-full p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
@@ -32,7 +32,7 @@
                     {{-- User Profile Section --}}
                     <div class="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
                         <div class="flex-shrink-0">
-                            <div id="modalUserAvatar" class="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                            <div id="modalUserAvatar" class="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
                                 <span class="text-white font-bold text-sm sm:text-xl" id="modalUserInitials">JD</span>
                             </div>
                         </div>
@@ -56,7 +56,7 @@
                     <div class="space-y-4">
                         {{-- Basic Information --}}
                         <div class="space-y-3">
-                            <h5 class="text-xs sm:text-sm font-bold text-green-700 uppercase tracking-wider border-b border-green-200 pb-2">
+                            <h5 class="text-xs sm:text-sm font-bold text-blue-700 uppercase tracking-wider border-b border-blue-200 pb-2">
                                 <i class="fas fa-info-circle mr-1 sm:mr-2"></i>
                                 Informasi Dasar
                             </h5>
@@ -81,7 +81,7 @@
 
                         {{-- Account Status --}}
                         <div class="space-y-3">
-                            <h5 class="text-xs sm:text-sm font-bold text-green-700 uppercase tracking-wider border-b border-green-200 pb-2">
+                            <h5 class="text-xs sm:text-sm font-bold text-blue-700 uppercase tracking-wider border-b border-blue-200 pb-2">
                                 <i class="fas fa-cog mr-1 sm:mr-2"></i>
                                 Status Akun
                             </h5>
@@ -100,7 +100,7 @@
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Status</label>
                                     <div id="modalStatusDetail">
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                             <i class="fas fa-check-circle mr-1"></i>
                                             Aktif
                                         </span>
@@ -117,7 +117,7 @@
 
                     {{-- Timestamps --}}
                     <div class="bg-gray-50 rounded-lg p-3 sm:p-4">
-                        <h5 class="text-xs sm:text-sm font-bold text-green-700 uppercase tracking-wider mb-3">
+                        <h5 class="text-xs sm:text-sm font-bold text-blue-700 uppercase tracking-wider mb-3">
                             <i class="fas fa-clock mr-1 sm:mr-2"></i>
                             Riwayat Akun
                         </h5>
@@ -125,7 +125,7 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Dibuat Pada</label>
                                 <div class="flex items-center text-sm text-gray-900">
-                                    <i class="fas fa-calendar-plus text-green-500 mr-2"></i>
+                                    <i class="fas fa-calendar-plus text-blue-500 mr-2"></i>
                                     <div>
                                         <span id="modalCreatedDate">21 Sep 2025</span>
                                         <span class="text-gray-500 block text-xs" id="modalCreatedTime">14:30 WIB</span>
@@ -265,8 +265,8 @@ function getUserData(userId) {
         },
         8: {
             id: 8,
-            nama: 'Fiona Green',
-            username: 'fgreen',
+            nama: 'Fiona blue',
+            username: 'fblue',
             email: 'fiona@example.com',
             role: 'marketing',
             status: 'aktif',
@@ -285,8 +285,8 @@ function populateModalWithUserData(user) {
     const roleConfig = {
         'direktur': { label: 'Direktur', color: 'red', icon: 'fas fa-crown' },
         'marketing': { label: 'Marketing', color: 'blue', icon: 'fas fa-bullhorn' },
-        'manager_purchasing': { label: 'Manager Purchasing', color: 'green', icon: 'fas fa-user-tie' },
-        'staff_purchasing': { label: 'Staff Purchasing', color: 'green', icon: 'fas fa-user' },
+        'manager_purchasing': { label: 'Manager Purchasing', color: 'blue', icon: 'fas fa-user-tie' },
+        'staff_purchasing': { label: 'Staff Purchasing', color: 'blue', icon: 'fas fa-user' },
         'staff_accounting': { label: 'Staff Accounting', color: 'yellow', icon: 'fas fa-calculator' },
         'manager_accounting': { label: 'Manager Accounting', color: 'yellow', icon: 'fas fa-chart-line' }
     };
@@ -308,7 +308,7 @@ function populateModalWithUserData(user) {
     // Update status badge
     const statusBadge = document.getElementById('modalUserStatusBadge');
     if (user.status === 'aktif') {
-        statusBadge.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800';
+        statusBadge.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800';
         statusBadge.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Aktif';
     } else {
         statusBadge.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
@@ -334,7 +334,7 @@ function populateModalWithUserData(user) {
     // Update status detail
     const statusDetail = document.getElementById('modalStatusDetail');
     if (user.status === 'aktif') {
-        statusDetail.innerHTML = `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+        statusDetail.innerHTML = `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
             <i class="fas fa-check-circle mr-1"></i>Aktif
         </span>`;
     } else {

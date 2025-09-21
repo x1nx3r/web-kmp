@@ -7,8 +7,16 @@
 
     <title>@yield('title', config('app.name', 'PT Kamil Maju Persada'))</title>
 
-    <!-- Favicon -->
-    <link rel="icon" href="{{ asset('assets/image/logo/ptkmp-logo.png') }}" type="image/x-icon">
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v=1.0">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('assets/image/logo/ptkmp-logo.png') }}?v=1.0">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('assets/image/logo/ptkmp-logo.png') }}?v=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('assets/image/logo/ptkmp-logo.png') }}?v=1.0">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+    <meta name="theme-color" content="#10B981">
+    <meta name="msapplication-TileColor" content="#10B981">
+    <meta name="msapplication-config" content="{{ asset('browserconfig.xml') }}">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet">

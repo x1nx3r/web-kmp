@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('spesifikasi');
             $table->text('catatan')->nullable();
 
-            $table->enum('status', ['draft', 'disetujui', 'dalam_proses', 'selesai', 'ditutup'])->default('draft');
+            $table->enum('status', ['siap', 'proses','selesai', 'gagal'])->default('siap');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
         $users = [
             [
                 'nama' => 'Admin Direktur',
+                'username'=>'direktur123',
                 'email' => 'direktur@kmp.com',
                 'role' => 'direktur',
                 'password' => Hash::make('password123'),
@@ -25,6 +26,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'nama' => 'John Marketing',
+                'username'=>'marketing',
                 'email' => 'marketing@kmp.com',
                 'role' => 'marketing',
                 'password' => Hash::make('password123'),
@@ -32,36 +34,43 @@ class UserSeeder extends Seeder
             ],
             [
                 'nama' => 'Sari Purchasing',
+                'username'=>'manager_purchasing',
                 'email' => 'sari.purchasing@kmp.com',
-                'role' => 'purchasing',
+                'role' => 'manager_purchasing',
                 'password' => Hash::make('password123'),
                 'status' => 'aktif'
             ],
             [
                 'nama' => 'Ahmad Purchasing',
+                'username'=>'staff_purchasing1',
                 'email' => 'ahmad.purchasing@kmp.com',
-                'role' => 'purchasing',
+                'role' => 'staff_purchasing',
                 'password' => Hash::make('password123'),
                 'status' => 'aktif'
             ],
             [
                 'nama' => 'Dewi Purchasing',
+                'username'=>'staff_purchasing2',
                 'email' => 'dewi.purchasing@kmp.com',
-                'role' => 'purchasing',
+                'role' => 'staff_purchasing',
                 'password' => Hash::make('password123'),
                 'status' => 'aktif'
             ],
             [
                 'nama' => 'Budi Accounting',
+                'username'=>'manager_accounting',
                 'email' => 'accounting@kmp.com',
-                'role' => 'accounting',
+                'role' => 'manager_accounting',
                 'password' => Hash::make('password123'),
                 'status' => 'aktif'
             ]
         ];
 
         foreach ($users as $userData) {
-            User::create($userData);
+            User::updateOrCreate(
+                ['username' => $userData['username']], // Check by username
+                $userData // Update or create with this data
+            );
         }
     }
 }

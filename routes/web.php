@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Marketing\KlienController;
+use App\Http\Controllers\PengelolaanAkunController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -27,3 +28,8 @@ Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
 Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
 Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
 Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');
+
+// Pengelolaan Akun routes
+Route::resource('pengelolaan-akun', PengelolaanAkunController::class)->parameters([
+    'pengelolaan-akun' => 'user'
+]);

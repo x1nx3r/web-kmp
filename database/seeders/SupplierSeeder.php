@@ -14,12 +14,12 @@ class SupplierSeeder extends Seeder
     public function run(): void
     {
         // Get purchasing users
-        $purchasingUsers = \App\Models\User::where('role', 'purchasing')->pluck('id')->toArray();
+        $purchasingUsers = \App\Models\User::where('role', ['staff_purchasing','manager_purchasing'])->pluck('id')->toArray();
         
         if (empty($purchasingUsers)) {
             // If no purchasing users exist, create some first
             $this->call(UserSeeder::class);
-            $purchasingUsers = \App\Models\User::where('role', 'purchasing')->pluck('id')->toArray();
+            $purchasingUsers = \App\Models\User::where('role', ['staff_purchasing','manager_purchasing'])->pluck('id')->toArray();
         }
 
         $suppliers = [

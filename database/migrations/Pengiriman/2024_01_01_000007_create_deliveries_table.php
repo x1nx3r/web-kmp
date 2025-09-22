@@ -14,11 +14,15 @@ return new class extends Migration
         Schema::create('pengiriman', function (Blueprint $table) {
             $table->id();
             $table->foreignId('po_id')->constrained('purchase_orders')->onDelete('cascade');
-            $table->date('tanggal_kirim');
-            $table->decimal('qty_kirim', 15, 2);
-            $table->decimal('qty_sisa', 15, 2);
-            $table->string('bukti_foto');
-            $table->string('bukti_surat');
+            $table->foreignId('purchasing_id')->constrained('users')->onDelete('cascade');
+            $table->unsignedBigInteger('bahan_baku_supplier_id')->nullable();
+            $table->date('tanggal_kirim')->nullable();
+            $table->date('hari_kirim')->nullable();
+            $table->decimal('qty_kirim', 15, 2)->nullable();
+            $table->decimal('harga_jual', 15, 2)->nullable();
+            $table->decimal('total_harga', 15, 2)->nullable();
+            $table->decimal('qty_sisa', 15, 2)->nullable();
+            $table->string('bukti_foto_bongkar')->nullable();
             $table->enum('status', ['pending', 'terkirim', 'diverifikasi'])->default('pending');
             $table->timestamps();
             $table->softDeletes();

@@ -12,7 +12,6 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'klien_id',
-        'supplier_id',
         'no_po',
         'qty_total',
         'hpp_total',
@@ -47,19 +46,19 @@ class PurchaseOrder extends Model
     }
 
     /**
-     * Relasi ke Forecast
+     * Relasi ke Forecasts (One-to-Many)
      */
     public function forecasts()
     {
-        return $this->hasMany(Forecast::class, 'po_id');
+        return $this->hasMany(Forecast::class);
     }
 
     /**
-     * Relasi ke Pengiriman
+     * Relasi ke Pengiriman (One-to-Many)
      */
     public function pengiriman()
     {
-        return $this->hasMany(Pengiriman::class, 'po_id');
+        return $this->hasMany(Pengiriman::class);
     }
 
     /**

@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('purchase_orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('klien_id')->constrained('kliens')->onDelete('cascade');
-            $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->onDelete('set null');
             $table->string('no_po');
             $table->decimal('qty_total', 15, 2);
             $table->decimal('hpp_total', 15, 2);

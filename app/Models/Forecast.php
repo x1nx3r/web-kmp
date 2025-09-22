@@ -12,33 +12,24 @@ class Forecast extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'po_id',
+        'purchase_order_id',
         'purchasing_id',
-        'bahan_baku_supplier_id',
-        'tanggal_kirim_forecast',
+        'no_forecast',
+        'tanggal_forecast',
         'hari_kirim_forecast',
-        'qty_forecast',
-        'harga_jual_forecast',
-        'total_forecast',
+        'total_qty_forecast',
+        'total_harga_forecast',
         'status',
         'catatan'
     ];
 
     protected $casts = [
-        'qty_forecast' => 'decimal:2',
-        'harga_jual_forecast' => 'decimal:2',
-        'total_forecast' => 'decimal:2',
+        'tanggal_forecast' => 'date',
+        'total_qty_forecast' => 'decimal:2',
+        'total_harga_forecast' => 'decimal:2',
     ];
 
     protected $dates = ['deleted_at'];
-
-    /**
-     * Relasi ke Purchase Order
-     */
-    public function purchaseOrder()
-    {
-        return $this->belongsTo(PurchaseOrder::class, 'po_id');
-    }
 
     /**
      * Relasi ke User (Purchasing)
@@ -49,13 +40,58 @@ class Forecast extends Model
     }
 
     /**
-     * Relasi ke Bahan Baku Supplier
+     * Relasi ke Forecast Details (One-to-Many)
      */
-    public function bahanBaku()
+    public function forecastDetails()
     {
-        return $this->belongsTo(BahanBakuSupplier::class, 'bahan_baku_supplier_id');
+        return $this->hasMany(ForecastDetail::class);
     }
 
+    /**
+     * Relasi ke Bahan Baku Suppliers melalui details (Many-to-Many)
+     */
+    public function bahanBakuSuppliers()
+    {
+        return $this->belongsToMany(
+            BahanBakuSupplier::class,
+            'forecast_details',
+            'forecast_id',
+            'bahan_baku_supplier_id'
+        )->withPivot([
+            'purchase_order_bahan_baku_id',
+            'qty_forecast',
+            'harga_satuan_forecast',
+            'total_harga_forecast',
+            'catatan_detail'
+        ])->withTimestamps();
+    }
+
+    /**
+     * Relasi ke Purchase Order Bahan Baku melalui details (Many-to-Many)
+     */
+    public function purchaseOrderBahanBakus()
+    {
+        return $this->belongsToMany(
+            PurchaseOrderBahanBaku::class,
+            'forecast_details',
+            'forecast_id',
+            'purchase_order_bahan_baku_id'
+        )->withPivot([
+            'bahan_baku_supplier_id',
+            'qty_forecast',
+            'harga_satuan_forecast',
+            'total_harga_forecast',
+            'catatan_detail'
+        ])->withTimestamps();
+    }
+
+    /**
+     * Relasi ke Purchase Order
+     */
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
 
     /**
      * Scope untuk filter berdasarkan status
@@ -90,11 +126,30 @@ class Forecast extends Model
     }
 
     /**
-     * Accessor untuk format tanggal kirim
+     * Scope untuk filter berdasarkan purchasing
      */
-    public function getTanggalKirimForecastFormattedAttribute()
+    public function scopeByPurchasing($query, $purchasingId)
     {
-        return Carbon::parse($this->tanggal_kirim_forecast)->format('d-m-Y');
+        return $query->where('purchasing_id', $purchasingId);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan tanggal forecast
+     */
+    public function scopeByTanggalForecast($query, $startDate, $endDate = null)
+    {
+        if ($endDate) {
+            return $query->whereBetween('tanggal_forecast', [$startDate, $endDate]);
+        }
+        return $query->whereDate('tanggal_forecast', $startDate);
+    }
+
+    /**
+     * Accessor untuk format tanggal forecast
+     */
+    public function getTanggalForecastFormattedAttribute()
+    {
+        return $this->tanggal_forecast ? Carbon::parse($this->tanggal_forecast)->format('d-m-Y') : null;
     }
 
     /**
@@ -112,10 +167,138 @@ class Forecast extends Model
     }
 
     /**
-     * Accessor untuk total forecast dalam format rupiah
+     * Accessor untuk total qty forecast formatted
      */
-    public function getTotalForecastFormattedAttribute()
+    public function getTotalQtyForecastFormattedAttribute()
     {
-        return 'Rp ' . number_format((float) $this->total_forecast, 0, ',', '.');
+        return number_format((float) $this->total_qty_forecast, 2, ',', '.');
+    }
+
+    /**
+     * Accessor untuk total harga forecast dalam format rupiah
+     */
+    public function getTotalHargaForecastFormattedAttribute()
+    {
+        return 'Rp ' . number_format((float) $this->total_harga_forecast, 0, ',', '.');
+    }
+
+    /**
+     * Status Badge Classes untuk UI
+     */
+    public function getBadgeClassAttribute()
+    {
+        return match($this->status) {
+            'pending' => 'bg-yellow-100 text-yellow-800',
+            'sukses' => 'bg-green-100 text-green-800',
+            'gagal' => 'bg-red-100 text-red-800',
+            default => 'bg-gray-100 text-gray-800'
+        };
+    }
+
+    /**
+     * Status Icon Classes untuk UI
+     */
+    public function getIconClassAttribute()
+    {
+        return match($this->status) {
+            'pending' => 'fas fa-clock text-yellow-500',
+            'sukses' => 'fas fa-check-circle text-green-500',
+            'gagal' => 'fas fa-times-circle text-red-500',
+            default => 'fas fa-question-circle text-gray-500'
+        };
+    }
+
+    /**
+     * Helper Methods
+     */
+    public function isPending()
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isSukses()
+    {
+        return $this->status === 'sukses';
+    }
+
+    public function isGagal()
+    {
+        return $this->status === 'gagal';
+    }
+
+    /**
+     * Helper untuk menghitung ulang total dari detail
+     */
+    public function recalculateTotals()
+    {
+        $this->total_qty_forecast = $this->forecastDetails()->sum('qty_forecast');
+        $this->total_harga_forecast = $this->forecastDetails()->sum('total_harga_forecast');
+        $this->save();
+        
+        return $this;
+    }
+
+    /**
+     * Helper untuk mendapatkan total items dalam forecast
+     */
+    public function getTotalItemsAttribute()
+    {
+        return $this->forecastDetails()->count();
+    }
+
+    /**
+     * Helper untuk mendapatkan semua bahan baku dalam forecast
+     */
+    public function getAllBahanBakuAttribute()
+    {
+        return $this->forecastDetails()
+            ->with('bahanBakuSupplier')
+            ->get()
+            ->pluck('bahanBakuSupplier.nama')
+            ->unique()
+            ->implode(', ');
+    }
+
+    /**
+     * Generate nomor forecast otomatis
+     */
+    public static function generateNoForecast()
+    {
+        $year = date('Y');
+        $month = date('m');
+        
+        $lastForecast = self::where('no_forecast', 'like', "FC-{$year}{$month}%")
+            ->orderBy('no_forecast', 'desc')
+            ->first();
+            
+        if ($lastForecast) {
+            $lastNumber = intval(substr($lastForecast->no_forecast, -4));
+            $newNumber = $lastNumber + 1;
+        } else {
+            $newNumber = 1;
+        }
+        
+        return "FC-{$year}{$month}" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Observer untuk auto-generate nomor forecast
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->no_forecast)) {
+                $model->no_forecast = self::generateNoForecast();
+            }
+        });
+
+        // Update totals ketika detail berubah
+        static::saved(function ($model) {
+            if ($model->forecastDetails()->exists()) {
+                $model->recalculateTotals();
+            }
+        });
     }
 }

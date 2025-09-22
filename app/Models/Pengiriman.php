@@ -14,37 +14,28 @@ class Pengiriman extends Model
     protected $table = 'pengiriman';
 
     protected $fillable = [
-        'po_id',
+        'purchase_order_id',
         'purchasing_id',
-        'bahan_baku_supplier_id',
+        'no_pengiriman',
         'tanggal_kirim',
         'hari_kirim',
-        'qty_kirim',
-        'harga_jual',
-        'total_harga',
-        'qty_sisa',
+        'total_qty_kirim',
+        'total_harga_kirim',
+        'total_qty_sisa',
         'bukti_foto_bongkar',
-        'status'
+        'status',
+        'catatan'
     ];
 
     protected $casts = [
         'tanggal_kirim' => 'date',
         'hari_kirim' => 'date',
-        'qty_kirim' => 'decimal:2',
-        'harga_jual' => 'decimal:2',
-        'total_harga' => 'decimal:2',
-        'qty_sisa' => 'decimal:2',
+        'total_qty_kirim' => 'decimal:2',
+        'total_harga_kirim' => 'decimal:2',
+        'total_qty_sisa' => 'decimal:2',
     ];
 
     protected $dates = ['deleted_at'];
-
-    /**
-     * Relasi ke Purchase Order
-     */
-    public function purchaseOrder()
-    {
-        return $this->belongsTo(PurchaseOrder::class, 'po_id');
-    }
 
     /**
      * Relasi ke User (Purchasing)
@@ -55,11 +46,19 @@ class Pengiriman extends Model
     }
 
     /**
-     * Relasi ke Bahan Baku Supplier
+     * Relasi ke Pengiriman Details (One-to-Many)
      */
-    public function bahanBaku()
+    public function pengirimanDetails()
     {
-        return $this->belongsTo(BahanBakuSupplier::class, 'bahan_baku_supplier_id');
+        return $this->hasMany(PengirimanDetail::class);
+    }
+
+    /**
+     * Relasi ke Purchase Order
+     */
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
     /**
@@ -135,17 +134,20 @@ class Pengiriman extends Model
     /**
      * Accessor untuk total harga dalam format rupiah
      */
-    public function getTotalHargaFormattedAttribute()
+    public function getTotalHargaKirimFormattedAttribute()
     {
-        return $this->total_harga ? 'Rp ' . number_format((float) $this->total_harga, 0, ',', '.') : null;
+        return $this->total_harga_kirim ? 'Rp ' . number_format((float) $this->total_harga_kirim, 0, ',', '.') : null;
     }
 
     /**
-     * Accessor untuk harga jual dalam format rupiah
+     * Helper untuk menghitung ulang total dari detail
      */
-    public function getHargaJualFormattedAttribute()
+    public function recalculateTotals()
     {
-        return $this->harga_jual ? 'Rp ' . number_format((float) $this->harga_jual, 0, ',', '.') : null;
+        $this->total_qty_kirim = $this->pengirimanDetails()->sum('qty_kirim');
+        $this->total_harga_kirim = $this->pengirimanDetails()->sum('total_harga');
+        $this->total_qty_sisa = $this->pengirimanDetails()->sum('qty_sisa');
+        $this->save();
     }
 
     /**
@@ -169,7 +171,7 @@ class Pengiriman extends Model
      */
     public function hasSisa()
     {
-        return $this->qty_sisa > 0;
+        return $this->total_qty_sisa > 0;
     }
 
     /**

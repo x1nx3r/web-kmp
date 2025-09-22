@@ -158,7 +158,7 @@
             </span>
         </div>
     </div>
-    <button type="button" onclick="openCreateModal()" class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-semibold text-sm">
+    <button type="button" onclick="openCreateModal()" class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-semibold text-sm">
         <i class="fas fa-plus mr-2"></i>Tambah Akun
     </button>
 </div>

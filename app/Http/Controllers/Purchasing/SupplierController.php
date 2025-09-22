@@ -75,8 +75,7 @@ class SupplierController extends Controller
             });
 
         // Get purchasing users for PIC dropdown (jika diperlukan di form)
-        $purchasingUsers = \App\Models\User::where('role', 'purchasing')
-            ->orWhere('role', 'admin')
+        $purchasingUsers = \App\Models\User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])
             ->orderBy('nama')
             ->get();
 
@@ -89,8 +88,7 @@ class SupplierController extends Controller
     public function create()
     {
         // Get purchasing users for PIC dropdown
-        $purchasingUsers = \App\Models\User::where('role', 'purchasing')
-            ->orWhere('role', 'admin')
+        $purchasingUsers = \App\Models\User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])
             ->orderBy('nama')
             ->get();
 
@@ -191,8 +189,7 @@ class SupplierController extends Controller
     public function edit(Supplier $supplier)
     {
         // Get purchasing users for PIC dropdown
-        $purchasingUsers = \App\Models\User::where('role', 'purchasing')
-            ->orWhere('role', 'admin')
+        $purchasingUsers = \App\Models\User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])
             ->get();
             
         return view('pages.purchasing.supplier.edit', compact('supplier', 'purchasingUsers'));

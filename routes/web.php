@@ -30,4 +30,6 @@ Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.up
 Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');
 
 // Pengelolaan Akun routes
-Route::get('/pengelolaan-akun', [PengelolaanAkunController::class, 'index'])->name('pengelolaan-akun.index');
+Route::resource('pengelolaan-akun', PengelolaanAkunController::class)->parameters([
+    'pengelolaan-akun' => 'user'
+]);

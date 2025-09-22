@@ -188,31 +188,68 @@
 let currentEditUserData = null;
 
 // Function to open user edit modal
-function openUserEditModal(userId) {
-    // Find user data (in real app, this would be an API call)
-    const userData = getUserData(userId);
-    if (!userData) {
-        alert('Data pengguna tidak ditemukan');
-        return;
-    }
-
-    currentEditUserData = userData;
-    populateEditModalWithUserData(userData);
+async function openUserEditModal(userId) {
+    console.log('Opening edit modal for user ID:', userId);
     
-    // Show modal
+    // Show modal first with loading state
     document.getElementById('userEditModal').classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
+    
+    // Show loading in modal
+    document.getElementById('modalEditUserName').textContent = 'Memuat...';
+    document.getElementById('modalEditUserRole').textContent = 'Mengambil data pengguna';
+
+    try {
+        console.log('Fetching user data from:', `/pengelolaan-akun/${userId}/edit`);
+        
+        // Fetch user data from server
+        const response = await fetch(`/pengelolaan-akun/${userId}/edit`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        
+        const data = await response.json();
+        console.log('Received user data:', data);
+        
+        const userData = data.user;
+
+        currentEditUserData = userData;
+        console.log('currentEditUserData set to:', currentEditUserData);
+        populateEditModalWithUserData(userData);
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        alert('Gagal memuat data pengguna');
+        closeUserEditModal();
+    }
 }
 
 // Function to close user edit modal
 function closeUserEditModal() {
     document.getElementById('userEditModal').classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
-    currentEditUserData = null;
+    // Don't clear currentEditUserData immediately, let it persist until next modal open
+    // currentEditUserData = null;
+    
+    // Clear currentEditUserData after a delay to allow success modal to use it
+    setTimeout(() => {
+        currentEditUserData = null;
+    }, 1000);
 }
 
 // Function to populate edit modal with user data
 function populateEditModalWithUserData(user) {
+    console.log('Populating modal with user data:', user);
+    
     // Role configuration
     const roleConfig = {
         'direktur': { label: 'Direktur', color: 'red', icon: 'fas fa-crown' },
@@ -224,22 +261,25 @@ function populateEditModalWithUserData(user) {
     };
 
     const config = roleConfig[user.role];
+    console.log('Role config:', config);
     
     // Update modal title
     document.getElementById('modalEditUserName').textContent = `Edit ${user.nama}`;
-    document.getElementById('modalEditUserRole').textContent = `Ubah informasi ${config.label}`;
+    document.getElementById('modalEditUserRole').textContent = `Ubah informasi ${config ? config.label : 'Unknown'}`;
 
     // Update user avatar and initials
     const initials = user.nama.split(' ').map(n => n[0]).join('').toUpperCase();
     document.getElementById('modalEditUserInitials').textContent = initials;
 
     // Populate form fields
+    console.log('Setting form values...');
     document.getElementById('editNama').value = user.nama;
     document.getElementById('editUsername').value = user.username;
     document.getElementById('editEmail').value = user.email;
     document.getElementById('editRole').value = user.role;
     document.getElementById('editStatus').value = user.status;
-
+    
+    console.log('Form values set. Calling updatePreview...');
     // Update preview
     updatePreview();
 }
@@ -285,9 +325,18 @@ function updatePreview() {
 }
 
 // Function to save user changes
-function saveUserChanges() {
+async function saveUserChanges() {
+    console.log('saveUserChanges called');
+    console.log('currentEditUserData:', currentEditUserData);
+    
+    // Check if currentEditUserData is available
+    if (!currentEditUserData || !currentEditUserData.id) {
+        console.error('No user data available for editing');
+        alert('Terjadi kesalahan: Data pengguna tidak ditemukan. Silakan tutup modal dan coba lagi.');
+        return;
+    }
+    
     const formData = {
-        id: currentEditUserData.id,
         nama: document.getElementById('editNama').value,
         username: document.getElementById('editUsername').value,
         email: document.getElementById('editEmail').value,
@@ -296,36 +345,92 @@ function saveUserChanges() {
         reset_password: document.getElementById('resetPassword').checked
     };
 
+    console.log('Form data collected:', formData);
+
+    // If password reset is requested, add default password
+    if (formData.reset_password) {
+        formData.password = 'password123';
+        formData.password_confirmation = 'password123';
+    }
+
     // Validate form
     if (!formData.nama || !formData.username || !formData.email || !formData.role || !formData.status) {
         alert('Mohon lengkapi semua field yang diperlukan');
         return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+        alert('Format email tidak valid');
+        return;
+    }
+
+    // Validate username format
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(formData.username)) {
+        alert('Username hanya boleh mengandung huruf, angka, dan underscore');
+        return;
+    }
+
     // Show loading state
-    const saveButton = event.target;
+    const saveButton = document.querySelector('#userEditModal button[onclick="saveUserChanges()"]');
     const originalText = saveButton.innerHTML;
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
     saveButton.disabled = true;
 
-    // Simulate API call (replace with actual API call)
-    setTimeout(() => {
-        // In real application, send data to server
-        console.log('Saving user data:', formData);
+    try {
+        console.log('Sending PUT request to:', `/pengelolaan-akun/${currentEditUserData.id}`);
+        console.log('Request body:', JSON.stringify(formData));
         
-        // Show success message
-        alert('Data pengguna berhasil diperbarui!');
-        
-        // Close modal
-        closeUserEditModal();
-        
-        // Reload page or update UI
-        window.location.reload();
-        
+        // Send data to server
+        const response = await fetch(`/pengelolaan-akun/${currentEditUserData.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+        console.log('Server response:', result);
+        console.log('Response status:', response.status, response.ok);
+
+        if (response.ok) {
+            // Close modal first
+            closeUserEditModal();
+            
+            // Show success modal with current user data
+            let additionalInfo = '';
+            if (formData.reset_password) {
+                additionalInfo = 'Password telah direset ke "password123"';
+            }
+            
+            // Use form data nama instead of currentEditUserData to avoid null reference
+            showSuccessModal('edit', `Data ${formData.nama} berhasil diperbarui!`, 'Semua perubahan telah disimpan ke sistem.', additionalInfo);
+        } else {
+            // Handle validation errors
+            if (result.errors) {
+                let errorMessage = 'Terjadi kesalahan:\n';
+                Object.keys(result.errors).forEach(key => {
+                    errorMessage += `- ${result.errors[key][0]}\n`;
+                });
+                alert(errorMessage);
+            } else {
+                alert(result.message || 'Terjadi kesalahan saat menyimpan data');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        alert('Terjadi kesalahan saat menghubungi server');
+    } finally {
         // Reset button state
         saveButton.innerHTML = originalText;
         saveButton.disabled = false;
-    }, 1500);
+    }
 }
 
 // Close modal when ESC key is pressed

@@ -159,20 +159,31 @@
 let currentUserData = null;
 
 // Function to open user detail modal
-function openUserDetailModal(userId) {
-    // Find user data (in real app, this would be an API call)
-    const userData = getUserData(userId);
-    if (!userData) {
-        alert('Data pengguna tidak ditemukan');
-        return;
-    }
-
-    currentUserData = userData;
-    populateModalWithUserData(userData);
-    
-    // Show modal
+async function openUserDetailModal(userId) {
+    // Show loading state
     document.getElementById('userDetailModal').classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
+    
+    // Show loading in modal
+    document.getElementById('modalUserName').textContent = 'Memuat...';
+    document.getElementById('modalUserRole').textContent = 'Mengambil data pengguna';
+
+    try {
+        // Fetch user data from server
+        const userData = await getUserData(userId);
+        if (!userData) {
+            alert('Data pengguna tidak ditemukan');
+            closeUserDetailModal();
+            return;
+        }
+
+        currentUserData = userData;
+        populateModalWithUserData(userData);
+    } catch (error) {
+        console.error('Error loading user data:', error);
+        alert('Gagal memuat data pengguna');
+        closeUserDetailModal();
+    }
 }
 
 // Function to close user detail modal
@@ -182,101 +193,28 @@ function closeUserDetailModal() {
     currentUserData = null;
 }
 
-// Function to get user data (mock function - replace with API call)
-function getUserData(userId) {
-    // Mock data - in real app, fetch from server
-    const users = {
-        1: {
-            id: 1,
-            nama: 'John Doe',
-            username: 'johndoe',
-            email: 'john@example.com',
-            role: 'direktur',
-            status: 'aktif',
-            foto_profil: null,
-            created_at: new Date('2025-08-22T10:30:00'),
-            updated_at: new Date('2025-09-19T14:45:00')
-        },
-        2: {
-            id: 2,
-            nama: 'Jane Smith',
-            username: 'janesmith',
-            email: 'jane@example.com',
-            role: 'marketing',
-            status: 'aktif',
-            foto_profil: null,
-            created_at: new Date('2025-08-27T09:15:00'),
-            updated_at: new Date('2025-09-20T11:30:00')
-        },
-        3: {
-            id: 3,
-            nama: 'Bob Johnson',
-            username: 'bobjohnson',
-            email: 'bob@example.com',
-            role: 'manager_purchasing',
-            status: 'tidak_aktif',
-            foto_profil: null,
-            created_at: new Date('2025-09-01T16:20:00'),
-            updated_at: new Date('2025-09-16T08:15:00')
-        },
-        4: {
-            id: 4,
-            nama: 'Alice Brown',
-            username: 'alicebrown',
-            email: 'alice@example.com',
-            role: 'staff_purchasing',
-            status: 'aktif',
-            foto_profil: null,
-            created_at: new Date('2025-09-06T13:45:00'),
-            updated_at: new Date('2025-09-18T17:20:00')
-        },
-        5: {
-            id: 5,
-            nama: 'Charlie Wilson',
-            username: 'charliewilson',
-            email: 'charlie@example.com',
-            role: 'staff_accounting',
-            status: 'aktif',
-            foto_profil: null,
-            created_at: new Date('2025-09-11T11:10:00'),
-            updated_at: new Date('2025-09-20T15:25:00')
-        },
-        6: {
-            id: 6,
-            nama: 'Diana Prince',
-            username: 'dianaprince',
-            email: 'diana@example.com',
-            role: 'manager_accounting',
-            status: 'aktif',
-            foto_profil: null,
-            created_at: new Date('2025-09-13T14:30:00'),
-            updated_at: new Date('2025-09-21T12:30:00')
-        },
-        7: {
-            id: 7,
-            nama: 'Edward Norton',
-            username: 'enorton',
-            email: 'edward@example.com',
-            role: 'staff_purchasing',
-            status: 'tidak_aktif',
-            foto_profil: null,
-            created_at: new Date('2025-09-09T10:15:00'),
-            updated_at: new Date('2025-09-15T16:45:00')
-        },
-        8: {
-            id: 8,
-            nama: 'Fiona blue',
-            username: 'fblue',
-            email: 'fiona@example.com',
-            role: 'marketing',
-            status: 'aktif',
-            foto_profil: null,
-            created_at: new Date('2025-09-14T09:45:00'),
-            updated_at: new Date('2025-09-21T08:20:00')
+// Function to get user data from server
+async function getUserData(userId) {
+    try {
+        const response = await fetch(`/pengelolaan-akun/${userId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
         }
-    };
-
-    return users[userId] || null;
+        
+        const data = await response.json();
+        return data.user;
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        return null;
+    }
 }
 
 // Function to populate modal with user data
@@ -347,8 +285,8 @@ function populateModalWithUserData(user) {
     document.getElementById('modalPhotoStatus').textContent = user.foto_profil ? 'Ada foto profil' : 'Tidak ada foto';
 
     // Update timestamps
-    const createdDate = user.created_at;
-    const updatedDate = user.updated_at;
+    const createdDate = new Date(user.created_at);
+    const updatedDate = new Date(user.updated_at);
 
     document.getElementById('modalCreatedDate').textContent = createdDate.toLocaleDateString('id-ID', {
         day: 'numeric',

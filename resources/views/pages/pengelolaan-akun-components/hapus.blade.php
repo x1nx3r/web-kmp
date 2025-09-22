@@ -139,24 +139,49 @@
 let currentDeleteUserData = null;
 
 // Function to open user delete modal
-function openUserDeleteModal(userId) {
-    // Find user data (in real app, this would be an API call)
-    const userData = getUserData(userId);
-    if (!userData) {
-        alert('Data pengguna tidak ditemukan');
-        return;
-    }
-
-    currentDeleteUserData = userData;
-    populateDeleteModalWithUserData(userData);
+async function openUserDeleteModal(userId) {
+    console.log('Opening delete modal for user ID:', userId);
+    
+    // Show modal first
+    document.getElementById('userDeleteModal').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
     
     // Reset confirmation input
     document.getElementById('deleteConfirmationInput').value = '';
     document.getElementById('confirmDeleteButton').disabled = true;
-    
-    // Show modal
-    document.getElementById('userDeleteModal').classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
+
+    try {
+        console.log('Fetching user data from:', `/pengelolaan-akun/${userId}`);
+        
+        // Fetch user data from server
+        const response = await fetch(`/pengelolaan-akun/${userId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        
+        const data = await response.json();
+        console.log('Received user data:', data);
+        
+        const userData = data.user;
+
+        currentDeleteUserData = userData;
+        console.log('currentDeleteUserData set to:', currentDeleteUserData);
+        populateDeleteModalWithUserData(userData);
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        alert('Gagal memuat data pengguna');
+        closeUserDeleteModal();
+    }
 }
 
 // Function to close user delete modal
@@ -164,14 +189,20 @@ function closeUserDeleteModal() {
     document.getElementById('userDeleteModal').classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
     
-    // Reset data
-    currentDeleteUserData = null;
+    // Reset data with delay to allow success modal to use it
     document.getElementById('deleteConfirmationInput').value = '';
     document.getElementById('confirmDeleteButton').disabled = true;
+    
+    // Clear currentDeleteUserData after a delay to allow success modal to use it
+    setTimeout(() => {
+        currentDeleteUserData = null;
+    }, 1000);
 }
 
 // Function to populate delete modal with user data
 function populateDeleteModalWithUserData(user) {
+    console.log('Populating delete modal with user data:', user);
+    
     // Role configuration
     const roleConfig = {
         'direktur': { label: 'Direktur', color: 'red', icon: 'fas fa-crown' },
@@ -183,6 +214,7 @@ function populateDeleteModalWithUserData(user) {
     };
 
     const config = roleConfig[user.role];
+    console.log('Role config:', config);
     
     // Update user info
     document.getElementById('modalDeleteUserName').textContent = user.nama;
@@ -206,6 +238,8 @@ function populateDeleteModalWithUserData(user) {
     const roleBadge = document.getElementById('modalDeleteUserRoleBadge');
     roleBadge.className = `inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-800`;
     roleBadge.innerHTML = `<i class="${config.icon} mr-1"></i>${config.label}`;
+    
+    console.log('Delete modal populated successfully');
 }
 
 // Function to validate delete confirmation
@@ -225,9 +259,14 @@ function validateDeleteConfirmation() {
 }
 
 // Function to confirm delete user
-function confirmDeleteUser() {
-    if (!currentDeleteUserData) {
-        alert('Error: Data pengguna tidak tersedia');
+async function confirmDeleteUser() {
+    console.log('confirmDeleteUser called');
+    console.log('currentDeleteUserData:', currentDeleteUserData);
+    
+    // Check if currentDeleteUserData is available
+    if (!currentDeleteUserData || !currentDeleteUserData.id) {
+        console.error('No user data available for deletion');
+        alert('Terjadi kesalahan: Data pengguna tidak ditemukan. Silakan tutup modal dan coba lagi.');
         return;
     }
 
@@ -237,30 +276,50 @@ function confirmDeleteUser() {
         return;
     }
 
+    // Store user name before making request (to avoid null reference later)
+    const userName = currentDeleteUserData.nama;
+    console.log('User name stored for success modal:', userName);
+
     // Show loading state
     const deleteButton = document.getElementById('confirmDeleteButton');
     const originalText = deleteButton.innerHTML;
     deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus...';
     deleteButton.disabled = true;
 
-    // Simulate API call (replace with actual API call)
-    setTimeout(() => {
-        // In real application, send delete request to server
-        console.log('Deleting user:', currentDeleteUserData);
+    try {
+        console.log('Sending DELETE request to:', `/pengelolaan-akun/${currentDeleteUserData.id}`);
         
-        // Show success message
-        alert(`Akun ${currentDeleteUserData.nama} berhasil dihapus!`);
-        
-        // Close modal
-        closeUserDeleteModal();
-        
-        // Reload page or update UI
-        window.location.reload();
-        
-        // Reset button state (if needed)
+        // Send delete request to server
+        const response = await fetch(`/pengelolaan-akun/${currentDeleteUserData.id}`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+
+        const result = await response.json();
+        console.log('Server response:', result);
+        console.log('Response status:', response.status, response.ok);
+
+        if (response.ok) {
+            // Close modal first
+            closeUserDeleteModal();
+            
+            // Show success modal using stored userName to avoid null reference
+            showSuccessModal('delete', `Akun ${userName} berhasil dihapus!`, 'Data pengguna telah dihapus dari sistem.');
+        } else {
+            alert(result.message || 'Terjadi kesalahan saat menghapus akun');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Terjadi kesalahan saat menghubungi server');
+    } finally {
+        // Reset button state
         deleteButton.innerHTML = originalText;
         deleteButton.disabled = false;
-    }, 2000);
+    }
 }
 
 // Close modal when ESC key is pressed

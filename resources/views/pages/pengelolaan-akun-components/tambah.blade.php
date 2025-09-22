@@ -306,7 +306,7 @@ function validatePasswordMatch() {
 }
 
 // Function to create user
-function createUser() {
+async function createUser() {
     const formData = {
         nama: document.getElementById('createNama').value,
         username: document.getElementById('createUsername').value,
@@ -350,29 +350,52 @@ function createUser() {
     }
 
     // Show loading state
-    const saveButton = event.target;
+    const saveButton = document.querySelector('#userCreateModal button[onclick="createUser()"]');
     const originalText = saveButton.innerHTML;
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
     saveButton.disabled = true;
 
-    // Simulate API call (replace with actual API call)
-    setTimeout(() => {
-        // In real application, send data to server
-        console.log('Creating user:', formData);
-        
-        // Show success message
-        alert('Akun pengguna berhasil dibuat!');
-        
-        // Close modal
-        closeUserCreateModal();
-        
-        // Reload page or update UI
-        window.location.reload();
-        
+    try {
+        // Send data to server
+        const response = await fetch('/pengelolaan-akun', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // Close modal first
+            closeUserCreateModal();
+            
+            // Show success modal
+            showSuccessModal('create', `Akun ${formData.nama} berhasil dibuat!`, 'Pengguna baru telah ditambahkan ke sistem.', `Username: ${formData.username}\nPassword: ${formData.password}`);
+        } else {
+            // Handle validation errors
+            if (result.errors) {
+                let errorMessage = 'Terjadi kesalahan:\n';
+                Object.keys(result.errors).forEach(key => {
+                    errorMessage += `- ${result.errors[key][0]}\n`;
+                });
+                alert(errorMessage);
+            } else {
+                alert(result.message || 'Terjadi kesalahan saat menyimpan data');
+            }
+        }
+    } catch (error) {
+        console.error('Error creating user:', error);
+        alert('Terjadi kesalahan saat menghubungi server');
+    } finally {
         // Reset button state
         saveButton.innerHTML = originalText;
         saveButton.disabled = false;
-    }, 2000);
+    }
 }
 
 // Close modal when ESC key is pressed

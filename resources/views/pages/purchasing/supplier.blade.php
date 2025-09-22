@@ -4,9 +4,9 @@
 
 
 
-{{-- Flash Messages --}}
+{{-- Flash Messages - Hidden, using modal instead --}}
 @if(session('success'))
-    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 sm:mb-6 flex items-start">
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 sm:mb-6 flex items-start hidden">
         <div class="flex-shrink-0">
             <i class="fas fa-check-circle text-green-400 text-xl"></i>
         </div>
@@ -795,5 +795,34 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Show success modal if there's a success flash message
+@if(session('success'))
+document.addEventListener('DOMContentLoaded', function() {
+    let message = @json(session('success'));
+    
+    // Determine action type based on message content
+    let actionType = 'default';
+    if (message.includes('ditambahkan') || message.includes('dibuat')) {
+        actionType = 'create';
+    } else if (message.includes('diperbarui') || message.includes('diubah')) {
+        actionType = 'edit';
+    } else if (message.includes('dihapus')) {
+        actionType = 'delete';
+    }
+    
+    showSuccessModal(actionType, message, 'Operasi pada data supplier berhasil dilakukan.', '', true);
+});
+@endif
+
+// Show error modal if there's an error flash message
+@if(session('error'))
+document.addEventListener('DOMContentLoaded', function() {
+    alert(@json(session('error')));
+});
+@endif
 </script>
 @endpush
+
+{{-- Include Modal Sukses Universal --}}
+@include('pages.pengelolaan-akun-components.success-modal')

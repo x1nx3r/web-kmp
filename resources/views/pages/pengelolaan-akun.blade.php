@@ -158,7 +158,7 @@
             </span>
         </div>
     </div>
-    <button type="button" onclick="openCreateModal()" class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-semibold text-sm">
+    <button type="button" onclick="openUserCreateModal()" class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-semibold text-sm">
         <i class="fas fa-plus mr-2"></i>Tambah Akun
     </button>
 </div>
@@ -379,7 +379,7 @@
                 <i class="fas fa-users text-4xl text-gray-300 mb-4"></i>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Akun</h3>
                 <p class="text-gray-500 mb-6">Mulai dengan menambahkan akun pengguna pertama</p>
-                <button onclick="openCreateModal()" class="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
+                <button onclick="openUserCreateModal()" class="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
                     <i class="fas fa-plus mr-2"></i>Tambah Akun
                 </button>
             </div>
@@ -467,109 +467,51 @@
 
 @push('scripts')
 <script>
-// Search functionality
+// Search functionality - now submits to server
 function searchUsers() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const rows = document.querySelectorAll('.user-row');
-    const cards = document.querySelectorAll('.user-card');
-    const allItems = [...rows, ...cards];
-    let visibleCount = 0;
-
-    allItems.forEach(item => {
-        const nama = item.dataset.nama || '';
-        const username = item.dataset.username || '';
-        const email = item.dataset.email || '';
-        const role = item.dataset.role || '';
-
-        const isVisible = nama.includes(searchTerm) || 
-                         username.includes(searchTerm) || 
-                         email.includes(searchTerm) || 
-                         role.includes(searchTerm);
-
-        if (isVisible) {
-            item.style.display = '';
-            visibleCount++;
-        } else {
-            item.style.display = 'none';
-        }
-    });
-
-    // Show/hide no results message
-    const noResults = document.getElementById('noResults');
-    const usersTable = document.querySelector('.bg-white.rounded-lg.shadow-sm.overflow-hidden');
-    
-    if (visibleCount === 0 && searchTerm !== '') {
-        noResults.classList.remove('hidden');
-        usersTable.classList.add('hidden');
-    } else {
-        noResults.classList.add('hidden');
-        usersTable.classList.remove('hidden');
-    }
+    // Add a small delay to avoid too many requests while typing
+    clearTimeout(window.searchTimeout);
+    window.searchTimeout = setTimeout(() => {
+        submitFilters();
+    }, 500);
 }
 
-// Apply filters
+// Apply filters - submits to server
 function applyFilters() {
-    const statusFilter = document.getElementById('statusFilter').value;
-    const roleFilter = document.getElementById('roleFilter').value;
-    const sortOrder = document.getElementById('sortOrder').value;
-    
-    const rows = document.querySelectorAll('.user-row');
-    const cards = document.querySelectorAll('.user-card');
-    const allItems = [...rows, ...cards];
-    
-    // Apply filters
-    allItems.forEach(item => {
-        const status = item.dataset.status;
-        const role = item.dataset.role;
-        
-        const statusMatch = !statusFilter || status === statusFilter;
-        const roleMatch = !roleFilter || role === roleFilter;
-        
-        if (statusMatch && roleMatch) {
-            item.style.display = '';
-        } else {
-            item.style.display = 'none';
-        }
-    });
-    
-    // Update counts
-    updateCounts();
+    submitFilters();
 }
 
-// Update active/inactive counts
-function updateCounts() {
-    const visibleRows = document.querySelectorAll('.user-row:not([style*="display: none"]), .user-card:not([style*="display: none"])');
-    let activeCount = 0;
-    let inactiveCount = 0;
+// Submit search and filters to server
+function submitFilters() {
+    const currentUrl = new URL(window.location.href);
     
-    visibleRows.forEach(item => {
-        if (item.dataset.status === 'aktif') {
-            activeCount++;
-        } else {
-            inactiveCount++;
-        }
-    });
+    // Get current values
+    const searchValue = document.getElementById('searchInput').value;
+    const statusValue = document.getElementById('statusFilter').value;
+    const roleValue = document.getElementById('roleFilter').value;
+    const sortValue = document.getElementById('sortOrder').value;
     
-    document.getElementById('activeCount').textContent = `${activeCount} Aktif`;
-    document.getElementById('inactiveCount').textContent = `${inactiveCount} Tidak Aktif`;
+    // Clear existing search params
+    currentUrl.searchParams.delete('search');
+    currentUrl.searchParams.delete('status');
+    currentUrl.searchParams.delete('role');
+    currentUrl.searchParams.delete('sort');
+    currentUrl.searchParams.delete('page'); // Reset to first page when filtering
+    
+    // Set new search params
+    if (searchValue) currentUrl.searchParams.set('search', searchValue);
+    if (statusValue) currentUrl.searchParams.set('status', statusValue);
+    if (roleValue) currentUrl.searchParams.set('role', roleValue);
+    if (sortValue) currentUrl.searchParams.set('sort', sortValue);
+    
+    // Redirect with new parameters
+    window.location.href = currentUrl.toString();
 }
 
 // Handle pagination with filters
 function goToPage(page) {
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('page', page);
-    
-    // Preserve search and filter parameters
-    const searchValue = document.getElementById('searchInput').value;
-    const statusValue = document.getElementById('statusFilter').value;
-    const roleValue = document.getElementById('roleFilter').value;
-    const sortValue = document.getElementById('sortOrder').value;
-    
-    if (searchValue) currentUrl.searchParams.set('search', searchValue);
-    if (statusValue) currentUrl.searchParams.set('status', statusValue);
-    if (roleValue) currentUrl.searchParams.set('role', roleValue);
-    if (sortValue) currentUrl.searchParams.set('sort', sortValue);
-    
     window.location.href = currentUrl.toString();
 }
 
@@ -590,9 +532,28 @@ function deleteUser(id) {
     openUserDeleteModal(id);
 }
 
-// Initialize
+// Initialize form values from URL parameters
 document.addEventListener('DOMContentLoaded', function() {
-    updateCounts();
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Set form values from URL parameters
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const roleFilter = document.getElementById('roleFilter');
+    const sortOrder = document.getElementById('sortOrder');
+    
+    if (searchInput && urlParams.get('search')) {
+        searchInput.value = urlParams.get('search');
+    }
+    if (statusFilter && urlParams.get('status')) {
+        statusFilter.value = urlParams.get('status');
+    }
+    if (roleFilter && urlParams.get('role')) {
+        roleFilter.value = urlParams.get('role');
+    }
+    if (sortOrder && urlParams.get('sort')) {
+        sortOrder.value = urlParams.get('sort');
+    }
 });
 </script>
 @endpush
@@ -604,3 +565,4 @@ document.addEventListener('DOMContentLoaded', function() {
 @include('pages.pengelolaan-akun-components.edit')
 @include('pages.pengelolaan-akun-components.tambah')
 @include('pages.pengelolaan-akun-components.hapus')
+@include('pages.pengelolaan-akun-components.success-modal')

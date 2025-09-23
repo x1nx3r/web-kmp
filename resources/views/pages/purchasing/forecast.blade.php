@@ -1,0 +1,185 @@
+@extends('layouts.app')
+@section('title', 'Forecasting - Kamil Maju Persada')
+@section('content')
+
+
+<x-welcome-banner title="Forecasting" subtitle="Rencanakan Pengiriman Disini" icon="fas fa-chart-bar" />
+{{-- Breadcrumb --}}
+<div id="dynamicBreadcrumb">
+    {{-- Default breadcrumb, akan diupdate via JavaScript --}}
+    <x-breadcrumb :items="[
+        ['title' => 'Forecasting', 'url' => '#']
+    ]" />
+</div>
+
+{{-- Tabs Navigation --}}
+<div class="mb-6">
+    <div class="border-b-2">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button onclick="switchTab('buat-forecasting')" 
+                    id="tab-buat-forecasting" 
+                    class="tab-button active border-transparent text-green-600 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
+                <i class="fas fa-plus-circle mr-2"></i>
+                Buat Forecasting
+            </button>
+            <button onclick="switchTab('pending')" 
+                    id="tab-pending" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
+                <i class="fas fa-clock mr-2"></i>
+                Pending
+                <span class="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">3</span>
+            </button>
+            <button onclick="switchTab('sukses')" 
+                    id="tab-sukses" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
+                <i class="fas fa-check-circle mr-2"></i>
+                Sukses
+                <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">12</span>
+            </button>
+            <button onclick="switchTab('gagal')" 
+                    id="tab-gagal" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
+                <i class="fas fa-times-circle mr-2"></i>
+                Gagal
+                <span class="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">2</span>
+            </button>
+        </nav>
+    </div>
+</div>
+
+{{-- Tab Content --}}
+<div class="tab-content">
+    <div id="content-buat-forecasting" class="tab-pane active">
+        @include('pages.purchasing.forecast.buat-forecasting')
+    </div>
+    <div id="content-pending" class="tab-pane hidden">
+        @include('pages.purchasing.forecast.pending-forecasting')
+    </div>
+    <div id="content-sukses" class="tab-pane hidden">
+        @include('pages.purchasing.forecast.sukses-forecasting')
+    </div>
+    <div id="content-gagal" class="tab-pane hidden">
+        @include('pages.purchasing.forecast.gagal-forecasting')
+    </div>
+</div>
+
+{{-- JavaScript untuk Tab Switching --}}
+<script>
+// Function to get URL parameters
+function getUrlParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+// Function to update breadcrumb based on active tab
+function updateBreadcrumb(tabName) {
+    const breadcrumbContainer = document.getElementById('dynamicBreadcrumb');
+    let tabTitle = 'Forecasting';
+    
+    switch(tabName) {
+        case 'buat-forecasting':
+            tabTitle = 'Forecasting - Buat Forecasting';
+            break;
+        case 'pending':
+            tabTitle = 'Forecasting - Pending';
+            break;
+        case 'sukses':
+            tabTitle = 'Forecasting - Sukses';
+            break;
+        case 'gagal':
+            tabTitle = 'Forecasting - Gagal';
+            break;
+        default:
+            tabTitle = 'Forecasting - Buat Forecasting';
+    }
+    
+    // Update breadcrumb HTML
+    breadcrumbContainer.innerHTML = `
+        <nav class="flex mb-6" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="#" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-green-600">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        Home
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">${tabTitle}</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+    `;
+}
+
+// Function to update URL with tab parameter
+function updateUrl(tabName) {
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tabName);
+    // Remove page parameter when switching tabs to start from page 1
+    url.searchParams.delete('page');
+    window.history.replaceState({}, '', url);
+}
+
+function switchTab(tabName) {
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-button').forEach(tab => {
+        tab.classList.remove('active', 'border-green-500', 'text-green-600');
+        tab.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    // Hide all tab content
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.add('hidden');
+        pane.classList.remove('active');
+    });
+    
+    // Show active tab content
+    const activeContent = document.getElementById('content-' + tabName);
+    if (activeContent) {
+        activeContent.classList.remove('hidden');
+        activeContent.classList.add('active');
+    }
+    
+    // Add active class to clicked tab
+    const activeTab = document.getElementById('tab-' + tabName);
+    if (activeTab) {
+        activeTab.classList.remove('border-transparent', 'text-gray-500');
+        activeTab.classList.add('active', 'border-green-500', 'text-green-600');
+    }
+    
+    // Update URL with tab parameter
+    updateUrl(tabName);
+    
+    // Update breadcrumb
+    updateBreadcrumb(tabName);
+}
+
+// Function to initialize tab based on URL parameter
+function initializeTabFromUrl() {
+    const activeTab = getUrlParameter('tab') || 'buat-forecasting';
+    switchTab(activeTab);
+}
+
+// Initialize tab on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTabFromUrl();
+});
+</script>
+
+<style>
+.tab-button.active {
+    @apply border-green-800 text-green-600;
+}
+.tab-pane.active {
+    @apply block;
+}
+</style>
+
+@endsection

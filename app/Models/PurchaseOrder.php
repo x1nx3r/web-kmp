@@ -14,7 +14,6 @@ class PurchaseOrder extends Model
         'klien_id',
         'no_po',
         'qty_total',
-        'hpp_total',
         'total_amount',
         'spesifikasi',
         'catatan',
@@ -51,6 +50,14 @@ class PurchaseOrder extends Model
     public function forecasts()
     {
         return $this->hasMany(Forecast::class);
+    }
+
+    /**
+     * Relasi ke Purchase Order Bahan Baku (One-to-Many)
+     */
+    public function purchaseOrderBahanBakus()
+    {
+        return $this->hasMany(PurchaseOrderBahanBaku::class, 'purchase_order_id');
     }
 
     /**

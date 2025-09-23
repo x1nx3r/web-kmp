@@ -14,6 +14,8 @@ class BahanBakuKlien extends Model
 
     protected $fillable = [
         'nama',
+        'satuan',
+        'spesifikasi',
         'status',
     ];
 

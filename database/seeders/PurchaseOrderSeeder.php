@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\PurchaseOrderBahanBaku;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\PurchaseOrder;
@@ -19,6 +20,7 @@ class PurchaseOrderSeeder extends Seeder
         
         // Get existing klien and suppliers
         $kliens = Klien::all();
+        $po_bahanbaku = PurchaseOrderBahanBaku::all();
 
 
 
@@ -36,14 +38,12 @@ class PurchaseOrderSeeder extends Seeder
 
         for ($i = 1; $i <= 25; $i++) {
             $qtyTotal = $faker->randomFloat(2, 50, 500);
-            $hppTotal = $faker->randomFloat(2, 100000, 1000000);
-            $totalAmount = $hppTotal + ($hppTotal * 0.2); // Markup 20%
+            $totalAmount = $faker->randomFloat(2, 50000000, 5000000000);
 
             PurchaseOrder::create([
                 'klien_id' => $kliens->random()->id,
                 'no_po' => 'PO-' . date('Y') . '-' . str_pad($i, 4, '0', STR_PAD_LEFT),
                 'qty_total' => $qtyTotal,
-                'hpp_total' => $hppTotal,
                 'total_amount' => $totalAmount,
                 'spesifikasi' => $faker->randomElement($spesifikasi),
                 'catatan' => $faker->boolean(60) ? $faker->sentence(10) : null,

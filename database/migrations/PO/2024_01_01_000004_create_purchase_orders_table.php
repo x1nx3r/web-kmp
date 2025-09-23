@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('klien_id')->constrained('kliens')->onDelete('cascade');
             $table->string('no_po');
             $table->decimal('qty_total', 15, 2);
-            $table->decimal('hpp_total', 15, 2);
             $table->decimal('total_amount', 15, 2);
             $table->string('spesifikasi');
             $table->text('catatan')->nullable();

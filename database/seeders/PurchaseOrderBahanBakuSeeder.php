@@ -59,17 +59,7 @@ class PurchaseOrderBahanBakuSeeder extends Seeder
                 }
             }
 
-            // Update PO totals based on actual bahan baku items
-            $poItems = PurchaseOrderBahanBaku::where('purchase_order_id', $po->id)->get();
-            $newQtyTotal = $poItems->sum('jumlah');
-            $newHppTotal = $poItems->sum('total_harga');
-            $newTotalAmount = $newHppTotal * 1.2; // 20% markup
-
-            $po->update([
-                'qty_total' => $newQtyTotal,
-                'hpp_total' => $newHppTotal,
-                'total_amount' => $newTotalAmount,
-            ]);
+         
         }
 
         echo "PurchaseOrderBahanBaku seeding completed! Created {$totalCreated} purchase order items.\n";

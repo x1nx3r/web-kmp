@@ -17,9 +17,6 @@
         <div class="flex items-center justify-between">
             <div>
                 <div class="text-sm font-semibold text-gray-900">{{ $name }}</div>
-                <div class="text-xs text-gray-500">
-                    <i class="fas fa-building mr-1"></i>Perusahaan
-                </div>
             </div>
             <button 
                 type="button" 

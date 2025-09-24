@@ -21,9 +21,12 @@ class Klien extends Model
     // Scope untuk search
     public function scopeSearch($query, $search)
     {
-        return $query->where('nama', 'like', '%' . $search . '%')
-                    ->orWhere('cabang', 'like', '%' . $search . '%')
-                    ->orWhere('no_hp', 'like', '%' . $search . '%');
+        // Group OR conditions to avoid clobbering other where clauses when combined
+        return $query->where(function ($q) use ($search) {
+            $q->where('nama', 'like', '%' . $search . '%')
+              ->orWhere('cabang', 'like', '%' . $search . '%')
+              ->orWhere('no_hp', 'like', '%' . $search . '%');
+        });
     }
 
     // Relationship dengan Purchase Orders

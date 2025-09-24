@@ -825,4 +825,4 @@ document.addEventListener('DOMContentLoaded', function() {
 @endpush
 
 {{-- Include Modal Sukses Universal --}}
-@include('pages.pengelolaan-akun-components.success-modal')
+@include('components.success-modal')

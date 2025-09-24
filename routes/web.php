@@ -1,9 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Marketing\KlienController;
 use App\Http\Controllers\PengelolaanAkunController;
+use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Purchasing\ForecastingController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -23,9 +24,9 @@ Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'
 Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
 
 // Forecasting routes
-Route::get('/forecasting', [App\Http\Controllers\Purchasing\ForecastingController::class, 'index'])->name('forecasting.index');
-Route::get('/forecasting/bahan-baku-suppliers/{purchaseOrderBahanBakuId}', [App\Http\Controllers\Purchasing\ForecastingController::class, 'getBahanBakuSuppliers'])->name('forecasting.get-bahan-baku-suppliers');
-Route::post('/forecasting/create', [App\Http\Controllers\Purchasing\ForecastingController::class, 'createForecast'])->name('forecasting.create');
+Route::get('/forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
+Route::get('/forecasting/bahan-baku-suppliers/{purchaseOrderBahanBakuId}', [ForecastingController::class, 'getBahanBakuSuppliers'])->name('forecasting.get-bahan-baku-suppliers');
+Route::post('/forecasting/create', [ForecastingController::class, 'createForecast'])->name('forecasting.create');
 
 // Klien routes
 Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');

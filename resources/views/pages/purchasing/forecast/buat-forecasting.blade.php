@@ -370,6 +370,11 @@
                             $prevUrlParts = parse_url($prevUrl);
                             parse_str($prevUrlParts['query'] ?? '', $prevParams);
                             $prevParams['tab'] = request('tab', 'buat-forecasting');
+                            // Preserve other filters
+                            if (request('search')) $prevParams['search'] = request('search');
+                            if (request('status')) $prevParams['status'] = request('status');
+                            if (request('sort_amount')) $prevParams['sort_amount'] = request('sort_amount');
+                            if (request('sort_items')) $prevParams['sort_items'] = request('sort_items');
                             $prevUrl = $prevUrlParts['path'] . '?' . http_build_query($prevParams);
                         @endphp
                         <a href="{{ $prevUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
@@ -388,10 +393,15 @@
                                     </span>
                                 @else
                                     @php
-                                        $urlParts = parse_url($url);
-                                        parse_str($urlParts['query'] ?? '', $urlParams);
-                                        $urlParams['tab'] = request('tab', 'buat-forecasting');
-                                        $pageUrl = $urlParts['path'] . '?' . http_build_query($urlParams);
+                                        $pageUrlParts = parse_url($url);
+                                        parse_str($pageUrlParts['query'] ?? '', $pageUrlParams);
+                                        $pageUrlParams['tab'] = request('tab', 'buat-forecasting');
+                                        // Preserve other filters
+                                        if (request('search')) $pageUrlParams['search'] = request('search');
+                                        if (request('status')) $pageUrlParams['status'] = request('status');
+                                        if (request('sort_amount')) $pageUrlParams['sort_amount'] = request('sort_amount');
+                                        if (request('sort_items')) $pageUrlParams['sort_items'] = request('sort_items');
+                                        $pageUrl = $pageUrlParts['path'] . '?' . http_build_query($pageUrlParams);
                                     @endphp
                                     <a href="{{ $pageUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
                                         {{ $page }}
@@ -413,6 +423,11 @@
                             $nextUrlParts = parse_url($nextUrl);
                             parse_str($nextUrlParts['query'] ?? '', $nextParams);
                             $nextParams['tab'] = request('tab', 'buat-forecasting');
+                            // Preserve other filters
+                            if (request('search')) $nextParams['search'] = request('search');
+                            if (request('status')) $nextParams['status'] = request('status');
+                            if (request('sort_amount')) $nextParams['sort_amount'] = request('sort_amount');
+                            if (request('sort_items')) $nextParams['sort_items'] = request('sort_items');
                             $nextUrl = $nextUrlParts['path'] . '?' . http_build_query($nextParams);
                         @endphp
                         <a href="{{ $nextUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
@@ -434,154 +449,58 @@
     </div>
 </div>
 
-{{-- Modal Buat Forecast --}}
-<div id="forecastModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+{{-- Include Modal Buat Forecast --}}
+@include('pages.purchasing.forecast.buat-forecasting.modal-buat-forecasting')
+
+{{-- Include Universal Success Modal --}}
+@include('components.success-modal')
+
+{{-- Modal Timeout --}}
+<div id="timeoutModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="timeout-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        {{-- Backdrop --}}
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>
+        
+        {{-- Center the modal --}}
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-            <form id="forecastForm">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
-                        <div class="w-full mt-3 sm:mt-0 sm:text-left">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">
-                                <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                                Buat Forecast Bahan Baku
-                            </h3>
-                            
-                            {{-- Info PO dan Bahan Baku --}}
-                            <div class="bg-blue-50 rounded-lg p-4 mb-6">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-sm font-medium text-gray-700">Purchase Order</label>
-                                        <p class="text-lg font-semibold text-gray-900" id="modalPONumber"></p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-medium text-gray-700">Bahan Baku</label>
-                                        <p class="text-lg font-semibold text-gray-900" id="modalBahanBaku"></p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Form Fields --}}
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="tanggal_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Tanggal Forecast <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="date" id="tanggal_forecast" name="tanggal_forecast" required
-                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                </div>
-                                <div>
-                                    <label for="hari_kirim_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Hari Kirim (hari) <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="number" id="hari_kirim_forecast" name="hari_kirim_forecast" required min="1"
-                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                </div>
-                            </div>
-
-                            {{-- Pilih Supplier --}}
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Pilih Supplier <span class="text-red-500">*</span>
-                                </label>
-                                <div id="supplierOptions" class="space-y-3">
-                                    {{-- Supplier options akan diisi via JavaScript --}}
-                                </div>
-                            </div>
-
-                            {{-- Quantity dan Harga --}}
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="qty_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Quantity Forecast <span class="text-red-500">*</span>
-                                    </label>
-                                    <div class="relative">
-                                        <input type="number" id="qty_forecast" name="qty_forecast" required min="0.01" step="0.01"
-                                               class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-16 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                            <span class="text-gray-500 text-sm" id="satuanBahanBaku"></span>
-                                        </div>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        Jumlah di PO: <span id="jumlahPO" class="font-medium"></span>
-                                    </p>
-                                </div>
-                                <div>
-                                    <label for="harga_satuan_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Harga Satuan <span class="text-red-500">*</span>
-                                    </label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">Rp</span>
-                                        <input type="number" id="harga_satuan_forecast" name="harga_satuan_forecast" required min="0.01" step="0.01"
-                                               class="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                               oninput="calculateTotal()">
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Total Harga --}}
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Total Harga</label>
-                                <div class="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
-                                    <span class="text-lg font-semibold text-gray-900" id="totalHarga">Rp 0</span>
-                                </div>
-                            </div>
-
-                            {{-- Catatan --}}
-                            <div class="mb-6">
-                                <label for="catatan" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Catatan
-                                </label>
-                                <textarea id="catatan" name="catatan" rows="3"
-                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                          placeholder="Tambahkan catatan untuk forecast ini..."></textarea>
-                            </div>
-
-                            {{-- Hidden Fields --}}
-                            <input type="hidden" id="purchase_order_id" name="purchase_order_id">
-                            <input type="hidden" id="purchase_order_bahan_baku_id" name="purchase_order_bahan_baku_id">
-                            <input type="hidden" id="bahan_baku_supplier_id" name="bahan_baku_supplier_id">
+        <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-clock text-yellow-600"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="timeout-modal-title">
+                            Request Timeout
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Server membutuhkan waktu lebih lama dari biasanya untuk memproses forecast Anda. 
+                                Namun, forecast mungkin sudah berhasil dibuat.
+                            </p>
                         </div>
                     </div>
                 </div>
-                
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="submit" id="submitBtn"
-                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
-                        <i class="fas fa-save mr-2"></i>
-                        Buat Forecast
-                    </button>
-                    <button type="button" onclick="closeForecastModal()"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        <i class="fas fa-times mr-2"></i>
-                        Batal
-                    </button>
-                </div>
-            </form>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" onclick="closeTimeoutModal()" 
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    <i class="fas fa-refresh mr-2"></i>
+                    Refresh Halaman
+                </button>
+                <button type="button" onclick="closeTimeoutModalOnly()" 
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    Tutup
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
 {{-- JavaScript --}}
 <script>
-let currentPurchaseOrderBahanBakuId = null;
-let currentPurchaseOrderId = null;
 let searchTimeout;
-
-// Fungsi untuk format rupiah Indonesia (titik untuk ribuan)
-function formatRupiah(angka) {
-    return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
-
-// Format angka dengan decimal Indonesia (koma untuk decimal, titik untuk ribuan)
-function formatNumber(num, decimals = 2) {
-    const parts = num.toFixed(decimals).split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return parts.join(',');
-}
 
 // Debounce function untuk search
 function debounceSearch() {
@@ -695,208 +614,6 @@ document.addEventListener('DOMContentLoaded', function() {
     showActiveFilters(search, status, sortAmount, sortItems);
 });
 
-// Open forecast modal
-async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah, purchaseOrderId, noPO) {
-    currentPurchaseOrderBahanBakuId = purchaseOrderBahanBakuId;
-    currentPurchaseOrderId = purchaseOrderId;
-    
-    // Set info
-    document.getElementById('modalPONumber').textContent = noPO;
-    document.getElementById('modalBahanBaku').textContent = bahanBakuNama;
-    document.getElementById('jumlahPO').textContent = jumlah;
-    document.getElementById('purchase_order_id').value = purchaseOrderId;
-    document.getElementById('purchase_order_bahan_baku_id').value = purchaseOrderBahanBakuId;
-    
-    // Reset form
-    document.getElementById('forecastForm').reset();
-    document.getElementById('purchase_order_id').value = purchaseOrderId;
-    document.getElementById('purchase_order_bahan_baku_id').value = purchaseOrderBahanBakuId;
-    
-    // Set default tanggal forecast ke hari ini
-    document.getElementById('tanggal_forecast').value = new Date().toISOString().split('T')[0];
-    
-    try {
-        // Load supplier options
-        const response = await fetch(`/forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
-        const data = await response.json();
-        
-        if (data.error) {
-            alert('Gagal memuat data supplier: ' + data.error);
-            return;
-        }
-        
-        // Populate supplier options
-        const supplierOptions = document.getElementById('supplierOptions');
-        supplierOptions.innerHTML = '';
-        
-        if (data.bahan_baku_suppliers.length === 0) {
-            supplierOptions.innerHTML = `
-                <div class="text-center py-4 text-red-500">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    Tidak ada supplier yang menyediakan bahan baku ini
-                </div>
-            `;
-        } else {
-            data.bahan_baku_suppliers.forEach(supplier => {
-                const latestPrice = supplier.riwayat_harga.length > 0 ? supplier.riwayat_harga[0].harga : 0;
-                
-                supplierOptions.innerHTML += `
-                    <div class="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-green-500 supplier-option" 
-                         data-supplier-id="${supplier.id}" data-price="${latestPrice}">
-                        <div class="flex items-center">
-                            <input type="radio" id="supplier_${supplier.id}" name="supplier_option" value="${supplier.id}"
-                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300">
-                            <label for="supplier_${supplier.id}" class="ml-3 flex-1 cursor-pointer">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <p class="font-medium text-gray-900">${supplier.supplier.nama}</p>
-                                        <p class="text-sm text-gray-600">${supplier.nama}</p>
-                                        <p class="text-xs text-gray-500">Satuan: ${supplier.satuan}</p>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="font-medium text-green-600">Rp ${parseInt(latestPrice).toLocaleString('id-ID')}</p>
-                                        <p class="text-xs text-gray-500">Harga terakhir</p>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            // Add click handlers for supplier options
-            document.querySelectorAll('.supplier-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    const radio = this.querySelector('input[type="radio"]');
-                    radio.checked = true;
-                    
-                    // Update form
-                    document.getElementById('bahan_baku_supplier_id').value = this.dataset.supplierId;
-                    document.getElementById('harga_satuan_forecast').value = this.dataset.price;
-                    
-                    // Update UI
-                    document.querySelectorAll('.supplier-option').forEach(opt => {
-                        opt.classList.remove('border-green-500', 'bg-green-50');
-                    });
-                    this.classList.add('border-green-500', 'bg-green-50');
-                    
-                    calculateTotal();
-                });
-            });
-        }
-        
-        // Set satuan
-        if (data.purchase_order_bahan_baku && data.purchase_order_bahan_baku.bahan_baku_klien) {
-            document.getElementById('satuanBahanBaku').textContent = data.purchase_order_bahan_baku.bahan_baku_klien.satuan || '';
-        }
-        
-    } catch (error) {
-        console.error('Error loading supplier data:', error);
-        alert('Gagal memuat data supplier');
-        return;
-    }
-    
-    // Show modal
-    document.getElementById('forecastModal').classList.remove('hidden');
-}
-
-// Close forecast modal
-function closeForecastModal() {
-    document.getElementById('forecastModal').classList.add('hidden');
-    document.getElementById('forecastForm').reset();
-    currentPurchaseOrderBahanBakuId = null;
-    currentPurchaseOrderId = null;
-}
-
-// Calculate total
-function calculateTotal() {
-    const qty = parseFloat(document.getElementById('qty_forecast').value) || 0;
-    const harga = parseFloat(document.getElementById('harga_satuan_forecast').value) || 0;
-    const total = qty * harga;
-    
-    document.getElementById('totalHarga').textContent = 'Rp ' + Math.round(total).toLocaleString('id-ID');
-}
-
-// Submit forecast form
-document.getElementById('forecastForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.innerHTML;
-    
-    // Check if supplier is selected
-    const selectedSupplier = document.querySelector('input[name="supplier_option"]:checked');
-    if (!selectedSupplier) {
-        alert('Silakan pilih supplier terlebih dahulu');
-        return;
-    }
-    
-    // Set supplier ID
-    document.getElementById('bahan_baku_supplier_id').value = selectedSupplier.value;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
-    
-    try {
-        const formData = new FormData(this);
-        
-        // Prepare data for API
-        const data = {
-            purchase_order_id: formData.get('purchase_order_id'),
-            tanggal_forecast: formData.get('tanggal_forecast'),
-            hari_kirim_forecast: formData.get('hari_kirim_forecast'),
-            catatan: formData.get('catatan'),
-            details: [{
-                purchase_order_bahan_baku_id: formData.get('purchase_order_bahan_baku_id'),
-                bahan_baku_supplier_id: formData.get('bahan_baku_supplier_id'),
-                qty_forecast: formData.get('qty_forecast'),
-                harga_satuan_forecast: formData.get('harga_satuan_forecast'),
-                catatan_detail: null
-            }]
-        };
-        
-        const response = await fetch('/forecasting/create', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert('Forecast berhasil dibuat!');
-            closeForecastModal();
-            location.reload(); // Refresh page to show updated data
-        } else {
-            alert('Gagal membuat forecast: ' + result.message);
-        }
-        
-    } catch (error) {
-        console.error('Error creating forecast:', error);
-        alert('Terjadi kesalahan saat membuat forecast');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    }
-});
-
-// Close modal when clicking outside
-document.getElementById('forecastModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeForecastModal();
-    }
-});
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeForecastModal();
-    }
-});
-
 // Add custom CSS for animations
 const style = document.createElement('style');
 style.textContent = `
@@ -932,337 +649,68 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-</script>
 
-{{-- Modal Buat Forecast --}}
-<div id="forecastModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-            <form id="forecastForm">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
-                        <div class="w-full mt-3 sm:mt-0 sm:text-left">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">
-                                <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                                Buat Forecast Bahan Baku
-                            </h3>
-                            
-                            {{-- Info PO dan Bahan Baku --}}
-                            <div class="bg-blue-50 rounded-lg p-4 mb-6">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-sm font-medium text-gray-700">Purchase Order</label>
-                                        <p class="text-lg font-semibold text-gray-900" id="modalPONumber"></p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-medium text-gray-700">Bahan Baku</label>
-                                        <p class="text-lg font-semibold text-gray-900" id="modalBahanBaku"></p>
-                                    </div>
-                                </div>
-                            </div>
+// Global functions for modals (accessible from included files)
+window.showTimeoutModal = function() {
+    document.getElementById('timeoutModal').classList.remove('hidden');
+};
 
-                            {{-- Form Fields --}}
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="tanggal_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Tanggal Forecast <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="date" id="tanggal_forecast" name="tanggal_forecast" required
-                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                </div>
-                                <div>
-                                    <label for="hari_kirim_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Hari Kirim (hari) <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="number" id="hari_kirim_forecast" name="hari_kirim_forecast" required min="1"
-                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                </div>
-                            </div>
-
-                            {{-- Pilih Supplier --}}
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Pilih Supplier <span class="text-red-500">*</span>
-                                </label>
-                                <div id="supplierOptions" class="space-y-3">
-                                    {{-- Supplier options akan diisi via JavaScript --}}
-                                </div>
-                            </div>
-
-                            {{-- Quantity dan Harga --}}
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="qty_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Quantity Forecast <span class="text-red-500">*</span>
-                                    </label>
-                                    <div class="relative">
-                                        <input type="number" id="qty_forecast" name="qty_forecast" required min="0.01" step="0.01"
-                                               class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-16 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                            <span class="text-gray-500 text-sm" id="satuanBahanBaku"></span>
-                                        </div>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        Jumlah di PO: <span id="jumlahPO" class="font-medium"></span>
-                                    </p>
-                                </div>
-                                <div>
-                                    <label for="harga_satuan_forecast" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Harga Satuan <span class="text-red-500">*</span>
-                                    </label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">Rp</span>
-                                        <input type="number" id="harga_satuan_forecast" name="harga_satuan_forecast" required min="0.01" step="0.01"
-                                               class="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                               oninput="calculateTotal()">
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Total Harga --}}
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Total Harga</label>
-                                <div class="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
-                                    <span class="text-lg font-semibold text-gray-900" id="totalHarga">Rp 0</span>
-                                </div>
-                            </div>
-
-                            {{-- Catatan --}}
-                            <div class="mb-6">
-                                <label for="catatan" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Catatan
-                                </label>
-                                <textarea id="catatan" name="catatan" rows="3"
-                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                          placeholder="Tambahkan catatan untuk forecast ini..."></textarea>
-                            </div>
-
-                            {{-- Hidden Fields --}}
-                            <input type="hidden" id="purchase_order_id" name="purchase_order_id">
-                            <input type="hidden" id="purchase_order_bahan_baku_id" name="purchase_order_bahan_baku_id">
-                            <input type="hidden" id="bahan_baku_supplier_id" name="bahan_baku_supplier_id">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="submit" id="submitBtn"
-                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
-                        <i class="fas fa-save mr-2"></i>
-                        Buat Forecast
-                    </button>
-                    <button type="button" onclick="closeForecastModal()"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        <i class="fas fa-times mr-2"></i>
-                        Batal
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- JavaScript Functions --}}
-<script>
-// Forecast modal functions
-let currentPurchaseOrderBahanBakuId = null;
-let currentPurchaseOrderId = null;
-
-// Open forecast modal
-async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah, purchaseOrderId, noPO) {
-    currentPurchaseOrderBahanBakuId = purchaseOrderBahanBakuId;
-    currentPurchaseOrderId = purchaseOrderId;
+window.closeTimeoutModal = function() {
+    document.getElementById('timeoutModal').classList.add('hidden');
     
-    // Set info
-    document.getElementById('modalPONumber').textContent = noPO;
-    document.getElementById('modalBahanBaku').textContent = bahanBakuNama;
-    document.getElementById('jumlahPO').textContent = jumlah;
-    document.getElementById('purchase_order_id').value = purchaseOrderId;
-    document.getElementById('purchase_order_bahan_baku_id').value = purchaseOrderBahanBakuId;
+    // Preserve current page parameters when reloading
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentPage = currentParams.get('page') || '1';
+    const currentTab = currentParams.get('tab') || 'buat-forecasting';
     
-    // Reset form
-    document.getElementById('forecastForm').reset();
-    document.getElementById('purchase_order_id').value = purchaseOrderId;
-    document.getElementById('purchase_order_bahan_baku_id').value = purchaseOrderBahanBakuId;
+    // Build URL with preserved parameters
+    const params = new URLSearchParams();
+    params.append('tab', currentTab);
+    params.append('page', currentPage);
     
-    // Set default tanggal forecast ke hari ini
-    document.getElementById('tanggal_forecast').value = new Date().toISOString().split('T')[0];
+    // Preserve other filters
+    if (currentParams.get('search')) params.append('search', currentParams.get('search'));
+    if (currentParams.get('status')) params.append('status', currentParams.get('status'));
+    if (currentParams.get('sort_amount')) params.append('sort_amount', currentParams.get('sort_amount'));
+    if (currentParams.get('sort_items')) params.append('sort_items', currentParams.get('sort_items'));
     
-    try {
-        // Load supplier options
-        const response = await fetch(`/forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
-        const data = await response.json();
-        
-        if (data.error) {
-            alert('Gagal memuat data supplier: ' + data.error);
-            return;
-        }
-        
-        // Populate supplier options
-        const supplierOptions = document.getElementById('supplierOptions');
-        supplierOptions.innerHTML = '';
-        
-        if (data.bahan_baku_suppliers.length === 0) {
-            supplierOptions.innerHTML = `
-                <div class="text-center py-4 text-red-500">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    Tidak ada supplier yang menyediakan bahan baku ini
-                </div>
-            `;
-        } else {
-            data.bahan_baku_suppliers.forEach(supplier => {
-                const latestPrice = supplier.riwayat_harga.length > 0 ? supplier.riwayat_harga[0].harga : 0;
-                
-                supplierOptions.innerHTML += `
-                    <div class="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-green-500 supplier-option" 
-                         data-supplier-id="${supplier.id}" data-price="${latestPrice}">
-                        <div class="flex items-center">
-                            <input type="radio" id="supplier_${supplier.id}" name="supplier_option" value="${supplier.id}"
-                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300">
-                            <label for="supplier_${supplier.id}" class="ml-3 flex-1 cursor-pointer">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <p class="font-medium text-gray-900">${supplier.supplier.nama}</p>
-                                        <p class="text-sm text-gray-600">${supplier.nama}</p>
-                                        <p class="text-xs text-gray-500">Satuan: ${supplier.satuan}</p>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="font-medium text-green-600">Rp ${parseInt(latestPrice).toLocaleString('id-ID')}</p>
-                                        <p class="text-xs text-gray-500">Harga terakhir</p>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            // Add click handlers for supplier options
-            document.querySelectorAll('.supplier-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    const radio = this.querySelector('input[type="radio"]');
-                    radio.checked = true;
-                    
-                    // Update form
-                    document.getElementById('bahan_baku_supplier_id').value = this.dataset.supplierId;
-                    document.getElementById('harga_satuan_forecast').value = this.dataset.price;
-                    
-                    // Update UI
-                    document.querySelectorAll('.supplier-option').forEach(opt => {
-                        opt.classList.remove('border-green-500', 'bg-green-50');
-                    });
-                    this.classList.add('border-green-500', 'bg-green-50');
-                    
-                    calculateTotal();
-                });
-            });
-        }
-        
-        // Set satuan
-        if (data.purchase_order_bahan_baku && data.purchase_order_bahan_baku.bahan_baku_klien) {
-            document.getElementById('satuanBahanBaku').textContent = data.purchase_order_bahan_baku.bahan_baku_klien.satuan || '';
-        }
-        
-    } catch (error) {
-        console.error('Error loading supplier data:', error);
-        alert('Gagal memuat data supplier');
-        return;
-    }
-    
-    // Show modal
-    document.getElementById('forecastModal').classList.remove('hidden');
-}
+    // Reload with preserved parameters
+    window.location.href = window.location.pathname + '?' + params.toString();
+};
 
-// Close forecast modal
-function closeForecastModal() {
-    document.getElementById('forecastModal').classList.add('hidden');
-    document.getElementById('forecastForm').reset();
-    currentPurchaseOrderBahanBakuId = null;
-    currentPurchaseOrderId = null;
-}
+window.closeTimeoutModalOnly = function() {
+    document.getElementById('timeoutModal').classList.add('hidden');
+};
 
-// Calculate total
-function calculateTotal() {
-    const qty = parseFloat(document.getElementById('qty_forecast').value) || 0;
-    const harga = parseFloat(document.getElementById('harga_satuan_forecast').value) || 0;
-    const total = qty * harga;
+// Override the universal success modal's close function to preserve page parameters
+window.originalCloseSuccessModal = window.closeSuccessModal;
+window.closeSuccessModal = function() {
+    const modal = document.getElementById('successModal');
+    if (!modal) return;
     
-    document.getElementById('totalHarga').textContent = 'Rp ' + Math.round(total).toLocaleString('id-ID');
-}
-
-// Submit forecast form
-document.getElementById('forecastForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+    modal.classList.add('hidden');
+    modal.classList.remove('success-modal-auto-close');
+    document.body.classList.remove('overflow-hidden');
     
-    const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.innerHTML;
+    // Preserve current page parameters when reloading
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentPage = currentParams.get('page') || '1';
+    const currentTab = currentParams.get('tab') || 'buat-forecasting';
     
-    // Check if supplier is selected
-    const selectedSupplier = document.querySelector('input[name="supplier_option"]:checked');
-    if (!selectedSupplier) {
-        alert('Silakan pilih supplier terlebih dahulu');
-        return;
-    }
+    // Build URL with preserved parameters
+    const params = new URLSearchParams();
+    params.append('tab', currentTab);
+    params.append('page', currentPage);
     
-    // Set supplier ID
-    document.getElementById('bahan_baku_supplier_id').value = selectedSupplier.value;
+    // Preserve other filters
+    if (currentParams.get('search')) params.append('search', currentParams.get('search'));
+    if (currentParams.get('status')) params.append('status', currentParams.get('status'));
+    if (currentParams.get('sort_amount')) params.append('sort_amount', currentParams.get('sort_amount'));
+    if (currentParams.get('sort_items')) params.append('sort_items', currentParams.get('sort_items'));
     
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
-    
-    try {
-        const formData = new FormData(this);
-        
-        // Prepare data for API
-        const data = {
-            purchase_order_id: formData.get('purchase_order_id'),
-            tanggal_forecast: formData.get('tanggal_forecast'),
-            hari_kirim_forecast: formData.get('hari_kirim_forecast'),
-            catatan: formData.get('catatan'),
-            details: [{
-                purchase_order_bahan_baku_id: formData.get('purchase_order_bahan_baku_id'),
-                bahan_baku_supplier_id: formData.get('bahan_baku_supplier_id'),
-                qty_forecast: formData.get('qty_forecast'),
-                harga_satuan_forecast: formData.get('harga_satuan_forecast'),
-                catatan_detail: null
-            }]
-        };
-        
-        const response = await fetch('/forecasting/create', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert('Forecast berhasil dibuat!');
-            closeForecastModal();
-            location.reload(); // Refresh page to show updated data
-        } else {
-            alert('Gagal membuat forecast: ' + result.message);
-        }
-        
-    } catch (error) {
-        console.error('Error creating forecast:', error);
-        alert('Terjadi kesalahan saat membuat forecast');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    }
-});
-
-// Close modal when clicking outside
-document.getElementById('forecastModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeForecastModal();
-    }
-});
+    // Reload with preserved parameters
+    setTimeout(() => {
+        window.location.href = window.location.pathname + '?' + params.toString();
+    }, 300);
+};
 </script>

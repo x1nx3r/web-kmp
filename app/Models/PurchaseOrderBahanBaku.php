@@ -45,11 +45,11 @@ class PurchaseOrderBahanBaku extends Model
     }
 
     /**
-     * Relasi ke Forecast
+     * Relasi ke Forecast Details
      */
-    public function forecasts()
+    public function forecastDetails()
     {
-        return $this->hasMany(Forecast::class, 'purchase_order_bahan_baku_id');
+        return $this->hasMany(ForecastDetail::class);
     }
 
     /**

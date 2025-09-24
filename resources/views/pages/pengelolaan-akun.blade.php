@@ -565,4 +565,4 @@ document.addEventListener('DOMContentLoaded', function() {
 @include('pages.pengelolaan-akun-components.edit')
 @include('pages.pengelolaan-akun-components.tambah')
 @include('pages.pengelolaan-akun-components.hapus')
-@include('pages.pengelolaan-akun-components.success-modal')
+@include('components.success-modal')

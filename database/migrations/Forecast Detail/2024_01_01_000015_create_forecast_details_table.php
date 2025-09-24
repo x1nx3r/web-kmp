@@ -19,6 +19,8 @@ return new class extends Migration
             $table->decimal('qty_forecast', 15, 2);
             $table->decimal('harga_satuan_forecast', 15, 2);
             $table->decimal('total_harga_forecast', 15, 2);
+            $table->decimal('harga_satuan_po', 15, 2)->nullable();
+            $table->decimal('total_harga_po', 15, 2)->nullable();
             $table->text('catatan_detail')->nullable();
             $table->timestamps();
             $table->softDeletes();

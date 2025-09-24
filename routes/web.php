@@ -30,10 +30,22 @@ Route::post('/forecasting/create', [ForecastingController::class, 'createForecas
 
 // Klien routes
 Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');
+Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
 Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
+Route::get('/klien/{klien}/edit', [KlienController::class, 'edit'])->name('klien.edit');
 Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
 Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
 Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');
+
+// Company-level CRUD routes
+Route::post('/klien/company/store', [KlienController::class, 'storeCompany'])->name('klien.company.store');
+Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
+Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
+
+// Test route for debugging
+Route::get('/test-klien-modal', function() {
+    return response()->json(['success' => true, 'message' => 'Test route working', 'csrf' => csrf_token()]);
+});
 
 // Pengelolaan Akun routes
 Route::resource('pengelolaan-akun', PengelolaanAkunController::class)->parameters([

@@ -33,6 +33,7 @@ function klienListData() {
         },
         branchForm: {
             id: null,
+            company_type: 'existing', // 'existing' or 'new'
             company_nama: '',
             cabang: '',
             no_hp: '',
@@ -339,6 +340,7 @@ function klienListData() {
         resetBranchForm() {
             this.branchForm = {
                 id: null,
+                company_type: 'existing',
                 company_nama: '',
                 cabang: '',
                 no_hp: '',
@@ -350,6 +352,7 @@ function klienListData() {
             this.editingBranch = id;
             this.branchForm = {
                 id: id,
+                company_type: 'existing', // Keep as existing when editing
                 company_nama: nama,
                 cabang: cabang,
                 no_hp: no_hp || '',
@@ -361,8 +364,18 @@ function klienListData() {
         async submitBranchForm() {
             this.branchForm.errors = {};
 
+            // Validate company selection/input
+            if (!this.editingBranch && !this.branchForm.company_type) {
+                this.branchForm.errors.company_type = 'Pilih jenis perusahaan';
+                return;
+            }
+
             if (!this.branchForm.company_nama.trim()) {
-                this.branchForm.errors.company_nama = 'Perusahaan wajib dipilih';
+                if (this.branchForm.company_type === 'existing') {
+                    this.branchForm.errors.company_nama = 'Perusahaan wajib dipilih';
+                } else {
+                    this.branchForm.errors.company_nama = 'Nama perusahaan wajib diisi';
+                }
                 return;
             }
 

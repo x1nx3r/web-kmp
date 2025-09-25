@@ -85,7 +85,6 @@
     </div>
 
     {{-- CRUD Modals --}}
-    <x-klien.company-modal />
     <x-klien.branch-modal />
     <x-klien.confirm-modal />
 </div>

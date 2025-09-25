@@ -143,6 +143,7 @@ class KlienController extends Controller
 
     /**
      * Store a newly created Klien in storage.
+     * Smart logic: Creates company placeholder if new company, or adds branch to existing company
      */
     public function store(Request $request)
     {
@@ -153,40 +154,36 @@ class KlienController extends Controller
                 'no_hp' => 'nullable|string|max:30',
             ]);
 
-            // Smart branch logic: Check if there's a placeholder entry for this company
-            $placeholder = Klien::where('nama', $data['nama'])
-                                ->where('cabang', 'Kantor Pusat')
-                                ->whereNull('no_hp')
-                                ->first();
+            // Check if this exact branch already exists
+            $exists = Klien::where('nama', $data['nama'])
+                          ->where('cabang', $data['cabang'])
+                          ->exists();
 
-            if ($placeholder) {
-                // Update the placeholder with real branch data
-                $placeholder->update([
-                    'cabang' => $data['cabang'],
-                    'no_hp' => $data['no_hp'],
-                    'updated_at' => now()
-                ]);
-                
-                $message = 'Cabang pertama berhasil ditambahkan (menggantikan kantor pusat)';
-            } else {
-                // Check if this exact combination already exists
-                $exists = Klien::where('nama', $data['nama'])
-                              ->where('cabang', $data['cabang'])
-                              ->exists();
-
-                if ($exists) {
-                    $message = 'Cabang ini sudah terdaftar untuk perusahaan tersebut';
-                    if (request()->wantsJson() || request()->ajax()) {
-                        return response()->json(['success' => false, 'message' => $message], 422);
-                    }
-                    return redirect()->back()->withErrors(['cabang' => $message])->withInput();
+            if ($exists) {
+                $message = 'Cabang ini sudah terdaftar untuk perusahaan tersebut';
+                if (request()->wantsJson() || request()->ajax()) {
+                    return response()->json(['success' => false, 'message' => $message], 422);
                 }
+                return redirect()->back()->withErrors(['cabang' => $message])->withInput();
+            }
 
-                // Create new branch entry
-                Klien::create($data);
-                
+            // Check if company already exists (has any branches)
+            $companyExists = Klien::where('nama', $data['nama'])->exists();
+
+            if (!$companyExists) {
+                // New company: Create placeholder first, then the actual branch
+                Klien::create([
+                    'nama' => $data['nama'],
+                    'cabang' => 'Kantor Pusat',
+                    'no_hp' => null,
+                ]);
+                $message = 'Perusahaan dan cabang baru berhasil ditambahkan';
+            } else {
                 $message = 'Cabang berhasil ditambahkan';
             }
+
+            // Create the actual branch
+            Klien::create($data);
 
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json(['success' => true, 'message' => $message]);
@@ -283,18 +280,18 @@ class KlienController extends Controller
             // Delete the branch
             $klien->delete();
             
-            // Smart cleanup: Check if this company has no remaining branches
-            $remainingBranches = Klien::where('nama', $companyName)->count();
+            // Check if this was the only real branch (excluding placeholder)
+            $remainingRealBranches = Klien::where('nama', $companyName)
+                                         ->where('cabang', '!=', 'Kantor Pusat')
+                                         ->count();
             
-            if ($remainingBranches === 0) {
-                // Create a placeholder entry so the company doesn't disappear
-                Klien::create([
-                    'nama' => $companyName,
-                    'cabang' => 'Kantor Pusat',
-                    'no_hp' => null,
-                ]);
-                \Log::info('Created placeholder after deleting last branch', ['company' => $companyName]);
-                $message = 'Cabang berhasil dihapus. Kantor pusat dibuat sebagai placeholder.';
+            if ($remainingRealBranches === 0) {
+                // Also delete the placeholder if no real branches remain
+                Klien::where('nama', $companyName)
+                     ->where('cabang', 'Kantor Pusat')
+                     ->whereNull('no_hp')
+                     ->delete();
+                $message = 'Cabang dan perusahaan berhasil dihapus';
             } else {
                 $message = 'Cabang berhasil dihapus';
             }
@@ -310,42 +307,6 @@ class KlienController extends Controller
             }
 
             return redirect()->route('klien.index')->with('error', 'Gagal menghapus klien.');
-        }
-    }
-
-    /**
-     * Store a new company (all branches with same nama).
-     */
-    public function storeCompany(Request $request)
-    {
-        try {
-            $data = $request->validate([
-                'nama' => 'required|string|max:255',
-            ]);
-
-            // Check if company already exists
-            $existingCompany = Klien::where('nama', $data['nama'])->exists();
-            if ($existingCompany) {
-                if (request()->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => 'Perusahaan ini sudah ada'], 422);
-                }
-                return redirect()->back()->withErrors(['nama' => 'Perusahaan ini sudah ada'])->withInput();
-            }
-
-            // Create a single branch for the company with empty branch info
-            // This serves as a placeholder until actual branches are added
-            Klien::create([
-                'nama' => $data['nama'],
-                'cabang' => 'Kantor Pusat',
-                'no_hp' => null,
-            ]);
-
-            // Always return JSON for company CRUD operations
-            return response()->json(['success' => true, 'message' => 'Perusahaan berhasil ditambahkan']);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Gagal menambahkan perusahaan'], 500);
         }
     }
 

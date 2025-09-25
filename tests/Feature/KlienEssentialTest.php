@@ -75,16 +75,28 @@ class KlienEssentialTest extends TestCase
     /** @test */
     public function can_create_company_via_ajax()
     {
-        $data = ['nama' => 'PT AJAX Test'];
+        // Test creating a new company by creating its first branch
+        $data = [
+            'nama' => 'PT AJAX Test',
+            'cabang' => 'Jakarta',
+            'no_hp' => '081234567890'
+        ];
         
-        $response = $this->postJson(route('klien.company.store'), $data);
+        $response = $this->postJson(route('klien.store'), $data);
         $response->assertStatus(200);
         $response->assertJsonStructure(['success', 'message']);
         
+        // Should create both the placeholder and the actual branch
         $this->assertDatabaseHas('kliens', [
             'nama' => 'PT AJAX Test',
             'cabang' => 'Kantor Pusat',
             'no_hp' => null
+        ]);
+        
+        $this->assertDatabaseHas('kliens', [
+            'nama' => 'PT AJAX Test',
+            'cabang' => 'Jakarta',
+            'no_hp' => '081234567890'
         ]);
     }
 

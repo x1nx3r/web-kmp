@@ -23,21 +23,70 @@
         <form @submit.prevent="submitBranchForm()" class="p-6">
             <div class="space-y-4">
                 <div x-show="!editingBranch">
-                    <label for="branch_company" class="block text-sm font-medium text-gray-700 mb-1">
-                        Perusahaan <span class="text-red-500">*</span>
+                    <label for="branch_company_type" class="block text-sm font-medium text-gray-700 mb-2">
+                        Pilih Perusahaan <span class="text-red-500">*</span>
                     </label>
-                    <select
-                        id="branch_company"
-                        x-model="branchForm.company_nama"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                    >
-                        <option value="">Pilih perusahaan</option>
-                        <template x-for="company in uniqueCompanies" :key="company">
-                            <option :value="company" x-text="company"></option>
-                        </template>
-                    </select>
-                    <div x-show="branchForm.errors.company_nama" class="text-red-500 text-sm mt-1" x-text="branchForm.errors.company_nama"></div>
+                    
+                    <!-- Company selection radio buttons -->
+                    <div class="space-y-3 mb-4">
+                        <div class="flex items-center">
+                            <input 
+                                type="radio" 
+                                id="existing_company" 
+                                name="company_type" 
+                                value="existing" 
+                                x-model="branchForm.company_type"
+                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                            >
+                            <label for="existing_company" class="ml-2 text-sm text-gray-700">Pilih dari perusahaan yang sudah ada</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input 
+                                type="radio" 
+                                id="new_company" 
+                                name="company_type" 
+                                value="new" 
+                                x-model="branchForm.company_type"
+                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                            >
+                            <label for="new_company" class="ml-2 text-sm text-gray-700">Buat perusahaan baru</label>
+                        </div>
+                    </div>
+
+                    <!-- Existing company dropdown -->
+                    <div x-show="branchForm.company_type === 'existing'" x-transition>
+                        <label for="branch_company" class="block text-sm font-medium text-gray-700 mb-1">
+                            Pilih Perusahaan <span class="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="branch_company"
+                            x-model="branchForm.company_nama"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            :required="branchForm.company_type === 'existing'"
+                        >
+                            <option value="">Pilih perusahaan</option>
+                            <template x-for="company in uniqueCompanies" :key="company">
+                                <option :value="company" x-text="company"></option>
+                            </template>
+                        </select>
+                        <div x-show="branchForm.errors.company_nama" class="text-red-500 text-sm mt-1" x-text="branchForm.errors.company_nama"></div>
+                    </div>
+
+                    <!-- New company input -->
+                    <div x-show="branchForm.company_type === 'new'" x-transition>
+                        <label for="new_company_name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Nama Perusahaan Baru <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="new_company_name"
+                            x-model="branchForm.company_nama"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Masukkan nama perusahaan baru"
+                            :required="branchForm.company_type === 'new'"
+                        >
+                        <div x-show="branchForm.errors.company_nama" class="text-red-500 text-sm mt-1" x-text="branchForm.errors.company_nama"></div>
+                    </div>
                 </div>
 
                 <div x-show="editingBranch">
@@ -85,7 +134,7 @@
                 </button>
                 <button
                     type="submit"
-                    :disabled="!branchForm.company_nama.trim() || !branchForm.cabang.trim()"
+                    :disabled="!branchForm.company_nama.trim() || !branchForm.cabang.trim() || (!editingBranch && !branchForm.company_type)"
                     class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     x-text="editingBranch ? 'Update' : 'Tambah'"
                 ></button>

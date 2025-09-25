@@ -9,19 +9,11 @@
     
     <div class="flex space-x-2">
         <button 
-            @click="openCompanyModal()"
-            class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm"
-            title="Tambah Perusahaan Baru"
-        >
-            <i class="fas fa-building mr-1"></i>Tambah Klien
-        </button>
-        
-        <button 
             @click="openBranchModal()"
-            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm"
-            title="Tambah Cabang Baru"
+            class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm"
+            title="Tambah Klien/Cabang Baru"
         >
-            <i class="fas fa-map-marker-alt mr-1"></i>Tambah Cabang
+            <i class="fas fa-plus mr-1"></i>Tambah Klien
         </button>
     </div>
 </div>

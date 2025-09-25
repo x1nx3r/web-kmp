@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Marketing;
 
 use App\Models\Klien;
+use App\Models\BahanBakuKlien;
+use App\Models\RiwayatHargaKlien;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 
 class KlienController extends Controller
 {
@@ -362,5 +365,227 @@ class KlienController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Store a new material for a client
+     */
+    public function storeMaterial(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'klien_id' => 'required|exists:kliens,id',
+                'nama' => 'required|string|max:255',
+                'satuan' => 'required|string|max:50',
+                'spesifikasi' => 'nullable|string',
+                'harga_approved' => 'nullable|numeric|min:0',
+                'status' => 'required|in:aktif,non_aktif,pending'
+            ]);
+
+            $material = new BahanBakuKlien($validated);
+            
+            if ($validated['harga_approved']) {
+                $material->approved_at = now();
+                $material->approved_by_marketing = Auth::id();
+            }
+            
+            $material->save();
+
+            // Create initial price history if approved price is set
+            if ($validated['harga_approved']) {
+                RiwayatHargaKlien::createPriceHistory(
+                    $material->id,
+                    $validated['harga_approved'],
+                    Auth::id(),
+                    'Harga initial approval'
+                );
+            }
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Material berhasil ditambahkan',
+                'data' => $material->load(['approvedByMarketing', 'riwayatHarga'])
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update an existing material
+     */
+    public function updateMaterial(Request $request, BahanBakuKlien $material)
+    {
+        try {
+            $validated = $request->validate([
+                'nama' => 'required|string|max:255',
+                'satuan' => 'required|string|max:50',
+                'spesifikasi' => 'nullable|string',
+                'harga_approved' => 'nullable|numeric|min:0',
+                'status' => 'required|in:aktif,non_aktif,pending'
+            ]);
+
+            $oldPrice = $material->harga_approved;
+            $newPrice = $validated['harga_approved'];
+
+            // Update material
+            $material->fill($validated);
+
+            // Handle price approval changes
+            if ($newPrice && $newPrice != $oldPrice) {
+                $material->approved_at = now();
+                $material->approved_by_marketing = Auth::id();
+
+                // Create price history record using helper
+                RiwayatHargaKlien::createPriceHistory(
+                    $material->id,
+                    $newPrice,
+                    Auth::id(),
+                    'Perubahan harga approved'
+                );
+            }
+
+            $material->save();
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Material berhasil diupdate',
+                'data' => $material->load(['approvedByMarketing', 'riwayatHarga'])
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Delete a material
+     */
+    public function destroyMaterial(BahanBakuKlien $material)
+    {
+        try {
+            $materialName = $material->nama;
+            $material->delete();
+
+            return response()->json([
+                'success' => true, 
+                'message' => "Material '{$materialName}' berhasil dihapus"
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get price history for a material
+     */
+    public function getMaterialPriceHistory(BahanBakuKlien $material)
+    {
+        try {
+            $history = $material->riwayatHarga()
+                ->with('updatedByMarketing:id,nama')
+                ->orderBy('tanggal_perubahan', 'desc')
+                ->get()
+                ->map(function ($record) {
+                    return [
+                        'id' => $record->id,
+                        'harga_lama' => $record->harga_lama,
+                        'harga_baru' => $record->harga_approved_baru, // Fix: use correct field name
+                        'formatted_harga_lama' => $record->formatted_harga_lama,
+                        'formatted_harga_baru' => $record->formatted_harga_baru,
+                        'tanggal_perubahan' => $record->tanggal_perubahan->format('d/m/Y H:i'),
+                        'keterangan' => $record->keterangan,
+                        'diubah_oleh' => $record->updatedByMarketing->nama ?? 'System'
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'material' => $material->only(['id', 'nama', 'satuan', 'harga_approved']),
+                    'history' => $history
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Show price history page for a client's material (blade with chart + table)
+     */
+    public function riwayatHarga(Klien $klien, BahanBakuKlien $material)
+    {
+        // Ensure the material belongs to the client when klien_id is present
+        if ($material->klien_id && $material->klien_id !== $klien->id) {
+            abort(404);
+        }
+
+        // Load history and format for blade
+        $history = $material->riwayatHarga()->orderBy('tanggal_perubahan', 'asc')->get();
+
+        $riwayatHarga = $history->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'harga' => $item->harga_approved_baru ?? $item->harga_baru ?? 0,
+                'formatted_harga' => $item->formatted_harga_baru ?? number_format($item->harga_approved_baru ?? $item->harga_baru ?? 0, 0, ',', '.'),
+                'tanggal' => $item->tanggal_perubahan->toDateString(),
+                'formatted_tanggal' => $item->tanggal_perubahan->format('d M Y'),
+                'formatted_hari' => $item->tanggal_perubahan->format('l'),
+                'tipe_perubahan' => $item->tipe_perubahan ?? 'awal',
+                'formatted_selisih' => $item->formatted_selisih_harga ?? number_format($item->selisih_harga ?? 0, 0, ',', '.'),
+                'persentase_perubahan' => $item->persentase_perubahan ?? 0,
+                'badge_class' => $item->badge_class ?? 'bg-gray-100 text-gray-600',
+                'icon' => $item->icon ?? 'fas fa-minus'
+            ];
+        })->toArray();
+
+        // Basic stats for header cards
+        $prices = array_column($riwayatHarga, 'harga');
+        $stats = [
+            'max' => !empty($prices) ? max($prices) : ($material->harga_approved ?? 0),
+            'min' => !empty($prices) ? min($prices) : ($material->harga_approved ?? 0),
+            'days' => count($riwayatHarga) > 1 ? (\Carbon\Carbon::parse($riwayatHarga[0]['tanggal'])->diffInDays(\Carbon\Carbon::parse(end($riwayatHarga)['tanggal'])) ) : 0,
+        ];
+
+        // trend calculations
+        if (!empty($prices)) {
+            $first = $prices[0];
+            $last = end($prices);
+            if ($first > 0) {
+                $trendPercent = round((($last - $first) / $first) * 100, 2);
+            } else {
+                $trendPercent = 0;
+            }
+            $stats['trend_percent'] = abs($trendPercent);
+            $stats['trend'] = $last > $first ? 'naik' : ($last < $first ? 'turun' : 'stabil');
+            $stats['trend_prefix'] = $last > $first ? '+' : ($last < $first ? '' : '');
+            $stats['trend_class'] = $last > $first ? 'border-green-500' : ($last < $first ? 'border-red-500' : 'border-gray-500');
+            $stats['trend_text_class'] = $last > $first ? 'text-green-600' : ($last < $first ? 'text-red-600' : 'text-gray-600');
+            $stats['trend_icon_class'] = $last > $first ? 'text-green-500' : ($last < $first ? 'text-red-500' : 'text-gray-500');
+            $stats['trend_bg'] = $last > $first ? 'bg-green-100' : ($last < $first ? 'bg-red-100' : 'bg-gray-100');
+        } else {
+            $stats['trend_percent'] = 0;
+            $stats['trend'] = 'stabil';
+            $stats['trend_prefix'] = '';
+            $stats['trend_class'] = 'border-gray-500';
+            $stats['trend_text_class'] = 'text-gray-600';
+            $stats['trend_icon_class'] = 'text-gray-500';
+            $stats['trend_bg'] = 'bg-gray-100';
+        }
+
+        return view('pages.marketing.klien.riwayat-harga', [
+            'klienData' => $klien,
+            'bahanBakuData' => $material,
+            'riwayatHarga' => $riwayatHarga,
+            'stats' => $stats
+        ]);
     }
 }

@@ -34,4 +34,22 @@ class Klien extends Model
     {
         return $this->hasMany(PurchaseOrder::class);
     }
+
+    // Relationship dengan Bahan Baku Klien (Client Materials)
+    public function bahanBakuKliens()
+    {
+        return $this->hasMany(BahanBakuKlien::class);
+    }
+
+    // Get active materials for this client
+    public function activeBahanBakuKliens()
+    {
+        return $this->hasMany(BahanBakuKlien::class)->aktif();
+    }
+
+    // Get materials with approved prices
+    public function approvedBahanBakuKliens()
+    {
+        return $this->hasMany(BahanBakuKlien::class)->withApprovedPrice();
+    }
 }

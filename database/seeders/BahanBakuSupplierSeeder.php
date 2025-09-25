@@ -61,9 +61,8 @@ class BahanBakuSupplierSeeder extends Seeder
         ];
 
         foreach ($suppliers as $supplier) {
-            // Setiap supplier memiliki 2-3 bahan baku secara random
-            $selectedBahanBaku = collect($bahanBakuData)->random(rand(2, 3));
-            
+            // Deterministic: each supplier gets the first two bahan baku entries
+            $selectedBahanBaku = array_slice($bahanBakuData, 0, 2);
             foreach ($selectedBahanBaku as $bahanBaku) {
                 // Cek apakah bahan baku ini sudah ada untuk supplier ini
                 $existingBahanBaku = BahanBakuSupplier::where('supplier_id', $supplier->id)
@@ -79,8 +78,8 @@ class BahanBakuSupplierSeeder extends Seeder
                         'nama' => $bahanBaku['nama'],
                         'slug' => $slug,
                         'satuan' => $bahanBaku['satuan'],
-                        'harga_per_satuan' => rand($bahanBaku['harga_min'], $bahanBaku['harga_max']),
-                        'stok' => rand($bahanBaku['stok_min'], $bahanBaku['stok_max']),
+                        'harga_per_satuan' => $bahanBaku['harga_min'],
+                        'stok' => $bahanBaku['stok_min'],
                     ]);
                 } else if (empty($existingBahanBaku->slug)) {
                     // Update slug jika bahan baku sudah ada tapi belum memiliki slug

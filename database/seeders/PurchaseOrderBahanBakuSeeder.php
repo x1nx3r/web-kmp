@@ -16,11 +16,9 @@ class PurchaseOrderBahanBakuSeeder extends Seeder
      */
     public function run(): void
     {
-        $faker = Faker::create('id_ID');
-        
-        // Get existing purchase orders and bahan baku klien
-        $purchaseOrders = PurchaseOrder::all();
-        $bahanBakuKlien = BahanBakuKlien::where('status', 'aktif')->get();
+    // Deterministic seeding: no faker
+    $purchaseOrders = PurchaseOrder::all();
+    $bahanBakuKlien = BahanBakuKlien::where('status', 'aktif')->orderBy('id')->get();
 
         if ($purchaseOrders->isEmpty() || $bahanBakuKlien->isEmpty()) {
             echo "Error: Tidak ada purchase order atau bahan baku klien aktif. Jalankan seeder terkait terlebih dahulu.\n";
@@ -30,13 +28,13 @@ class PurchaseOrderBahanBakuSeeder extends Seeder
         $totalCreated = 0;
 
         foreach ($purchaseOrders as $po) {
-            // Each PO will have 2-5 different bahan baku items
-            $itemCount = $faker->numberBetween(2, 5);
-            $selectedBahanBaku = $bahanBakuKlien->random($itemCount);
+            // Each PO will have 3 items deterministically
+            $itemCount = 3;
+            $selectedBahanBaku = $bahanBakuKlien->take($itemCount);
 
             foreach ($selectedBahanBaku as $bahanBaku) {
-                $jumlah = $faker->randomFloat(2, 10, 100);
-                $hargaSatuan = $faker->randomFloat(2, 5000, 50000);
+                $jumlah = 10;
+                $hargaSatuan = 20000;
                 $totalHarga = $jumlah * $hargaSatuan;
 
                 // Check if combination already exists (due to unique constraint)

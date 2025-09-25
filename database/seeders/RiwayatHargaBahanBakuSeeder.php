@@ -42,43 +42,37 @@ class RiwayatHargaBahanBakuSeeder extends Seeder
         // Mulai dari 30 hari yang lalu
         $startDate = Carbon::now()->subDays(30);
         
-        // Generate 25-30 entry dengan variasi harga yang realistis
-        $totalEntries = rand(25, 30);
+        // Deterministic total entries and deterministic price variations
+        $totalEntries = 28;
         $priceHistory = [];
+
+        // deterministic pattern of deltas to cycle through
+        $pattern = [-0.04, 0.02, 0.0, 0.03];
 
         for ($i = 0; $i < $totalEntries; $i++) {
             $date = $startDate->copy()->addDays($i);
             
-            // Variasi harga - kadang naik, kadang turun, kadang stabil
             if ($i == 0) {
-                // Entry pertama menggunakan harga yang lebih rendah dari harga saat ini
-                $price = $currentPrice * (0.7 + (rand(0, 20) / 100)); // 70-90% dari harga saat ini
+                // Entry pertama menggunakan harga yang lebih rendah dari harga saat ini (80%)
+                $price = round($currentPrice * 0.8, 0);
                 $hargaLama = null;
                 $tipe = 'awal';
                 $keterangan = "Data riwayat awal untuk bahan baku '{$bahanBaku->nama}'";
             } else {
                 $hargaLama = $priceHistory[$i - 1]['harga_baru'];
-                
-                // Random perubahan harga: 40% naik, 40% turun, 20% stabil
-                $changeType = rand(1, 10);
-                
-                if ($changeType <= 4) {
-                    // Naik 2-15%
-                    $changePercent = rand(2, 15) / 100;
-                    $price = $hargaLama * (1 + $changePercent);
+                $delta = $pattern[($i - 1) % count($pattern)];
+                if ($delta > 0) {
                     $tipe = 'naik';
-                    $keterangan = "Kenaikan harga bahan baku '{$bahanBaku->nama}' sebesar " . number_format($changePercent * 100, 1) . "%";
-                } elseif ($changeType <= 8) {
-                    // Turun 2-12%
-                    $changePercent = rand(2, 12) / 100;
-                    $price = $hargaLama * (1 - $changePercent);
+                    $keterangan = "Kenaikan harga bahan baku '{$bahanBaku->nama}' sebesar " . number_format($delta * 100, 1) . "%";
+                    $price = $hargaLama * (1 + $delta);
+                } elseif ($delta < 0) {
                     $tipe = 'turun';
-                    $keterangan = "Penurunan harga bahan baku '{$bahanBaku->nama}' sebesar " . number_format($changePercent * 100, 1) . "%";
+                    $keterangan = "Penurunan harga bahan baku '{$bahanBaku->nama}' sebesar " . number_format(abs($delta) * 100, 1) . "%";
+                    $price = $hargaLama * (1 + $delta);
                 } else {
-                    // Tetap (tidak ada perubahan)
-                    $price = $hargaLama;
                     $tipe = 'tetap';
                     $keterangan = "Harga bahan baku '{$bahanBaku->nama}' tetap stabil";
+                    $price = $hargaLama;
                 }
             }
 

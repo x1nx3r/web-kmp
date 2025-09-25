@@ -25,9 +25,10 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             SupplierSeeder::class,
             KlienSeeder::class,
-            BahanBakuKlienSeeder::class,
+            BahanBakuKlienSeeder::class, // Now creates client-specific materials with pricing
             BahanBakuSupplierSeeder::class,
             RiwayatHargaBahanBakuSeeder::class,
+            // RiwayatHargaKlienSeeder::class, // Price history created in BahanBakuKlienSeeder
             PurchaseOrderSeeder::class,
             PurchaseOrderBahanBakuSeeder::class,
         ]);

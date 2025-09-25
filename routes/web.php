@@ -36,6 +36,8 @@ Route::get('/klien/{klien}/edit', [KlienController::class, 'edit'])->name('klien
 Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
 Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
 Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');
+// Klien material price history page
+Route::get('/klien/{klien}/bahan-baku/{material}/riwayat-harga', [KlienController::class, 'riwayatHarga'])->name('klien.riwayat-harga');
 
 // Company-level CRUD routes
 Route::post('/klien/company/store', [KlienController::class, 'storeCompany'])->name('klien.company.store');
@@ -45,6 +47,14 @@ Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany
 // Test route for debugging
 Route::get('/test-klien-modal', function() {
     return response()->json(['success' => true, 'message' => 'Test route working', 'csrf' => csrf_token()]);
+});
+
+// Client Materials API routes
+Route::prefix('api/klien-materials')->group(function () {
+    Route::post('/', [KlienController::class, 'storeMaterial'])->name('api.klien-materials.store');
+    Route::put('/{material}', [KlienController::class, 'updateMaterial'])->name('api.klien-materials.update');
+    Route::delete('/{material}', [KlienController::class, 'destroyMaterial'])->name('api.klien-materials.destroy');
+    Route::get('/{material}/price-history', [KlienController::class, 'getMaterialPriceHistory'])->name('api.klien-materials.price-history');
 });
 
 // Pengelolaan Akun routes

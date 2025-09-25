@@ -91,6 +91,7 @@
 
 @push('scripts')
 @vite('resources/js/klien-list-manager.js')
+@vite('resources/js/material-manager.js')
 <script>
 // Initialize page data for Alpine.js
 window.klienPageData = {

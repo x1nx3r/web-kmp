@@ -70,6 +70,45 @@
 
     @stack('scripts')
     
+    {{-- Client Materials Management Functions --}}
+    <script>
+        // Material management functions
+        function manageMaterials(klienId) {
+            // Show modal or redirect to manage materials page
+            console.log('Managing materials for client ID:', klienId);
+            // TODO: Implement modal or redirect to materials management page
+            alert('Fitur Manage Materials akan dikembangkan - Klien ID: ' + klienId);
+        }
+
+        function viewPriceHistory(klienId) {
+            // Show price history modal
+            console.log('Viewing price history for client ID:', klienId);
+            // TODO: Implement price history modal
+            alert('Fitur Price History akan dikembangkan - Klien ID: ' + klienId);
+        }
+
+        function addMaterialsForClient(klienId) {
+            // Show add materials modal
+            console.log('Adding materials for client ID:', klienId);
+            // TODO: Implement add materials modal
+            alert('Fitur Add Materials akan dikembangkan - Klien ID: ' + klienId);
+        }
+
+        function editMaterial(materialId) {
+            // Show edit material modal
+            console.log('Editing material ID:', materialId);
+            // TODO: Implement edit material modal
+            alert('Fitur Edit Material akan dikembangkan - Material ID: ' + materialId);
+        }
+
+        function viewMaterialHistory(materialId) {
+            // Show material price history modal
+            console.log('Viewing material history for ID:', materialId);
+            // TODO: Implement material history modal
+            alert('Fitur Material History akan dikembangkan - Material ID: ' + materialId);
+        }
+    </script>
+    
     {{-- Alpine.js --}}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>

@@ -119,11 +119,7 @@
                                         }
                                     @endphp
 
-                                    <x-klien.bahan-baku-section 
-                                        :bahanBakuItems="$bahanBakuItems" 
-                                        :detailId="$detailId" 
-                                        :klien="$klien"
-                                    />
+                                    <x-klien.bahan-baku-section :klien="$klien" />
                                 </td>
                             </tr>
                         @endforeach

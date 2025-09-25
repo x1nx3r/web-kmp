@@ -32,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
             database_path('migrations/Pengiriman'),
             database_path('migrations/Pembayaran'),
             database_path('migrations/Detail Bahan Baku PO'),
+            database_path('migrations/Forecast Detail'),
+            database_path('migrations/Pengiriman Detail'),
         ]);
     }
 }

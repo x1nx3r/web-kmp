@@ -82,6 +82,14 @@ class BahanBakuSupplier extends Model
     }
 
     /**
+     * Relasi ke Forecast Details
+     */
+    public function forecastDetails()
+    {
+        return $this->hasMany(ForecastDetail::class);
+    }
+
+    /**
      * Get riwayat harga dalam format untuk grafik
      */
     public function getRiwayatHargaForChart()

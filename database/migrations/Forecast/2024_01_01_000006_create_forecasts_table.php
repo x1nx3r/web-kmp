@@ -13,10 +13,16 @@ return new class extends Migration
     {
         Schema::create('forecasts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('po_id')->constrained('purchase_orders')->onDelete('cascade');
-            $table->string('tanggal');
-            $table->decimal('qty_forecast', 15, 2);
-            $table->decimal('harga_forecast', 15, 2);
+            $table->foreignId('purchase_order_id')->constrained('purchase_orders')->onDelete('cascade');
+            $table->foreignId('purchasing_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->string('no_forecast')->unique();
+            $table->date('tanggal_forecast');
+            $table->string('hari_kirim_forecast');
+            $table->decimal('total_qty_forecast', 15, 2)->default(0);
+            $table->decimal('total_harga_forecast', 15, 2)->default(0);
+            $table->enum('status',['pending','sukses','gagal'])->default('pending');
+            $table->text('catatan')->nullable();
+            
             $table->timestamps();
             $table->softDeletes();
         });

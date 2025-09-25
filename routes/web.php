@@ -1,9 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Marketing\KlienController;
 use App\Http\Controllers\PengelolaanAkunController;
+use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Purchasing\ForecastingController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -21,6 +22,11 @@ Route::get('/supplier/{supplier:slug}/edit', [SupplierController::class, 'edit']
 Route::put('/supplier/{supplier:slug}', [SupplierController::class, 'update'])->name('supplier.update');
 Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
 Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
+
+// Forecasting routes
+Route::get('/forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
+Route::get('/forecasting/bahan-baku-suppliers/{purchaseOrderBahanBakuId}', [ForecastingController::class, 'getBahanBakuSuppliers'])->name('forecasting.get-bahan-baku-suppliers');
+Route::post('/forecasting/create', [ForecastingController::class, 'createForecast'])->name('forecasting.create');
 
 // Klien routes
 Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');

@@ -25,8 +25,11 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             SupplierSeeder::class,
             KlienSeeder::class,
+            BahanBakuKlienSeeder::class,
             BahanBakuSupplierSeeder::class,
             RiwayatHargaBahanBakuSeeder::class,
+            PurchaseOrderSeeder::class,
+            PurchaseOrderBahanBakuSeeder::class,
         ]);
     }
 }

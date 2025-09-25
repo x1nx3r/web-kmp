@@ -13,13 +13,17 @@ return new class extends Migration
     {
         Schema::create('pengiriman', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('po_id')->constrained('purchase_orders')->onDelete('cascade');
-            $table->date('tanggal_kirim');
-            $table->decimal('qty_kirim', 15, 2);
-            $table->decimal('qty_sisa', 15, 2);
-            $table->string('bukti_foto');
-            $table->string('bukti_surat');
+            $table->foreignId('purchase_order_id')->constrained('purchase_orders')->onDelete('cascade');
+            $table->foreignId('purchasing_id')->constrained('users')->onDelete('cascade');
+            $table->string('no_pengiriman')->unique();
+            $table->date('tanggal_kirim')->nullable();
+            $table->date('hari_kirim')->nullable();
+            $table->decimal('total_qty_kirim', 15, 2)->default(0);
+            $table->decimal('total_harga_kirim', 15, 2)->default(0);
+            $table->decimal('total_qty_sisa', 15, 2)->default(0);
+            $table->string('bukti_foto_bongkar')->nullable();
             $table->enum('status', ['pending', 'terkirim', 'diverifikasi'])->default('pending');
+            $table->text('catatan')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

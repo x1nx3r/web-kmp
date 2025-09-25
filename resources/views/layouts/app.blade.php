@@ -26,6 +26,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
+        /* Prevent Alpine.js components from flashing before initialization */
+        [x-cloak] { display: none !important; }
 
         .card-placeholder {
             background: rgba(220, 20, 60, 0.1);

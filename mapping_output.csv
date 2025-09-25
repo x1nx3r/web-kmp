@@ -1,0 +1,186 @@
+material,matched_name,pabrik,spec
+"Mie Kuning","Mie Kuning","PT. CJ Feed","Moisture <12%
+Protein >8%
+Fat > 12%
+Ash < 7%
+Fiber < 2%"
+"Mie Merah","Mie Merah","PT. Haida Agriculture","Moist <5%
+C-P >7%
+Fat > 23%
+Ash <3%
+Bubuk sesuai warna bahan
+Berbau normal dan tidak ada warna campuran lain"
+"Tepung Biskuit","Tepung Biskuit","PT. Charoen Pokphand Indonesia (Krian)","Moist (Refraksi 25)
+C-P (Refraksi 25)
+Fiber (Refraksi 25)
+Fat (Refraksi 5)
+Ash < 2% ( 2-3% Refraksi 25; 3-4% Refraksi 50)"
+Katul,Katul,"PT. Dinamika Megatama Citra","Moisture < 11%
+Protein > 12%
+Fiber < 10%
+Fat > 12%"
+"Bone Meal","Bone Meal","PT. Sreeya Sewu Indonesia (Wonoayu)","Protein >20%
+Calsium < 26%
+Phospor >9%
+Moisture <12%
+Ash <6%
+Free of mold, insect, foreign material
+Colour light green to white 
+Odor specific"
+CFM/FTM,CFM,"PT Charoen Pokphand Indonesia (Cikande)","Moist < 10% (Reject >12%)
+C-P > 80% (Reject <75%)
+Pepsin Digestibility (0,2%) >75% (Reject <68%)
+Ash < 5% (Reject >10%)
+Fat <12% (Reject >12%)
+Fiber < 3% (Reject >3%)
+Tekture >2.0mm, Max 2%
+Fine Pass 1.00mm, Min 80%"
+Garam,"Garam Halus","PT. Mulia Harvest","Anticaking
+M <1%
+NaCl >95,00
+Microscopy: No Lumpiness
+Partikel Size: Min 95.00"
+Molases,Molases,"PT. Central Proteina Prima","KA <20%
+Brix >75
+Warna: Coklat mengarah ke Coklat kehitaman"
+SHM,SHM,"PT. Pasuruan Evergreen Indonesia","Moist <12%
+C-P >45
+Fat <5%
+SH <22
+TvBN < 100
+Kulit kepala udang cacah"
+DSS,DSS,"PT. Central Proteina Prima","Moist <12%
+C-P > 33
+TvBN < 100"
+Menir,Menir,"PT. Thai Union Kharisma Lestari","Moist < 12%
+C-P > 6%
+Milky White/Light Yelow
+Fresh, Not Musty
+Small Grain"
+Copra,"Bungkil Copra","PT. Cargill","CP >18%
+Moist <13%
+Fat 8-20%
+Fiber (ADF 27%) <16%"
+PKD,PKD,"PT. Sreeya Sewu Indonesia (Wonoayu)","Moisture < 12%
+C-P > 25%
+Free of Mold,insect,foreign material
+Colour brown
+Odor specific PKD and free sour odor"
+PKD,PKD,"PT. Sreeya Sewu Indonesia (Wonoayu)","Moisture < 12%
+C-P > 25%
+Free of Mold,insect,foreign material
+Colour brown
+Odor specific PKD and free sour odor"
+"Biji Batu",,,
+"Tepung Batu","Tepung Biskuit","PT. Charoen Pokphand Indonesia (Krian)","Moist (Refraksi 25)
+C-P (Refraksi 25)
+Fiber (Refraksi 25)
+Fat (Refraksi 5)
+Ash < 2% ( 2-3% Refraksi 25; 3-4% Refraksi 50)"
+PKM,PKM,"PT. CJ Feed","Moist < 12%
+C-P > 13%
+Fat > 7%
+Fiber < 20%
+Ash < 5%
+Warna Coklat
+Batok#10 + #18: <6%"
+"Corn Gem","Corn Germ","PT. Wonokoyo Jaya Corp","Moist 0.00 - 10.00%
+C-P 10.00 - 100.00%
+Fat 40.00 - 100.00%
+Fiber 0.00 - 100.00%
+Ash 0.00 - 100.00
+Campuran Bahan Lain: Tidak ada
+Selisih Suhu (C) 0.00-15.00
+Jamur: Tidak Berjamur
+Hama (ekor) 0.00 - 0.00 (Refraksi 0,583941605%)
+Berat Jenis (gr/I) 400.00 - 600.00
+Bau Normal: Normal"
+"Cangkang Kemiri",,,
+"Tepung Gaplek","Tepung Biskuit","PT. Charoen Pokphand Indonesia (Krian)","Moist (Refraksi 25)
+C-P (Refraksi 25)
+Fiber (Refraksi 25)
+Fat (Refraksi 5)
+Ash < 2% ( 2-3% Refraksi 25; 3-4% Refraksi 50)"
+Kebi,Kebi,"PT. Sreeya Sewu Indonesia (Wonoayu)","Moist <14%
+C-P >12%
+Ash <7%
+Fiber <2%
+Temperatur <40º
+Bau Beras
+Tidak menggumpal
+Tidak Jamuran
+Tidak Basah
+Tidak Asam"
+"Fish Meal","Bone Meal","PT. Sreeya Sewu Indonesia (Wonoayu)","Protein >20%
+Calsium < 26%
+Phospor >9%
+Moisture <12%
+Ash <6%
+Free of mold, insect, foreign material
+Colour light green to white 
+Odor specific"
+MBM,MBM,"PT. Sreeya Sewu Indonesia (Wonoayu)","Moisture [%] < 10:00
+Crude Protein [%] > 5000
+ Fat [%] < 12:00
+Ash [%] < 3500
+Calsium [%] 2,2 x P
+Phosphor  [%] > 4:00
+Wool and hair [%] < 1:00
+Salmonella/E.Coli negative
+Grind 95% pass through 2.0 mm screen (tolerance 5%) 100 % pass through 8.0 mm (tolerance 2%)
+Free of mold, insect, foreign (blood meal / feather meal )
+Colour light brown to brown
+Odor specific MBM, free rancidity and burnt odor"
+"Poultry Meal","Bone Meal","PT. Sreeya Sewu Indonesia (Wonoayu)","Protein >20%
+Calsium < 26%
+Phospor >9%
+Moisture <12%
+Ash <6%
+Free of mold, insect, foreign material
+Colour light green to white 
+Odor specific"
+"Gaplek Chip","Gaplek Chip","PT. Dinamika Megatama Citra","KA max 12%
+Protein min 3,3%"
+"Kepala Udang Utuh",,,
+"Tepung Roti/Bread  Waste","Tepung Biskuit","PT. Charoen Pokphand Indonesia (Krian)","Moist (Refraksi 25)
+C-P (Refraksi 25)
+Fiber (Refraksi 25)
+Fat (Refraksi 5)
+Ash < 2% ( 2-3% Refraksi 25; 3-4% Refraksi 50)"
+"SG (Sekam Giling)",,,
+"Bran Gluten Feed (BGF)","Corn Bran","PT. Sreeya Sewu Indonesia (Wonoayu)","Moist <12
+C-P > 8
+Fat > 4
+Fiber < 6
+Free of Mold, insect, foreign Material
+Colour yellow to tight yellow
+Odor spesific, Free Sour odor and rancidity"
+CGM,CGM,"PT. Sreeya Sewu Indonesia (Wonoayu)","Moist <10% 
+C-P > 10% 
+Fat > 38% 
+Fiber < 10%
+Aflatoxin < 50%
+No Admix by Microscopy
+No Moldy
+No Insect"
+CGF,CGF,"PT. Wonokoyo Jaya Corp","Moisture (%) 0.00 - 12.00
+Protein (%) 18.00 - 100.00
+Xhanthophyl 0.00 - 100.00
+Fiber (%) 0.00 - 100.00
+Abu (%) 0.00 - 100.00
+Fat (%) 0.00 - 100.00
+Tekstur: Tidak Ada Gumpalan
+Kotoran: Tidak ada Kotoran
+Jamur: Tidak Berjamur
+Hama (Ekor) 0.00 - 0.00
+Berat Jenis (gr/I) 300.00 - 550.00
+Bau: Normal"
+"Tepung Industri","Tepung Biskuit","PT. Charoen Pokphand Indonesia (Krian)","Moist (Refraksi 25)
+C-P (Refraksi 25)
+Fiber (Refraksi 25)
+Fat (Refraksi 5)
+Ash < 2% ( 2-3% Refraksi 25; 3-4% Refraksi 50)"
+CPO,,,
+Ampok,,,
+Marketing,,,
+Purchasing,,,

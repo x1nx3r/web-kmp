@@ -38,23 +38,23 @@ class RiwayatHargaBahanBakuSeeder extends Seeder
         RiwayatHargaBahanBaku::where('bahan_baku_supplier_id', $bahanBaku->id)->delete();
 
         $currentPrice = (float) $bahanBaku->harga_per_satuan;
-        
-        // Mulai dari 30 hari yang lalu
-        $startDate = Carbon::now()->subDays(30);
-        
-        // Deterministic total entries and deterministic price variations
-        $totalEntries = 28;
+
+        // Start from 14 days ago to create more data points
+        $startDate = Carbon::now()->subDays(14);
+
+        // Create 12 price history entries for better charts
+        $totalEntries = 12;
         $priceHistory = [];
 
-        // deterministic pattern of deltas to cycle through
-        $pattern = [-0.04, 0.02, 0.0, 0.03];
+        // deterministic pattern of deltas to cycle through (more varied)
+        $pattern = [-0.03, 0.02, 0.01, 0.04, -0.02, 0.03, -0.01, 0.02];
 
         for ($i = 0; $i < $totalEntries; $i++) {
             $date = $startDate->copy()->addDays($i);
-            
+
             if ($i == 0) {
-                // Entry pertama menggunakan harga yang lebih rendah dari harga saat ini (80%)
-                $price = round($currentPrice * 0.8, 0);
+                // Entry pertama menggunakan harga yang lebih rendah dari harga saat ini (85%)
+                $price = round($currentPrice * 0.85, 0);
                 $hargaLama = null;
                 $tipe = 'awal';
                 $keterangan = "Data riwayat awal untuk bahan baku '{$bahanBaku->nama}'";
@@ -77,9 +77,9 @@ class RiwayatHargaBahanBakuSeeder extends Seeder
             }
 
             // Pastikan harga tidak negatif dan tidak terlalu ekstrem
-            $price = max($price, $currentPrice * 0.5); // Minimal 50% dari harga saat ini
-            $price = min($price, $currentPrice * 1.8); // Maksimal 180% dari harga saat ini
-            
+            $price = max($price, $currentPrice * 0.6); // Minimal 60% dari harga saat ini
+            $price = min($price, $currentPrice * 1.4); // Maksimal 140% dari harga saat ini
+
             // Round ke rupiah
             $price = round($price, 0);
 
@@ -98,12 +98,12 @@ class RiwayatHargaBahanBakuSeeder extends Seeder
             // Tambah satu entry lagi untuk menyesuaikan harga saat ini
             $finalDate = $startDate->copy()->addDays($totalEntries);
             $hargaLama = $lastEntry['harga_baru'];
-            
+
             if ($currentPrice > $hargaLama) {
                 $tipe = 'naik';
                 $keterangan = "Penyesuaian harga naik bahan baku '{$bahanBaku->nama}' ke harga saat ini";
             } elseif ($currentPrice < $hargaLama) {
-                $tipe = 'turun'; 
+                $tipe = 'turun';
                 $keterangan = "Penyesuaian harga turun bahan baku '{$bahanBaku->nama}' ke harga saat ini";
             } else {
                 $tipe = 'tetap';
@@ -122,7 +122,7 @@ class RiwayatHargaBahanBakuSeeder extends Seeder
         // Insert semua data ke database
         foreach ($priceHistory as $history) {
             $selisih = $history['harga_lama'] ? abs($history['harga_baru'] - $history['harga_lama']) : 0;
-            $persentase = $history['harga_lama'] && $history['harga_lama'] > 0 ? 
+            $persentase = $history['harga_lama'] && $history['harga_lama'] > 0 ?
                 (($history['harga_baru'] - $history['harga_lama']) / $history['harga_lama']) * 100 : 0;
 
             RiwayatHargaBahanBaku::create([

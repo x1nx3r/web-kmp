@@ -221,7 +221,19 @@ class KlienController extends Controller
      */
     public function edit(Klien $klien)
     {
-        return view('pages.marketing.klien.edit', compact('klien'));
+        // Load materials for this client with their price history
+        $klien->load([
+            'bahanBakuKliens' => function($query) {
+                $query->with(['riwayatHarga' => function($q) {
+                    $q->latest('tanggal_perubahan')->take(5);
+                }]);
+            }
+        ]);
+
+        // Get all unique company names for the dropdown
+        $uniqueCompanies = Klien::distinct('nama')->orderBy('nama')->pluck('nama');
+
+        return view('pages.marketing.klien.edit', compact('klien', 'uniqueCompanies'));
     }
 
     /**
@@ -513,6 +525,21 @@ class KlienController extends Controller
                 ]
             ]);
 
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get a single material for editing
+     */
+    public function getMaterial(BahanBakuKlien $material)
+    {
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => $material->only(['id', 'nama', 'satuan', 'spesifikasi', 'harga_approved', 'status'])
+            ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }

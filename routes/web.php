@@ -29,10 +29,19 @@ Route::get('/forecasting/bahan-baku-suppliers/{purchaseOrderBahanBakuId}', [Fore
 Route::post('/forecasting/create', [ForecastingController::class, 'createForecast'])->name('forecasting.create');
 
 // Klien routes
-Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');
+Route::get('/klien', function() {
+    return view('pages.marketing.daftar-klien-livewire');
+})->name('klien.index');
+
+// Penawaran routes
+Route::get('/penawaran', function() {
+    return view('pages.marketing.penawaran');
+})->name('penawaran.index');
 Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
 Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
-Route::get('/klien/{klien}/edit', [KlienController::class, 'edit'])->name('klien.edit');
+Route::get('/klien/{klien}/edit', function(App\Models\Klien $klien) {
+    return view('pages.marketing.klien.edit-livewire', compact('klien'));
+})->name('klien.edit');
 Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
 Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
 Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');

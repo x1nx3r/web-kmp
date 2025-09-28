@@ -38,16 +38,16 @@ class RiwayatHargaKlienSeeder extends Seeder
             // Determine a base price: prefer existing approved price, otherwise use a sensible default
             $basePrice = $material->harga_approved ? floatval($material->harga_approved) : 10000;
 
-            // Deterministic 4-point history (older -> newer)
-            $points = 4;
+            // Deterministic 8-point history (older -> newer) for better charts
+            $points = 8;
             $prices = [];
 
-            // Start older price = 90% of base
-            $prices[0] = max(100, round($basePrice * 0.9, 0));
-            // deterministic changes: -5%, +3%, +2%
-            $deltas = [-0.05, 0.03, 0.02];
+            // Start older price = 88% of base
+            $prices[0] = max(100, round($basePrice * 0.88, 0));
+            // deterministic changes: more varied pattern
+            $deltas = [-0.03, 0.02, 0.01, 0.04, -0.02, 0.03, -0.01];
             for ($i = 1; $i < $points; $i++) {
-                $deltaPercent = $deltas[$i - 1];
+                $deltaPercent = $deltas[($i - 1) % count($deltas)];
                 $prices[$i] = max(100, round($prices[$i - 1] * (1 + $deltaPercent), 0));
             }
 
@@ -68,9 +68,9 @@ class RiwayatHargaKlienSeeder extends Seeder
                     $tipe = 'tetap';
                 }
 
-                // Deterministic timestamps: spread across last N days
-                $daysAgo = $points - $i;
-                $tanggal = Carbon::now()->subDays($daysAgo)->subHours(2);
+                // Deterministic timestamps: spread across last 10 days
+                $daysAgo = round($points - $i + 2); // Spread from 10 days ago to recent
+                $tanggal = Carbon::now()->subDays($daysAgo)->subHours(rand(1, 6));
 
                 RiwayatHargaKlien::create([
                     'bahan_baku_klien_id' => $material->id,

@@ -220,8 +220,17 @@ class BahanBakuKlienSeeder extends Seeder
 
                     // Create client-specific material with deterministic price (midpoint)
                     $approvedPrice = intval(($priceRange[0] + $priceRange[1]) / 2);
-                    // deterministic approved_at per material index
-                    $approvedAt = now()->subDays(10 + ($idx % 7));
+
+                    // Spread dates deterministically so data covers a wider time range.
+                    // Base offset varies per client and per material index to avoid clustering.
+                    $historyStep = 3; // days between history points
+                    $extraPoints = 7; // number of history updates
+                    $baseStartDays = 60 + ($klien->id % 30); // base days in the past per client
+                    $startDays = $baseStartDays + ($idx * 3); // add spacing per material index
+
+                    // Initial approved_at placed earlier than the first history point
+                    $initialDays = $startDays + ($extraPoints * $historyStep);
+                    $approvedAt = now()->subDays($initialDays);
 
                     $bahanBakuKlien = BahanBakuKlien::create([
                         'klien_id' => $klien->id,
@@ -234,30 +243,37 @@ class BahanBakuKlienSeeder extends Seeder
                         'status' => 'aktif',
                     ]);
 
-                    // Create deterministic initial price history and two deterministic updates
+                    // Create deterministic initial price history and several updates spaced by $historyStep
                     RiwayatHargaKlien::createPriceHistory(
                         $bahanBakuKlien->id,
                         $approvedPrice,
                         $marketingUser->id,
-                        "Harga awal untuk klien {$klien->nama}"
+                        "Harga awal untuk klien {$klien->nama}",
+                        $approvedAt
                     );
 
                     $currentPrice = $approvedPrice;
-                    $extraPoints = 2;
+                    $patterns = [-0.03, 0.02, 0.01, 0.04, -0.02, 0.03, -0.01]; // Varied price changes
                     for ($p = 0; $p < $extraPoints; $p++) {
-                        // deterministic percent changes: alternate -5% then +3%
-                        $pct = ($p % 2 === 0) ? -0.05 : 0.03;
+                        // Use deterministic pattern for varied price changes
+                        $pct = $patterns[$p % count($patterns)];
                         $newPrice = max(100, round($currentPrice * (1 + $pct), 0));
+
+                        // Calculate history timestamp: progress forward from older to newer
+                        $days = $startDays + ($extraPoints - $p - 1) * $historyStep;
+                        $historyAt = now()->subDays($days);
+
                         $bahanBakuKlien->update([
                             'harga_approved' => $newPrice,
-                            'approved_at' => now()->subDays(8 + $p)
+                            'approved_at' => $historyAt
                         ]);
 
                         RiwayatHargaKlien::createPriceHistory(
                             $bahanBakuKlien->id,
                             $newPrice,
                             $marketingUser->id,
-                            "Auto-generated update for seeding"
+                            "Auto-generated update for seeding",
+                            $historyAt
                         );
 
                         $currentPrice = $newPrice;
@@ -291,43 +307,54 @@ class BahanBakuKlienSeeder extends Seeder
                     // deterministic approved price = midpoint
                     $approvedPrice = intval(($lower + $upper) / 2);
 
+                    // Use same deterministic spread logic as template branch
+                    $historyStep = 3;
+                    $extraPoints = 7;
+                    $baseStartDays = 60 + ($klien->id % 30);
+                    $startDays = $baseStartDays + ($materialCount % 5) * 2; // vary per materialCount for mapping branch
+
+                    $initialDays = $startDays + ($extraPoints * $historyStep);
+                    $approvedAt = now()->subDays($initialDays);
+
                     $bahanBakuKlien = BahanBakuKlien::create([
                         'klien_id' => $klien->id,
                         'nama' => $displayName,
                         'satuan' => $satuan,
                         'spesifikasi' => $specification,
                         'harga_approved' => $approvedPrice,
-                        'approved_at' => now()->subDays(12),
+                        'approved_at' => $approvedAt,
                         'approved_by_marketing' => $marketingUser->id,
                         'status' => 'aktif',
                     ]);
 
-                    // Create initial history and deterministic updates for this material
                     RiwayatHargaKlien::createPriceHistory(
                         $bahanBakuKlien->id,
                         $approvedPrice,
                         $marketingUser->id,
-                        "Harga awal untuk klien {$klien->nama}"
+                        "Harga awal untuk klien {$klien->nama}",
+                        $approvedAt
                     );
 
                     $currentPrice = $approvedPrice;
-                    $extraPoints = 2;
+                    $patterns = [-0.03, 0.02, 0.01, 0.04, -0.02, 0.03, -0.01];
                     for ($p = 0; $p < $extraPoints; $p++) {
-                        // deterministic percent changes: alternate -5% then +3%
-                        $pct = ($p % 2 === 0) ? -0.05 : 0.03;
+                        $pct = $patterns[$p % count($patterns)];
                         $newPrice = max(100, round($currentPrice * (1 + $pct), 0));
 
-                        // Update material to new price and record history
+                        $days = $startDays + ($extraPoints - $p - 1) * $historyStep;
+                        $historyAt = now()->subDays($days);
+
                         $bahanBakuKlien->update([
                             'harga_approved' => $newPrice,
-                            'approved_at' => now()->subDays(6 + $p)
+                            'approved_at' => $historyAt
                         ]);
 
                         RiwayatHargaKlien::createPriceHistory(
                             $bahanBakuKlien->id,
                             $newPrice,
                             $marketingUser->id,
-                            "Auto-generated update for seeding"
+                            "Auto-generated update for seeding",
+                            $historyAt
                         );
 
                         $currentPrice = $newPrice;

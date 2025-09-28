@@ -146,7 +146,7 @@ class RiwayatHargaBahanBaku extends Model
     /**
      * Static method untuk mencatat perubahan harga
      */
-    public static function catatPerubahanHarga($bahanBakuSupplierId, $hargaLama, $hargaBaru, $keterangan = null, $updatedBy = null)
+    public static function catatPerubahanHarga($bahanBakuSupplierId, $hargaLama, $hargaBaru, $keterangan = null, $updatedBy = null, $tanggal = null)
     {
         // Hitung selisih dan persentase
         $selisihHarga = $hargaBaru - ($hargaLama ?? 0);
@@ -176,7 +176,7 @@ class RiwayatHargaBahanBaku extends Model
             'persentase_perubahan' => $persentasePerubahan,
             'tipe_perubahan' => $tipePerubahan,
             'keterangan' => $keterangan,
-            'tanggal_perubahan' => now(),
+            'tanggal_perubahan' => $tanggal ?? now(),
             'updated_by' => $updatedBy,
         ]);
     }

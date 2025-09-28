@@ -128,7 +128,7 @@ class RiwayatHargaKlien extends Model
     /**
      * Static method to create price history record
      */
-    public static function createPriceHistory($bahanBakuKlienId, $hargaBaru, $marketingUserId, $keterangan = null)
+    public static function createPriceHistory($bahanBakuKlienId, $hargaBaru, $marketingUserId, $keterangan = null, $tanggal = null)
     {
         // Get current price from bahan_baku_klien
         $bahanBaku = BahanBakuKlien::find($bahanBakuKlienId);
@@ -163,7 +163,7 @@ class RiwayatHargaKlien extends Model
             'persentase_perubahan' => $persentasePerubahan,
             'tipe_perubahan' => $tipePerubahan,
             'keterangan' => $keterangan,
-            'tanggal_perubahan' => now(),
+            'tanggal_perubahan' => $tanggal ?? now(),
             'updated_by_marketing' => $marketingUserId,
         ]);
     }

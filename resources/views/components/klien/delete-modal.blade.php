@@ -2,7 +2,7 @@
 <div 
     x-show="showDeleteModal" 
     x-cloak
-    class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center"
+    class="fixed inset-0 bg-black bg-opacity-30 overflow-y-auto h-full w-full z-50 flex items-center justify-center"
     x-on:click="showDeleteModal = false"
 >
     <div 

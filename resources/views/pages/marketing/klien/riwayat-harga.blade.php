@@ -62,7 +62,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-xs sm:text-sm font-medium text-gray-600">Harga Saat Ini</p>
-                <p class="text-lg sm:text-2xl font-bold text-blue-600">Rp {{ number_format($bahanBakuData->harga_saat_ini ?? 0, 0, ',', '.') }}</p>
+                <p class="text-lg sm:text-2xl font-bold text-blue-600">Rp {{ number_format($bahanBakuData->harga_approved ?? 0, 0, ',', '.') }}</p>
             </div>
             <div class="p-2 sm:p-3 bg-blue-100 rounded-full">
                 <i class="fas fa-money-bill-wave text-blue-500 text-sm sm:text-base"></i>
@@ -74,7 +74,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-xs sm:text-sm font-medium text-gray-600">Harga Tertinggi</p>
-                <p class="text-lg sm:text-2xl font-bold text-red-600">Rp {{ number_format($stats['max'] ?? ($bahanBakuData->harga_saat_ini ?? 0), 0, ',', '.') }}</p>
+                <p class="text-lg sm:text-2xl font-bold text-red-600">Rp {{ number_format($stats['max'] ?? ($bahanBakuData->harga_approved ?? 0), 0, ',', '.') }}</p>
             </div>
             <div class="p-2 sm:p-3 bg-red-100 rounded-full">
                 <i class="fas fa-arrow-up text-red-500 text-sm sm:text-base"></i>
@@ -86,7 +86,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-xs sm:text-sm font-medium text-gray-600">Harga Terendah</p>
-                <p class="text-lg sm:text-2xl font-bold text-green-600">Rp {{ number_format($stats['min'] ?? ($bahanBakuData->harga_saat_ini ?? 0), 0, ',', '.') }}</p>
+                <p class="text-lg sm:text-2xl font-bold text-green-600">Rp {{ number_format($stats['min'] ?? ($bahanBakuData->harga_approved ?? 0), 0, ',', '.') }}</p>
             </div>
             <div class="p-2 sm:p-3 bg-green-100 rounded-full">
                 <i class="fas fa-arrow-down text-green-500 text-sm sm:text-base"></i>

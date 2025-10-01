@@ -98,30 +98,117 @@ class ForecastingController extends Controller
             Log::info("Found PurchaseOrderBahanBaku: " . json_encode($purchaseOrderBahanBaku));
 
             // Ambil semua bahan baku supplier yang tersedia, diurutkan berdasarkan nama supplier
-            // Optimized query dengan proper join dan select
-            $bahanBakuSuppliers = BahanBakuSupplier::select([
-                    'bahan_baku_supplier.*',
-                    'suppliers.nama as supplier_nama'
-                ])
-                ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                ->where('bahan_baku_supplier.stok', '>', 0) // Hanya ambil yang ada stoknya
-                ->orderBy('bahan_baku_supplier.nama', 'asc')
-                ->get();
-
-            Log::info('Found ' . $bahanBakuSuppliers->count() . ' bahan baku suppliers with stock');
-            
-            // Jika tidak ada supplier dengan stok, ambil semua untuk debugging
-            if ($bahanBakuSuppliers->count() === 0) {
-                $allSuppliers = BahanBakuSupplier::select([
+            // Optimized query dengan proper join dan select, termasuk pic_purchasing
+            try {
+                $bahanBakuSuppliers = BahanBakuSupplier::select([
                         'bahan_baku_supplier.*',
-                        'suppliers.nama as supplier_nama'
+                        'suppliers.nama as supplier_nama',
+                        'suppliers.pic_purchasing_id',
+                        'users.nama as pic_purchasing_nama'
                     ])
                     ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                    ->orderBy('suppliers.nama', 'asc')
+                    ->leftJoin('users', 'suppliers.pic_purchasing_id', '=', 'users.id')
+                    ->where('bahan_baku_supplier.stok', '>', 0) // Hanya ambil yang ada stoknya
                     ->orderBy('bahan_baku_supplier.nama', 'asc')
                     ->get();
                     
+                Log::info('Main query executed successfully, found: ' . $bahanBakuSuppliers->count() . ' records');
+            } catch (\Exception $queryError) {
+                Log::error('Error in main query: ' . $queryError->getMessage());
+                Log::error('Query error details: ' . $queryError->getTraceAsString());
+                
+                // Fallback to simpler query with manual supplier loading
+                $bahanBakuSuppliers = BahanBakuSupplier::with('supplier.picPurchasing')
+                    ->where('stok', '>', 0)
+                    ->orderBy('nama', 'asc')
+                    ->get();                    // Transform the data to include supplier_nama field
+                    $bahanBakuSuppliers = $bahanBakuSuppliers->map(function($item) {
+                        $item->supplier_nama = $item->supplier ? $item->supplier->nama : 'Supplier tidak diketahui';
+                        $item->pic_purchasing_id = $item->supplier ? $item->supplier->pic_purchasing_id : null;
+                        $item->pic_purchasing_nama = $item->supplier && $item->supplier->picPurchasing ? $item->supplier->picPurchasing->nama : null;
+                        return $item;
+                    });
+                
+                Log::info('Fallback query executed, found: ' . $bahanBakuSuppliers->count() . ' records');
+            }
+
+            Log::info('Found ' . $bahanBakuSuppliers->count() . ' bahan baku suppliers with stock');
+            
+            // Debug: Check sample data to see what's happening with pic_purchasing
+            if ($bahanBakuSuppliers->count() > 0) {
+                $firstSupplier = $bahanBakuSuppliers->first();
+                Log::info('Sample supplier data:', [
+                    'id' => $firstSupplier->id ?? 'missing',
+                    'nama' => $firstSupplier->nama ?? 'missing',
+                    'supplier_nama' => $firstSupplier->supplier_nama ?? 'missing',
+                    'pic_purchasing_id' => $firstSupplier->pic_purchasing_id ?? 'missing',
+                    'pic_purchasing_nama' => $firstSupplier->pic_purchasing_nama ?? 'missing',
+                    'stok' => $firstSupplier->stok ?? 'missing',
+                    'harga_per_satuan' => $firstSupplier->harga_per_satuan ?? 'missing'
+                ]);
+                
+                // Additional debug: Check if users table has user with that ID
+                if ($firstSupplier->pic_purchasing_id) {
+                    $user = \App\Models\User::find($firstSupplier->pic_purchasing_id);
+                    Log::info('User lookup for ID ' . $firstSupplier->pic_purchasing_id . ':', [
+                        'found' => $user ? 'YES' : 'NO',
+                        'name' => $user ? $user->name : 'N/A'
+                    ]);
+                }
+            }
+            
+            // Jika tidak ada supplier dengan stok, ambil semua untuk debugging
+            if ($bahanBakuSuppliers->count() === 0) {
+                try {
+                    $allSuppliers = BahanBakuSupplier::select([
+                            'bahan_baku_supplier.*',
+                            'suppliers.nama as supplier_nama',
+                            'suppliers.pic_purchasing_id',
+                            'users.nama as pic_purchasing_nama'
+                        ])
+                        ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+                        ->leftJoin('users', 'suppliers.pic_purchasing_id', '=', 'users.id')
+                        ->orderBy('suppliers.nama', 'asc')
+                        ->orderBy('bahan_baku_supplier.nama', 'asc')
+                        ->get();
+                        
+                    Log::info('Fallback JOIN query executed successfully, found: ' . $allSuppliers->count() . ' records');
+                } catch (\Exception $fallbackError) {
+                    Log::error('Error in fallback query: ' . $fallbackError->getMessage());
+                    Log::error('Fallback error details: ' . $fallbackError->getTraceAsString());
+                    
+                    // Use simple query as last resort with manual supplier loading
+                    $allSuppliers = BahanBakuSupplier::with('supplier.picPurchasing')
+                        ->orderBy('nama', 'asc')
+                        ->get();
+                        
+                    // Transform the data to include supplier_nama field
+                    $allSuppliers = $allSuppliers->map(function($item) {
+                        $item->supplier_nama = $item->supplier ? $item->supplier->nama : 'Supplier tidak diketahui';
+                        $item->pic_purchasing_id = $item->supplier ? $item->supplier->pic_purchasing_id : null;
+                        $item->pic_purchasing_nama = $item->supplier && $item->supplier->picPurchasing ? $item->supplier->picPurchasing->nama : null;
+                        return $item;
+                    });
+                    
+                    Log::info('Final fallback query executed, found: ' . $allSuppliers->count() . ' records');
+                }
+                    
                 Log::info('Total suppliers in database: ' . $allSuppliers->count());
+                
+                // Debug: Log sample fallback data
+                if ($allSuppliers->count() > 0) {
+                    $firstFallback = $allSuppliers->first();
+                    Log::info('Sample fallback supplier data:', [
+                        'id' => $firstFallback->id ?? 'missing',
+                        'nama' => $firstFallback->nama ?? 'missing',
+                        'supplier_nama' => $firstFallback->supplier_nama ?? 'missing',
+                        'pic_purchasing_id' => $firstFallback->pic_purchasing_id ?? 'missing',
+                        'pic_purchasing_nama' => $firstFallback->pic_purchasing_nama ?? 'missing',
+                        'stok' => $firstFallback->stok ?? 'missing',
+                        'harga_per_satuan' => $firstFallback->harga_per_satuan ?? 'missing'
+                    ]);
+                }
+                
                 // Log hanya 5 supplier pertama untuk debugging
                 foreach ($allSuppliers->take(5) as $supplier) {
                     Log::info("Sample Supplier: {$supplier->nama} - {$supplier->supplier_nama} (Stock: {$supplier->stok})");
@@ -143,9 +230,11 @@ class ForecastingController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error getting bahan baku suppliers: ' . $e->getMessage());
+            Log::error('Error trace: ' . $e->getTraceAsString());
+            Log::error('Error file: ' . $e->getFile() . ' line: ' . $e->getLine());
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengambil data supplier'
+                'message' => 'Gagal mengambil data supplier: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -192,7 +281,7 @@ class ForecastingController extends Controller
 
         try {
             // Set execution time limit
-            set_time_limit(30); // Kurangi timeout lebih jauh
+            set_time_limit(60); // Increase timeout untuk debug
             
             DB::beginTransaction();
             
@@ -217,21 +306,6 @@ class ForecastingController extends Controller
                 $totalHarga += (float) $detail['qty_forecast'] * (float) $detail['harga_satuan_forecast'];
             }
 
-            // Buat forecast dengan total yang sudah dihitung
-            $forecast = Forecast::create([
-                'purchase_order_id' => $request->purchase_order_id,
-                'purchasing_id' => Auth::id() ?? 1, // Gunakan user yang login atau default ke 1
-                'no_forecast' => $noForecast,
-                'tanggal_forecast' => $request->tanggal_forecast,
-                'hari_kirim_forecast' => $request->hari_kirim_forecast,
-                'status' => 'pending',
-                'catatan' => $request->catatan,
-                'total_qty_forecast' => $totalQty,
-                'total_harga_forecast' => $totalHarga
-            ]);
-            
-            // Log::info("Created forecast with ID: {$forecast->id} and number: {$forecast->no_forecast}");
-
             $forecastDetails = [];
 
             // Ambil semua PO Bahan Baku dan Supplier yang dibutuhkan sekaligus untuk efisiensi
@@ -239,10 +313,137 @@ class ForecastingController extends Controller
             $supplierIds = collect($request->details)->pluck('bahan_baku_supplier_id')->unique();
             
             $poBahanBakus = PurchaseOrderBahanBaku::whereIn('id', $poBahanBakuIds)->get()->keyBy('id');
-            $suppliers = BahanBakuSupplier::whereIn('id', $supplierIds)->get()->keyBy('id');
+            $suppliers = BahanBakuSupplier::with('supplier')->whereIn('id', $supplierIds)->get()->keyBy('id');
 
             // Get timestamp sekali saja
             $timestamp = now();
+
+            // LOGIKA GROUPING FORECAST: 
+            // Cek apakah sudah ada forecast dengan PO, tanggal kirim, hari kirim, dan supplier yang SAMA
+            $existingForecast = null;
+            $supplierIdsInRequest = collect($request->details)->pluck('bahan_baku_supplier_id')->unique();
+            
+            // Ambil supplier_id yang sebenarnya dari bahan_baku_supplier
+            $actualSupplierIds = $suppliers->whereIn('id', $supplierIdsInRequest)
+                ->pluck('supplier_id')
+                ->unique()
+                ->sort()
+                ->values();
+            
+            Log::info("New bahan_baku_supplier IDs: [" . $supplierIdsInRequest->implode(', ') . "]");
+            Log::info("Actual supplier IDs from those bahan_baku_supplier: [" . $actualSupplierIds->implode(', ') . "]");
+            
+            // Cari forecast yang sudah ada dengan kriteria yang sama:
+            // 1. PO yang sama
+            // 2. Tanggal forecast yang sama 
+            // 3. Hari kirim yang sama
+            // 4. Status masih pending
+            // 5. Memiliki supplier yang PERSIS SAMA dengan yang akan ditambahkan
+            $potentialForecasts = Forecast::where('purchase_order_id', $request->purchase_order_id)
+                ->where('tanggal_forecast', $request->tanggal_forecast)
+                ->where('hari_kirim_forecast', $request->hari_kirim_forecast)
+                ->where('status', 'pending') // Hanya forecast yang masih pending
+                ->with(['forecastDetails']) // Remove bahanBakuSupplier eager loading
+                ->get();
+                
+            Log::info("Searching for existing forecast with criteria - PO: {$request->purchase_order_id}, Date: {$request->tanggal_forecast}, Hari Kirim: {$request->hari_kirim_forecast}");
+            Log::info("Found " . $potentialForecasts->count() . " potential forecasts");
+                
+            foreach ($potentialForecasts as $potentialForecast) {
+                // Ambil bahan_baku_supplier_id dari forecast detail yang sudah ada
+                $existingBahanBakuSupplierIds = $potentialForecast->forecastDetails->pluck('bahan_baku_supplier_id')->unique();
+                
+                // Load supplier data untuk forecast detail yang sudah ada (terpisah dari $suppliers yang baru)
+                $existingSuppliersData = BahanBakuSupplier::whereIn('id', $existingBahanBakuSupplierIds)->get()->keyBy('id');
+                
+                // Ambil supplier_id yang sebenarnya dari forecast detail yang sudah ada
+                $existingActualSupplierIds = $existingSuppliersData->pluck('supplier_id')
+                    ->unique()
+                    ->sort()
+                    ->values();
+                
+                Log::info("Checking forecast ID {$potentialForecast->id}:");
+                Log::info("  - existing bahan_baku_supplier IDs: [" . $existingBahanBakuSupplierIds->implode(', ') . "]");
+                Log::info("  - existing actual supplier IDs: [" . $existingActualSupplierIds->implode(', ') . "]");
+                Log::info("  - new actual supplier IDs: [" . $actualSupplierIds->implode(', ') . "]");
+                
+                // Cek apakah semua supplier persis sama (exact match berdasarkan supplier_id)
+                $supplierExactMatch = $existingActualSupplierIds->count() === $actualSupplierIds->count() && 
+                                     $existingActualSupplierIds->diff($actualSupplierIds)->isEmpty();
+                
+                Log::info("  - supplier exact match: " . ($supplierExactMatch ? 'yes' : 'no'));
+                
+                if ($supplierExactMatch) {
+                    $existingForecast = $potentialForecast;
+                    Log::info("Found existing forecast for grouping: ID {$existingForecast->id}, No: {$existingForecast->no_forecast}");
+                    break;
+                }
+            }
+            
+            if (!$existingForecast) {
+                Log::info("No existing forecast found with same PO + date + day + suppliers, will create new one");
+            }
+
+            if ($existingForecast) {
+                // Gunakan forecast yang sudah ada
+                $forecast = $existingForecast;
+                
+                Log::info("Starting to update existing forecast...");
+                
+                // Update total qty dan harga dengan menambahkan yang baru
+                $newTotalQty = $forecast->total_qty_forecast + $totalQty;
+                $newTotalHarga = $forecast->total_harga_forecast + $totalHarga;
+                
+                // Update catatan jika ada catatan baru
+                $newCatatan = $forecast->catatan;
+                if (!empty($request->catatan)) {
+                    $newCatatan = empty($forecast->catatan) 
+                        ? $request->catatan 
+                        : $forecast->catatan . "\n\n" . $request->catatan;
+                }
+                
+                Log::info("About to update forecast with raw query...");
+                // Use raw update untuk avoid potential lock issues
+                DB::table('forecasts')
+                    ->where('id', $forecast->id)
+                    ->update([
+                        'total_qty_forecast' => $newTotalQty,
+                        'total_harga_forecast' => $newTotalHarga,
+                        'catatan' => $newCatatan,
+                        'updated_at' => $timestamp
+                    ]);
+                
+                // Update object untuk response
+                $forecast->total_qty_forecast = $newTotalQty;
+                $forecast->total_harga_forecast = $newTotalHarga;
+                $forecast->catatan = $newCatatan;
+                
+                Log::info("Forecast updated successfully with raw query");
+                
+                Log::info("Updated existing forecast with new totals - Qty: {$forecast->total_qty_forecast}, Harga: {$forecast->total_harga_forecast}");
+            } else {
+                // Tentukan purchasing_id berdasarkan supplier dari detail pertama
+                $firstDetail = $request->details[0];
+                $firstSupplier = $suppliers->get($firstDetail['bahan_baku_supplier_id']);
+                $purchasingId = $firstSupplier && $firstSupplier->supplier ? $firstSupplier->supplier->pic_purchasing_id : Auth::id();
+
+                // Buat forecast baru
+                $forecast = Forecast::create([
+                    'purchase_order_id' => $request->purchase_order_id,
+                    'purchasing_id' => $purchasingId,
+                    'no_forecast' => $noForecast,
+                    'tanggal_forecast' => $request->tanggal_forecast,
+                    'hari_kirim_forecast' => $request->hari_kirim_forecast,
+                    'status' => 'pending',
+                    'catatan' => $request->catatan,
+                    'total_qty_forecast' => $totalQty,
+                    'total_harga_forecast' => $totalHarga
+                ]);
+                
+                Log::info("Created new forecast with ID: {$forecast->id} and number: {$forecast->no_forecast}");
+            }
+            
+            // Log::info("Created forecast with ID: {$forecast->id} and number: {$forecast->no_forecast}");
 
             // Validasi dan prepare data details
             foreach ($request->details as $index => $detail) {
@@ -295,22 +496,38 @@ class ForecastingController extends Controller
             }
 
             // Batch insert untuk performa yang lebih baik
+            Log::info("About to insert " . count($forecastDetails) . " forecast details...");
             if (!empty($forecastDetails)) {
                 DB::table('forecast_details')->insert($forecastDetails);
             }
+            Log::info("Forecast details inserted successfully");
 
+            
             // Log::info("Forecast created successfully with " . count($forecastDetails) . " details");
+            
+            // Log informasi grouping
+            if ($existingForecast) {
+                // Avoid additional query - just log the count we know
+                Log::info("Forecast details added to existing forecast. New details added: " . count($forecastDetails));
+            } else {
+                Log::info("New forecast created with " . count($forecastDetails) . " details");
+            }
 
+            Log::info("About to commit transaction...");
             DB::commit();
+            Log::info("Transaction committed successfully");
 
             return response()->json([
                 'success' => true,
-                'message' => 'Forecast berhasil dibuat',
+                'message' => $existingForecast 
+                    ? "Forecast detail berhasil ditambahkan ke forecast yang sudah ada (No: {$forecast->no_forecast})"
+                    : 'Forecast berhasil dibuat',
                 'forecast' => [
                     'id' => $forecast->id,
                     'no_forecast' => $forecast->no_forecast,
                     'total_qty_forecast' => $forecast->total_qty_forecast,
-                    'total_harga_forecast' => $forecast->total_harga_forecast
+                    'total_harga_forecast' => $forecast->total_harga_forecast,
+                    'is_grouped' => $existingForecast ? true : false
                 ]
             ]);
 

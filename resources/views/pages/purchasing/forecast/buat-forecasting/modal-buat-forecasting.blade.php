@@ -89,7 +89,7 @@
                                 
                                 {{-- Detail supplier terpilih --}}
                                 <div id="selectedSupplierInfo" class="hidden mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
-                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                                         <div>
                                             <span class="text-gray-600">Stok Tersedia:</span>
                                             <p class="font-semibold text-green-700" id="infoStok">-</p>
@@ -101,6 +101,10 @@
                                         <div>
                                             <span class="text-gray-600">Supplier:</span>
                                             <p class="font-semibold text-green-700" id="infoSupplier">-</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-600">PIC Purchasing:</span>
+                                            <p class="font-semibold text-green-700" id="infoPICPurchasing">-</p>
                                         </div>
                                     </div>
                                 </div>
@@ -350,6 +354,7 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
                 const supplierNama = supplier.supplier_nama || supplier.supplier?.nama || 'Supplier tidak diketahui';
                 const bahanBakuNama = supplier.nama || 'Bahan Baku tidak diketahui';
                 const satuan = supplier.satuan || 'unit';
+                const picPurchasing = supplier.pic_purchasing_nama || 'Belum ditentukan';
                 
                 // Tampilkan semua supplier untuk debugging (nanti bisa dikembalikan filter stok > 0)
                 const optionText = `${bahanBakuNama} - ${supplierNama} (Stok: ${formatRupiah(stok)} ${satuan}) - Rp ${formatRupiah(Math.round(hargaSatuan))}`;
@@ -359,6 +364,7 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
                 option.dataset.satuan = satuan;
                 option.dataset.supplierNama = supplierNama;
                 option.dataset.bahanBakuNama = bahanBakuNama;
+                option.dataset.picPurchasing = picPurchasing;
                 
                 // Disable option jika stok kosong
                 if (stok <= 0) {
@@ -503,6 +509,7 @@ function selectBahanBakuSupplier() {
         document.getElementById('infoStok').className = `font-semibold ${stokClass}`;
         document.getElementById('infoHarga').textContent = `Rp ${formatRupiah(Math.round(price))} / ${selectedOption.dataset.satuan}`;
         document.getElementById('infoSupplier').textContent = selectedOption.dataset.supplierNama;
+        document.getElementById('infoPICPurchasing').textContent = selectedOption.dataset.picPurchasing || 'Belum ditentukan';
         
         infoDiv.classList.remove('hidden');
         
@@ -514,6 +521,7 @@ function selectBahanBakuSupplier() {
         document.getElementById('bahan_baku_supplier_id').value = '';
         document.getElementById('harga_satuan_forecast').value = '';
         document.getElementById('harga_satuan_forecast').dataset.rawValue = '';
+        document.getElementById('infoPICPurchasing').textContent = '-';
         calculateTotal();
     }
 }

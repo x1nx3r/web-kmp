@@ -20,6 +20,11 @@ class Penawaran extends Component
     public $currentMaterial = null;
     public $currentQuantity = 1;
 
+    // Search and filter properties
+    public $klienSearch = '';
+    public $klienSort = 'nama_asc';
+    public $selectedKota = '';
+
     // Analysis data
     public $marginAnalysis = [];
     public $totalRevenue = 0;
@@ -34,10 +39,47 @@ class Penawaran extends Component
 
     public function render()
     {
-        $kliens = Klien::with('bahanBakuKliens')
-            ->orderBy('nama')
-            ->orderBy('cabang')
-            ->get()
+        $query = Klien::with('bahanBakuKliens');
+
+        // Apply search filter
+        if ($this->klienSearch) {
+            $query->where(function($q) {
+                $q->where('nama', 'like', '%' . $this->klienSearch . '%')
+                  ->orWhere('cabang', 'like', '%' . $this->klienSearch . '%')
+                  ->orWhere('no_hp', 'like', '%' . $this->klienSearch . '%');
+            });
+        }
+
+        // Apply city filter
+        if ($this->selectedKota) {
+            $query->where('cabang', $this->selectedKota);
+        }
+
+        // Apply sorting
+        switch ($this->klienSort) {
+            case 'nama_asc':
+                $query->orderBy('nama', 'asc')->orderBy('cabang', 'asc');
+                break;
+            case 'nama_desc':
+                $query->orderBy('nama', 'desc')->orderBy('cabang', 'desc');
+                break;
+            case 'kota_asc':
+                $query->orderBy('cabang', 'asc')->orderBy('nama', 'asc');
+                break;
+            case 'kota_desc':
+                $query->orderBy('cabang', 'desc')->orderBy('nama', 'desc');
+                break;
+            case 'cabang_asc':
+                $query->orderBy('cabang', 'asc')->orderBy('nama', 'asc');
+                break;
+            case 'cabang_desc':
+                $query->orderBy('cabang', 'desc')->orderBy('nama', 'desc');
+                break;
+            default:
+                $query->orderBy('nama', 'asc')->orderBy('cabang', 'asc');
+        }
+
+        $kliens = $query->get()
             ->groupBy('nama')
             ->map(function ($group) {
                 return $group->map(function ($klien) {
@@ -45,11 +87,18 @@ class Penawaran extends Component
                     $klien->unique_key = $klien->nama . '|' . $klien->cabang;
                     return $klien;
                 });
-            });
+            });;
+
+        // Get unique cities for filter dropdown
+        $availableCities = Klien::select('cabang')
+            ->distinct()
+            ->orderBy('cabang')
+            ->pluck('cabang');
 
         return view('livewire.marketing.penawaran', [
             'kliens' => $kliens,
             'availableMaterials' => $this->getAvailableMaterials(),
+            'availableCities' => $availableCities,
         ]);
     }
 
@@ -60,6 +109,16 @@ class Penawaran extends Component
         $this->selectedKlienCabang = $klienCabang;
         $this->resetAnalysis();
         $this->selectedMaterials = [];
+    }
+
+    public function clearKlienSearch()
+    {
+        $this->klienSearch = '';
+    }
+
+    public function clearKotaFilter()
+    {
+        $this->selectedKota = '';
     }
 
     public function openAddMaterialModal()

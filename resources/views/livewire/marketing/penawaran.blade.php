@@ -422,69 +422,155 @@
 
     {{-- Add Material Modal --}}
     @if($showAddMaterialModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto">
-            <div class="fixed inset-0 bg-black bg-opacity-30" wire:click="closeAddMaterialModal"></div>
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div class="fixed inset-0 transition-opacity" style="background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(4px);" wire:click="closeAddMaterialModal"></div>
 
+            {{-- Modal Container --}}
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-lg shadow-lg max-w-lg w-full" @click.stop>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full transform transition-all" @click.stop>
                     {{-- Modal Header --}}
-                    <div class="border-b border-gray-200 p-4">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-plus text-purple-600"></i>
+                    <div class="border-b border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+                                    <i class="fas fa-plus text-purple-600 text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-semibold text-gray-900">Tambah Material</h3>
+                                    <p class="text-gray-600 text-sm mt-1">Pilih material untuk analisis margin profitabilitas</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Tambah Material</h3>
-                                <p class="text-gray-600 text-sm">Pilih material untuk analisis margin</p>
-                            </div>
+                            <button 
+                                wire:click="closeAddMaterialModal"
+                                class="text-gray-400 hover:text-gray-600 transition-colors p-2"
+                            >
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
                         </div>
                     </div>
 
                     {{-- Modal Body --}}
-                    <div class="p-4 space-y-4">
+                    <div class="p-6 space-y-6">
+                        {{-- Material Selection --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                <i class="fas fa-cube mr-1 text-gray-400"></i>
                                 Material
                             </label>
-                            <select
-                                wire:model="currentMaterial"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-1 focus:ring-purple-200 text-sm"
-                            >
-                                <option value="">Pilih material...</option>
-                                @foreach($availableMaterials as $material)
-                                    <option value="{{ $material->id }}">
-                                        {{ $material->nama }} ({{ $material->satuan }}) - Rp {{ number_format($material->harga_approved, 0, ',', '.') }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <div class="relative">
+                                <select
+                                    wire:model.live="currentMaterial"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
+                                           focus:border-purple-500 focus:ring-2 focus:ring-purple-200 
+                                           transition-all duration-200 bg-gray-50 focus:bg-white
+                                           appearance-none cursor-pointer"
+                                >
+                                    <option value="">Pilih material...</option>
+                                    @foreach($availableMaterials as $material)
+                                        <option value="{{ $material->id }}">
+                                            {{ $material->nama }} ({{ $material->satuan }}) - Rp {{ number_format($material->harga_approved, 0, ',', '.') }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                </div>
+                            </div>
+                            @if($currentMaterial)
+                                @php
+                                    $selectedMaterial = $availableMaterials->find($currentMaterial);
+                                @endphp
+                                @if($selectedMaterial)
+                                    <div class="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                        <div class="flex items-center text-sm">
+                                            <div class="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center mr-2">
+                                                <i class="fas fa-info text-purple-600 text-xs"></i>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-purple-900">{{ $selectedMaterial->nama }}</span>
+                                                <span class="text-purple-700 mx-2">•</span>
+                                                <span class="text-purple-700">Satuan: {{ $selectedMaterial->satuan }}</span>
+                                                <span class="text-purple-700 mx-2">•</span>
+                                                <span class="text-purple-700">Harga: Rp {{ number_format($selectedMaterial->harga_approved, 0, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
 
+                        {{-- Quantity Input --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                <i class="fas fa-calculator mr-1 text-gray-400"></i>
                                 Jumlah
+                                @if($currentMaterial)
+                                    @php
+                                        $selectedMaterial = $availableMaterials->find($currentMaterial);
+                                    @endphp
+                                    @if($selectedMaterial)
+                                        <span class="text-purple-600 font-normal">(dalam {{ $selectedMaterial->satuan }})</span>
+                                    @endif
+                                @endif
                             </label>
-                            <input
-                                type="number"
-                                wire:model="currentQuantity"
-                                min="1"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-1 focus:ring-purple-200 text-sm"
-                                placeholder="Masukkan jumlah material"
-                            >
+                            <div class="relative">
+                                <input
+                                    type="number"
+                                    wire:model="currentQuantity"
+                                    min="1"
+                                    step="1"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
+                                           focus:border-purple-500 focus:ring-2 focus:ring-purple-200 
+                                           transition-all duration-200 bg-gray-50 focus:bg-white
+                                           @if($currentMaterial) pr-20 @endif"
+                                    placeholder="Masukkan jumlah material"
+                                >
+                                @if($currentMaterial)
+                                    @php
+                                        $selectedMaterial = $availableMaterials->find($currentMaterial);
+                                    @endphp
+                                    @if($selectedMaterial)
+                                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 text-sm font-medium">{{ $selectedMaterial->satuan }}</span>
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
+                            @if($currentMaterial && $currentQuantity > 0)
+                                @php
+                                    $selectedMaterial = $availableMaterials->find($currentMaterial);
+                                @endphp
+                                @if($selectedMaterial)
+                                    <div class="mt-2 text-sm text-gray-600">
+                                        <i class="fas fa-calculator mr-1"></i>
+                                        Estimasi biaya: <span class="font-semibold text-green-600">Rp {{ number_format($selectedMaterial->harga_approved * $currentQuantity, 0, ',', '.') }}</span>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
                     </div>
 
                     {{-- Modal Footer --}}
-                    <div class="border-t border-gray-200 px-4 py-3 flex justify-end space-x-3">
+                    <div class="border-t border-gray-200 px-6 py-4 flex justify-end space-x-3 bg-gray-50 rounded-b-xl">
                         <button
                             wire:click="closeAddMaterialModal"
-                            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                            class="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg 
+                                   hover:bg-gray-50 font-medium transition-colors duration-200 
+                                   focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                         >
+                            <i class="fas fa-times mr-2"></i>
                             Batal
                         </button>
                         <button
                             wire:click="addMaterial"
-                            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+                            class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium 
+                                   rounded-lg transition-colors duration-200 shadow-sm
+                                   focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+                            {{ !$currentMaterial || !$currentQuantity ? 'disabled' : '' }}
                         >
+                            <i class="fas fa-plus mr-2"></i>
                             Tambah Material
                         </button>
                     </div>

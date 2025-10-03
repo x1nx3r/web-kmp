@@ -137,7 +137,7 @@ class DaftarKlien extends Component
         // Get all records for these specific names
         $kliens = collect();
         if (!empty($uniqueNames)) {
-            $kliens = Klien::query()
+            $query = Klien::query()
                 ->with([
                     'purchaseOrders.purchaseOrderBahanBakus.bahanBakuKlien',
                     'bahanBakuKliens' => function($query) {
@@ -146,9 +146,17 @@ class DaftarKlien extends Component
                         }]);
                     }
                 ])
-                ->whereIn('nama', $uniqueNames)
-                ->orderBy($this->sort, $this->direction)
-                ->get();
+                ->whereIn('nama', $uniqueNames);
+            
+            // Apply appropriate sorting - only sort by actual table columns
+            if ($this->sort === 'cabang_count' || $this->sort === 'lokasi') {
+                // For aggregated sorts, maintain the order from $uniqueNames array
+                $query->orderByRaw('FIELD(nama, "' . implode('","', $uniqueNames) . '")');
+            } else {
+                $query->orderBy($this->sort === 'updated_at' ? 'updated_at' : 'nama', $this->direction);
+            }
+            
+            $kliens = $query->get();
         }
 
         // Create custom paginator

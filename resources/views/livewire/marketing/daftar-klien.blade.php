@@ -1,4 +1,17 @@
-<div>
+<div class="relative">
+    {{-- Global Loading Overlay --}}
+    <div 
+        wire:loading 
+        wire:target="search,location,sort,sortBy,clearSearch,clearFilters"
+        class="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center"
+        style="display: none;"
+    >
+        <div class="bg-white rounded-lg shadow-lg p-6 flex items-center space-x-3">
+            <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-gray-700 font-medium">Memuat data...</span>
+        </div>
+    </div>
+
     {{-- Navigation Breadcrumb --}}
     <div class="bg-white border-b border-gray-200 mb-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,98 +46,206 @@
     />
 
     {{-- Search and Filter Section --}}
-    <div class="mb-6 bg-white rounded-xl shadow-sm p-6">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
-            {{-- Search Input --}}
-            <div class="flex-1 max-w-md">
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fas fa-search text-gray-400"></i>
+    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {{-- Header --}}
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-filter text-blue-600 text-sm"></i>
                     </div>
-                    <input
-                        type="text"
-                        wire:model.live.debounce.500ms="search"
-                        placeholder="Cari nama perusahaan atau cabang..."
-                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                    @if($search)
+                    <h3 class="text-lg font-semibold text-gray-900">Filter & Pencarian</h3>
+                </div>
+                @if($search || $location || $sort !== 'nama' || $direction !== 'asc')
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+                            {{ ($search ? 1 : 0) + ($location ? 1 : 0) + ($sort !== 'nama' || $direction !== 'asc' ? 1 : 0) }} filter aktif
+                        </span>
                         <button
-                            wire:click="clearSearch"
-                            class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            wire:click="clearFilters"
+                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors duration-200"
                         >
-                            <i class="fas fa-times text-gray-400 hover:text-gray-600"></i>
+                            <i class="fas fa-times mr-1"></i>
+                            Reset
                         </button>
+                    </div>
+                @endif
+            </div>
+        </div>
+        
+        {{-- Filter Controls --}}
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                {{-- Search Input --}}
+                <div class="lg:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-search mr-1 text-gray-400"></i>
+                        Pencarian
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <div wire:loading.remove wire:target="search">
+                                <i class="fas fa-search text-gray-400"></i>
+                            </div>
+                            <div wire:loading wire:target="search">
+                                <i class="fas fa-spinner fa-spin text-blue-500"></i>
+                            </div>
+                        </div>
+                        <input
+                            type="text"
+                            wire:model.live.debounce.500ms="search"
+                            placeholder="Cari nama perusahaan, cabang, atau nomor HP..."
+                            class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm
+                                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                                   transition-all duration-200 bg-gray-50 focus:bg-white
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+                            wire:loading.attr="disabled"
+                            wire:target="search"
+                        >
+                        @if($search)
+                            <button
+                                wire:click="clearSearch"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center group"
+                                title="Hapus pencarian"
+                            >
+                                <i class="fas fa-times text-gray-400 group-hover:text-red-500 transition-colors duration-200"></i>
+                            </button>
+                        @endif
+                    </div>
+                    @if($search)
+                        <div class="mt-1 text-xs text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Mencari: "<span class="font-medium text-blue-600">{{ $search }}</span>"
+                        </div>
                     @endif
                 </div>
+
+                {{-- Location Filter --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-map-marker-alt mr-1 text-gray-400"></i>
+                        Lokasi
+                    </label>
+                    <div class="relative">
+                        <select
+                            wire:model.live="location"
+                            class="block w-full px-3 py-3 border border-gray-300 rounded-lg text-sm
+                                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                                   transition-colors duration-200 bg-gray-50 focus:bg-white
+                                   appearance-none cursor-pointer"
+                        >
+                            <option value="">Semua Lokasi</option>
+                            @foreach($availableLocations as $loc)
+                                <option value="{{ $loc }}">{{ $loc }}</option>
+                            @endforeach
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </div>
+                    </div>
+                    @if($location)
+                        <div class="mt-1 text-xs text-gray-500">
+                            <i class="fas fa-filter mr-1"></i>
+                            Filter: <span class="font-medium text-blue-600">{{ $location }}</span>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Sort Controls --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-sort mr-1 text-gray-400"></i>
+                        Urutkan
+                    </label>
+                    <div class="flex space-x-2">
+                        <div class="flex-1 relative">
+                            <select
+                                wire:model.live="sort"
+                                class="block w-full px-3 py-3 border border-gray-300 rounded-lg text-sm
+                                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                                       transition-colors duration-200 bg-gray-50 focus:bg-white
+                                       appearance-none cursor-pointer pr-8"
+                            >
+                                <option value="nama">Nama</option>
+                                <option value="cabang_count">Jumlah Cabang</option>
+                                <option value="lokasi">Lokasi</option>
+                                <option value="updated_at">Terakhir Update</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                            </div>
+                        </div>
+                        
+                        <button
+                            wire:click="sortBy('{{ $sort }}')"
+                            class="flex-shrink-0 px-3 py-3 border border-gray-300 rounded-lg 
+                                   hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                   transition-all duration-200 group"
+                            title="Toggle arah pengurutan ({{ $direction === 'asc' ? 'A→Z' : 'Z→A' }})"
+                        >
+                            <i class="fas fa-sort-{{ $direction === 'asc' ? 'up' : 'down' }} 
+                                      text-gray-500 group-hover:text-blue-600 transition-colors duration-200"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-1 text-xs text-gray-500">
+                        <i class="fas fa-{{ $direction === 'asc' ? 'sort-alpha-up' : 'sort-alpha-down' }} mr-1"></i>
+                        {{ $direction === 'asc' ? 'A → Z' : 'Z → A' }}
+                        @if($sort !== 'nama')
+                            • {{ 
+                                $sort === 'cabang_count' ? 'Jumlah Cabang' :
+                                ($sort === 'lokasi' ? 'Lokasi' : 'Terakhir Update')
+                            }}
+                        @endif
+                    </div>
+                </div>
             </div>
-
-            {{-- Location Filter --}}
-            <div class="flex-shrink-0">
-                <select
-                    wire:model.live="location"
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                    <option value="">Semua Lokasi</option>
-                    @foreach($availableLocations as $loc)
-                        <option value="{{ $loc }}">{{ $loc }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            {{-- Sort Controls --}}
-            <div class="flex items-center space-x-2">
-                <select
-                    wire:model.live="sort"
-                    class="block px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                    <option value="nama">Nama</option>
-                    <option value="cabang_count">Jumlah Cabang</option>
-                    <option value="lokasi">Lokasi</option>
-                    <option value="updated_at">Terakhir Update</option>
-                </select>
-
-                <button
-                    wire:click="sortBy('{{ $sort }}')"
-                    class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    title="Toggle Sort Direction"
-                >
-                    <i class="fas fa-sort-{{ $direction === 'asc' ? 'up' : 'down' }}"></i>
-                </button>
-            </div>
-
-            {{-- Clear Filters --}}
-            @if($search || $location || $sort !== 'nama' || $direction !== 'asc')
-                <button
-                    wire:click="clearFilters"
-                    class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                    <i class="fas fa-times mr-1"></i> Clear
-                </button>
-            @endif
         </div>
     </div>
 
     {{-- Action Header --}}
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-900">Daftar Klien</h2>
-            <p class="text-gray-600">Kelola data klien dan cabang perusahaan</p>
-        </div>
-        <div class="flex space-x-3">
-            <button
-                wire:click="openCompanyModal"
-                class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200"
-            >
-                <i class="fas fa-building mr-2"></i>
-                Tambah Perusahaan
-            </button>
-            <button
-                wire:click="openBranchModal"
-                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200"
-            >
-                <i class="fas fa-plus mr-2"></i>
-                Tambah Cabang
-            </button>
+        {{-- Action Header with Stats --}}
+    <div class="mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                    <i class="fas fa-users text-blue-600 mr-3"></i>
+                    Daftar Klien
+                </h2>
+                <p class="text-gray-600 mt-1">Kelola data klien dan cabang perusahaan</p>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                {{-- Stats Summary --}}
+                <div class="flex items-center space-x-4 text-sm">
+                    <div class="flex items-center space-x-1">
+                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span class="text-gray-600">Total:</span>
+                        <span class="font-semibold text-gray-900">{{ $kliens->total() }}</span>
+                        <span class="text-gray-500">klien</span>
+                    </div>
+                    @if($search || $location)
+                        <div class="flex items-center space-x-1">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span class="text-gray-600">Hasil:</span>
+                            <span class="font-semibold text-green-600">{{ $kliens->count() }}</span>
+                            <span class="text-gray-500">ditemukan</span>
+                        </div>
+                    @endif
+                </div>
+                
+                {{-- Add Client Button --}}
+                <button
+                    wire:click="openCompanyModal"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 
+                           text-white text-sm font-medium rounded-lg shadow-sm 
+                           transition-colors duration-200 focus:outline-none focus:ring-2 
+                           focus:ring-offset-2 focus:ring-blue-500"
+                >
+                    <i class="fas fa-plus mr-2"></i>
+                    Tambah Klien
+                </button>
+            </div>
         </div>
     </div>
 
@@ -137,14 +258,29 @@
     </div>
 
     {{-- Main Content Table --}}
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100
+                transition-all duration-300"
+         wire:loading.class="opacity-60">
         @if($kliens->count() > 0)
             {{-- Table Header --}}
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Data Klien</h3>
-                    <div class="text-sm text-gray-600">
-                        Total: <span class="font-semibold text-green-600">{{ $kliens->total() }}</span> nama klien
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-table text-green-600 text-sm"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900">Data Klien</h3>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        @if($search || $location)
+                            <div class="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-200">
+                                <i class="fas fa-filter mr-1"></i>
+                                Hasil filter: <span class="font-semibold">{{ $kliens->count() }}</span>
+                            </div>
+                        @endif
+                        <div class="text-sm text-gray-600">
+                            Total: <span class="font-semibold text-green-600">{{ $kliens->total() }}</span> klien
+                        </div>
                     </div>
                 </div>
             </div>

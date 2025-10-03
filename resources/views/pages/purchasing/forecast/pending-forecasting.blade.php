@@ -527,11 +527,8 @@ function updateResultCountPending() {
         }
     }
     
-    if (visibleCards === totalCards) {
-        resultCountElement.innerHTML = `<i class="fas fa-info-circle mr-1"></i>Menampilkan ${totalCards} PO dengan forecast pending`;
-    } else {
-        resultCountElement.innerHTML = `<i class="fas fa-filter mr-1"></i>Menampilkan ${visibleCards} dari ${totalCards} PO`;
-    }
+    // Result count display removed
+    resultCountElement.style.display = 'none';
 }
 
 // Update active filters display

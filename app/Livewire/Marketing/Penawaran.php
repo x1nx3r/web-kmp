@@ -249,6 +249,7 @@ class Penawaran extends Component
                 
                 $supplierMargins[] = [
                     'supplier_name' => $supplierData['supplier'],
+                    'pic_name' => $supplierData['pic_name'],
                     'supplier_id' => $supplierData['supplier_id'],
                     'price' => $supplierData['price'],
                     'cost' => $supplierCost,
@@ -269,6 +270,7 @@ class Penawaran extends Component
                 'original_price' => $material['original_price'] ?? $material['klien_price'],
                 'revenue' => $revenue,
                 'best_supplier' => $bestSupplier['supplier'],
+                'best_supplier_pic' => $bestSupplier['pic_name'],
                 'supplier_price' => $bestSupplier['price'],
                 'cost' => $cost,
                 'profit' => $profit,
@@ -298,22 +300,25 @@ class Penawaran extends Component
             $q->where('nama', 'like', '%' . $materialName . '%')
               ->whereNotNull('harga_per_satuan')
               ->orderBy('harga_per_satuan', 'asc');
-        }])->get();
+        }, 'picPurchasing'])->get();
 
         $bestPrice = PHP_INT_MAX;
         $bestSupplierName = 'N/A';
+        $bestPicName = null;
 
         foreach ($suppliers as $supplier) {
             foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
                 if ($bahanBaku->harga_per_satuan < $bestPrice) {
                     $bestPrice = $bahanBaku->harga_per_satuan;
                     $bestSupplierName = $supplier->nama;
+                    $bestPicName = $supplier->picPurchasing ? $supplier->picPurchasing->nama : null;
                 }
             }
         }
 
         return [
             'supplier' => $bestSupplierName,
+            'pic_name' => $bestPicName,
             'price' => $bestPrice === PHP_INT_MAX ? 0 : $bestPrice,
         ];
     }
@@ -325,7 +330,7 @@ class Penawaran extends Component
             $q->where('nama', 'like', '%' . $materialName . '%')
               ->whereNotNull('harga_per_satuan')
               ->orderBy('harga_per_satuan', 'asc');
-        }])->get();
+        }, 'picPurchasing'])->get();
 
         $supplierOptions = [];
 
@@ -333,6 +338,7 @@ class Penawaran extends Component
             foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
                 $supplierOptions[] = [
                     'supplier' => $supplier->nama,
+                    'pic_name' => $supplier->picPurchasing ? $supplier->picPurchasing->nama : null,
                     'supplier_id' => $bahanBaku->id,
                     'price' => $bahanBaku->harga_per_satuan,
                     'satuan' => $bahanBaku->satuan,

@@ -464,7 +464,11 @@
                                                                     @endif
                                                                 </div>
                                                                 <div class="text-xs {{ $supplier['is_best'] ? 'text-green-600' : 'text-gray-500' }}">
-                                                                    Option {{ $supplierIndex + 1 }}
+                                                                    @if($supplier['pic_name'])
+                                                                        PIC: {{ $supplier['pic_name'] }} • Option {{ $supplierIndex + 1 }}
+                                                                    @else
+                                                                        Option {{ $supplierIndex + 1 }}
+                                                                    @endif
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -583,7 +587,7 @@
                                 wire:target="buatOrder"
                             >
                                 <i class="fas fa-shopping-cart mr-2"></i>
-                                <span wire:loading.remove wire:target="buatOrder">Buat Order</span>
+                                <span wire:loading.remove wire:target="buatOrder">Buat Penawaran</span>
                                 <span wire:loading wire:target="buatOrder">Memproses...</span>
                             </button>
                         </div>
@@ -1225,9 +1229,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             const colorIndex = supplierIndex % colorPalette.length;
                             const color = colorPalette[colorIndex];
                             const extendedHistory = extrapolateToToday(supplier.price_history, `${material.nama} - ${supplier.supplier_name}`, true);
+                            const supplierLabel = supplier.pic_name 
+                                ? `${material.nama} - ${supplier.supplier_name} (PIC: ${supplier.pic_name})${supplier.is_best ? ' [Terbaik]' : ''}`
+                                : `${material.nama} - ${supplier.supplier_name}${supplier.is_best ? ' (Terbaik)' : ''}`;
                             
                             supplierDatasets.push({
-                                label: `${material.nama} - ${supplier.supplier_name}${supplier.is_best ? ' (Terbaik)' : ''}`,
+                                label: supplierLabel,
                                 data: extendedHistory,
                                 borderColor: supplier.is_best ? colorPalette[0].border : color.border,
                                 backgroundColor: supplier.is_best ? colorPalette[0].bg : color.bg,
@@ -1247,8 +1254,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Fallback to single supplier price history if no supplier_options
                 if ((!material.supplier_options || material.supplier_options.length === 0) && material.supplier_price_history) {
                     const extendedHistory = extrapolateToToday(material.supplier_price_history, `${material.nama} - ${material.best_supplier}`, true);
+                    const fallbackLabel = material.best_supplier_pic 
+                        ? `${material.nama} - ${material.best_supplier} (PIC: ${material.best_supplier_pic})`
+                        : `${material.nama} - ${material.best_supplier}`;
                     supplierDatasets.push({
-                        label: `${material.nama} - ${material.best_supplier}`,
+                        label: fallbackLabel,
                         data: extendedHistory,
                         borderColor: colorPalette[0].border,
                         backgroundColor: colorPalette[0].bg,

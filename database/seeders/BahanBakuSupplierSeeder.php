@@ -92,17 +92,12 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
         ];
 
-        foreach ($suppliers as $index => $supplier) {
-            // Each supplier gets 3-4 different materials to ensure variety
-            $startIndex = ($index * 2) % count($bahanBakuData);
-            $selectedBahanBaku = array_slice($bahanBakuData, $startIndex, 3);
-
-            // If we don't have enough materials from slice, wrap around
-            if (count($selectedBahanBaku) < 3) {
-                $remaining = array_slice($bahanBakuData, 0, 3 - count($selectedBahanBaku));
-                $selectedBahanBaku = array_merge($selectedBahanBaku, $remaining);
-            }
-            foreach ($selectedBahanBaku as $bahanBaku) {
+        // Create materials for each supplier ensuring multiple suppliers per material
+        foreach ($bahanBakuData as $materialIndex => $bahanBaku) {
+            // Each material will be offered by 3-5 random suppliers with different prices
+            $suppliersForMaterial = $suppliers->random(rand(3, min(5, $suppliers->count())));
+            
+            foreach ($suppliersForMaterial as $supplierIndex => $supplier) {
                 // Cek apakah bahan baku ini sudah ada untuk supplier ini
                 $existingBahanBaku = BahanBakuSupplier::where('supplier_id', $supplier->id)
                     ->where('nama', $bahanBaku['nama'])
@@ -112,14 +107,32 @@ class BahanBakuSupplierSeeder extends Seeder
                     // Generate unique slug for this bahan baku
                     $slug = BahanBakuSupplier::generateUniqueSlug($bahanBaku['nama'], $supplier->id);
                     
+                    // Create price variation for each supplier
+                    // First supplier gets the lowest price (best), others get progressively higher
+                    $priceMultiplier = 1 + ($supplierIndex * 0.12); // 0%, 12%, 24%, 36%, 48% markup
+                    $basePrice = $bahanBaku['harga_min'];
+                    $finalPrice = round($basePrice * $priceMultiplier, -2); // Round to nearest 100
+                    
+                    // Add some randomness to make it more realistic
+                    $randomVariation = rand(-5, 5) / 100; // ±5% random variation
+                    $finalPrice = round($finalPrice * (1 + $randomVariation), -2);
+                    
+                    // Ensure price is within reasonable bounds
+                    $finalPrice = max($bahanBaku['harga_min'], min($bahanBaku['harga_max'], $finalPrice));
+                    
+                    // Stock variation
+                    $stockVariation = $bahanBaku['stok_min'] + rand(0, $bahanBaku['stok_max'] - $bahanBaku['stok_min']);
+                    
                     BahanBakuSupplier::create([
                         'supplier_id' => $supplier->id,
                         'nama' => $bahanBaku['nama'],
                         'slug' => $slug,
                         'satuan' => $bahanBaku['satuan'],
-                        'harga_per_satuan' => $bahanBaku['harga_min'],
-                        'stok' => $bahanBaku['stok_min'],
+                        'harga_per_satuan' => $finalPrice,
+                        'stok' => $stockVariation,
                     ]);
+                    
+                    $this->command->info("Created: {$bahanBaku['nama']} for {$supplier->nama} at Rp " . number_format($finalPrice));
                 } else if (empty($existingBahanBaku->slug)) {
                     // Update slug jika bahan baku sudah ada tapi belum memiliki slug
                     $slug = BahanBakuSupplier::generateUniqueSlug($existingBahanBaku->nama, $existingBahanBaku->supplier_id, $existingBahanBaku->id);

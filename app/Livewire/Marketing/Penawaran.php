@@ -205,15 +205,36 @@ class Penawaran extends Component
         foreach ($this->selectedMaterials as $material) {
             $revenue = $material['klien_price'] * $material['quantity'];
 
-            // Get best supplier price for this material
+            // Get all suppliers for this material with their prices and margins
+            $allSuppliersData = $this->getAllSuppliersForMaterial($material['nama']);
             $bestSupplier = $this->getBestSupplierPrice($material['nama']);
+            
             $cost = $bestSupplier['price'] * $material['quantity'];
             $profit = $revenue - $cost;
             $margin = $revenue > 0 ? ($profit / $revenue) * 100 : 0;
 
-            // Get price history for both client and supplier
+            // Get price history for both client and best supplier
             $klienPriceHistory = $this->getKlienPriceHistory($material['material_id']);
             $supplierPriceHistory = $this->getSupplierPriceHistory($material['nama']);
+
+            // Calculate margin analysis for each supplier
+            $supplierMargins = [];
+            foreach ($allSuppliersData as $supplierData) {
+                $supplierCost = $supplierData['price'] * $material['quantity'];
+                $supplierProfit = $revenue - $supplierCost;
+                $supplierMargin = $revenue > 0 ? ($supplierProfit / $revenue) * 100 : 0;
+                
+                $supplierMargins[] = [
+                    'supplier_name' => $supplierData['supplier'],
+                    'supplier_id' => $supplierData['supplier_id'],
+                    'price' => $supplierData['price'],
+                    'cost' => $supplierCost,
+                    'profit' => $supplierProfit,
+                    'margin_percent' => $supplierMargin,
+                    'is_best' => $supplierData['supplier'] === $bestSupplier['supplier'],
+                    'price_history' => $this->getSupplierSpecificPriceHistory($supplierData['supplier_id'])
+                ];
+            }
 
             $this->marginAnalysis[] = [
                 'nama' => $material['nama'],
@@ -226,6 +247,7 @@ class Penawaran extends Component
                 'cost' => $cost,
                 'profit' => $profit,
                 'margin_percent' => $margin,
+                'supplier_options' => $supplierMargins,
                 'klien_price_history' => $klienPriceHistory,
                 'supplier_price_history' => $supplierPriceHistory,
             ];
@@ -268,6 +290,59 @@ class Penawaran extends Component
             'supplier' => $bestSupplierName,
             'price' => $bestPrice === PHP_INT_MAX ? 0 : $bestPrice,
         ];
+    }
+
+    private function getAllSuppliersForMaterial($materialName)
+    {
+        // Get all suppliers that have this material with their prices
+        $suppliers = Supplier::with(['bahanBakuSuppliers' => function($q) use ($materialName) {
+            $q->where('nama', 'like', '%' . $materialName . '%')
+              ->whereNotNull('harga_per_satuan')
+              ->orderBy('harga_per_satuan', 'asc');
+        }])->get();
+
+        $supplierOptions = [];
+
+        foreach ($suppliers as $supplier) {
+            foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
+                $supplierOptions[] = [
+                    'supplier' => $supplier->nama,
+                    'supplier_id' => $bahanBaku->id,
+                    'price' => $bahanBaku->harga_per_satuan,
+                    'satuan' => $bahanBaku->satuan,
+                    'stok' => $bahanBaku->stok,
+                ];
+            }
+        }
+
+        // Sort by price (cheapest first)
+        usort($supplierOptions, function($a, $b) {
+            return $a['price'] <=> $b['price'];
+        });
+
+        return $supplierOptions;
+    }
+
+    private function getSupplierSpecificPriceHistory($bahanBakuSupplierId)
+    {
+        // Get price history for a specific supplier material
+        $supplierMaterial = \App\Models\BahanBakuSupplier::with(['riwayatHarga' => function($q) {
+            $q->orderBy('tanggal_perubahan', 'asc')->limit(30); // Last 30 records
+        }])
+            ->where('id', $bahanBakuSupplierId)
+            ->first();
+
+        if (!$supplierMaterial || !$supplierMaterial->riwayatHarga) {
+            return [];
+        }
+
+        return $supplierMaterial->riwayatHarga->map(function($history) {
+            return [
+                'tanggal' => $history->tanggal_perubahan->format('Y-m-d'),
+                'harga' => (float) $history->harga_baru,
+                'formatted_tanggal' => $history->tanggal_perubahan->format('d M'),
+            ];
+        })->toArray();
     }
 
     private function getKlienPriceHistory($materialId)

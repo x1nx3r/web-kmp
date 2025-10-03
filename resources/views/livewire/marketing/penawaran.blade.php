@@ -23,9 +23,89 @@
     </div>
 
     <div class="p-6 space-y-6">
-        <div class="grid grid-cols-12 gap-6">
-            {{-- Left Sidebar - Client & Material Selection --}}
-            <div class="col-span-4 space-y-6">
+        {{-- Main Charts Section (Emphasized) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {{-- Client Prices Chart --}}
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200">
+                <div class="border-b border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-chart-line text-blue-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Tren Harga Klien</h3>
+                                <p class="text-sm text-gray-500 mt-1">Historical client pricing trends</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            <span class="text-xs text-gray-600">Client Prices</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="h-80" id="klien-chart-container">
+                        <canvas id="klienPriceChart" class="w-full h-full"></canvas>
+                        <div id="klien-placeholder" class="flex items-center justify-center h-full text-center text-gray-500" style="display: none;">
+                            <div>
+                                <div class="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-chart-line text-blue-500 text-2xl"></i>
+                                </div>
+                                <h4 class="text-lg font-medium text-gray-700 mb-2">Pilih material untuk melihat tren harga</h4>
+                                <p class="text-sm text-gray-500">Grafik akan menampilkan riwayat harga klien</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Supplier Prices Chart --}}
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200">
+                <div class="border-b border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-chart-line text-orange-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Perbandingan Harga Supplier</h3>
+                                <p class="text-sm text-gray-500 mt-1">Multiple supplier price comparison</p>
+                            </div>
+                        </div>
+                        <div class="flex space-x-3">
+                            <div class="flex items-center text-xs">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
+                                <span class="text-gray-600">Terbaik</span>
+                            </div>
+                            <div class="flex items-center text-xs">
+                                <div class="w-3 h-3 bg-orange-500 rounded-full mr-1"></div>
+                                <span class="text-gray-600">Alternatif</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="h-80" id="supplier-chart-container">
+                        <canvas id="supplierPriceChart" class="w-full h-full"></canvas>
+                        <div id="supplier-placeholder" class="flex items-center justify-center h-full text-center text-gray-500" style="display: none;">
+                            <div>
+                                <div class="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-chart-line text-orange-500 text-2xl"></i>
+                                </div>
+                                <h4 class="text-lg font-medium text-gray-700 mb-2">Pilih material untuk melihat perbandingan supplier</h4>
+                                <p class="text-sm text-gray-500">Grafik akan menampilkan harga dari multiple supplier</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Secondary Content Layout --}}
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {{-- Left Section - Client & Material Selection --}}
+            <div class="xl:col-span-1 space-y-6">
                 {{-- Client Selection --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="border-b border-gray-200 p-4">
@@ -302,127 +382,40 @@
                 </div>
             </div>
 
-            {{-- Main Dashboard --}}
-            <div class="col-span-8 space-y-6">
-                {{-- Header Stats --}}
-                <div class="grid grid-cols-4 gap-4">
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Pendapatan</div>
-                                <div class="text-xl font-bold text-green-600">
-                                    Rp {{ number_format($totalRevenue, 0, ',', '.') }}
-                                </div>
-                            </div>
-                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-arrow-up text-green-600"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Biaya</div>
-                                <div class="text-xl font-bold text-red-600">
-                                    Rp {{ number_format($totalCost, 0, ',', '.') }}
-                                </div>
-                            </div>
-                            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-arrow-down text-red-600"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Keuntungan</div>
-                                <div class="text-xl font-bold {{ $totalProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    Rp {{ number_format($totalProfit, 0, ',', '.') }}
-                                </div>
-                            </div>
-                            <div class="w-10 h-10 {{ $totalProfit >= 0 ? 'bg-green-100' : 'bg-red-100' }} rounded-lg flex items-center justify-center">
-                                <i class="fas fa-{{ $totalProfit >= 0 ? 'trophy' : 'exclamation-triangle' }} {{ $totalProfit >= 0 ? 'text-green-600' : 'text-red-600' }}"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Margin Keseluruhan</div>
-                                <div class="text-xl font-bold {{ $overallMargin >= 0 ? 'text-blue-600' : 'text-red-600' }}">
-                                    {{ number_format($overallMargin, 1) }}%
-                                </div>
-                            </div>
-                            <div class="w-10 h-10 {{ $overallMargin >= 0 ? 'bg-blue-100' : 'bg-red-100' }} rounded-lg flex items-center justify-center">
-                                <i class="fas fa-percentage {{ $overallMargin >= 0 ? 'text-blue-600' : 'text-red-600' }}"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Price Comparison Charts --}}
-                <div class="grid grid-cols-2 gap-6">
-                    {{-- Client Prices Chart --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div class="border-b border-gray-200 p-4">
-                            <div class="flex items-center">
-                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-chart-line text-blue-600 text-sm"></i>
-                                </div>
-                                <h3 class="font-semibold text-gray-900">Tren Harga Klien</h3>
-                            </div>
-                        </div>
-                        <div class="p-4">
-                            <div class="h-64" id="klien-chart-container">
-                                <canvas id="klienPriceChart" class="w-full h-full"></canvas>
-                                <div id="klien-placeholder" class="flex items-center justify-center h-full text-center text-gray-500" style="display: none;">
-                                    <div>
-                                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                                            <i class="fas fa-chart-line text-blue-500 text-lg"></i>
-                                        </div>
-                                        <p class="font-medium text-gray-700">Pilih material untuk melihat tren harga</p>
-                                        <p class="text-sm text-gray-500 mt-1">Grafik akan menampilkan riwayat harga klien</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Supplier Prices Chart --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div class="border-b border-gray-200 p-4">
-                            <div class="flex items-center">
-                                <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-chart-line text-orange-600 text-sm"></i>
-                                </div>
-                                <h3 class="font-semibold text-gray-900">Tren Harga Supplier Terbaik</h3>
-                            </div>
-                        </div>
-                        <div class="p-4">
-                            <div class="h-64" id="supplier-chart-container">
-                                <canvas id="supplierPriceChart" class="w-full h-full"></canvas>
-                                <div id="supplier-placeholder" class="flex items-center justify-center h-full text-center text-gray-500" style="display: none;">
-                                    <div>
-                                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                                            <i class="fas fa-chart-line text-orange-500 text-lg"></i>
-                                        </div>
-                                        <p class="font-medium text-gray-700">Pilih material untuk melihat tren harga</p>
-                                        <p class="text-sm text-gray-500 mt-1">Grafik akan menampilkan riwayat harga supplier</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            {{-- Right Section - Analysis Table --}}
+            <div class="xl:col-span-2">
                 {{-- Detailed Analysis Table --}}
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="border-b border-gray-200 p-4">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-table text-gray-600 text-sm"></i>
+                <div class="bg-white rounded-xl shadow-lg border border-gray-200">
+                    <div class="border-b border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center mr-4">
+                                    <i class="fas fa-table text-gray-600 text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Analisis Margin Detail</h3>
+                                    <p class="text-sm text-gray-500 mt-1">Detailed margin analysis per material</p>
+                                </div>
                             </div>
-                            <h3 class="font-semibold text-gray-900">Analisis Margin Detail</h3>
+                            {{-- Summary Stats --}}
+                            <div class="flex space-x-4 text-sm">
+                                <div class="text-center">
+                                    <div class="font-semibold text-green-600">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</div>
+                                    <div class="text-xs text-gray-500">Revenue</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="font-semibold text-red-600">Rp {{ number_format($totalCost, 0, ',', '.') }}</div>
+                                    <div class="text-xs text-gray-500">Cost</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="font-semibold {{ $totalProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">Rp {{ number_format($totalProfit, 0, ',', '.') }}</div>
+                                    <div class="text-xs text-gray-500">Profit</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="font-semibold {{ $overallMargin >= 0 ? 'text-blue-600' : 'text-red-600' }}">{{ number_format($overallMargin, 1) }}%</div>
+                                    <div class="text-xs text-gray-500">Margin</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="overflow-x-auto">
@@ -432,10 +425,9 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Klien</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Terbaik</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Supplier</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Options</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pendapatan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biaya</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biaya Terbaik</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keuntungan</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
                                 </tr>
@@ -457,14 +449,41 @@
                                         <td class="px-4 py-4 text-sm font-medium text-gray-900">{{ number_format($analysis['quantity']) }}</td>
                                         <td class="px-4 py-4 text-sm font-medium text-gray-900">Rp {{ number_format($analysis['klien_price'], 0, ',', '.') }}</td>
                                         <td class="px-4 py-4">
-                                            <div class="flex items-center">
-                                                <div class="w-6 h-6 bg-orange-100 rounded flex items-center justify-center mr-2">
-                                                    <i class="fas fa-industry text-orange-600 text-xs"></i>
-                                                </div>
-                                                <span class="text-sm font-medium text-gray-900">{{ $analysis['best_supplier'] }}</span>
+                                            {{-- Multiple Supplier Options --}}
+                                            <div class="space-y-1.5 max-w-xs">
+                                                @forelse($analysis['supplier_options'] ?? [] as $supplier)
+                                                    <div class="flex items-center justify-between p-2 rounded-lg {{ $supplier['is_best'] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }} text-xs">
+                                                        <div class="flex items-center min-w-0">
+                                                            <div class="w-4 h-4 {{ $supplier['is_best'] ? 'bg-green-100' : 'bg-orange-100' }} rounded flex items-center justify-center mr-2 flex-shrink-0">
+                                                                @if($supplier['is_best'])
+                                                                    <i class="fas fa-crown text-green-600 text-xs"></i>
+                                                                @else
+                                                                    <i class="fas fa-industry text-orange-600 text-xs"></i>
+                                                                @endif
+                                                            </div>
+                                                            <div class="min-w-0 flex-1">
+                                                                <div class="font-medium {{ $supplier['is_best'] ? 'text-green-800' : 'text-gray-900' }} truncate">
+                                                                    {{ Str::limit($supplier['supplier_name'], 12) }}
+                                                                </div>
+                                                                <div class="text-xs {{ $supplier['is_best'] ? 'text-green-600' : 'text-gray-500' }}">
+                                                                    Rp {{ number_format($supplier['price'], 0, ',', '.') }}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="text-right ml-2 flex-shrink-0">
+                                                            <div class="text-xs font-medium {{ $supplier['margin_percent'] >= 20 ? 'text-green-600' : ($supplier['margin_percent'] >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                                {{ number_format($supplier['margin_percent'], 1) }}%
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @empty
+                                                    <div class="flex items-center text-gray-500 text-xs p-2">
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                        No suppliers found
+                                                    </div>
+                                                @endforelse
                                             </div>
                                         </td>
-                                        <td class="px-4 py-4 text-sm font-medium text-gray-900">Rp {{ number_format($analysis['supplier_price'], 0, ',', '.') }}</td>
                                         <td class="px-4 py-4">
                                             <span class="text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
                                                 Rp {{ number_format($analysis['revenue'], 0, ',', '.') }}
@@ -488,13 +507,13 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="px-4 py-12 text-center text-gray-500">
+                                        <td colspan="8" class="px-4 py-12 text-center text-gray-500">
                                             <div class="flex flex-col items-center">
-                                                <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+                                                <div class="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
                                                     <i class="fas fa-table text-gray-400 text-2xl"></i>
                                                 </div>
-                                                <p class="font-medium">Belum ada data analisis</p>
-                                                <p class="text-sm mt-1">Tambahkan material untuk melihat analisis detail margin</p>
+                                                <h4 class="text-lg font-medium text-gray-700 mb-2">Belum ada data analisis</h4>
+                                                <p class="text-sm text-gray-500">Tambahkan material untuk melihat analisis detail margin</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -940,25 +959,64 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Supplier Price Chart
+        // Supplier Price Chart - Enhanced for Multiple Suppliers
         if (supplierCtx) {
-            const supplierData = dataToUse.map(item => ({
-                label: item.nama,
-                data: item.supplier_price_history || [],
-                borderColor: 'rgb(249, 115, 22)',
-                backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: 'rgb(249, 115, 22)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-            }));
+            // Create datasets for multiple suppliers per material
+            const supplierDatasets = [];
+            const colorPalette = [
+                { border: 'rgb(16, 185, 129)', bg: 'rgba(16, 185, 129, 0.1)' }, // Best supplier - green
+                { border: 'rgb(249, 115, 22)', bg: 'rgba(249, 115, 22, 0.1)' }, // Alternative - orange
+                { border: 'rgb(139, 92, 246)', bg: 'rgba(139, 92, 246, 0.1)' }, // Alternative - purple
+                { border: 'rgb(236, 72, 153)', bg: 'rgba(236, 72, 153, 0.1)' }, // Alternative - pink
+                { border: 'rgb(14, 165, 233)', bg: 'rgba(14, 165, 233, 0.1)' }, // Alternative - blue
+            ];
 
-            // Get all unique dates for x-axis
+            dataToUse.forEach((material, materialIndex) => {
+                if (material.supplier_options && material.supplier_options.length > 0) {
+                    material.supplier_options.forEach((supplier, supplierIndex) => {
+                        if (supplier.price_history && supplier.price_history.length > 0) {
+                            const colorIndex = supplierIndex % colorPalette.length;
+                            const color = colorPalette[colorIndex];
+                            
+                            supplierDatasets.push({
+                                label: `${material.nama} - ${supplier.supplier_name}${supplier.is_best ? ' (Terbaik)' : ''}`,
+                                data: supplier.price_history,
+                                borderColor: supplier.is_best ? colorPalette[0].border : color.border,
+                                backgroundColor: supplier.is_best ? colorPalette[0].bg : color.bg,
+                                borderWidth: supplier.is_best ? 3 : 2,
+                                fill: false,
+                                tension: 0.4,
+                                pointRadius: supplier.is_best ? 5 : 4,
+                                pointBackgroundColor: supplier.is_best ? colorPalette[0].border : color.border,
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                borderDash: supplier.is_best ? [] : [5, 5], // Dashed line for non-best suppliers
+                            });
+                        }
+                    });
+                }
+                
+                // Fallback to single supplier price history if no supplier_options
+                if ((!material.supplier_options || material.supplier_options.length === 0) && material.supplier_price_history) {
+                    supplierDatasets.push({
+                        label: `${material.nama} - ${material.best_supplier}`,
+                        data: material.supplier_price_history,
+                        borderColor: colorPalette[0].border,
+                        backgroundColor: colorPalette[0].bg,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: colorPalette[0].border,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                    });
+                }
+            });
+
+            // Get all unique dates for x-axis from all suppliers
             const allSupplierDates = new Set();
-            supplierData.forEach(dataset => {
+            supplierDatasets.forEach(dataset => {
                 dataset.data.forEach(point => {
                     allSupplierDates.add(point.formatted_tanggal);
                 });
@@ -966,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const supplierLabels = Array.from(allSupplierDates).sort();
 
             // Transform data for Chart.js format
-            const supplierDatasets = supplierData.map(dataset => ({
+            const finalSupplierDatasets = supplierDatasets.map(dataset => ({
                 ...dataset,
                 data: supplierLabels.map(label => {
                     const point = dataset.data.find(p => p.formatted_tanggal === label);
@@ -978,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 type: 'line',
                 data: {
                     labels: supplierLabels,
-                    datasets: supplierDatasets
+                    datasets: finalSupplierDatasets
                 },
                 options: {
                     responsive: true,
@@ -994,7 +1052,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             labels: {
                                 usePointStyle: true,
                                 pointStyle: 'circle',
-                                font: { size: 11 }
+                                font: { size: 10 },
+                                filter: function(item, chart) {
+                                    // Show only first 6 suppliers in legend to avoid clutter
+                                    return item.datasetIndex < 6;
+                                }
                             }
                         },
                         tooltip: {
@@ -1006,7 +1068,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             cornerRadius: 6,
                             callbacks: {
                                 label: function(context) {
-                                    return context.dataset.label + ': Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                    const label = context.dataset.label || '';
+                                    const value = 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                    return label + ': ' + value;
+                                },
+                                afterLabel: function(context) {
+                                    // Show if this is the best supplier
+                                    if (context.dataset.label.includes('(Terbaik)')) {
+                                        return '👑 Supplier Terbaik';
+                                    }
+                                    return '';
                                 }
                             }
                         }

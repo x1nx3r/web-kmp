@@ -76,7 +76,7 @@
                 <button onclick="toggleDropdown('purchasing')" class="flex items-center justify-between w-full {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
                         <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') ? 'text-green-600' : '' }}"></i>
-                        <span class="font-medium">Purchasing</span>
+                        <span class="font-medium">Procurement</span>
                     </div>
                     <i id="purchasing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
                 </button>
@@ -257,7 +257,7 @@
                 <button onclick="toggleMobileDropdown('purchasing')" class="flex items-center justify-between w-full {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
                         <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') ? 'text-green-600' : '' }}"></i>
-                        <span class="font-medium">Purchasing</span>
+                        <span class="font-medium">Procurement</span>
                     </div>
                     <i id="mobile-purchasing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
                 </button>

@@ -48,18 +48,28 @@
 </div>
 
 {{-- Tab Content --}}
-<div class="tab-content">
-    <div id="content-buat-forecasting" class="tab-pane active">
-        @include('pages.purchasing.forecast.buat-forecasting')
-    </div>
-    <div id="content-pending" class="tab-pane hidden">
-        @include('pages.purchasing.forecast.pending-forecasting')
-    </div>
-    <div id="content-sukses" class="tab-pane hidden">
-        @include('pages.purchasing.forecast.sukses-forecasting')
-    </div>
-    <div id="content-gagal" class="tab-pane hidden">
-        @include('pages.purchasing.forecast.gagal-forecasting')
+<div class="tab-content-wrapper">
+    <div class="tab-content">
+        <div id="content-buat-forecasting" class="tab-pane active" style="display: block;">
+            <div class="tab-content-inner">
+                @include('pages.purchasing.forecast.buat-forecasting')
+            </div>
+        </div>
+        <div id="content-pending" class="tab-pane hidden" style="display: none;">
+            <div class="tab-content-inner">
+                @include('pages.purchasing.forecast.pending-forecasting')
+            </div>
+        </div>
+        <div id="content-sukses" class="tab-pane hidden" style="display: none;">
+            <div class="tab-content-inner">
+                @include('pages.purchasing.forecast.sukses-forecasting')
+            </div>
+        </div>
+        <div id="content-gagal" class="tab-pane hidden" style="display: none;">
+            <div class="tab-content-inner">
+                @include('pages.purchasing.forecast.gagal-forecasting')
+            </div>
+        </div>
     </div>
 </div>
 
@@ -74,6 +84,8 @@ function getUrlParameter(name) {
 // Function to update breadcrumb based on active tab
 function updateBreadcrumb(tabName) {
     const breadcrumbContainer = document.getElementById('dynamicBreadcrumb');
+    if (!breadcrumbContainer) return;
+    
     let tabTitle = 'Forecasting';
     
     switch(tabName) {
@@ -93,29 +105,11 @@ function updateBreadcrumb(tabName) {
             tabTitle = 'Forecasting - Buat Forecasting';
     }
     
-    // Update breadcrumb HTML
-    breadcrumbContainer.innerHTML = `
-        <nav class="flex mb-6" aria-label="Breadcrumb">
-            <ol class="inline-flex items-center space-x-1 md:space-x-3">
-                <li class="inline-flex items-center">
-                    <a href="#" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-green-600">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-                        </svg>
-                        Home
-                    </a>
-                </li>
-                <li>
-                    <div class="flex items-center">
-                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">${tabTitle}</span>
-                    </div>
-                </li>
-            </ol>
-        </nav>
-    `;
+    // Safely update only the breadcrumb text without using innerHTML
+    const breadcrumbSpan = breadcrumbContainer.querySelector('span.text-gray-500');
+    if (breadcrumbSpan) {
+        breadcrumbSpan.textContent = tabTitle;
+    }
 }
 
 // Function to update URL with tab parameter
@@ -128,16 +122,20 @@ function updateUrl(tabName) {
 }
 
 function switchTab(tabName) {
+    console.log('Switching to tab:', tabName);
+    
     // Remove active class from all tabs
     document.querySelectorAll('.tab-button').forEach(tab => {
         tab.classList.remove('active', 'border-green-500', 'text-green-600');
         tab.classList.add('border-transparent', 'text-gray-500');
     });
     
-    // Hide all tab content
+    // Hide all tab content properly
     document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.add('hidden');
         pane.classList.remove('active');
+        pane.style.display = 'none'; // Force hide
+        console.log('Hiding pane:', pane.id);
     });
     
     // Show active tab content
@@ -145,6 +143,15 @@ function switchTab(tabName) {
     if (activeContent) {
         activeContent.classList.remove('hidden');
         activeContent.classList.add('active');
+        activeContent.style.display = 'block'; // Force show
+        console.log('Showing pane:', activeContent.id);
+        
+        // Ensure the element stays within its parent
+        const parent = activeContent.parentElement;
+        if (parent && !parent.contains(activeContent)) {
+            console.warn('Element moved outside parent, re-appending');
+            parent.appendChild(activeContent);
+        }
     }
     
     // Add active class to clicked tab
@@ -177,8 +184,70 @@ document.addEventListener('DOMContentLoaded', function() {
 .tab-button.active {
     @apply border-green-800 text-green-600;
 }
+
+/* Tab content wrapper with strict containment */
+.tab-content-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    contain: layout style paint;
+}
+
+.tab-content {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    contain: layout style;
+}
+
+.tab-content-inner {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.tab-pane {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    contain: layout;
+}
+
 .tab-pane.active {
-    @apply block;
+    display: block !important;
+}
+
+.tab-pane.hidden {
+    display: none !important;
+}
+
+/* Specific containment for each tab */
+#content-buat-forecasting,
+#content-pending,
+#content-sukses,
+#content-gagal {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    isolation: isolate;
+}
+
+/* Force containment for all nested elements */
+.tab-pane * {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Additional safety for large elements */
+.tab-pane .space-y-6,
+.tab-pane .bg-white {
+    position: relative;
+    max-width: 100%;
 }
 </style>
 

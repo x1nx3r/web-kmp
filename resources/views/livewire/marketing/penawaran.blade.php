@@ -13,10 +13,10 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <div class="text-gray-500 text-sm font-medium bg-gray-100 px-3 py-2 rounded-lg">
-                        <i class="far fa-clock mr-2"></i>
-                        {{ now()->format('d M Y, H:i') }}
-                    </div>
+                    <a href="{{ route('riwayat-penawaran') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center">
+                        <i class="fas fa-history mr-2"></i>
+                        Riwayat Penawaran
+                    </a>
                 </div>
             </div>
         </div>

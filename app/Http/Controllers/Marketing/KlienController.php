@@ -11,130 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class KlienController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Klien::query();
-
-        // Search functionality
-        if ($request->has('search') && $request->search != '') {
-            $query->search($request->search);
-        }
-
-        // Filter by location
-        if ($request->has('location') && $request->location != '') {
-            $query->where('cabang', 'like', '%' . $request->location . '%');
-        }
-
-        // Sorting: only allow specific columns and directions to prevent SQL injection
-        $allowedSorts = ['nama', 'cabang_count', 'lokasi', 'updated_at'];
-        $sort = $request->get('sort', 'nama');
-        $direction = strtolower($request->get('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
-        if (!in_array($sort, $allowedSorts)) {
-            $sort = 'nama';
-        }
-
-        // Get unique client names first to implement proper grouped pagination
-        $page = $request->get('page', 1);
-        $perPage = 10; // 10 unique client names per page
-        
-        // Get unique names with pagination
-        $uniqueNamesQuery = Klien::query()
-            ->select('nama')
-            ->distinct();
-
-        // Apply search and location filter to unique names query
-        if ($request->has('search') && $request->search != '') {
-            $uniqueNamesQuery->search($request->search);
-        }
-        if ($request->has('location') && $request->location != '') {
-            $uniqueNamesQuery->where('cabang', 'like', '%' . $request->location . '%');
-        }
-
-        // Apply sorting based on sort type
-        if ($sort === 'cabang_count') {
-            $uniqueNames = $uniqueNamesQuery
-                ->selectRaw('nama, COUNT(*) as branch_count')
-                ->groupBy('nama')
-                ->orderBy('branch_count', $direction)
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->pluck('nama')
-                ->toArray();
-        } elseif ($sort === 'lokasi') {
-            $uniqueNames = $uniqueNamesQuery
-                ->selectRaw('nama, MIN(cabang) as first_location')
-                ->groupBy('nama')
-                ->orderBy('first_location', $direction)
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->pluck('nama')
-                ->toArray();
-        } else {
-            $uniqueNames = $uniqueNamesQuery
-                ->orderBy($sort === 'updated_at' ? 'updated_at' : 'nama', $direction)
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->pluck('nama')
-                ->toArray();
-        }
-
-        // Get total count for pagination
-        $totalUniqueNames = Klien::query()
-            ->when($request->has('search') && $request->search != '', function($q) use ($request) {
-                $q->search($request->search);
-            })
-            ->when($request->has('location') && $request->location != '', function($q) use ($request) {
-                $q->where('cabang', 'like', '%' . $request->location . '%');
-            })
-            ->distinct('nama')
-            ->count();
-
-        // Now get all records for these specific names with eager loading
-        $kliens = collect();
-        if (!empty($uniqueNames)) {
-            $kliens = Klien::query()
-                ->with(['purchaseOrders.purchaseOrderBahanBakus.bahanBakuKlien'])
-                ->whereIn('nama', $uniqueNames)
-                ->orderBy($sort, $direction)
-                ->get();
-        }
-
-        // Create a custom paginator for the grouped results
-        $currentPageResults = $kliens;
-        
-        // Create pagination links manually
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
-            $currentPageResults,
-            $totalUniqueNames,
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'pageName' => 'page'
-            ]
-        );
-        
-                $paginator->appends($request->only(['search', 'location', 'sort', 'direction']));
-
-        // Get available locations for filter dropdown
-        $availableLocations = Klien::query()
-            ->whereNotNull('cabang')
-            ->where('cabang', '!=', '')
-            ->distinct()
-            ->orderBy('cabang')
-            ->pluck('cabang')
-            ->unique()
-            ->values();
-
-        return view('pages.marketing.daftar-klien', [
-            'kliens' => $paginator,
-            'availableLocations' => $availableLocations,
-            'search' => $request->get('search', ''),
-            'location' => $request->get('location', ''),
-            'sort' => $sort,
-            'direction' => $direction
-        ]);
-    }
+    // Note: index() method removed as route now uses Livewire component
     /**
      * Show the form for creating a new Klien.
      */
@@ -219,22 +96,7 @@ class KlienController extends Controller
     /**
      * Show the form for editing the specified Klien.
      */
-    public function edit(Klien $klien)
-    {
-        // Load materials for this client with their price history
-        $klien->load([
-            'bahanBakuKliens' => function($query) {
-                $query->with(['riwayatHarga' => function($q) {
-                    $q->latest('tanggal_perubahan')->take(5);
-                }]);
-            }
-        ]);
-
-        // Get all unique company names for the dropdown
-        $uniqueCompanies = Klien::distinct('nama')->orderBy('nama')->pluck('nama');
-
-        return view('pages.marketing.klien.edit', compact('klien', 'uniqueCompanies'));
-    }
+    // Note: edit() method removed as route now uses Livewire component
 
     /**
      * Update the specified Klien in storage.

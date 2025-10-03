@@ -15,7 +15,7 @@ class KlienEssentialTest extends TestCase
     {
         $response = $this->get(route('klien.index'));
         $response->assertStatus(200);
-        $response->assertViewIs('pages.marketing.daftar-klien');
+        $response->assertViewIs('pages.marketing.daftar-klien-livewire');
     }
 
     /** @test */
@@ -167,6 +167,6 @@ class KlienEssentialTest extends TestCase
         
         $response = $this->get(route('klien.edit', $klien));
         $response->assertStatus(200);
-        $response->assertViewIs('pages.marketing.klien.edit');
+        $response->assertViewIs('pages.marketing.klien.edit-livewire');
     }
 }

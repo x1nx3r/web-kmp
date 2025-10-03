@@ -45,16 +45,16 @@
                     </div>
                 </div>
                 <div class="p-6">
-                    <div class="h-80" id="klien-chart-container">
+                    <div id="klien-chart-container" class="h-48">
                         <canvas id="klienPriceChart" class="w-full h-full"></canvas>
-                        <div id="klien-placeholder" class="flex items-center justify-center h-full text-center text-gray-500" style="display: none;">
-                            <div>
-                                <div class="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                                    <i class="fas fa-chart-line text-blue-500 text-2xl"></i>
-                                </div>
-                                <h4 class="text-lg font-medium text-gray-700 mb-2">Pilih material untuk melihat tren harga</h4>
-                                <p class="text-sm text-gray-500">Grafik akan menampilkan riwayat harga klien</p>
+                    </div>
+                    <div id="klien-placeholder" class="h-48 flex items-center justify-center text-center text-gray-500" style="display: none;">
+                        <div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-chart-line text-blue-500 text-xl"></i>
                             </div>
+                            <h4 class="text-base font-medium text-gray-700 mb-1">Pilih material untuk melihat tren harga</h4>
+                            <p class="text-xs text-gray-500">Grafik akan menampilkan riwayat harga klien</p>
                         </div>
                     </div>
                 </div>
@@ -86,16 +86,16 @@
                     </div>
                 </div>
                 <div class="p-6">
-                    <div class="h-80" id="supplier-chart-container">
+                    <div id="supplier-chart-container" class="h-48">
                         <canvas id="supplierPriceChart" class="w-full h-full"></canvas>
-                        <div id="supplier-placeholder" class="flex items-center justify-center h-full text-center text-gray-500" style="display: none;">
-                            <div>
-                                <div class="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                                    <i class="fas fa-chart-line text-orange-500 text-2xl"></i>
-                                </div>
-                                <h4 class="text-lg font-medium text-gray-700 mb-2">Pilih material untuk melihat perbandingan supplier</h4>
-                                <p class="text-sm text-gray-500">Grafik akan menampilkan harga dari multiple supplier</p>
+                    </div>
+                    <div id="supplier-placeholder" class="h-48 flex items-center justify-center text-center text-gray-500" style="display: none;">
+                        <div>
+                            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-chart-line text-orange-500 text-xl"></i>
                             </div>
+                            <h4 class="text-base font-medium text-gray-700 mb-1">Pilih material untuk melihat perbandingan supplier</h4>
+                            <p class="text-xs text-gray-500">Grafik akan menampilkan harga dari multiple supplier</p>
                         </div>
                     </div>
                 </div>
@@ -608,7 +608,7 @@
                 <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full transform transition-all" @click.stop>
                     {{-- Modal Header --}}
                     <div class="border-b border-gray-200 p-6">
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between">h-
                             <div class="flex items-center">
                                 <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
                                     <i class="fas fa-plus text-purple-600 text-lg"></i>
@@ -1039,6 +1039,84 @@ document.addEventListener('DOMContentLoaded', function() {
             return sortedHistory;
         }
 
+        // ===== SYNCHRONIZED Y-AXIS CALCULATION =====
+        // Collect ALL prices from both client and supplier data BEFORE creating charts
+        const allPrices = [];
+        
+        // Collect klien prices
+        dataToUse.forEach(item => {
+            if (item.klien_price_history && item.klien_price_history.length > 0) {
+                item.klien_price_history.forEach(point => {
+                    if (point.harga) allPrices.push(point.harga);
+                });
+            }
+            // Include custom prices if set
+            if (item.is_custom_price && item.custom_price && item.custom_price > 0) {
+                allPrices.push(parseFloat(item.custom_price));
+            }
+        });
+        
+        // Collect supplier prices
+        dataToUse.forEach(item => {
+            // Check supplier_options for multiple suppliers
+            if (item.supplier_options && item.supplier_options.length > 0) {
+                item.supplier_options.forEach(supplier => {
+                    if (supplier.price_history && supplier.price_history.length > 0) {
+                        supplier.price_history.forEach(point => {
+                            if (point.harga) allPrices.push(point.harga);
+                        });
+                    }
+                });
+            }
+            // Fallback to single supplier price history
+            if (item.supplier_price_history && item.supplier_price_history.length > 0) {
+                item.supplier_price_history.forEach(point => {
+                    if (point.harga) allPrices.push(point.harga);
+                });
+            }
+        });
+        
+        // Calculate synchronized y-axis range
+        let yAxisMin = 0;
+        let yAxisMax = 100000; // Default fallback
+        
+        if (allPrices.length > 0) {
+            const minPrice = Math.min(...allPrices);
+            const maxPrice = Math.max(...allPrices);
+            
+            console.log('Price range details:', {
+                minPrice,
+                maxPrice,
+                priceRange: maxPrice - minPrice,
+                allPrices: allPrices.slice(0, 10) // Show first 10 prices for debugging
+            });
+            
+            // Add 15% padding for visual breathing room
+            const padding = (maxPrice - minPrice) * 0.15;
+            
+            // Calculate range with padding
+            let calculatedMin = minPrice - padding;
+            let calculatedMax = maxPrice + padding;
+            
+            console.log('After padding:', { calculatedMin, calculatedMax, padding });
+            
+            // Round to nice numbers based on price magnitude
+            // For prices under 100k, round to nearest 1,000
+            // For prices over 100k, round to nearest 10,000
+            const roundingFactor = maxPrice < 100000 ? 1000 : 10000;
+            
+            yAxisMin = Math.floor(calculatedMin / roundingFactor) * roundingFactor;
+            yAxisMax = Math.ceil(calculatedMax / roundingFactor) * roundingFactor;
+            
+            console.log('After rounding:', { yAxisMin, yAxisMax, roundingFactor });
+            
+            // Ensure yMin is not negative
+            yAxisMin = Math.max(0, yAxisMin);
+        }
+        
+        console.log('Final Y-axis range:', { yAxisMin, yAxisMax, totalPrices: allPrices.length });
+        // ===== END SYNCHRONIZED Y-AXIS CALCULATION =====
+
         // Client Price Chart
         if (klienCtx) {
             const klienData = dataToUse.map(item => {
@@ -1146,11 +1224,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'top',
+                            position: 'right',
                             labels: {
                                 usePointStyle: true,
                                 pointStyle: 'circle',
-                                font: { size: 11 }
+                                font: { size: 11 },
+                                padding: 10,
+                                boxWidth: 8,
+                                boxHeight: 8
                             }
                         },
                         tooltip: {
@@ -1196,6 +1277,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         },
                         y: {
+                            min: yAxisMin,
+                            max: yAxisMax,
                             grid: { color: 'rgba(156, 163, 175, 0.1)' },
                             ticks: {
                                 color: 'rgb(107, 114, 128)',
@@ -1324,11 +1407,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'top',
+                            position: 'right',
                             labels: {
                                 usePointStyle: true,
                                 pointStyle: 'circle',
                                 font: { size: 10 },
+                                padding: 10,
+                                boxWidth: 8,
+                                boxHeight: 8,
                                 filter: function(item, chart) {
                                     // Show only first 6 suppliers in legend to avoid clutter
                                     return item.datasetIndex < 6;
@@ -1372,6 +1458,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         },
                         y: {
+                            min: yAxisMin,
+                            max: yAxisMax,
                             grid: { color: 'rgba(156, 163, 175, 0.1)' },
                             ticks: {
                                 color: 'rgb(107, 114, 128)',

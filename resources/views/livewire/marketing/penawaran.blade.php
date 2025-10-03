@@ -422,89 +422,129 @@
                         <table class="w-full">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material & Supplier</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Klien</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Options</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Supplier</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pendapatan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biaya Terbaik</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biaya</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keuntungan</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
                                 @forelse($marginAnalysis as $analysis)
-                                    <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-4 py-4">
-                                            <div class="flex items-center">
-                                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                                    <i class="fas fa-cube text-blue-600 text-sm"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="font-medium text-gray-900">{{ $analysis['nama'] }}</div>
-                                                    <div class="text-sm text-gray-500">{{ $analysis['satuan'] }}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-4 text-sm font-medium text-gray-900">{{ number_format($analysis['quantity']) }}</td>
-                                        <td class="px-4 py-4 text-sm font-medium text-gray-900">Rp {{ number_format($analysis['klien_price'], 0, ',', '.') }}</td>
-                                        <td class="px-4 py-4">
-                                            {{-- Multiple Supplier Options --}}
-                                            <div class="space-y-1.5 max-w-xs">
-                                                @forelse($analysis['supplier_options'] ?? [] as $supplier)
-                                                    <div class="flex items-center justify-between p-2 rounded-lg {{ $supplier['is_best'] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }} text-xs">
-                                                        <div class="flex items-center min-w-0">
-                                                            <div class="w-4 h-4 {{ $supplier['is_best'] ? 'bg-green-100' : 'bg-orange-100' }} rounded flex items-center justify-center mr-2 flex-shrink-0">
-                                                                @if($supplier['is_best'])
-                                                                    <i class="fas fa-crown text-green-600 text-xs"></i>
-                                                                @else
-                                                                    <i class="fas fa-industry text-orange-600 text-xs"></i>
-                                                                @endif
+                                    @forelse($analysis['supplier_options'] ?? [] as $supplierIndex => $supplier)
+                                        <tr class="hover:bg-gray-50 transition-colors {{ $supplier['is_best'] ? 'bg-green-50' : '' }}">
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center">
+                                                    {{-- Material Icon --}}
+                                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-cube text-blue-600"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        {{-- Material Name (only show on first supplier) --}}
+                                                        @if($supplierIndex === 0)
+                                                            <div class="font-semibold text-gray-900">{{ $analysis['nama'] }}</div>
+                                                            <div class="text-sm text-gray-500">{{ $analysis['satuan'] }}</div>
+                                                        @else
+                                                            <div class="text-sm text-gray-400 italic">{{ $analysis['nama'] }}</div>
+                                                        @endif
+                                                        
+                                                        {{-- Supplier Info --}}
+                                                        <div class="flex items-center mt-2 p-2 {{ $supplier['is_best'] ? 'bg-green-50 border border-green-300' : 'bg-gray-50 border border-gray-200' }} rounded-lg">
+                                                            <div class="w-6 h-6 {{ $supplier['is_best'] ? 'bg-green-500' : 'bg-gray-400' }} rounded flex items-center justify-center mr-2">
+                                                                <i class="fas fa-building text-white text-xs"></i>
                                                             </div>
-                                                            <div class="min-w-0 flex-1">
-                                                                <div class="font-medium {{ $supplier['is_best'] ? 'text-green-800' : 'text-gray-900' }} truncate">
-                                                                    {{ Str::limit($supplier['supplier_name'], 12) }}
+                                                            <div class="flex-1">
+                                                                <div class="text-sm font-medium {{ $supplier['is_best'] ? 'text-green-800' : 'text-gray-900' }}">
+                                                                    {{ $supplier['supplier_name'] }}
+                                                                    @if($supplier['is_best'])
+                                                                        <span class="text-xs bg-green-600 text-white px-2 py-0.5 rounded ml-2">Best</span>
+                                                                    @endif
                                                                 </div>
                                                                 <div class="text-xs {{ $supplier['is_best'] ? 'text-green-600' : 'text-gray-500' }}">
-                                                                    Rp {{ number_format($supplier['price'], 0, ',', '.') }}
+                                                                    Option {{ $supplierIndex + 1 }}
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="text-right ml-2 flex-shrink-0">
-                                                            <div class="text-xs font-medium {{ $supplier['margin_percent'] >= 20 ? 'text-green-600' : ($supplier['margin_percent'] >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
-                                                                {{ number_format($supplier['margin_percent'], 1) }}%
-                                                            </div>
-                                                        </div>
                                                     </div>
-                                                @empty
-                                                    <div class="flex items-center text-gray-500 text-xs p-2">
-                                                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                                                        No suppliers found
-                                                    </div>
-                                                @endforelse
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-4">
-                                            <span class="text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
-                                                Rp {{ number_format($analysis['revenue'], 0, ',', '.') }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-4">
-                                            <span class="text-sm font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
-                                                Rp {{ number_format($analysis['cost'], 0, ',', '.') }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-4">
-                                            <span class="text-sm font-medium {{ $analysis['profit'] >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50' }} px-2 py-1 rounded">
-                                                Rp {{ number_format($analysis['profit'], 0, ',', '.') }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-4">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $analysis['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($analysis['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                                {{ number_format($analysis['margin_percent'], 1) }}%
-                                            </span>
-                                        </td>
-                                    </tr>
+                                                </div>
+                                            </td>
+                                            
+                                            {{-- Only show quantity on first supplier row --}}
+                                            <td class="px-4 py-4 text-sm font-medium text-gray-900">
+                                                @if($supplierIndex === 0)
+                                                    {{ number_format($analysis['quantity']) }}
+                                                @else
+                                                    <span class="text-gray-400">{{ number_format($analysis['quantity']) }}</span>
+                                                @endif
+                                            </td>
+                                            
+                                            {{-- Only show client price on first supplier row --}}
+                                            <td class="px-4 py-4 text-sm font-medium text-gray-900">
+                                                @if($supplierIndex === 0)
+                                                    Rp {{ number_format($analysis['klien_price'], 0, ',', '.') }}
+                                                    @if($analysis['is_custom_price'] ?? false)
+                                                        <span class="ml-2 text-xs bg-purple-600 text-white px-2 py-0.5 rounded">Custom</span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-gray-400">Rp {{ number_format($analysis['klien_price'], 0, ',', '.') }}</span>
+                                                @endif
+                                            </td>
+                                            
+                                            <td class="px-4 py-4 text-sm font-medium text-gray-900">
+                                                Rp {{ number_format($supplier['price'], 0, ',', '.') }}
+                                            </td>
+                                            
+                                            {{-- Only show revenue on first supplier row --}}
+                                            <td class="px-4 py-4">
+                                                @if($supplierIndex === 0)
+                                                    <span class="text-sm font-medium text-green-700 bg-green-50 px-2 py-1 rounded">
+                                                        Rp {{ number_format($analysis['revenue'], 0, ',', '.') }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-sm font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded">
+                                                        Rp {{ number_format($analysis['revenue'], 0, ',', '.') }}
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            
+                                            <td class="px-4 py-4">
+                                                <span class="text-sm font-medium text-red-700 bg-red-50 px-2 py-1 rounded">
+                                                    Rp {{ number_format($supplier['cost'], 0, ',', '.') }}
+                                                </span>
+                                            </td>
+                                            
+                                            <td class="px-4 py-4">
+                                                <span class="text-sm font-medium {{ $supplier['profit'] >= 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50' }} px-2 py-1 rounded">
+                                                    Rp {{ number_format($supplier['profit'], 0, ',', '.') }}
+                                                </span>
+                                            </td>
+                                            
+                                            <td class="px-4 py-4">
+                                                <span class="text-sm font-medium px-2 py-1 rounded {{ $supplier['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($supplier['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                                    {{ number_format($supplier['margin_percent'], 1) }}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="px-4 py-4 text-center text-gray-500">
+                                                <div class="flex items-center justify-center">
+                                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                                    No suppliers found for {{ $analysis['nama'] }}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                    
+                                    {{-- Add spacing between different materials --}}
+                                    @if(!$loop->last)
+                                        <tr class="bg-gray-100">
+                                            <td colspan="8" class="px-4 py-1"></td>
+                                        </tr>
+                                    @endif
                                 @empty
                                     <tr>
                                         <td colspan="8" class="px-4 py-12 text-center text-gray-500">
@@ -536,28 +576,16 @@
                                     <p class="text-sm text-gray-600">Lakukan tindakan berdasarkan analisis</p>
                                 </div>
                             </div>
-                            <div class="flex space-x-3">
-                                <button
-                                    wire:click="exportPdf"
-                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    wire:loading.attr="disabled"
-                                    wire:target="exportPdf"
-                                >
-                                    <i class="fas fa-file-pdf mr-2"></i>
-                                    <span wire:loading.remove wire:target="exportPdf">Export PDF</span>
-                                    <span wire:loading wire:target="exportPdf">Mengekspor...</span>
-                                </button>
-                                <button
-                                    wire:click="buatOrder"
-                                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    wire:loading.attr="disabled"
-                                    wire:target="buatOrder"
-                                >
-                                    <i class="fas fa-shopping-cart mr-2"></i>
-                                    <span wire:loading.remove wire:target="buatOrder">Buat Order</span>
-                                    <span wire:loading wire:target="buatOrder">Memproses...</span>
-                                </button>
-                            </div>
+                            <button
+                                wire:click="buatOrder"
+                                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                wire:loading.attr="disabled"
+                                wire:target="buatOrder"
+                            >
+                                <i class="fas fa-shopping-cart mr-2"></i>
+                                <span wire:loading.remove wire:target="buatOrder">Buat Order</span>
+                                <span wire:loading wire:target="buatOrder">Memproses...</span>
+                            </button>
                         </div>
                     </div>
                 @endif
@@ -682,18 +710,107 @@
                                     @endif
                                 @endif
                             </div>
-                            @if($currentMaterial && $currentQuantity > 0)
-                                @php
-                                    $selectedMaterial = $availableMaterials->find($currentMaterial);
-                                @endphp
-                                @if($selectedMaterial)
-                                    <div class="mt-2 text-sm text-gray-600">
-                                        <i class="fas fa-calculator mr-1"></i>
-                                        Estimasi biaya: <span class="font-semibold text-green-600">Rp {{ number_format($selectedMaterial->harga_approved * $currentQuantity, 0, ',', '.') }}</span>
-                                    </div>
-                                @endif
-                            @endif
                         </div>
+
+                        {{-- Custom Price Option --}}
+                        @if($currentMaterial)
+                            @php
+                                $selectedMaterial = $availableMaterials->find($currentMaterial);
+                            @endphp
+                            @if($selectedMaterial)
+                                <div>
+                                    <div class="flex items-center justify-between mb-3">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            <i class="fas fa-tags mr-1 text-gray-400"></i>
+                                            Harga Klien
+                                        </label>
+                                        <div class="flex items-center">
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" wire:model.live="useCustomPrice" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                                <span class="ml-3 text-sm text-gray-600">Custom Price</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    @if($useCustomPrice ?? false)
+                                        <div class="space-y-3">
+                                            <div class="relative">
+                                                <input
+                                                    type="number"
+                                                    wire:model="customPrice"
+                                                    min="0"
+                                                    step="100"
+                                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
+                                                           focus:border-purple-500 focus:ring-2 focus:ring-purple-200 
+                                                           transition-all duration-200 bg-white pl-12"
+                                                    placeholder="Masukkan harga custom"
+                                                >
+                                                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                                    <span class="text-gray-500 text-sm">Rp</span>
+                                                </div>
+                                            </div>
+                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                <div class="flex items-start">
+                                                    <div class="w-5 h-5 bg-blue-100 rounded flex items-center justify-center mr-2 mt-0.5">
+                                                        <i class="fas fa-info text-blue-600 text-xs"></i>
+                                                    </div>
+                                                    <div class="text-sm">
+                                                        <div class="font-medium text-blue-900">Price Comparison</div>
+                                                        <div class="text-blue-700 mt-1">
+                                                            Default: <span class="font-medium">Rp {{ number_format($selectedMaterial->harga_approved, 0, ',', '.') }}</span>
+                                                            @if(($customPrice ?? 0) > 0)
+                                                                <br>Custom: <span class="font-medium">Rp {{ number_format($customPrice, 0, ',', '.') }}</span>
+                                                                @php
+                                                                    $difference = $customPrice - $selectedMaterial->harga_approved;
+                                                                    $percentage = $selectedMaterial->harga_approved > 0 ? ($difference / $selectedMaterial->harga_approved) * 100 : 0;
+                                                                @endphp
+                                                                <br>Difference: 
+                                                                <span class="font-medium {{ $difference >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                                    {{ $difference >= 0 ? '+' : '' }}Rp {{ number_format($difference, 0, ',', '.') }} 
+                                                                    ({{ $difference >= 0 ? '+' : '' }}{{ number_format($percentage, 1) }}%)
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <div class="flex items-center text-sm text-gray-600">
+                                                <i class="fas fa-tag mr-2 text-gray-400"></i>
+                                                Using default price: <span class="font-medium text-gray-900 ml-1">Rp {{ number_format($selectedMaterial->harga_approved, 0, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        @endif
+
+                        {{-- Cost Estimation --}}
+                        @if($currentMaterial && $currentQuantity > 0)
+                            @php
+                                $selectedMaterial = $availableMaterials->find($currentMaterial);
+                                $finalPrice = ($useCustomPrice ?? false) && ($customPrice ?? 0) > 0 ? $customPrice : $selectedMaterial->harga_approved;
+                            @endphp
+                            @if($selectedMaterial)
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-calculator text-green-600"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-green-900">Total Estimation</div>
+                                            <div class="text-sm text-green-700 mt-1">
+                                                {{ number_format($currentQuantity) }} {{ $selectedMaterial->satuan }} × Rp {{ number_format($finalPrice, 0, ',', '.') }} = 
+                                                <span class="font-semibold text-green-800">Rp {{ number_format($finalPrice * $currentQuantity, 0, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        @endif
                     </div>
 
                     {{-- Modal Footer --}}
@@ -762,10 +879,37 @@ document.addEventListener('DOMContentLoaded', function() {
     let klienChart = null;
     let supplierChart = null;
 
+    // Chart state management for race condition prevention
+    let lastUpdateTime = 0;
+    let lastDataSource = null;
+
     // Function to create or update charts
     function updateCharts(dynamicData = null) {
+        // Prevent rapid successive updates
+        const now = Date.now();
+        if (now - lastUpdateTime < 50) {
+            console.log('Skipping rapid update');
+            return;
+        }
+        lastUpdateTime = now;
+
         // Use dynamic data from event if available, otherwise use server-side data
         const analysisData = dynamicData || @json($marginAnalysis);
+        
+        // Prioritize event data over server data if we recently received event data
+        const dataSource = dynamicData ? 'from event' : 'from server';
+        
+        // If we just processed event data and now getting empty server data, skip it
+        if (lastDataSource === 'from event' && dataSource === 'from server' && (!analysisData || analysisData.length === 0)) {
+            console.log('Skipping empty server data after event data');
+            return;
+        }
+        
+        lastDataSource = dataSource;
+
+        console.log('updateCharts() called at:', new Date().toISOString());
+        console.log('Data source:', dataSource);
+        console.log('Analysis data:', analysisData);
 
         // Dummy data for testing
         const dummyAnalysisData = [
@@ -812,11 +956,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Use real data instead of test data now that we fixed the backend
         const dataToUse = analysisData;
-
-        console.log('updateCharts() called at:', new Date().toISOString());
-        console.log('Data source:', dynamicData ? 'from event' : 'from server');
-        console.log('Analysis data:', analysisData);
-        console.log('Using data:', dataToUse);
 
         // Debug: log detailed chart data
         if (dataToUse && dataToUse.length > 0) {
@@ -868,21 +1007,84 @@ document.addEventListener('DOMContentLoaded', function() {
             supplierChart.destroy();
         }
 
+        // Chart Enhancement: Prepare synchronized data with today's extrapolation
+        const today = new Date();
+        const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        const todayFormatted = today.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+        
+        // Function to extrapolate to today's date
+        function extrapolateToToday(priceHistory, materialName, isSupplier = false) {
+            if (!priceHistory || priceHistory.length === 0) return [];
+            
+            // Sort by date to ensure proper order
+            const sortedHistory = [...priceHistory].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+            const lastEntry = sortedHistory[sortedHistory.length - 1];
+            const lastDate = new Date(lastEntry.tanggal);
+            
+            // If last entry is not today, extrapolate
+            if (lastDate.toISOString().split('T')[0] !== todayString) {
+                const extrapolatedEntry = {
+                    tanggal: todayString,
+                    harga: lastEntry.harga, // Keep same price for today
+                    formatted_tanggal: todayFormatted,
+                    extrapolated: true
+                };
+                sortedHistory.push(extrapolatedEntry);
+            }
+            
+            return sortedHistory;
+        }
+
         // Client Price Chart
         if (klienCtx) {
-            const klienData = dataToUse.map(item => ({
-                label: item.nama,
-                data: item.klien_price_history || [],
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: 'rgb(59, 130, 246)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-            }));
+            const klienData = dataToUse.map(item => {
+                let priceHistory = extrapolateToToday(item.klien_price_history || [], item.nama, false);
+                
+                // Add custom price as today's data point if available
+                if (item.is_custom_price && item.custom_price && item.custom_price > 0) {
+                    // Remove any existing today point to avoid duplicates
+                    priceHistory = priceHistory.filter(point => 
+                        !(point.formatted_tanggal === todayFormatted || point.is_custom)
+                    );
+                    
+                    // Add custom price as today's point
+                    const customPoint = {
+                        tanggal: todayString,
+                        harga: parseFloat(item.custom_price),
+                        formatted_tanggal: todayFormatted,
+                        is_custom: true
+                    };
+                    
+                    priceHistory.push(customPoint);
+                }
+                
+                // Sort by date to maintain chronological order
+                priceHistory.sort((a, b) => {
+                    const dateA = new Date(a.tanggal);
+                    const dateB = new Date(b.tanggal);
+                    return dateA - dateB;
+                });
+                
+                return {
+                    label: item.nama,
+                    data: priceHistory,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: (context) => {
+                        // Make custom price points larger
+                        return context.raw && context.raw.is_custom ? 6 : 4;
+                    },
+                    pointBackgroundColor: (context) => {
+                        // Make custom price points green
+                        return context.raw && context.raw.is_custom ? 'rgb(34, 197, 94)' : 'rgb(59, 130, 246)';
+                    },
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                };
+            });
 
             // Get all unique dates for x-axis
             const allDates = new Set();
@@ -891,7 +1093,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     allDates.add(point.formatted_tanggal);
                 });
             });
-            const labels = Array.from(allDates).sort();
+            const labels = Array.from(allDates).sort((a, b) => {
+                // Custom sort to ensure proper date order
+                const dateA = a === todayFormatted ? today : new Date(a + ' 2025');
+                const dateB = b === todayFormatted ? today : new Date(b + ' 2025');
+                return dateA - dateB;
+            });
 
             // Transform data for Chart.js format
             const datasets = klienData.map(dataset => ({
@@ -899,6 +1106,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 data: labels.map(label => {
                     const point = dataset.data.find(p => p.formatted_tanggal === label);
                     return point ? point.harga : null;
+                }),
+                // Add special styling for different point types
+                pointBackgroundColor: labels.map(label => {
+                    const point = dataset.data.find(p => p.formatted_tanggal === label);
+                    if (point?.is_custom) return 'rgb(16, 185, 129)'; // Green for custom
+                    if (point?.extrapolated) return 'rgb(239, 68, 68)'; // Red for extrapolated
+                    return 'rgb(59, 130, 246)'; // Blue for historical
+                }),
+                pointBorderColor: labels.map(label => {
+                    const point = dataset.data.find(p => p.formatted_tanggal === label);
+                    if (point?.is_custom) return 'rgb(16, 185, 129)';
+                    if (point?.extrapolated) return 'rgb(239, 68, 68)';
+                    return '#fff';
+                }),
+                pointRadius: labels.map(label => {
+                    const point = dataset.data.find(p => p.formatted_tanggal === label);
+                    return point?.is_custom ? 8 : 4; // Larger for custom prices
                 })
             }));
 
@@ -934,7 +1158,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             cornerRadius: 6,
                             callbacks: {
                                 label: function(context) {
-                                    return context.dataset.label + ': Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                    const value = 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                    const materialName = context.dataset.label;
+                                    const labelDate = context.label;
+                                    
+                                    // Find the material data to check for custom price
+                                    const materialData = dataToUse.find(item => item.nama === materialName);
+                                    
+                                    let suffix = '';
+                                    if (labelDate === todayFormatted) {
+                                        if (materialData && materialData.custom_price && materialData.custom_price > 0) {
+                                            suffix = ' (Custom Price)';
+                                        } else {
+                                            suffix = ' (Today)';
+                                        }
+                                    }
+                                    
+                                    return materialName + ': ' + value + suffix;
                                 }
                             }
                         }
@@ -942,7 +1182,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     scales: {
                         x: {
                             grid: { color: 'rgba(156, 163, 175, 0.1)' },
-                            ticks: { color: 'rgb(107, 114, 128)', font: { size: 10 } }
+                            ticks: { 
+                                color: 'rgb(107, 114, 128)', 
+                                font: { size: 10 },
+                                callback: function(value, index) {
+                                    const label = this.getLabelForValue(value);
+                                    return label === todayFormatted ? label + ' (Today)' : label;
+                                }
+                            }
                         },
                         y: {
                             grid: { color: 'rgba(156, 163, 175, 0.1)' },
@@ -977,10 +1224,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (supplier.price_history && supplier.price_history.length > 0) {
                             const colorIndex = supplierIndex % colorPalette.length;
                             const color = colorPalette[colorIndex];
+                            const extendedHistory = extrapolateToToday(supplier.price_history, `${material.nama} - ${supplier.supplier_name}`, true);
                             
                             supplierDatasets.push({
                                 label: `${material.nama} - ${supplier.supplier_name}${supplier.is_best ? ' (Terbaik)' : ''}`,
-                                data: supplier.price_history,
+                                data: extendedHistory,
                                 borderColor: supplier.is_best ? colorPalette[0].border : color.border,
                                 backgroundColor: supplier.is_best ? colorPalette[0].bg : color.bg,
                                 borderWidth: supplier.is_best ? 3 : 2,
@@ -998,9 +1246,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Fallback to single supplier price history if no supplier_options
                 if ((!material.supplier_options || material.supplier_options.length === 0) && material.supplier_price_history) {
+                    const extendedHistory = extrapolateToToday(material.supplier_price_history, `${material.nama} - ${material.best_supplier}`, true);
                     supplierDatasets.push({
                         label: `${material.nama} - ${material.best_supplier}`,
-                        data: material.supplier_price_history,
+                        data: extendedHistory,
                         borderColor: colorPalette[0].border,
                         backgroundColor: colorPalette[0].bg,
                         borderWidth: 2,
@@ -1021,14 +1270,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     allSupplierDates.add(point.formatted_tanggal);
                 });
             });
-            const supplierLabels = Array.from(allSupplierDates).sort();
+            const supplierLabels = Array.from(allSupplierDates).sort((a, b) => {
+                // Custom sort to ensure proper date order
+                const dateA = a === todayFormatted ? today : new Date(a + ' 2025');
+                const dateB = b === todayFormatted ? today : new Date(b + ' 2025');
+                return dateA - dateB;
+            });
 
-            // Transform data for Chart.js format
+            // Transform data for Chart.js format with extrapolation styling
             const finalSupplierDatasets = supplierDatasets.map(dataset => ({
                 ...dataset,
                 data: supplierLabels.map(label => {
                     const point = dataset.data.find(p => p.formatted_tanggal === label);
                     return point ? point.harga : null;
+                }),
+                // Add special styling for extrapolated points
+                pointBackgroundColor: supplierLabels.map(label => {
+                    const point = dataset.data.find(p => p.formatted_tanggal === label);
+                    if (point?.extrapolated) {
+                        return 'rgb(239, 68, 68)'; // Red for extrapolated
+                    }
+                    return dataset.borderColor;
+                }),
+                pointBorderColor: supplierLabels.map(label => {
+                    const point = dataset.data.find(p => p.formatted_tanggal === label);
+                    return point?.extrapolated ? 'rgb(239, 68, 68)' : '#fff';
                 })
             }));
 
@@ -1070,12 +1336,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                 label: function(context) {
                                     const label = context.dataset.label || '';
                                     const value = 'Rp ' + context.parsed.y.toLocaleString('id-ID');
-                                    return label + ': ' + value;
+                                    const isToday = context.label === todayFormatted;
+                                    return label + ': ' + value + (isToday ? ' (Today)' : '');
                                 },
                                 afterLabel: function(context) {
                                     // Show if this is the best supplier
                                     if (context.dataset.label.includes('(Terbaik)')) {
-                                        return '👑 Supplier Terbaik';
+                                        return 'Supplier Terbaik';
                                     }
                                     return '';
                                 }
@@ -1085,7 +1352,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     scales: {
                         x: {
                             grid: { color: 'rgba(156, 163, 175, 0.1)' },
-                            ticks: { color: 'rgb(107, 114, 128)', font: { size: 10 } }
+                            ticks: { 
+                                color: 'rgb(107, 114, 128)', 
+                                font: { size: 10 },
+                                callback: function(value, index) {
+                                    const label = this.getLabelForValue(value);
+                                    return label === todayFormatted ? label + ' (Today)' : label;
+                                }
+                            }
                         },
                         y: {
                             grid: { color: 'rgba(156, 163, 175, 0.1)' },
@@ -1108,7 +1382,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listen for Livewire updates and rerender charts
     document.addEventListener('livewire:morph', function() {
-        setTimeout(updateCharts, 100);
+        setTimeout(() => {
+            // Only update if we don't have recent event data
+            if (lastDataSource !== 'from event' || Date.now() - lastUpdateTime > 2000) {
+                updateCharts();
+            }
+        }, 50);
     });
 
     // Also listen for specific events when margin analysis is updated
@@ -1116,6 +1395,12 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('margin-analysis-updated event received:', event.detail);
         const newData = event.detail.analysisData || event.detail[0]?.analysisData;
         setTimeout(() => updateCharts(newData), 100);
+    });
+    
+    // Listen for chart data updates (for custom prices)
+    window.addEventListener('chart-data-updated', function(event) {
+        console.log('chart-data-updated event received');
+        setTimeout(() => updateCharts(), 100);
     });
 });
 </script>

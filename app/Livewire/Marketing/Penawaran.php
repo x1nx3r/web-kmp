@@ -19,6 +19,8 @@ class Penawaran extends Component
     public $showAddMaterialModal = false;
     public $currentMaterial = null;
     public $currentQuantity = 1;
+    public $useCustomPrice = false;
+    public $customPrice = null;
 
     // Search and filter properties
     public $klienSearch = '';
@@ -138,6 +140,8 @@ class Penawaran extends Component
         $this->showAddMaterialModal = false;
         $this->currentMaterial = null;
         $this->currentQuantity = 1;
+        $this->useCustomPrice = false;
+        $this->customPrice = null;
     }
 
     public function addMaterial()
@@ -167,16 +171,24 @@ class Penawaran extends Component
             return;
         }
 
+        // Determine final price (custom or default)
+        $finalPrice = ($this->useCustomPrice && $this->customPrice > 0) 
+            ? $this->customPrice 
+            : $material->harga_approved ?? 0;
+
         $this->selectedMaterials[] = [
             'id' => uniqid(),
             'material_id' => $material->id,
             'nama' => $material->nama,
             'satuan' => $material->satuan,
             'quantity' => $this->currentQuantity,
-            'klien_price' => $material->harga_approved ?? 0,
+            'klien_price' => $finalPrice,
+            'is_custom_price' => $this->useCustomPrice,
+            'custom_price' => $this->useCustomPrice ? $this->customPrice : null,
+            'original_price' => $material->harga_approved ?? 0,
         ];
 
-        $this->calculateMarginAnalysis();
+        $this->refreshAnalysis();
         $this->closeAddMaterialModal();
         session()->flash('message', 'Material berhasil ditambahkan');
     }
@@ -185,14 +197,23 @@ class Penawaran extends Component
     {
         unset($this->selectedMaterials[$index]);
         $this->selectedMaterials = array_values($this->selectedMaterials);
+        $this->refreshAnalysis();
+    }
+
+    public function refreshAnalysis()
+    {
+        // Recalculate margin analysis
         $this->calculateMarginAnalysis();
+        
+        // Dispatch event to update charts
+        $this->dispatch('chart-data-updated');
     }
 
     public function updateQuantity($index, $quantity)
     {
         if ($quantity > 0) {
             $this->selectedMaterials[$index]['quantity'] = $quantity;
-            $this->calculateMarginAnalysis();
+            $this->refreshAnalysis();
         }
     }
 
@@ -203,7 +224,9 @@ class Penawaran extends Component
         $this->totalCost = 0;
 
         foreach ($this->selectedMaterials as $material) {
-            $revenue = $material['klien_price'] * $material['quantity'];
+            // Use custom price if available, otherwise use client price
+            $finalPrice = $material['custom_price'] ?? $material['klien_price'];
+            $revenue = $finalPrice * $material['quantity'];
 
             // Get all suppliers for this material with their prices and margins
             $allSuppliersData = $this->getAllSuppliersForMaterial($material['nama']);
@@ -241,6 +264,9 @@ class Penawaran extends Component
                 'satuan' => $material['satuan'],
                 'quantity' => $material['quantity'],
                 'klien_price' => $material['klien_price'],
+                'is_custom_price' => $material['is_custom_price'] ?? false,
+                'custom_price' => $material['custom_price'] ?? null,
+                'original_price' => $material['original_price'] ?? $material['klien_price'],
                 'revenue' => $revenue,
                 'best_supplier' => $bestSupplier['supplier'],
                 'supplier_price' => $bestSupplier['price'],
@@ -354,17 +380,32 @@ class Penawaran extends Component
             ->where('id', $materialId)
             ->first();
 
-        if (!$klienMaterial || !$klienMaterial->riwayatHarga) {
-            return [];
+        $priceHistory = [];
+        
+        if ($klienMaterial && $klienMaterial->riwayatHarga) {
+            $priceHistory = $klienMaterial->riwayatHarga->map(function($history) {
+                return [
+                    'tanggal' => $history->tanggal_perubahan->format('Y-m-d'),
+                    'harga' => (float) $history->harga_approved_baru,
+                    'formatted_tanggal' => $history->tanggal_perubahan->format('d M'),
+                    'is_custom' => false,
+                ];
+            })->toArray();
         }
-
-        return $klienMaterial->riwayatHarga->map(function($history) {
-            return [
-                'tanggal' => $history->tanggal_perubahan->format('Y-m-d'),
-                'harga' => (float) $history->harga_approved_baru,
-                'formatted_tanggal' => $history->tanggal_perubahan->format('d M'),
+        
+        // Check if this material has a custom price and add today's data point
+        $selectedMaterial = collect($this->selectedMaterials)->firstWhere('material_id', $materialId);
+        if ($selectedMaterial && ($selectedMaterial['is_custom_price'] ?? false)) {
+            $today = now();
+            $priceHistory[] = [
+                'tanggal' => $today->format('Y-m-d'),
+                'harga' => (float) $selectedMaterial['custom_price'],
+                'formatted_tanggal' => $today->format('d M'),
+                'is_custom' => true,
             ];
-        })->toArray();
+        }
+        
+        return $priceHistory;
     }
 
     private function getSupplierPriceHistory($materialName)

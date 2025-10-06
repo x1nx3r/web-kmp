@@ -16,11 +16,12 @@
                     <div class="relative">
                         <input type="text" 
                                id="searchInputPending" 
-                               name="search"
-                               value="{{ request('search') }}"
+                               name="search_pending"
+                               value="{{ request('search_pending') }}"
                                placeholder="Cari No. PO, nama klien, atau no forecast..." 
                                class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-pending"
-                               onkeyup="debounceSearchPending()">
+                               onkeyup="debounceSearchPending()"
+                               onchange="submitSearchPending()">
                         <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
                             <div class="w-3 h-3 sm:w-6 sm:h-6 bg-yellow-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-search text-yellow-500 text-xs sm:text-sm"></i>
@@ -54,10 +55,10 @@
                             <i class="fas fa-sort mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
                             Urutkan Total
                         </label>
-                        <select id="sortAmountPending" name="sort_amount" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
+                        <select id="sortAmountPending" name="sort_amount_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
                             <option value="">Default</option>
-                            <option value="highest" {{ request('sort_amount') == 'highest' ? 'selected' : '' }}>Tertinggi</option>
-                            <option value="lowest" {{ request('sort_amount') == 'lowest' ? 'selected' : '' }}>Terendah</option>
+                            <option value="highest" {{ request('sort_amount_pending') == 'highest' ? 'selected' : '' }}>Tertinggi</option>
+                            <option value="lowest" {{ request('sort_amount_pending') == 'lowest' ? 'selected' : '' }}>Terendah</option>
                         </select>
                     </div>
 
@@ -67,10 +68,10 @@
                             <i class="fas fa-sort mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
                             Urutkan Qty
                         </label>
-                        <select id="sortQtyPending" name="sort_qty" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
+                        <select id="sortQtyPending" name="sort_qty_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
                             <option value="">Default</option>
-                            <option value="highest" {{ request('sort_qty') == 'highest' ? 'selected' : '' }}>Terbanyak</option>
-                            <option value="lowest" {{ request('sort_qty') == 'lowest' ? 'selected' : '' }}>Tersedikit</option>
+                            <option value="highest" {{ request('sort_qty_pending') == 'highest' ? 'selected' : '' }}>Terbanyak</option>
+                            <option value="lowest" {{ request('sort_qty_pending') == 'lowest' ? 'selected' : '' }}>Tersedikit</option>
                         </select>
                     </div>
 
@@ -80,10 +81,10 @@
                             <i class="fas fa-sort mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
                             Urutkan Tanggal
                         </label>
-                        <select id="sortDatePending" name="sort_date" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
+                        <select id="sortDatePending" name="sort_date_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
                             <option value="">Default</option>
-                            <option value="newest" {{ request('sort_date') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_date') == 'oldest' ? 'selected' : '' }}>Terlama</option>
+                            <option value="newest" {{ request('sort_date_pending') == 'newest' ? 'selected' : '' }}>Terbaru</option>
+                            <option value="oldest" {{ request('sort_date_pending') == 'oldest' ? 'selected' : '' }}>Terlama</option>
                         </select>
                     </div>
 
@@ -114,307 +115,158 @@
         </div>
     </div>
 
-    {{-- Header Section --}}
-    <div class="flex flex-col sm:flex-row justify-between items-center sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6 border border-yellow-200 py-2 bg-yellow-50 rounded-lg sm:rounded-xl">
-        <h2 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center ">
-            <div class="w-6 h-6 sm:w-8 sm:h-8 bg-yellow-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
-                <i class="fas fa-clock text-white text-xs sm:text-sm"></i>
+    {{-- Simplified Header Section --}}
+    <div class="flex items-center justify-between mb-4 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center">
+            <div class="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center mr-2">
+                <i class="fas fa-clock text-white text-xs"></i>
             </div>
-            Daftar Forecast Pending
+            Forecast Pending
         </h2>
         
-        {{-- Summary Stats --}}
+        {{-- Compact Summary Stats --}}
         <div class="flex items-center space-x-4 text-sm">
             @php
-                $totalForecasts = collect($pendingForecasts ?? [])->count();
-                $totalPOs = collect($pendingForecasts ?? [])->groupBy('purchase_order_id')->count();
-                $totalAmount = collect($pendingForecasts ?? [])->sum('total_harga_forecast');
+                $totalForecasts = $pendingForecasts->total();
+                $totalPOs = collect($pendingForecasts->items())->groupBy('purchase_order_id')->count();
+                $totalAmount = collect($pendingForecasts->items())->sum('total_harga_forecast');
             @endphp
             <div class="text-center">
-                <p class="text-xs text-gray-500">Total PO</p>
-                <p class="text-lg font-bold text-blue-600">{{ $totalPOs }}</p>
+                <p class="text-xs text-gray-500">PO</p>
+                <p class="text-sm font-bold text-blue-600">{{ $totalPOs }}</p>
             </div>
             <div class="text-center">
-                <p class="text-xs text-gray-500">Total Forecast</p>
-                <p class="text-lg font-bold text-yellow-600">{{ $totalForecasts }}</p>
+                <p class="text-xs text-gray-500">Forecast</p>
+                <p class="text-sm font-bold text-yellow-600">{{ $totalForecasts }}</p>
             </div>
             <div class="text-center">
-                <p class="text-xs text-gray-500">Total Perkiraan Harga</p>
-                <p class="text-lg font-bold text-green-600">Rp {{ number_format($totalAmount, 0, ',', '.') }}</p>
+                <p class="text-xs text-gray-500">Total</p>
+                <p class="text-sm font-bold text-green-600">Rp {{ number_format($totalAmount, 0, ',', '.') }}</p>
             </div>
         </div>
     </div>
 
-    {{-- PO Cards with Forecasts --}}
-    <div class="space-y-1 sm:space-y-4">
+    {{-- Simplified PO Cards with Forecasts --}}
+    <div class="space-y-2">
         @php
             // Group forecasts by purchase_order_id
-            $groupedForecasts = collect($pendingForecasts ?? [])->groupBy('purchase_order_id');
+            $groupedForecasts = collect($pendingForecasts->items())->groupBy('purchase_order_id');
         @endphp
 
         @forelse($groupedForecasts as $poId => $forecasts)
             @php
                 $po = $forecasts->first()->purchaseOrder;
             @endphp
-                     {{-- PO Card --}}
-            <div class="bg-white rounded-lg sm:rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 hover:border-gray-300 border-l-4 border-l-yellow-500 hover:border-l-yellow-600 pending-forecast-card" 
+            {{-- Simplified PO Card --}}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 pending-forecast-card po-card" 
                  data-no-po="{{ strtolower($po->no_po ?? '') }}" 
                  data-klien="{{ strtolower((optional($po->klien)->nama ?? '') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : '')) }}" 
                  data-forecasts="{{ $forecasts->count() }}">
-                    
-                    {{-- Mobile View --}}
-                    <div class="block sm:hidden">
-                        <div class="p-3 border-b border-gray-100">
-                            {{-- Mobile Header --}}
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex-1">
-                                    <h3 class="text-sm font-bold text-gray-900">{{ $po->no_po ?? 'N/A' }}</h3>
-                                    <p class="text-xs text-yellow-600 mt-1">
-                                        {{ (optional($po->klien)->nama ?? 'N/A') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : '') }}
-                                    </p>
-                                </div>
-                                <div class="flex items-center space-x-1">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                        {{ $forecasts->count() }} Forecast
-                                    </span>
-                                    <button type="button" class="toggle-forecast-btn bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs transition-colors duration-200 flex items-center" onclick="toggleForecastList('po-{{ $poId }}')">
-                                        <i class="fas fa-chevron-right forecast-icon" id="icon-po-{{ $poId }}"></i>
-                                    </button>
-                                </div>
+                
+                <div class="p-4">
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
+                                <i class="fas fa-file-alt text-white text-xs"></i>
                             </div>
-                            
-                           
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">{{ $po->no_po ?? 'N/A' }}</h3>
+                                <p class="text-xs text-gray-500">{{ ($po->klien->nama ?? 'N/A') . ($po->klien->cabang ? ' - ' . $po->klien->cabang : '') }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3">
+                            <div class="text-right">
+                                <p class="text-xs text-gray-500">{{ $forecasts->count() }} forecast</p>
+                                <p class="text-sm font-semibold text-green-600">Rp {{ number_format($forecasts->sum('total_harga_forecast'), 0, ',', '.') }}</p>
+                            </div>
+                            <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs flex items-center" onclick="toggleForecastList('po-{{ $poId }}')">
+                                <i class="fas fa-chevron-right forecast-icon" id="icon-po-{{ $poId }}"></i>
+                                <span class="ml-1" id="text-po-{{ $poId }}">Detail</span>
+                            </button>
                         </div>
                     </div>
+                </div>
 
-                    {{-- Desktop View --}}
-                    <div class="hidden sm:block">
-                        <div class="p-4 sm:p-6">
-                            {{-- Desktop Header --}}
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-                                <div class="flex-1">
-                                    <div class="flex items-center space-x-3 mb-2">
-                                        <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                                            <i class="fas fa-file-invoice text-white text-sm"></i>
+                {{-- Simplified Forecasts List --}}
+                <div class="border-t border-gray-200 forecast-list" id="forecast-list-po-{{ $poId }}">
+                    <div class="p-3">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="fas fa-chart-line text-yellow-600 mr-2"></i>
+                            Daftar Forecast ({{ $forecasts->count() }})
+                        </h4>
+                        
+                        <div class="space-y-2">
+                            @foreach($forecasts as $forecast)
+                                <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors" 
+                                     data-forecast-no="{{ strtolower($forecast->no_forecast ?? '') }}"
+                                     data-purchasing="{{ strtolower(optional($forecast->purchasing)->name ?? '') }}"
+                                     data-qty="{{ $forecast->total_qty_forecast ?? 0 }}"
+                                     data-amount="{{ $forecast->total_harga_forecast ?? 0 }}"
+                                     data-hari-kirim="{{ $forecast->hari_kirim_forecast ?? 0 }}"
+                                     data-date="{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('Y-m-d') : '' }}"
+                                     data-status="{{ $forecast->status ?? '' }}">
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-sm font-semibold text-gray-900">{{ $forecast->no_forecast }}</span>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                                    {{ ucfirst($forecast->status ?? 'Pending') }}
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center space-x-4 mt-1 text-xs text-gray-500">
+                                                <span><i class="fas fa-boxes mr-1"></i>{{ number_format($forecast->total_qty_forecast ?? 0, 0, ',', '.') }}</span>
+                                                <span><i class="fas fa-money-bill-wave mr-1"></i>Rp {{ number_format($forecast->total_harga_forecast ?? 0, 0, ',', '.') }}</span>
+                                                <span><i class="fas fa-calendar mr-1"></i>{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A' }}</span>
+                                                <span><i class="fas fa-truck mr-1"></i>{{ $forecast->hari_kirim_forecast ?? 'N/A' }}</span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 class="text-lg font-bold text-gray-900">{{ $po->no_po ?? 'N/A' }}</h3>
-                                            <p class="text-sm text-gray-600 flex items-center">
-                                                <i class="fas fa-building text-gray-400 mr-1"></i>
-                                                {{ (optional($po->klien)->nama ?? 'N/A') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : '') }}
+                                        
+                                        <div class="flex space-x-1">
+                                            <button type="button" 
+                                                    onclick="openForecastDetailModal({{ json_encode([
+                                                        'id' => $forecast->id,
+                                                        'no_forecast' => $forecast->no_forecast,
+                                                        'no_po' => $po->no_po ?? 'N/A',
+                                                        'klien' => (optional($po->klien)->nama ?? 'N/A') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : ''),
+                                                        'pic_purchasing' => optional($forecast->purchasing)->nama ?? 'Tidak ada PIC',
+                                                        'tanggal_forecast' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A',
+                                                        'status' => ucfirst($forecast->status ?? 'Pending'),
+                                                        'total_qty' => number_format($forecast->total_qty_forecast ?? 0, 0, ',', '.'),
+                                                        'total_harga' => 'Rp ' . number_format($forecast->total_harga_forecast ?? 0, 0, ',', '.'),
+                                                        'hari_kirim' => $forecast->hari_kirim_forecast ?? 'N/A',
+                                                        'catatan' => $forecast->catatan ?? '',
+                                                        'details' => $forecast->forecastDetails->map(function($detail) {
+                                                            return [
+                                                                'bahan_baku' => optional($detail->bahanBakuSupplier)->nama ?? 'N/A',
+                                                                'supplier' => optional($detail->bahanBakuSupplier->supplier)->nama ?? 'N/A',
+                                                                'qty' => number_format($detail->qty_forecast ?? 0, 0, ',', '.'),
+                                                                'harga_satuan' => 'Rp ' . number_format($detail->harga_satuan_forecast ?? 0, 0, ',', '.'),
+                                                                'total_harga' => 'Rp ' . number_format($detail->total_harga_forecast ?? 0, 0, ',', '.')
+                                                            ];
+                                                        })
+                                                    ]) }})"
+                                                    class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded flex items-center transition-colors">
+                                                <i class="fas fa-cog mr-1"></i>Kelola
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    @if($forecast->catatan)
+                                        <div class="mt-2 pt-2 border-t border-gray-200">
+                                            <p class="text-xs text-gray-600">
+                                                <i class="fas fa-sticky-note text-gray-400 mr-1"></i>
+                                                {{ $forecast->catatan }}
                                             </p>
                                         </div>
-                                    </div>
+                                    @endif
                                 </div>
-                                
-                                <div class="flex items-center space-x-4">
-                                    <div class="text-center">
-                                        <p class="text-xs text-gray-500">Total Forecasts</p>
-                                        <p class="text-lg font-bold text-yellow-600">{{ $forecasts->count() }}</p>
-                                    </div>
-                                    <div class="text-center">
-                                        <p class="text-xs text-gray-500">Total Perkiraan Harga</p>
-                                        <p class="text-lg font-bold text-green-600">Rp {{ number_format($forecasts->sum('total_harga_forecast'), 0, ',', '.') }}</p>
-                                    </div>
-                                    <button type="button" class="toggle-forecast-btn bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center" onclick="toggleForecastList('po-{{ $poId }}')">
-                                        <i class="fas fa-chevron-right mr-2 forecast-icon" id="icon-po-{{ $poId }}"></i>
-                                        <span class="forecast-text" id="text-po-{{ $poId }}">Tampilkan</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {{-- PO Info Grid --}}
-                           
+                            @endforeach
                         </div>
                     </div>
-
-                    {{-- Forecasts List --}}
-                    <div class="border-t border-gray-200 forecast-list" id="forecast-list-po-{{ $poId }}">
-                        <div class="p-4 sm:p-6">
-                            <h4 class="text-md font-semibold text-gray-900 mb-4 flex items-center">
-                                <i class="fas fa-chart-line text-yellow-600 mr-2"></i>
-                                Daftar Forecast Pending
-                            </h4>
-                            
-                            <div class="space-y-3">
-                                @foreach($forecasts as $forecast)
-                                    <div class="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors duration-200" 
-                                         data-forecast-no="{{ strtolower($forecast->no_forecast ?? '') }}"
-                                         data-purchasing="{{ strtolower(optional($forecast->purchasing)->name ?? '') }}"
-                                         data-qty="{{ $forecast->total_qty_forecast ?? 0 }}"
-                                         data-amount="{{ $forecast->total_harga_forecast ?? 0 }}"
-                                         data-hari-kirim="{{ $forecast->hari_kirim_forecast ?? 0 }}"
-                                         data-date="{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('Y-m-d') : '' }}"
-                                         data-status="{{ $forecast->status ?? '' }}">
-                                        {{-- Mobile Forecast Item --}}
-                                        <div class="block sm:hidden">
-                                            <div class="space-y-3">
-                                                {{-- Mobile Header --}}
-                                                <div class="flex items-center justify-between">
-                                                    <div class="flex-1">
-                                                        <h5 class="text-sm font-bold text-gray-900">{{ $forecast->no_forecast }}</h5>
-                                                        <p class="text-xs text-gray-600 mt-1 flex items-center">
-                                                            <i class="fas fa-user text-gray-400 mr-1"></i>
-                                                            {{ optional($forecast->purchasing)->nama ?? 'N/A' }}
-                                                        </p>
-                                                    </div>
-                                                    @php
-                                                        $statusClass = match($forecast->status ?? 'pending') {
-                                                            'pending' => 'bg-yellow-100 text-yellow-800',
-                                                            'sukses' => 'bg-green-100 text-green-800',
-                                                            'gagal' => 'bg-red-100 text-red-800',
-                                                            default => 'bg-gray-100 text-gray-800'
-                                                        };
-                                                    @endphp
-                                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusClass }}">
-                                                        {{ ucfirst($forecast->status ?? 'Pending') }}
-                                                    </span>
-                                                </div>
-                                                
-                                                {{-- Mobile Info Cards --}}
-                                                <div class="grid grid-cols-2 gap-2">
-                                                    <div class="bg-blue-50 p-2 rounded">
-                                                        <p class="text-xs text-blue-600 font-medium">Qty</p>
-                                                        <p class="text-sm font-bold text-blue-700">{{ number_format($forecast->total_qty_forecast ?? 0, 2, ',', '.') }}</p>
-                                                    </div>
-                                                    <div class="bg-green-50 p-2 rounded">
-                                                        <p class="text-xs text-green-600 font-medium">Total</p>
-                                                        <p class="text-sm font-bold text-green-700">Rp {{ number_format($forecast->total_harga_forecast ?? 0, 0, ',', '.') }}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="grid grid-cols-2 gap-2">
-                                                    <div class="bg-orange-50 p-2 rounded">
-                                                        <p class="text-xs text-orange-600 font-medium">Hari Kirim</p>
-                                                        <p class="text-sm font-bold text-orange-700">Hari {{ $forecast->hari_kirim_forecast ?? 0 }}</p>
-                                                    </div>
-                                                    <div class="bg-gray-50 p-2 rounded">
-                                                        <p class="text-xs text-gray-600 font-medium">Tanggal Kirim</p>
-                                                        <p class="text-sm font-bold text-gray-700">{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A' }}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                {{-- Mobile Actions --}}
-                                                <div class="flex space-x-2">
-                                                    <button type="button" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                                                        <i class="fas fa-eye mr-1"></i>
-                                                        Detail
-                                                    </button>
-                                                    <button type="button" class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                                                        <i class="fas fa-truck mr-1"></i>
-                                                        Kirim
-                                                    </button>
-                                                    <button type="button" class="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                                                        <i class="fas fa-times mr-1"></i>
-                                                        Batal
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            
-                                            @if($forecast->catatan)
-                                                <div class="mt-3 pt-3 border-t border-gray-200">
-                                                    <p class="text-xs text-gray-600">
-                                                        <i class="fas fa-sticky-note text-gray-400 mr-1"></i>
-                                                        <strong>Catatan:</strong> {{ $forecast->catatan }}
-                                                    </p>
-                                                </div>
-                                            @endif
-                                        </div>
-
-                                        {{-- Desktop Forecast Item --}}
-                                        <div class="hidden sm:block">
-                                            <div class="flex items-start justify-between">
-                                                <div class="flex-1">
-                                                    {{-- Forecast Header --}}
-                                                    <div class="flex items-center space-x-3 mb-4">
-                                                        <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                                                            <i class="fas fa-chart-bar text-white text-sm"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h5 class="text-lg font-bold text-gray-900">{{ $forecast->no_forecast }}</h5>
-                                                            <p class="text-sm text-gray-600 flex items-center">
-                                                                <i class="fas fa-user text-gray-400 mr-2"></i>
-                                                                {{ optional($forecast->purchasing)->nama ?? 'N/A' }}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {{-- Main Info Grid --}}
-                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                                                        <div class="bg-blue-50 p-3 rounded-lg">
-                                                            <div class="flex items-center justify-between">
-                                                                <div>
-                                                                    <p class="text-xs text-blue-600 font-medium">Perkiraan Quantity</p>
-                                                                    <p class="text-lg font-bold text-blue-700">{{ number_format($forecast->total_qty_forecast ?? 0, 2, ',', '.') }}</p>
-                                                                </div>
-                                                                <i class="fas fa-boxes text-blue-400 text-xl"></i>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div class="bg-green-50 p-3 rounded-lg">
-                                                            <div class="flex items-center justify-between">
-                                                                <div>
-                                                                    <p class="text-xs text-green-600 font-medium">Perkiraan Harga</p>
-                                                                    <p class="text-lg font-bold text-green-700">Rp {{ number_format($forecast->total_harga_forecast ?? 0, 0, ',', '.') }}</p>
-                                                                </div>
-                                                                <i class="fas fa-money-bill-wave text-green-400 text-xl"></i>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div class="bg-orange-50 p-3 rounded-lg">
-                                                            <div class="flex items-center justify-between">
-                                                                <div>
-                                                                    <p class="text-xs text-orange-600 font-medium">Hari Kirim</p>
-                                                                    <p class="text-lg font-bold text-orange-700">Hari {{ $forecast->hari_kirim_forecast ?? 0 }}</p>
-                                                                </div>
-                                                                <i class="fas fa-truck text-orange-400 text-xl"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {{-- Date Info --}}
-                                                    <div class="bg-gray-50 p-3 rounded-lg">
-                                                        <div class="flex items-center">
-                                                            <i class="fas fa-calendar-alt text-gray-400 mr-3"></i>
-                                                            <div>
-                                                                <p class="text-xs text-gray-500 font-medium">Perkiraan Tanggal Kirim</p>
-                                                                <p class="text-sm font-semibold text-gray-700">{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A' }}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                {{-- Action Buttons --}}
-                                                <div class="flex flex-col space-y-2 ml-6">
-                                                    <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center min-w-[140px] justify-center">
-                                                        <i class="fas fa-eye mr-2"></i>
-                                                        Detail
-                                                    </button>
-                                                    <button type="button" class="bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center min-w-[140px] justify-center">
-                                                        <i class="fas fa-truck mr-2"></i>
-                                                        Pengiriman
-                                                    </button>
-                                                    <button type="button" class="bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center min-w-[140px] justify-center">
-                                                        <i class="fas fa-times mr-2"></i>
-                                                        Batalkan
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            
-                                            @if($forecast->catatan)
-                                                <div class="mt-3 pt-3 border-t border-gray-200">
-                                                    <p class="text-sm text-gray-600">
-                                                        <i class="fas fa-sticky-note text-gray-400 mr-2"></i>
-                                                        <strong>Catatan:</strong> {{ $forecast->catatan }}
-                                                    </p>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
+                </div>
                 </div>
             @empty
                 <div class="text-center py-12 text-gray-500">
@@ -424,111 +276,205 @@
                 </div>
             @endforelse
         </div>
+        
+        {{-- Pagination --}}
+        @if($pendingForecasts->hasPages())
+            <div class="bg-white rounded-lg shadow-sm border p-4 mt-6">
+                <div class="flex flex-col sm:flex-row items-center justify-between">
+                    {{-- Results Info --}}
+                    <div class="mb-3 sm:mb-0">
+                        <p class="text-sm text-gray-700">
+                            Menampilkan
+                            <span class="font-medium">{{ $pendingForecasts->firstItem() }}</span>
+                            sampai
+                            <span class="font-medium">{{ $pendingForecasts->lastItem() }}</span>
+                            dari
+                            <span class="font-medium">{{ $pendingForecasts->total() }}</span>
+                            Forecast Pending
+                        </p>
+                    </div>
+
+                    {{-- Pagination Links --}}
+                    <div class="flex items-center space-x-2">
+                        {{-- Previous Page --}}
+                        @if ($pendingForecasts->onFirstPage())
+                            <span class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                                <i class="fas fa-chevron-left mr-1"></i>
+                                Sebelumnya
+                            </span>
+                        @else
+                            @php
+                                $prevUrl = $pendingForecasts->previousPageUrl();
+                                $prevUrlParts = parse_url($prevUrl);
+                                parse_str($prevUrlParts['query'] ?? '', $prevParams);
+                                $prevParams['tab'] = 'pending';
+                                // Preserve other filters
+                                if (request('search_pending')) $prevParams['search_pending'] = request('search_pending');
+                                if (request('date_range')) $prevParams['date_range'] = request('date_range');
+                                if (request('sort_amount_pending')) $prevParams['sort_amount_pending'] = request('sort_amount_pending');
+                                if (request('sort_qty_pending')) $prevParams['sort_qty_pending'] = request('sort_qty_pending');
+                                if (request('sort_date_pending')) $prevParams['sort_date_pending'] = request('sort_date_pending');
+                                if (request('sort_hari_kirim')) $prevParams['sort_hari_kirim'] = request('sort_hari_kirim');
+                                $prevUrl = $prevUrlParts['path'] . '?' . http_build_query($prevParams);
+                            @endphp
+                            <a href="{{ $prevUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 transition-colors">
+                                <i class="fas fa-chevron-left mr-1"></i>
+                                Sebelumnya
+                            </a>
+                        @endif
+
+                        {{-- Page Numbers --}}
+                        @if($pendingForecasts->lastPage() > 1)
+                            <div class="hidden sm:flex items-center space-x-1">
+                                @foreach ($pendingForecasts->getUrlRange(1, $pendingForecasts->lastPage()) as $page => $url)
+                                    @if ($page == $pendingForecasts->currentPage())
+                                        <span class="px-3 py-2 text-sm font-medium text-white bg-yellow-600 border border-yellow-600 rounded-lg">
+                                            {{ $page }}
+                                        </span>
+                                    @else
+                                        @php
+                                            $pageUrlParts = parse_url($url);
+                                            parse_str($pageUrlParts['query'] ?? '', $pageUrlParams);
+                                            $pageUrlParams['tab'] = 'pending';
+                                            // Preserve other filters
+                                            if (request('search_pending')) $pageUrlParams['search_pending'] = request('search_pending');
+                                            if (request('date_range')) $pageUrlParams['date_range'] = request('date_range');
+                                            if (request('sort_amount_pending')) $pageUrlParams['sort_amount_pending'] = request('sort_amount_pending');
+                                            if (request('sort_qty_pending')) $pageUrlParams['sort_qty_pending'] = request('sort_qty_pending');
+                                            if (request('sort_date_pending')) $pageUrlParams['sort_date_pending'] = request('sort_date_pending');
+                                            if (request('sort_hari_kirim')) $pageUrlParams['sort_hari_kirim'] = request('sort_hari_kirim');
+                                            $pageUrl = $pageUrlParts['path'] . '?' . http_build_query($pageUrlParams);
+                                        @endphp
+                                        <a href="{{ $pageUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 transition-colors">
+                                            {{ $page }}
+                                        </a>
+                                    @endif
+                                @endforeach
+                            </div>
+
+                            {{-- Mobile Page Indicator --}}
+                            <div class="sm:hidden px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-lg">
+                                {{ $pendingForecasts->currentPage() }} / {{ $pendingForecasts->lastPage() }}
+                            </div>
+                        @endif
+
+                        {{-- Next Page --}}
+                        @if ($pendingForecasts->hasMorePages())
+                            @php
+                                $nextUrl = $pendingForecasts->nextPageUrl();
+                                $nextUrlParts = parse_url($nextUrl);
+                                parse_str($nextUrlParts['query'] ?? '', $nextParams);
+                                $nextParams['tab'] = 'pending';
+                                // Preserve other filters
+                                if (request('search_pending')) $nextParams['search_pending'] = request('search_pending');
+                                if (request('date_range')) $nextParams['date_range'] = request('date_range');
+                                if (request('sort_amount_pending')) $nextParams['sort_amount_pending'] = request('sort_amount_pending');
+                                if (request('sort_qty_pending')) $nextParams['sort_qty_pending'] = request('sort_qty_pending');
+                                if (request('sort_date_pending')) $nextParams['sort_date_pending'] = request('sort_date_pending');
+                                if (request('sort_hari_kirim')) $nextParams['sort_hari_kirim'] = request('sort_hari_kirim');
+                                $nextUrl = $nextUrlParts['path'] . '?' . http_build_query($nextParams);
+                            @endphp
+                            <a href="{{ $nextUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 transition-colors">
+                                Selanjutnya
+                                <i class="fas fa-chevron-right ml-1"></i>
+                            </a>
+                        @else
+                            <span class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                                Selanjutnya
+                                <i class="fas fa-chevron-right ml-1"></i>
+                            </span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 
 <script>
-// Debounced search function
+// Debounced search function for server-side filtering
 let searchTimeoutPending;
 function debounceSearchPending() {
     clearTimeout(searchTimeoutPending);
     searchTimeoutPending = setTimeout(() => {
-        applyFiltersPending();
-    }, 500);
+        submitSearchPending();
+    }, 1000); // Wait 1 second before submitting
 }
 
-// Apply filters function
+// Submit search to server
+function submitSearchPending() {
+    const currentParams = new URLSearchParams(window.location.search);
+    const searchValue = document.getElementById('searchInputPending').value;
+    
+    // Preserve current tab
+    currentParams.set('tab', 'pending');
+    
+    // Update search parameter
+    if (searchValue) {
+        currentParams.set('search_pending', searchValue);
+    } else {
+        currentParams.delete('search_pending');
+    }
+    
+    // Reset to first page when searching
+    currentParams.delete('page_pending');
+    
+    // Navigate to new URL
+    window.location.href = window.location.pathname + '?' + currentParams.toString();
+}
+
+// Apply filters function for server-side filtering
 function applyFiltersPending() {
-    const searchValue = document.getElementById('searchInputPending').value.toLowerCase();
+    console.log('applyFiltersPending called');
+    const currentParams = new URLSearchParams(window.location.search);
+    
+    // Get filter values
+    const searchValue = document.getElementById('searchInputPending').value;
     const dateRange = document.getElementById('dateRangeFilter').value;
     const sortAmount = document.getElementById('sortAmountPending').value;
     const sortQty = document.getElementById('sortQtyPending').value;
     const sortDate = document.getElementById('sortDatePending').value;
     const sortHariKirim = document.getElementById('sortHariKirimPending').value;
     
-    // Get all PO cards
-    const poCards = document.querySelectorAll('.po-card');
-    
-    // Filter cards based on search
-    poCards.forEach(card => {
-        const noPo = card.getAttribute('data-no-po') || '';
-        const klien = card.getAttribute('data-klien') || '';
-        const forecastElements = card.querySelectorAll('[data-forecast-no]');
-        
-        let shouldShow = false;
-        
-        if (!searchValue) {
-            shouldShow = true;
-        } else {
-            // Search in PO data
-            if (noPo.includes(searchValue) || klien.includes(searchValue)) {
-                shouldShow = true;
-            }
-            
-            // Search in forecast data
-            forecastElements.forEach(element => {
-                const forecastNo = (element.getAttribute('data-forecast-no') || '').toLowerCase();
-                const purchasing = (element.getAttribute('data-purchasing') || '').toLowerCase();
-                if (forecastNo.includes(searchValue) || purchasing.includes(searchValue)) {
-                    shouldShow = true;
-                }
-            });
-        }
-        
-        if (shouldShow) {
-            card.style.display = 'block';
-            card.classList.add('filter-fade-in');
-        } else {
-            card.style.display = 'none';
-            card.classList.remove('filter-fade-in');
-        }
+    console.log('Filter values:', {
+        searchValue,
+        dateRange,
+        sortAmount,
+        sortQty,
+        sortDate,
+        sortHariKirim
     });
     
-    // Show active filters
-    updateActiveFiltersPending();
+    // Preserve current tab
+    currentParams.set('tab', 'pending');
     
-    // Update result count
-    updateResultCountPending();
+    // Update parameters
+    if (searchValue) currentParams.set('search_pending', searchValue);
+    else currentParams.delete('search_pending');
     
-    // For server-side filtering (if needed)
-    // Uncomment the following lines to enable server-side filtering
-    /*
-    const currentParams = new URLSearchParams(window.location.search);
-    const currentTab = currentParams.get('tab') || 'pending';
+    if (dateRange) currentParams.set('date_range', dateRange);
+    else currentParams.delete('date_range');
     
-    const params = new URLSearchParams();
-    params.append('tab', currentTab);
+    if (sortAmount) currentParams.set('sort_amount_pending', sortAmount);
+    else currentParams.delete('sort_amount_pending');
     
-    if (searchValue) params.append('search', searchValue);
-    if (dateRange) params.append('date_range', dateRange);
-    if (sortAmount) params.append('sort_amount', sortAmount);
-    if (sortQty) params.append('sort_qty', sortQty);
-    if (sortDate) params.append('sort_date', sortDate);
+    if (sortQty) currentParams.set('sort_qty_pending', sortQty);
+    else currentParams.delete('sort_qty_pending');
     
-    window.location.href = window.location.pathname + '?' + params.toString();
-    */
-}
-
-// Update result count
-function updateResultCountPending() {
-    const visibleCards = document.querySelectorAll('.po-card[style*="display: block"], .po-card:not([style*="display: none"])').length;
-    const totalCards = document.querySelectorAll('.po-card').length;
+    if (sortDate) currentParams.set('sort_date_pending', sortDate);
+    else currentParams.delete('sort_date_pending');
     
-    // Find or create result count element
-    let resultCountElement = document.getElementById('result-count-pending');
-    if (!resultCountElement) {
-        resultCountElement = document.createElement('div');
-        resultCountElement.id = 'result-count-pending';
-        resultCountElement.className = 'text-sm text-gray-600 mb-4';
-        
-        const headerSection = document.querySelector('h2');
-        if (headerSection && headerSection.parentNode) {
-            headerSection.parentNode.appendChild(resultCountElement);
-        }
-    }
+    if (sortHariKirim) currentParams.set('sort_hari_kirim', sortHariKirim);
+    else currentParams.delete('sort_hari_kirim');
     
-    // Result count display removed
-    resultCountElement.style.display = 'none';
+    // Reset to first page when filtering
+    currentParams.delete('page_pending');
+    
+    const newUrl = window.location.pathname + '?' + currentParams.toString();
+    console.log('Navigating to:', newUrl);
+    
+    // Navigate to new URL
+    window.location.href = newUrl;
 }
 
 // Update active filters display
@@ -550,12 +496,8 @@ function updateActiveFiltersPending() {
     }
     
     if (dateRange) {
-        const dateLabels = {
-            'today': 'Hari Ini',
-            'week': 'Minggu Ini', 
-            'month': 'Bulan Ini'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Tanggal: ${dateLabels[dateRange]}</span>`;
+        const formattedDate = new Date(dateRange).toLocaleDateString('id-ID');
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Tanggal: ${formattedDate}</span>`;
         hasActiveFilters = true;
     }
     
@@ -587,15 +529,23 @@ function updateActiveFiltersPending() {
     }
     
     if (sortHariKirim) {
-        const hariKirimLabels = {
-            'shortest': 'Tercepat',
-            'longest': 'Terlama'
+        const hariLabels = {
+            'senin': 'Senin',
+            'selasa': 'Selasa',
+            'rabu': 'Rabu',
+            'kamis': 'Kamis',
+            'jumat': 'Jumat',
+            'sabtu': 'Sabtu',
+            'minggu': 'Minggu'
         };
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Kirim: ${hariKirimLabels[sortHariKirim]}</span>`;
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Hari: ${hariLabels[sortHariKirim]}</span>`;
         hasActiveFilters = true;
     }
     
     if (hasActiveFilters) {
+        filtersHTML += `<button onclick="clearAllFiltersPending()" class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200 transition-colors ml-2">
+            <i class="fas fa-times mr-1"></i>Hapus Semua
+        </button>`;
         activeFiltersContainer.innerHTML = filtersHTML;
         activeFiltersContainer.style.display = 'flex';
     } else {
@@ -605,18 +555,13 @@ function updateActiveFiltersPending() {
 
 // Clear all filters
 function clearAllFiltersPending() {
-    document.getElementById('searchInputPending').value = '';
-    document.getElementById('dateRangeFilter').value = '';
-    document.getElementById('sortAmountPending').value = '';
-    document.getElementById('sortQtyPending').value = '';
-    document.getElementById('sortDatePending').value = '';
-    document.getElementById('sortHariKirimPending').value = '';
-    
-    // Preserve current tab
     const currentParams = new URLSearchParams(window.location.search);
-    const currentTab = currentParams.get('tab') || 'pending';
     
-    window.location.href = window.location.pathname + '?tab=' + currentTab;
+    // Keep only the tab parameter
+    const newParams = new URLSearchParams();
+    newParams.set('tab', 'pending');
+    
+    window.location.href = window.location.pathname + '?' + newParams.toString();
 }
 
 // Toggle forecast list visibility
@@ -642,45 +587,70 @@ function toggleForecastList(poId) {
 
 // Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    updateActiveFiltersPending();
-    updateResultCountPending();
+    console.log('DOMContentLoaded - initializing filters');
     
-    // Initialize all forecast lists as hidden on page load
-    const forecastLists = document.querySelectorAll('.forecast-list');
-    forecastLists.forEach(list => {
+    // Set filter values from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Set search value
+    const searchValue = urlParams.get('search_pending');
+    if (searchValue) {
+        console.log('Setting search value:', searchValue);
+        document.getElementById('searchInputPending').value = searchValue;
+    }
+    
+    // Set date range filter
+    const dateRange = urlParams.get('date_range');
+    if (dateRange) {
+        console.log('Setting date range:', dateRange);
+        document.getElementById('dateRangeFilter').value = dateRange;
+    }
+    
+    // Set sort filters
+    const sortAmount = urlParams.get('sort_amount_pending');
+    if (sortAmount) {
+        console.log('Setting sort amount:', sortAmount);
+        document.getElementById('sortAmountPending').value = sortAmount;
+    }
+    
+    const sortQty = urlParams.get('sort_qty_pending');
+    if (sortQty) {
+        console.log('Setting sort qty:', sortQty);
+        document.getElementById('sortQtyPending').value = sortQty;
+    }
+    
+    const sortDate = urlParams.get('sort_date_pending');
+    if (sortDate) {
+        console.log('Setting sort date:', sortDate);
+        document.getElementById('sortDatePending').value = sortDate;
+    }
+    
+    const sortHariKirim = urlParams.get('sort_hari_kirim');
+    if (sortHariKirim) {
+        console.log('Setting sort hari kirim:', sortHariKirim);
+        document.getElementById('sortHariKirimPending').value = sortHariKirim;
+    }
+    
+    // Update active filters display
+    updateActiveFiltersPending();
+    
+    // Initialize forecast list states
+    document.querySelectorAll('.forecast-list').forEach(list => {
         list.style.display = 'none';
     });
     
-    // Add clear filters button if there are active filters
-    const activeFiltersContainer = document.getElementById('activeFiltersPending');
-    const hasFilters = activeFiltersContainer && activeFiltersContainer.style.display !== 'none';
-    
-    if (hasFilters) {
-        const clearButton = document.createElement('button');
-        clearButton.innerHTML = '<i class="fas fa-times mr-1"></i>Hapus Semua Filter';
-        clearButton.className = 'px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200 transition-colors duration-200 active-filter-tag';
-        clearButton.onclick = clearAllFiltersPending;
-        activeFiltersContainer.appendChild(clearButton);
-    }
-    
-    // Add event listeners for real-time filtering
+    // Add event listeners for search input
     const searchInput = document.getElementById('searchInputPending');
     if (searchInput) {
         searchInput.addEventListener('input', debounceSearchPending);
-    }
-    
-    // Add smooth scroll to results when filtering
-    const filterElements = document.querySelectorAll('#dateRangeFilter, #sortAmountPending, #sortQtyPending, #sortDatePending, #sortHariKirimPending');
-    filterElements.forEach(element => {
-        element.addEventListener('change', () => {
-            applyFiltersPending();
-            // Smooth scroll to results
-            const resultsSection = document.querySelector('.space-y-1.sm\\:space-y-4');
-            if (resultsSection) {
-                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitSearchPending();
             }
         });
-    });
+    }
+    
+    console.log('Filter initialization complete');
 });
 </script>
 

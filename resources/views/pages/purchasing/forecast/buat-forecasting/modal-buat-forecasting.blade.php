@@ -9,20 +9,28 @@
         
         <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[95vh] overflow-y-auto m-2 sm:m-0 border-4 border-green-500">
             <form id="forecastForm">
-                <div class="bg-white px-3 pt-4 pb-4 sm:p-6 sm:pb-4">
+                <div class="bg-white px-0 pt-0 pb-4 sm:px-0 sm:pb-4">
                     <div class="sm:flex sm:items-start">
-                        <div class="w-full mt-3 sm:mt-0 sm:text-left">
+                        <div class="w-full mt-0 sm:mt-0 sm:text-left">
                             {{-- Header with close button --}}
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                                    Buat Forecast Bahan Baku
-                                </h3>
+                            <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-green-300 rounded-t-xl mb-6">
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-10 h-10 bg-gray-400 rounded-lg flex items-center justify-center shadow-sm">
+                                        <i class="fas fa-chart-bar text-white text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-gray-900">Buat Forecast Bahan Baku</h3>
+                                        <p class="text-sm text-gray-600" id="forecastModalSubtitle">Buat forecast berdasarkan purchase order</p>
+                                    </div>
+                                </div>
                                 <button type="button" onclick="closeForecastModal()" 
-                                        class="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition ease-in-out duration-150">
+                                        class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-all duration-200">
                                     <i class="fas fa-times text-xl"></i>
                                 </button>
                             </div>
+                            
+                            {{-- Modal Content --}}
+                            <div class="px-6 pb-6">
                             
                             {{-- Info PO dan Bahan Baku --}}
                             <div class="bg-green-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
@@ -204,6 +212,9 @@
                             <input type="hidden" id="harga_satuan_po" name="harga_satuan_po">
                             <input type="hidden" id="tanggal_forecast" name="tanggal_forecast">
                             <input type="hidden" id="hari_kirim_forecast" name="hari_kirim_forecast">
+                            
+                            </div>
+                            {{-- End Modal Content --}}
                         </div>
                     </div>
                 </div>

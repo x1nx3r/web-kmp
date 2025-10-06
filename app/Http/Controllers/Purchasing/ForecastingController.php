@@ -51,14 +51,58 @@ class ForecastingController extends Controller
         }, function($query) {
             $query->orderBy('created_at', 'desc');
         })
-        ->paginate(5)
+        ->paginate(5, ['*'], 'page_buat_forecasting')
         ->withQueryString();
 
-        // Ambil forecast berdasarkan status dengan eager loading
+        // Ambil forecast berdasarkan status dengan eager loading dan pagination
         $pendingForecasts = Forecast::with(['purchaseOrder.klien', 'purchasing'])
             ->pending()
-            ->latest('created_at')
-            ->get();
+            ->when(request('search_pending'), function($query) {
+                $searchTerm = request('search_pending');
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('no_forecast', 'like', "%{$searchTerm}%")
+                      ->orWhereHas('purchaseOrder', function($subQ) use ($searchTerm) {
+                          $subQ->where('no_po', 'like', "%{$searchTerm}%")
+                               ->orWhereHas('klien', function($klienQ) use ($searchTerm) {
+                                   $klienQ->where('nama', 'like', "%{$searchTerm}%");
+                               });
+                      })
+                      ->orWhereHas('purchasing', function($userQ) use ($searchTerm) {
+                          $userQ->where('nama', 'like', "%{$searchTerm}%");
+                      });
+                });
+            })
+            ->when(request('date_range'), function($query) {
+                $query->whereDate('tanggal_forecast', request('date_range'));
+            })
+            ->when(request('sort_hari_kirim'), function($query) {
+                $query->whereRaw('LOWER(hari_kirim_forecast) LIKE ?', ['%' . strtolower(request('sort_hari_kirim')) . '%']);
+            })
+            ->when(request('sort_amount_pending'), function($query) {
+                if (request('sort_amount_pending') == 'highest') {
+                    $query->orderBy('total_harga_forecast', 'desc');
+                } elseif (request('sort_amount_pending') == 'lowest') {
+                    $query->orderBy('total_harga_forecast', 'asc');
+                }
+            })
+            ->when(request('sort_qty_pending'), function($query) {
+                if (request('sort_qty_pending') == 'highest') {
+                    $query->orderBy('total_qty_forecast', 'desc');
+                } elseif (request('sort_qty_pending') == 'lowest') {
+                    $query->orderBy('total_qty_forecast', 'asc');
+                }
+            })
+            ->when(request('sort_date_pending'), function($query) {
+                if (request('sort_date_pending') == 'newest') {
+                    $query->orderBy('created_at', 'desc');
+                } elseif (request('sort_date_pending') == 'oldest') {
+                    $query->orderBy('created_at', 'asc');
+                }
+            }, function($query) {
+                $query->latest('created_at');
+            })
+            ->paginate(10, ['*'], 'page_pending')
+            ->withQueryString();
 
         $suksesForecasts = Forecast::with(['purchaseOrder.klien', 'purchasing'])
             ->sukses()
@@ -544,6 +588,94 @@ class ForecastingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal membuat forecast: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Lakukan pengiriman forecast (ubah status menjadi 'sukses')
+     */
+    public function kirimForecast($id)
+    {
+        try {
+            $forecast = Forecast::find($id);
+            
+            if (!$forecast) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forecast tidak ditemukan'
+                ], 404);
+            }
+
+            if ($forecast->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya forecast dengan status pending yang dapat dikirim'
+                ], 400);
+            }
+
+            $forecast->update([
+                'status' => 'sukses',
+                'updated_by' => Auth::id(),
+                'updated_at' => now()
+            ]);
+
+            Log::info("Forecast {$forecast->no_forecast} berhasil dikirim oleh user " . Auth::id());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Forecast berhasil dikirim'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error mengirim forecast: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim forecast: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Batalkan forecast (ubah status menjadi 'batal')
+     */
+    public function batalkanForecast($id)
+    {
+        try {
+            $forecast = Forecast::find($id);
+            
+            if (!$forecast) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forecast tidak ditemukan'
+                ], 404);
+            }
+
+            if ($forecast->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya forecast dengan status pending yang dapat dibatalkan'
+                ], 400);
+            }
+
+            $forecast->update([
+                'status' => 'batal',
+                'updated_by' => Auth::id(),
+                'updated_at' => now()
+            ]);
+
+            Log::info("Forecast {$forecast->no_forecast} berhasil dibatalkan oleh user " . Auth::id());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Forecast berhasil dibatalkan'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error membatalkan forecast: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membatalkan forecast: ' . $e->getMessage()
             ], 500);
         }
     }

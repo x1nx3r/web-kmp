@@ -116,13 +116,37 @@ function updateBreadcrumb(tabName) {
 function updateUrl(tabName) {
     const url = new URL(window.location);
     url.searchParams.set('tab', tabName);
-    // Remove page parameter when switching tabs to start from page 1
-    url.searchParams.delete('page');
+    
+    // Remove page parameters from other tabs, but preserve current tab's pagination
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentTab = currentParams.get('tab') || 'buat-forecasting';
+    
+    // Remove pagination parameters from other tabs
+    if (tabName !== 'buat-forecasting') {
+        url.searchParams.delete('page_buat_forecasting');
+    }
+    if (tabName !== 'pending') {
+        url.searchParams.delete('page_pending');
+    }
+    
+    // Only remove current tab's pagination if switching to a different tab
+    if (tabName !== currentTab) {
+        if (tabName === 'buat-forecasting') {
+            url.searchParams.delete('page_buat_forecasting');
+        } else if (tabName === 'pending') {
+            url.searchParams.delete('page_pending');
+        }
+    }
+    
     window.history.replaceState({}, '', url);
 }
 
 function switchTab(tabName) {
     console.log('Switching to tab:', tabName);
+    
+    // Check if we're already on the target tab to avoid unnecessary updates
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentTab = currentParams.get('tab') || 'buat-forecasting';
     
     // Remove active class from all tabs
     document.querySelectorAll('.tab-button').forEach(tab => {
@@ -161,8 +185,10 @@ function switchTab(tabName) {
         activeTab.classList.add('active', 'border-green-500', 'text-green-600');
     }
     
-    // Update URL with tab parameter
-    updateUrl(tabName);
+    // Update URL with tab parameter only if we're switching tabs
+    if (tabName !== currentTab) {
+        updateUrl(tabName);
+    }
     
     // Update breadcrumb
     updateBreadcrumb(tabName);
@@ -170,8 +196,46 @@ function switchTab(tabName) {
 
 // Function to initialize tab based on URL parameter
 function initializeTabFromUrl() {
-    const activeTab = getUrlParameter('tab') || 'buat-forecasting';
-    switchTab(activeTab);
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab') || 'buat-forecasting';
+    
+    console.log('Initializing tab from URL:', activeTab);
+    console.log('Current URL params:', Object.fromEntries(urlParams));
+    
+    // Don't call switchTab, instead directly set the active state
+    // This prevents the updateUrl call which might remove pagination
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-button').forEach(tab => {
+        tab.classList.remove('active', 'border-green-500', 'text-green-600');
+        tab.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    // Hide all tab content properly
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.add('hidden');
+        pane.classList.remove('active');
+        pane.style.display = 'none';
+    });
+    
+    // Show active tab content
+    const activeContent = document.getElementById('content-' + activeTab);
+    if (activeContent) {
+        activeContent.classList.remove('hidden');
+        activeContent.classList.add('active');
+        activeContent.style.display = 'block';
+        console.log('Showing pane:', activeContent.id);
+    }
+    
+    // Add active class to correct tab
+    const activeTabButton = document.getElementById('tab-' + activeTab);
+    if (activeTabButton) {
+        activeTabButton.classList.remove('border-transparent', 'text-gray-500');
+        activeTabButton.classList.add('active', 'border-green-500', 'text-green-600');
+    }
+    
+    // Update breadcrumb
+    updateBreadcrumb(activeTab);
 }
 
 // Initialize tab on page load
@@ -191,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
     width: 100%;
     max-width: 100%;
     overflow: hidden;
-    contain: layout style paint;
+    contain: layout style; /* Removed paint containment to prevent modal z-index issues */
 }
 
 .tab-content {
@@ -234,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    isolation: isolate;
+    /* Removed isolation: isolate to prevent modal z-index issues */
 }
 
 /* Force containment for all nested elements */
@@ -250,5 +314,15 @@ document.addEventListener('DOMContentLoaded', function() {
     max-width: 100%;
 }
 </style>
+
+{{-- Include Modal Buat Forecast --}}
+@include('pages.purchasing.forecast.buat-forecasting.modal-buat-forecasting')
+
+{{-- Include Universal Success Modal --}}
+@include('components.success-modal')
+
+
+{{-- Include Forecast Detail Modal (outside tab content to avoid z-index issues) --}}
+@include('pages.purchasing.forecast.pending-forecasting.detail')
 
 @endsection

@@ -133,7 +133,9 @@
 
 <script>
 // Global variable to store current forecast data for pengiriman modal
-let currentPengirimanForecastData = null;
+if (typeof currentPengirimanForecastData === 'undefined') {
+    var currentPengirimanForecastData = null;
+}
 
 // Open pengiriman modal
 function openPengirimanModal(forecastData) {

@@ -137,7 +137,9 @@
 
 <script>
 // Global variable to store current forecast data for batal modal
-let currentBatalForecastData = null;
+if (typeof currentBatalForecastData === 'undefined') {
+    var currentBatalForecastData = null;
+}
 
 // Open batal pengiriman modal
 function openBatalPengirimanModal(forecastData) {

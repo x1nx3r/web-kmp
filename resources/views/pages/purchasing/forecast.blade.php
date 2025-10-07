@@ -158,25 +158,32 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.add('hidden');
         pane.classList.remove('active');
-        pane.style.display = 'none'; // Force hide
+        pane.style.display = 'none';
+        pane.style.opacity = '0';
+        pane.style.visibility = 'hidden';
         console.log('Hiding pane:', pane.id);
     });
     
-    // Show active tab content
-    const activeContent = document.getElementById('content-' + tabName);
-    if (activeContent) {
-        activeContent.classList.remove('hidden');
-        activeContent.classList.add('active');
-        activeContent.style.display = 'block'; // Force show
-        console.log('Showing pane:', activeContent.id);
-        
-        // Ensure the element stays within its parent
-        const parent = activeContent.parentElement;
-        if (parent && !parent.contains(activeContent)) {
-            console.warn('Element moved outside parent, re-appending');
-            parent.appendChild(activeContent);
+    // Small delay to ensure proper hiding
+    setTimeout(() => {
+        // Show active tab content
+        const activeContent = document.getElementById('content-' + tabName);
+        if (activeContent) {
+            activeContent.classList.remove('hidden');
+            activeContent.classList.add('active');
+            activeContent.style.display = 'block';
+            activeContent.style.opacity = '1';
+            activeContent.style.visibility = 'visible';
+            console.log('Showing pane:', activeContent.id);
+            
+            // Ensure the element stays within its parent
+            const parent = activeContent.parentElement;
+            if (parent && !parent.contains(activeContent)) {
+                console.warn('Element moved outside parent, re-appending');
+                parent.appendChild(activeContent);
+            }
         }
-    }
+    }, 50);
     
     // Add active class to clicked tab
     const activeTab = document.getElementById('tab-' + tabName);
@@ -202,9 +209,6 @@ function initializeTabFromUrl() {
     console.log('Initializing tab from URL:', activeTab);
     console.log('Current URL params:', Object.fromEntries(urlParams));
     
-    // Don't call switchTab, instead directly set the active state
-    // This prevents the updateUrl call which might remove pagination
-    
     // Remove active class from all tabs
     document.querySelectorAll('.tab-button').forEach(tab => {
         tab.classList.remove('active', 'border-green-500', 'text-green-600');
@@ -216,6 +220,8 @@ function initializeTabFromUrl() {
         pane.classList.add('hidden');
         pane.classList.remove('active');
         pane.style.display = 'none';
+        pane.style.opacity = '0';
+        pane.style.visibility = 'hidden';
     });
     
     // Show active tab content
@@ -224,6 +230,8 @@ function initializeTabFromUrl() {
         activeContent.classList.remove('hidden');
         activeContent.classList.add('active');
         activeContent.style.display = 'block';
+        activeContent.style.opacity = '1';
+        activeContent.style.visibility = 'visible';
         console.log('Showing pane:', activeContent.id);
     }
     
@@ -249,69 +257,76 @@ document.addEventListener('DOMContentLoaded', function() {
     @apply border-green-800 text-green-600;
 }
 
-/* Tab content wrapper with strict containment */
+/* Tab content wrapper */
 .tab-content-wrapper {
     position: relative;
     width: 100%;
-    max-width: 100%;
     overflow: hidden;
-    contain: layout style; /* Removed paint containment to prevent modal z-index issues */
 }
 
 .tab-content {
     position: relative;
     width: 100%;
-    max-width: 100%;
-    contain: layout style;
 }
 
 .tab-content-inner {
     position: relative;
     width: 100%;
-    max-width: 100%;
     box-sizing: border-box;
 }
 
 .tab-pane {
     position: relative;
-    z-index: 1;
     width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    contain: layout;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out;
 }
 
 .tab-pane.active {
     display: block !important;
+    opacity: 1;
+    visibility: visible;
 }
 
 .tab-pane.hidden {
     display: none !important;
+    opacity: 0;
+    visibility: hidden;
 }
 
-/* Specific containment for each tab */
+/* Specific styling for each tab */
 #content-buat-forecasting,
 #content-pending,
 #content-sukses,
 #content-gagal {
     position: relative;
     width: 100%;
-    max-width: 100%;
     box-sizing: border-box;
-    /* Removed isolation: isolate to prevent modal z-index issues */
+    min-height: 200px;
 }
 
-/* Force containment for all nested elements */
+/* Reset any conflicting styles for tab content */
 .tab-pane * {
-    max-width: 100%;
     box-sizing: border-box;
 }
 
-/* Additional safety for large elements */
-.tab-pane .space-y-6,
+/* Ensure proper spacing and alignment */
+.tab-pane .space-y-6 > * + * {
+    margin-top: 1.5rem;
+}
+
+/* Fix any layout issues */
 .tab-pane .bg-white {
+    background-color: white;
     position: relative;
-    max-width: 100%;
+    z-index: 1;
+}
+
+/* Ensure proper container behavior */
+.tab-content-wrapper .space-y-6 {
+    margin: 0;
+    padding: 0;
 }
 </style>
 
@@ -321,8 +336,16 @@ document.addEventListener('DOMContentLoaded', function() {
 {{-- Include Universal Success Modal --}}
 @include('components.success-modal')
 
+{{-- Include Batal Pengiriman Modal --}}
+@include('pages.purchasing.forecast.pending-forecasting.batal')
+
+{{-- Include Pengiriman Modal --}}
+@include('pages.purchasing.forecast.pending-forecasting.pengiriman')
 
 {{-- Include Forecast Detail Modal (outside tab content to avoid z-index issues) --}}
 @include('pages.purchasing.forecast.pending-forecasting.detail')
+
+{{-- Include Sukses Detail Modal --}}
+@include('pages.purchasing.forecast.sukses-forecasting.detail')
 
 @endsection

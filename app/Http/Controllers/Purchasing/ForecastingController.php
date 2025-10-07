@@ -745,6 +745,84 @@ class ForecastingController extends Controller
     }
 
     /**
+     * Get forecast detail for modal display
+     */
+    public function getForecastDetail($id)
+    {
+        try {
+            Log::info("getForecastDetail called with ID: {$id}");
+            
+            // Load forecast with all necessary relations
+            $forecast = Forecast::with([
+                'purchaseOrder.klien',
+                'purchasing',
+                'forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien',
+                'forecastDetails.bahanBakuSupplier.supplier'
+            ])->find($id);
+            
+            if (!$forecast) {
+                Log::error("Forecast not found with ID: {$id}");
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Forecast tidak ditemukan'
+                ], 404);
+            }
+
+            Log::info("Forecast found: {$forecast->no_forecast}");
+
+            // Format forecast data for frontend
+            $forecastData = [
+                'id' => $forecast->id,
+                'no_forecast' => $forecast->no_forecast,
+                'klien' => $forecast->purchaseOrder->klien->nama ?? 'N/A',
+                'no_po' => $forecast->purchaseOrder->no_po ?? 'N/A',
+                'purchasing' => $forecast->purchasing->nama ?? 'N/A',
+                'tanggal_forecast' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('Y-m-d') : '',
+                'tanggal_forecast_formatted' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d M Y') : '',
+                'hari_kirim_forecast' => $forecast->hari_kirim_forecast,
+                'total_qty' => number_format((float)$forecast->total_qty_forecast, 2),
+                'total_harga' => 'Rp ' . number_format((float)$forecast->total_harga_forecast, 0, ',', '.'),
+                'status' => $forecast->status,
+                'catatan' => $forecast->catatan,
+                'created_at' => $forecast->created_at ? $forecast->created_at->format('d M Y, H:i') : '',
+                'updated_at' => $forecast->updated_at ? $forecast->updated_at->format('d M Y, H:i') : '',
+                'details' => []
+            ];
+
+            // Format forecast details
+            foreach ($forecast->forecastDetails as $detail) {
+                $forecastData['details'][] = [
+                    'id' => $detail->id,
+                    'nama_bahan_baku' => $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? 'N/A',
+                    'supplier' => $detail->bahanBakuSupplier->supplier->nama ?? 'N/A',
+                    'qty_forecast' => number_format((float)$detail->qty_forecast, 2),
+                    'harga_satuan_forecast' => 'Rp ' . number_format((float)$detail->harga_satuan_forecast, 0, ',', '.'),
+                    'total_harga_forecast' => 'Rp ' . number_format((float)$detail->total_harga_forecast, 0, ',', '.'),
+                    'catatan_detail' => $detail->catatan_detail
+                ];
+            }
+
+            Log::info("Forecast detail prepared successfully for: {$forecast->no_forecast}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Detail forecast berhasil dimuat',
+                'forecast' => $forecastData
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting forecast detail - Exception: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ' line: ' . $e->getLine());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat detail forecast. Silakan coba lagi.',
+                'debug_info' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
      * Batalkan forecast (ubah status menjadi 'batal' dan buat data pengiriman dengan status 'gagal')
      */
     public function batalkanForecast(Request $request, $id)

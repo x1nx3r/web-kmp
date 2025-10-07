@@ -519,30 +519,48 @@ function changeToPengirimanBatal() {
         return;
     }
     
-    // Show confirmation dialog
-    if (confirm('Apakah Anda yakin akan membatalkan pengiriman forecast ini?\n\nForecast akan dibatalkan dan tidak akan diproses.')) {
-        // Show loading state
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
-        btn.disabled = true;
+    // Prepare data for batal modal - data already comes in correct format from controller
+    const batalData = {
+        id: currentForecastData.id,
+        no_forecast: currentForecastData.no_forecast,
+        klien: currentForecastData.klien,
+        total_qty: currentForecastData.total_qty,
+        total_harga: currentForecastData.total_harga
+    };
+    
+    console.log('Opening batal modal with forecast data:', batalData);
+    
+    // Open the batal pengiriman modal
+    if (typeof openBatalPengirimanModal === 'function') {
+        openBatalPengirimanModal(batalData);
+    } else {
+        console.error('openBatalPengirimanModal function not found');
         
-        // Simulate API call
-        setTimeout(() => {
-            // Reset button
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+        // Fallback to simple confirmation if modal is not available
+        if (confirm('Apakah Anda yakin akan membatalkan pengiriman forecast ini?\n\nForecast akan dibatalkan dan tidak akan diproses.')) {
+            // Show loading state
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
+            btn.disabled = true;
             
-            // Show success message
-            showToast('Pengiriman forecast berhasil dibatalkan!', 'warning');
-            
-            // Close modal after delay
+            // Simulate API call
             setTimeout(() => {
-                closeForecastDetailModal();
-                // In real implementation, refresh the page or update the list
-                // window.location.reload();
-            }, 1500);
-        }, 2000);
+                // Reset button
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                // Show success message
+                showToast('Pengiriman forecast berhasil dibatalkan!', 'warning');
+                
+                // Close modal after delay
+                setTimeout(() => {
+                    closeForecastDetailModal();
+                    // In real implementation, refresh the page or update the list
+                    // window.location.reload();
+                }, 1500);
+            }, 2000);
+        }
     }
 }
 
@@ -777,3 +795,6 @@ button:active {
     transform: translateY(0);
 }
 </style>
+
+{{-- Include Batal Pengiriman Modal --}}
+@include('pages.purchasing.forecast.pending-forecasting.batal')

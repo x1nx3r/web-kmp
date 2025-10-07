@@ -222,6 +222,9 @@
                                                 <span><i class="fas fa-calendar mr-1"></i>{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A' }}</span>
                                                 <span><i class="fas fa-truck mr-1"></i>{{ $forecast->hari_kirim_forecast ?? 'N/A' }}</span>
                                             </div>
+                                            <div class="flex items-center mt-1 text-xs text-blue-600">
+                                                <span><i class="fas fa-user-tie mr-1"></i>PIC: {{ optional($forecast->purchasing)->nama ?? 'Belum ditentukan' }}</span>
+                                            </div>
                                         </div>
                                         
                                         <div class="flex space-x-1">

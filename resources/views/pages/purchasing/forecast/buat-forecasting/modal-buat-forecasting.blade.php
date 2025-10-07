@@ -635,8 +635,15 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
             throw new Error('Hari forecast tidak valid');
         }
         
+        // Get and validate CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            throw new Error('CSRF token tidak ditemukan. Silakan refresh halaman.');
+        }
+        
         // Prepare data for API
         const data = {
+            _token: csrfToken,
             purchase_order_id: purchaseOrderId,
             tanggal_forecast: tanggalForecast,
             hari_kirim_forecast: hariForecast,
@@ -664,7 +671,6 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Accept': 'application/json'
             },
             body: JSON.stringify(data),

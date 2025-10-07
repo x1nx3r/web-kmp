@@ -17,12 +17,11 @@ return new class extends Migration
             $table->foreignId('purchasing_id')->constrained('users')->onDelete('cascade');
             $table->string('no_pengiriman')->unique();
             $table->date('tanggal_kirim')->nullable();
-            $table->date('hari_kirim')->nullable();
+            $table->string('hari_kirim')->nullable();
             $table->decimal('total_qty_kirim', 15, 2)->default(0);
             $table->decimal('total_harga_kirim', 15, 2)->default(0);
-            $table->decimal('total_qty_sisa', 15, 2)->default(0);
             $table->string('bukti_foto_bongkar')->nullable();
-            $table->enum('status', ['pending', 'terkirim', 'diverifikasi'])->default('pending');
+            $table->enum('status', ['pending','menunggu_verifikasi', 'berhasil', 'gagal'])->default('pending');
             $table->text('catatan')->nullable();
             $table->timestamps();
             $table->softDeletes();

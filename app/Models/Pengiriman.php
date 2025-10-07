@@ -21,7 +21,6 @@ class Pengiriman extends Model
         'hari_kirim',
         'total_qty_kirim',
         'total_harga_kirim',
-        'total_qty_sisa',
         'bukti_foto_bongkar',
         'status',
         'catatan'
@@ -29,7 +28,6 @@ class Pengiriman extends Model
 
     protected $casts = [
         'tanggal_kirim' => 'date',
-        'hari_kirim' => 'date',
         'total_qty_kirim' => 'decimal:2',
         'total_harga_kirim' => 'decimal:2',
         'total_qty_sisa' => 'decimal:2',

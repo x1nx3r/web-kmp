@@ -8,6 +8,8 @@ use App\Models\PurchaseOrderBahanBaku;
 use App\Models\Forecast;
 use App\Models\ForecastDetail;
 use App\Models\BahanBakuSupplier;
+use App\Models\Pengiriman;
+use App\Models\PengirimanDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -637,45 +639,181 @@ class ForecastingController extends Controller
     }
 
     /**
-     * Batalkan forecast (ubah status menjadi 'batal')
+     * Batalkan forecast (ubah status menjadi 'batal' dan buat data pengiriman dengan status 'gagal')
      */
-    public function batalkanForecast($id)
+    public function batalkanForecast(Request $request, $id)
     {
+        Log::info("batalkanForecast called with ID: {$id}");
+        Log::info("Request data: " . json_encode($request->all()));
+        
+        // Quick database connectivity test
         try {
-            $forecast = Forecast::find($id);
+            $tableExists = DB::select("SHOW TABLES LIKE 'forecasts'");
+            Log::info("Forecasts table exists: " . (count($tableExists) > 0 ? 'yes' : 'no'));
+            
+            $pengirimanTableExists = DB::select("SHOW TABLES LIKE 'pengiriman'");
+            Log::info("Pengiriman table exists: " . (count($pengirimanTableExists) > 0 ? 'yes' : 'no'));
+        } catch (\Exception $dbTest) {
+            Log::error("Database test failed: " . $dbTest->getMessage());
+        }
+        
+        // Validasi input alasan pembatalan
+        try {
+            $request->validate([
+                'alasan_batal' => 'required|string|min:10|max:500'
+            ], [
+                'alasan_batal.required' => 'Alasan pembatalan harus diisi',
+                'alasan_batal.min' => 'Alasan pembatalan minimal 10 karakter',
+                'alasan_batal.max' => 'Alasan pembatalan maksimal 500 karakter'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed in batalkanForecast:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        }
+
+        try {
+            // Set shorter timeout for this operation
+            DB::statement('SET SESSION innodb_lock_wait_timeout = 10');
+            
+            Log::info("Starting database transaction for forecast cancellation");
+            DB::beginTransaction();
+
+            // Optimized: Load forecast with minimal eager loading and lock for update
+            Log::info("Loading forecast with ID: {$id}");
+            $forecast = Forecast::with(['forecastDetails:id,forecast_id,purchase_order_bahan_baku_id,bahan_baku_supplier_id,qty_forecast,harga_satuan_forecast,total_harga_forecast,catatan_detail'])
+                ->select('id', 'purchase_order_id', 'purchasing_id', 'no_forecast', 'tanggal_forecast', 'hari_kirim_forecast', 'total_qty_forecast', 'total_harga_forecast', 'status')
+                ->lockForUpdate()
+                ->find($id);
             
             if (!$forecast) {
+                Log::error("Forecast not found with ID: {$id}");
                 return response()->json([
                     'success' => false,
                     'message' => 'Forecast tidak ditemukan'
                 ], 404);
             }
 
+            Log::info("Forecast found: {$forecast->no_forecast}, Status: {$forecast->status}");
+
             if ($forecast->status !== 'pending') {
+                Log::error("Forecast status is not pending: {$forecast->status}");
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya forecast dengan status pending yang dapat dibatalkan'
                 ], 400);
             }
 
-            $forecast->update([
-                'status' => 'batal',
-                'updated_by' => Auth::id(),
-                'updated_at' => now()
+            // Optimized: Generate simplified no_pengiriman first
+            $timestamp = now();
+            $noPengiriman = 'BATAL-' . $forecast->id . '-' . $timestamp->format('ymdHis');
+            
+            Log::info("Creating pengiriman with no: {$noPengiriman}");
+            
+            // 1. Create Pengiriman record with optimized data (using raw insert for speed)
+            $pengirimanId = DB::table('pengiriman')->insertGetId([
+                'purchase_order_id' => $forecast->purchase_order_id,
+                'purchasing_id' => $forecast->purchasing_id,
+                'no_pengiriman' => $noPengiriman,
+                'tanggal_kirim' => $forecast->tanggal_forecast,
+                'hari_kirim' => $forecast->hari_kirim_forecast,
+                'total_qty_kirim' => $forecast->total_qty_forecast,
+                'total_harga_kirim' => $forecast->total_harga_forecast,
+                'status' => 'gagal',
+                'catatan' => "PEMBATALAN: {$request->alasan_batal} | Forecast: {$forecast->no_forecast} | " . $timestamp->format('d/m/Y H:i'),
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp
             ]);
+            
+            Log::info("Pengiriman created with ID: {$pengirimanId}");
 
-            Log::info("Forecast {$forecast->no_forecast} berhasil dibatalkan oleh user " . Auth::id());
+            // 2. Optimized: Batch insert pengiriman details
+            if ($forecast->forecastDetails->isNotEmpty()) {
+                Log::info("Creating pengiriman details, count: " . $forecast->forecastDetails->count());
+                $pengirimanDetails = [];
+                $currentTime = $timestamp->format('Y-m-d H:i:s');
+                
+                foreach ($forecast->forecastDetails as $detail) {
+                    $pengirimanDetails[] = [
+                        'pengiriman_id' => $pengirimanId,
+                        'purchase_order_bahan_baku_id' => $detail->purchase_order_bahan_baku_id,
+                        'bahan_baku_supplier_id' => $detail->bahan_baku_supplier_id,
+                        'qty_kirim' => $detail->qty_forecast,
+                        'harga_satuan' => $detail->harga_satuan_forecast,
+                        'total_harga' => $detail->total_harga_forecast,
+                        'catatan_detail' => $detail->catatan_detail,
+                        'created_at' => $currentTime,
+                        'updated_at' => $currentTime
+                    ];
+                }
+                
+                // Batch insert for better performance
+                Log::info("Inserting " . count($pengirimanDetails) . " pengiriman details");
+                DB::table('pengiriman_details')->insert($pengirimanDetails);
+                Log::info("Pengiriman details inserted successfully");
+            } else {
+                Log::info("No forecast details to copy");
+            }
+
+            // 3. Update forecast status using raw query to avoid potential lock issues
+            Log::info("Updating forecast status to 'gagal'");
+            DB::table('forecasts')
+                ->where('id', $forecast->id)
+                ->update([
+                    'status' => 'gagal',
+                    'updated_at' => $timestamp
+                ]);
+            Log::info("Forecast status updated successfully");
+
+            Log::info("Committing transaction");
+            DB::commit();
+            Log::info("Transaction committed successfully");
+
+            // Simplified logging
+            Log::info("Forecast {$forecast->no_forecast} dibatalkan, dipindah ke pengiriman ID: {$pengirimanId}");
 
             return response()->json([
                 'success' => true,
-                'message' => 'Forecast berhasil dibatalkan'
+                'message' => "Forecast {$forecast->no_forecast} berhasil dibatalkan dan data dipindahkan ke pengiriman",
+                'data' => [
+                    'forecast_id' => $forecast->id,
+                    'pengiriman_id' => $pengirimanId,
+                    'no_forecast' => $forecast->no_forecast,
+                    'no_pengiriman' => $noPengiriman
+                ]
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Error membatalkan forecast: ' . $e->getMessage());
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollback();
+            Log::error('Database query error in batalkan forecast: ' . $e->getMessage());
+            Log::error('Error code: ' . $e->getCode());
+            
+            // Handle specific database errors
+            if ($e->getCode() == 1205 || str_contains($e->getMessage(), 'Lock wait timeout')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sistem sedang sibuk. Silakan coba lagi dalam beberapa saat.',
+                ], 500);
+            }
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal membatalkan forecast: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan database. Silakan coba lagi.',
+                'debug_info' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error batalkan forecast - Exception: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ' line: ' . $e->getLine());
+            Log::error('Error trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membatalkan forecast. Silakan coba lagi.',
+                'debug_info' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }

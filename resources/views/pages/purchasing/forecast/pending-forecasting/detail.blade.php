@@ -485,30 +485,48 @@ function changeToPengiriman() {
         return;
     }
     
-    // Show confirmation dialog
-    if (confirm('Apakah Anda yakin akan mengubah forecast ini menjadi "Pengiriman"?\n\nForecast akan diproses untuk pengiriman ke klien.')) {
-        // Show loading state
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
-        btn.disabled = true;
+    // Prepare data for pengiriman modal - data already comes in correct format from controller
+    const pengirimanData = {
+        id: currentForecastData.id,
+        no_forecast: currentForecastData.no_forecast,
+        klien: currentForecastData.klien,
+        total_qty: currentForecastData.total_qty,
+        total_harga: currentForecastData.total_harga
+    };
+    
+    console.log('Opening pengiriman modal with forecast data:', pengirimanData);
+    
+    // Open the pengiriman modal
+    if (typeof openPengirimanModal === 'function') {
+        openPengirimanModal(pengirimanData);
+    } else {
+        console.error('openPengirimanModal function not found');
         
-        // Simulate API call
-        setTimeout(() => {
-            // Reset button
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+        // Fallback to simple confirmation if modal is not available
+        if (confirm('Apakah Anda yakin akan mengubah forecast ini menjadi "Pengiriman"?\n\nForecast akan diproses untuk pengiriman ke klien.')) {
+            // Show loading state
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
+            btn.disabled = true;
             
-            // Show success message
-            showToast('Forecast berhasil diubah menjadi "Pengiriman"!', 'success');
-            
-            // Close modal after delay
+            // Simulate API call
             setTimeout(() => {
-                closeForecastDetailModal();
-                // In real implementation, refresh the page or update the list
-                // window.location.reload();
-            }, 1500);
-        }, 2000);
+                // Reset button
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                // Show success message
+                showToast('Forecast berhasil diubah menjadi "Pengiriman"!', 'success');
+                
+                // Close modal after delay
+                setTimeout(() => {
+                    closeForecastDetailModal();
+                    // In real implementation, refresh the page or update the list
+                    // window.location.reload();
+                }, 1500);
+            }, 2000);
+        }
     }
 }
 
@@ -798,3 +816,6 @@ button:active {
 
 {{-- Include Batal Pengiriman Modal --}}
 @include('pages.purchasing.forecast.pending-forecasting.batal')
+
+{{-- Include Pengiriman Modal --}}
+@include('pages.purchasing.forecast.pending-forecasting.pengiriman')

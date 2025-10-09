@@ -2,12 +2,12 @@
 <div id="forecastModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {{-- Backdrop --}}
-        <div class="fixed inset-0  transition-opacity backdrop-blur-xs" aria-hidden="true" onclick="closeForecastModal()"></div>
+        <div class="fixed inset-0 transition-opacity backdrop-blur-xs" aria-hidden="true" onclick="closeForecastModal()"></div>
         
         {{-- Center the modal --}}
         <span class="hidden sm:inline-block border border-green-600 sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
-        <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[95vh] overflow-y-auto m-2 sm:m-0 border-4 border-green-500">
+        <div class="relative inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[95vh] overflow-y-auto m-2 sm:m-0 border-4 border-green-500">
             <form id="forecastForm">
                 <div class="bg-white px-0 pt-0 pb-4 sm:px-0 sm:pb-4">
                     <div class="sm:flex sm:items-start">
@@ -792,24 +792,13 @@ function showTimeoutModal() {
 function closeTimeoutModal() {
     document.getElementById('timeoutModal').classList.add('hidden');
     
-    // Preserve current page parameters when reloading
-    const currentParams = new URLSearchParams(window.location.search);
-    const currentPage = currentParams.get('page') || '1';
-    const currentTab = currentParams.get('tab') || 'buat-forecasting';
-    
-    // Build URL with preserved parameters
-    const params = new URLSearchParams();
-    params.append('tab', currentTab);
-    params.append('page', currentPage);
-    
-    // Preserve other filters
-    if (currentParams.get('search')) params.append('search', currentParams.get('search'));
-    if (currentParams.get('status')) params.append('status', currentParams.get('status'));
-    if (currentParams.get('sort_amount')) params.append('sort_amount', currentParams.get('sort_amount'));
-    if (currentParams.get('sort_items')) params.append('sort_items', currentParams.get('sort_items'));
-    
-    // Reload with preserved parameters
-    window.location.href = window.location.pathname + '?' + params.toString();
+    // Use global refresh function to preserve all parameters
+    if (window.refreshWithPreservedParams) {
+        window.refreshWithPreservedParams();
+    } else {
+        // Fallback to simple refresh
+        window.location.reload();
+    }
 }
 
 // Close timeout modal only (without refresh)

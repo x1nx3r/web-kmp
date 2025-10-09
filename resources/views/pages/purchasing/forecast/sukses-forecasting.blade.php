@@ -60,14 +60,6 @@ Tab Sukses Forecasting
                             <option value="oldest" {{ request('sort_order_sukses') == 'oldest' ? 'selected' : '' }}>Terlama</option>
                         </select>
                     </div>
-
-                    {{-- Clear Filter Button --}}
-                    <div class="flex items-end">
-                        <button type="button" onclick="clearFiltersSukses()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 sm:py-3 px-2 sm:px-4 rounded-lg transition-all duration-200 text-xs sm:text-sm font-medium">
-                            <i class="fas fa-eraser mr-1 sm:mr-2"></i>
-                            Bersihkan Filter
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -83,12 +75,12 @@ Tab Sukses Forecasting
                 </h3>
                 <div class="text-sm text-gray-500">
                     <i class="fas fa-info-circle mr-1"></i>
-                    Total: {{ count($suksesForecasts ?? []) }} forecast
+                    Total: {{ $suksesForecasts->total() }} forecast (Halaman {{ $suksesForecasts->currentPage() }} dari {{ $suksesForecasts->lastPage() }})
                 </div>
             </div>
         </div>
 
-        @forelse($suksesForecasts ?? [] as $forecast)
+        @forelse($suksesForecasts as $forecast)
         @empty
             <div class="text-center py-12 text-gray-500">
                 <i class="fas fa-check-circle text-gray-300 text-4xl mb-4"></i>
@@ -97,7 +89,7 @@ Tab Sukses Forecasting
             </div>
         @endforelse
 
-        @if(count($suksesForecasts ?? []) > 0)
+        @if($suksesForecasts->count() > 0)
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-green-50">
@@ -129,7 +121,7 @@ Tab Sukses Forecasting
                                     <div class="text-sm text-gray-900">
                                         <div>Qty: <span class="font-medium">{{ $forecast->total_qty_forecast_formatted ?? number_format($forecast->total_qty_forecast, 0, ',', '.') }}</span></div>
                                         <div>Total: <span class="font-medium">{{ $forecast->total_harga_forecast_formatted ?? 'Rp ' . number_format($forecast->total_harga_forecast, 0, ',', '.') }}</span></div>
-                                        <div>Kirim: <span class="font-medium">{{ $forecast->hari_kirim_forecast }} hari</span></div>
+                                        <div>Kirim: <span class="font-medium">{{ $forecast->hari_kirim_forecast }}</span></div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -153,12 +145,101 @@ Tab Sukses Forecasting
                     </tbody>
                 </table>
             </div>
+            
+            {{-- Pagination --}}
+            @if($suksesForecasts->hasPages())
+                <div class="px-6 py-4 border-t border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 flex justify-between sm:hidden">
+                            @if($suksesForecasts->onFirstPage())
+                                <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default leading-5 rounded-md">
+                                    Sebelumnya
+                                </span>
+                            @else
+                                <a href="{{ $suksesForecasts->previousPageUrl() }}&tab=sukses" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
+                                    Sebelumnya
+                                </a>
+                            @endif
+
+                            @if($suksesForecasts->hasMorePages())
+                                <a href="{{ $suksesForecasts->nextPageUrl() }}&tab=sukses" class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
+                                    Selanjutnya
+                                </a>
+                            @else
+                                <span class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default leading-5 rounded-md">
+                                    Selanjutnya
+                                </span>
+                            @endif
+                        </div>
+
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700">
+                                    Menampilkan
+                                    <span class="font-medium">{{ $suksesForecasts->firstItem() }}</span>
+                                    sampai
+                                    <span class="font-medium">{{ $suksesForecasts->lastItem() }}</span>
+                                    dari
+                                    <span class="font-medium">{{ $suksesForecasts->total() }}</span>
+                                    hasil
+                                </p>
+                            </div>
+
+                            <div>
+                                <span class="relative z-0 inline-flex shadow-sm rounded-md">
+                                    @if($suksesForecasts->onFirstPage())
+                                        <span aria-disabled="true" aria-label="Previous">
+                                            <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default rounded-l-md leading-5" aria-hidden="true">
+                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </span>
+                                        </span>
+                                    @else
+                                        <a href="{{ $suksesForecasts->previousPageUrl() }}&tab=sukses" rel="prev" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150" aria-label="Previous">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                            </svg>
+                                        </a>
+                                    @endif
+
+                                    @foreach($suksesForecasts->getUrlRange(1, $suksesForecasts->lastPage()) as $page => $url)
+                                        @if($page == $suksesForecasts->currentPage())
+                                            <span aria-current="page">
+                                                <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-white bg-green-600 border border-green-600 cursor-default leading-5">{{ $page }}</span>
+                                            </span>
+                                        @else
+                                            <a href="{{ $url }}&tab=sukses" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
+                                        @endif
+                                    @endforeach
+
+                                    @if($suksesForecasts->hasMorePages())
+                                        <a href="{{ $suksesForecasts->nextPageUrl() }}&tab=sukses" rel="next" class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150" aria-label="Next">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                            </svg>
+                                        </a>
+                                    @else
+                                        <span aria-disabled="true" aria-label="Next">
+                                            <span class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default rounded-r-md leading-5" aria-hidden="true">
+                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </span>
+                                        </span>
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         @endif
     </div>
 </div>
 
 {{-- Modal Detail Forecast (Clean Version) --}}
-<div id="detailForecastModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+<div id="detailForecastModal" class="fixed inset-0 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
     <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-lg font-bold text-gray-900 flex items-center">
@@ -177,6 +258,54 @@ Tab Sukses Forecasting
 </div>
 
 <script>
+// Debounce timer for search
+let searchTimeoutSukses = null;
+
+// Function to handle search with debounce
+function debounceSearchSukses() {
+    clearTimeout(searchTimeoutSukses);
+    searchTimeoutSukses = setTimeout(() => {
+        submitSearchSukses();
+    }, 300); // Wait 300ms after user stops typing
+}
+
+// Function to submit search form
+function submitSearchSukses() {
+    const searchInput = document.getElementById('searchInputSukses');
+    const dateFilter = document.getElementById('dateRangeFilterSukses');
+    const sortOrder = document.getElementById('sortOrderSukses');
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    
+    if (searchInput.value.trim()) {
+        params.append('search_sukses', searchInput.value.trim());
+    }
+    
+    if (dateFilter.value) {
+        params.append('date_range_sukses', dateFilter.value);
+    }
+    
+    if (sortOrder.value) {
+        params.append('sort_order_sukses', sortOrder.value);
+    }
+    
+    // Add tab parameter to stay on sukses tab
+    params.append('tab', 'sukses');
+    
+    // Reset to page 1 when searching/filtering
+    params.append('page_sukses', '1');
+    
+    // Redirect with new parameters
+    const url = '/forecasting' + (params.toString() ? '?' + params.toString() : '');
+    window.location.href = url;
+}
+
+// Function to apply filters
+function applyFiltersSukses() {
+    submitSearchSukses();
+}
+
 // Function to open detail modal (clean version)
 function openDetailModal(forecastId) {
     console.log('Opening detail modal for forecast ID:', forecastId);

@@ -108,13 +108,61 @@ class ForecastingController extends Controller
 
         $suksesForecasts = Forecast::with(['purchaseOrder.klien', 'purchasing'])
             ->sukses()
-            ->latest('created_at')
-            ->get();
+            ->when(request('search_sukses'), function($query) {
+                $searchTerm = request('search_sukses');
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('no_forecast', 'like', '%' . $searchTerm . '%')
+                      ->orWhereHas('purchaseOrder', function($poQuery) use ($searchTerm) {
+                          $poQuery->where('no_po', 'like', '%' . $searchTerm . '%')
+                                  ->orWhereHas('klien', function($klienQuery) use ($searchTerm) {
+                                      $klienQuery->where('nama', 'like', '%' . $searchTerm . '%');
+                                  });
+                      });
+                });
+            })
+            ->when(request('date_range_sukses'), function($query) {
+                $query->whereDate('tanggal_forecast', request('date_range_sukses'));
+            })
+            ->when(request('sort_order_sukses'), function($query) {
+                if (request('sort_order_sukses') == 'oldest') {
+                    $query->oldest('created_at');
+                } else {
+                    $query->latest('created_at');
+                }
+            }, function($query) {
+                $query->latest('created_at');
+            })
+            ->paginate(10, ['*'], 'page_sukses')
+            ->withQueryString();
 
         $gagalForecasts = Forecast::with(['purchaseOrder.klien', 'purchasing'])
             ->gagal()
-            ->latest('created_at')
-            ->get();
+            ->when(request('search_gagal'), function($query) {
+                $searchTerm = request('search_gagal');
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('no_forecast', 'like', '%' . $searchTerm . '%')
+                      ->orWhereHas('purchaseOrder', function($poQuery) use ($searchTerm) {
+                          $poQuery->where('no_po', 'like', '%' . $searchTerm . '%')
+                                  ->orWhereHas('klien', function($klienQuery) use ($searchTerm) {
+                                      $klienQuery->where('nama', 'like', '%' . $searchTerm . '%');
+                                  });
+                      });
+                });
+            })
+            ->when(request('date_range_gagal'), function($query) {
+                $query->whereDate('tanggal_forecast', request('date_range_gagal'));
+            })
+            ->when(request('sort_order_gagal'), function($query) {
+                if (request('sort_order_gagal') == 'oldest') {
+                    $query->oldest('created_at');
+                } else {
+                    $query->latest('created_at');
+                }
+            }, function($query) {
+                $query->latest('created_at');
+            })
+            ->paginate(10, ['*'], 'page_gagal')
+            ->withQueryString();
 
         return view('pages.purchasing.forecast', compact(
             'purchaseOrders',
@@ -769,21 +817,26 @@ class ForecastingController extends Controller
             }
 
             Log::info("Forecast found: {$forecast->no_forecast}");
+            
+            // Log relationship data for debugging
+            Log::info("Purchase Order: " . ($forecast->purchaseOrder ? $forecast->purchaseOrder->no_po : 'null'));
+            Log::info("Klien: " . ($forecast->purchaseOrder && $forecast->purchaseOrder->klien ? $forecast->purchaseOrder->klien->nama : 'null'));
+            Log::info("Purchasing: " . ($forecast->purchasing ? $forecast->purchasing->nama : 'null'));
+            Log::info("Forecast Details Count: " . $forecast->forecastDetails->count());
 
             // Format forecast data for frontend
             $forecastData = [
                 'id' => $forecast->id,
-                'no_forecast' => $forecast->no_forecast,
-                'klien' => $forecast->purchaseOrder->klien->nama ?? 'N/A',
-                'no_po' => $forecast->purchaseOrder->no_po ?? 'N/A',
-                'purchasing' => $forecast->purchasing->nama ?? 'N/A',
-                'tanggal_forecast' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('Y-m-d') : '',
-                'tanggal_forecast_formatted' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('d M Y') : '',
-                'hari_kirim_forecast' => $forecast->hari_kirim_forecast,
-                'total_qty' => number_format((float)$forecast->total_qty_forecast, 2),
-                'total_harga' => 'Rp ' . number_format((float)$forecast->total_harga_forecast, 0, ',', '.'),
-                'status' => $forecast->status,
-                'catatan' => $forecast->catatan,
+                'no_forecast' => $forecast->no_forecast ?: 'N/A',
+                'klien' => $forecast->purchaseOrder && $forecast->purchaseOrder->klien ? $forecast->purchaseOrder->klien->nama : 'N/A',
+                'no_po' => $forecast->purchaseOrder ? $forecast->purchaseOrder->no_po : 'N/A',
+                'pic_purchasing' => $forecast->purchasing ? $forecast->purchasing->nama : 'N/A',
+                'tanggal_forecast' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('d M Y') : 'N/A',
+                'hari_kirim' => $forecast->hari_kirim_forecast ?: 'N/A',
+                'total_qty' => $forecast->total_qty_forecast ? number_format((float)$forecast->total_qty_forecast, 0, ',', '.') : '0',
+                'total_harga' => $forecast->total_harga_forecast ? 'Rp ' . number_format((float)$forecast->total_harga_forecast, 0, ',', '.') : 'Rp 0',
+                'status' => $forecast->status ?: 'N/A',
+                'catatan' => $forecast->catatan ?: null,
                 'created_at' => $forecast->created_at ? $forecast->created_at->format('d M Y, H:i') : '',
                 'updated_at' => $forecast->updated_at ? $forecast->updated_at->format('d M Y, H:i') : '',
                 'details' => []
@@ -791,14 +844,18 @@ class ForecastingController extends Controller
 
             // Format forecast details
             foreach ($forecast->forecastDetails as $detail) {
+                Log::info("Processing detail ID: {$detail->id}");
+                Log::info("Detail Bahan Baku: " . ($detail->purchaseOrderBahanBaku && $detail->purchaseOrderBahanBaku->bahanBakuKlien ? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama : 'null'));
+                Log::info("Detail Supplier: " . ($detail->bahanBakuSupplier && $detail->bahanBakuSupplier->supplier ? $detail->bahanBakuSupplier->supplier->nama : 'null'));
+                
                 $forecastData['details'][] = [
                     'id' => $detail->id,
-                    'nama_bahan_baku' => $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? 'N/A',
-                    'supplier' => $detail->bahanBakuSupplier->supplier->nama ?? 'N/A',
-                    'qty_forecast' => number_format((float)$detail->qty_forecast, 2),
-                    'harga_satuan_forecast' => 'Rp ' . number_format((float)$detail->harga_satuan_forecast, 0, ',', '.'),
-                    'total_harga_forecast' => 'Rp ' . number_format((float)$detail->total_harga_forecast, 0, ',', '.'),
-                    'catatan_detail' => $detail->catatan_detail
+                    'bahan_baku' => $detail->purchaseOrderBahanBaku && $detail->purchaseOrderBahanBaku->bahanBakuKlien ? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama : 'N/A',
+                    'supplier' => $detail->bahanBakuSupplier && $detail->bahanBakuSupplier->supplier ? $detail->bahanBakuSupplier->supplier->nama : 'N/A',
+                    'qty' => $detail->qty_forecast ? number_format((float)$detail->qty_forecast, 0, ',', '.') : '0',
+                    'harga_satuan' => $detail->harga_satuan_forecast ? 'Rp ' . number_format((float)$detail->harga_satuan_forecast, 0, ',', '.') : 'Rp 0',
+                    'total_harga' => ($detail->qty_forecast && $detail->harga_satuan_forecast) ? 'Rp ' . number_format((float)($detail->qty_forecast * $detail->harga_satuan_forecast), 0, ',', '.') : 'Rp 0',
+                    'catatan_detail' => $detail->catatan_detail ?: null
                 ];
             }
 

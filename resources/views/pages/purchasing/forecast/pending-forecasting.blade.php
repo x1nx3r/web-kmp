@@ -421,7 +421,7 @@ function submitSearchPending() {
     currentParams.delete('page_pending');
     
     // Navigate to new URL
-    window.location.href = window.location.pathname + '?' + currentParams.toString();
+    window.location.href = '/forecasting?' + currentParams.toString();
 }
 
 // Apply filters function for server-side filtering
@@ -471,7 +471,7 @@ function applyFiltersPending() {
     // Reset to first page when filtering
     currentParams.delete('page_pending');
     
-    const newUrl = window.location.pathname + '?' + currentParams.toString();
+    const newUrl = '/forecasting?' + currentParams.toString();
     console.log('Navigating to:', newUrl);
     
     // Navigate to new URL
@@ -562,7 +562,7 @@ function clearAllFiltersPending() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pending');
     
-    window.location.href = window.location.pathname + '?' + newParams.toString();
+    window.location.href = '/forecasting?' + newParams.toString();
 }
 
 // Toggle forecast list visibility

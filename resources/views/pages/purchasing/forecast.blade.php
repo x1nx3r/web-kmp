@@ -250,6 +250,66 @@ function initializeTabFromUrl() {
 document.addEventListener('DOMContentLoaded', function() {
     initializeTabFromUrl();
 });
+
+// Global refresh function that preserves all parameters
+function refreshWithPreservedParams() {
+    const currentParams = new URLSearchParams(window.location.search);
+    
+    // Preserve current tab and page parameters
+    const currentTab = currentParams.get('tab') || 'buat-forecasting';
+    const currentPage = currentParams.get('page') || '1';
+    const currentPagePending = currentParams.get('page_pending') || '1';
+    const currentPageSukses = currentParams.get('page_sukses') || '1';
+    const currentPageGagal = currentParams.get('page_gagal') || '1';
+    
+    // Build URL with preserved parameters
+    const params = new URLSearchParams();
+    params.append('tab', currentTab);
+    
+    // Preserve pagination for all tabs
+    if (currentParams.get('page')) params.append('page', currentPage);
+    if (currentParams.get('page_pending')) params.append('page_pending', currentPagePending);
+    if (currentParams.get('page_sukses')) params.append('page_sukses', currentPageSukses);
+    if (currentParams.get('page_gagal')) params.append('page_gagal', currentPageGagal);
+    
+    // Preserve search and filter parameters for buat-forecasting tab
+    if (currentParams.get('search')) params.append('search', currentParams.get('search'));
+    if (currentParams.get('status')) params.append('status', currentParams.get('status'));
+    if (currentParams.get('sort_amount')) params.append('sort_amount', currentParams.get('sort_amount'));
+    if (currentParams.get('sort_items')) params.append('sort_items', currentParams.get('sort_items'));
+    
+    // Preserve search and filter parameters for pending tab
+    if (currentParams.get('search_pending')) params.append('search_pending', currentParams.get('search_pending'));
+    if (currentParams.get('date_range_pending')) params.append('date_range_pending', currentParams.get('date_range_pending'));
+    if (currentParams.get('sort_order_pending')) params.append('sort_order_pending', currentParams.get('sort_order_pending'));
+    
+    // Preserve search and filter parameters for sukses tab
+    if (currentParams.get('search_sukses')) params.append('search_sukses', currentParams.get('search_sukses'));
+    if (currentParams.get('date_range_sukses')) params.append('date_range_sukses', currentParams.get('date_range_sukses'));
+    if (currentParams.get('sort_order_sukses')) params.append('sort_order_sukses', currentParams.get('sort_order_sukses'));
+    
+    // Preserve search and filter parameters for gagal tab
+    if (currentParams.get('search_gagal')) params.append('search_gagal', currentParams.get('search_gagal'));
+    if (currentParams.get('date_range_gagal')) params.append('date_range_gagal', currentParams.get('date_range_gagal'));
+    if (currentParams.get('sort_order_gagal')) params.append('sort_order_gagal', currentParams.get('sort_order_gagal'));
+    
+    // Reload with preserved parameters
+    window.location.href = '/forecasting?' + params.toString();
+}
+
+// Global function to close success modal and refresh
+window.closeSuccessModal = function() {
+    // Close the modal first
+    if (document.getElementById('successModal')) {
+        document.getElementById('successModal').classList.add('hidden');
+    }
+    
+    // Refresh with preserved parameters
+    refreshWithPreservedParams();
+};
+
+// Expose refresh function globally
+window.refreshWithPreservedParams = refreshWithPreservedParams;
 </script>
 
 <style>

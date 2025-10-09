@@ -391,7 +391,6 @@
             </div>
         @endif
     </div>
-</div>
 
 <script>
 // Debounced search function for server-side filtering

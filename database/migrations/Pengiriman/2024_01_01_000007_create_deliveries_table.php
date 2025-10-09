@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('purchase_order_id')->constrained('purchase_orders')->onDelete('cascade');
             $table->foreignId('purchasing_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('forecast_id')->constrained('forecasts')->onDelete('cascade');
             $table->string('no_pengiriman')->nullable();
             $table->date('tanggal_kirim')->nullable();
             $table->string('hari_kirim')->nullable();

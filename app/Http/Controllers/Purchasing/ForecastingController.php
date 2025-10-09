@@ -635,14 +635,14 @@ class ForecastingController extends Controller
 
             // Generate no_pengiriman
             $timestamp = now();
-            $noPengiriman = 'PG-' . $forecast->id . '-' . $timestamp->format('ymdHis');
-            
-            Log::info("Creating pengiriman with no: {$noPengiriman}");
+            $noPengiriman = NULL; // Set to NULL as requested            
+            Log::info("Creating pengiriman with no_pengiriman: NULL");
             
             // 1. Create Pengiriman record with empty delivery fields (using raw insert for speed)
             $pengirimanId = DB::table('pengiriman')->insertGetId([
                 'purchase_order_id' => $forecast->purchase_order_id,
                 'purchasing_id' => $forecast->purchasing_id,
+                'forecast_id' => $forecast->id, // Add forecast_id relation
                 'no_pengiriman' => $noPengiriman,
                 'tanggal_kirim' => $forecast->tanggal_forecast,
                 'hari_kirim' => $forecast->hari_kirim_forecast,
@@ -708,7 +708,7 @@ class ForecastingController extends Controller
                     'forecast_id' => $forecast->id,
                     'pengiriman_id' => $pengirimanId,
                     'no_forecast' => $forecast->no_forecast,
-                    'no_pengiriman' => $noPengiriman
+                    'no_pengiriman' => null // Set to null as requested
                 ]
             ]);
 
@@ -777,8 +777,8 @@ class ForecastingController extends Controller
                 'klien' => $forecast->purchaseOrder->klien->nama ?? 'N/A',
                 'no_po' => $forecast->purchaseOrder->no_po ?? 'N/A',
                 'purchasing' => $forecast->purchasing->nama ?? 'N/A',
-                'tanggal_forecast' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('Y-m-d') : '',
-                'tanggal_forecast_formatted' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d M Y') : '',
+                'tanggal_forecast' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('Y-m-d') : '',
+                'tanggal_forecast_formatted' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('d M Y') : '',
                 'hari_kirim_forecast' => $forecast->hari_kirim_forecast,
                 'total_qty' => number_format((float)$forecast->total_qty_forecast, 2),
                 'total_harga' => 'Rp ' . number_format((float)$forecast->total_harga_forecast, 0, ',', '.'),
@@ -901,6 +901,7 @@ class ForecastingController extends Controller
             $pengirimanId = DB::table('pengiriman')->insertGetId([
                 'purchase_order_id' => $forecast->purchase_order_id,
                 'purchasing_id' => $forecast->purchasing_id,
+                'forecast_id' => $forecast->id, // Add forecast_id relation
                 'no_pengiriman' => $noPengiriman,
                 'tanggal_kirim' => $forecast->tanggal_forecast,
                 'hari_kirim' => $forecast->hari_kirim_forecast,

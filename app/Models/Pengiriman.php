@@ -16,6 +16,7 @@ class Pengiriman extends Model
     protected $fillable = [
         'purchase_order_id',
         'purchasing_id',
+        'forecast_id',
         'no_pengiriman',
         'tanggal_kirim',
         'hari_kirim',
@@ -41,6 +42,14 @@ class Pengiriman extends Model
     public function purchasing()
     {
         return $this->belongsTo(User::class, 'purchasing_id');
+    }
+
+    /**
+     * Relasi ke Forecast
+     */
+    public function forecast()
+    {
+        return $this->belongsTo(Forecast::class, 'forecast_id');
     }
 
     /**

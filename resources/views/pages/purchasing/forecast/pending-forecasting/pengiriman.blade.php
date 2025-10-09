@@ -352,8 +352,10 @@ function submitPengiriman() {
                 window.location.reload();
             }, 1500); // Reduced delay
         } else {
-            // Show error message
-            showPengirimanToast(data.message || 'Gagal mengirim forecast. Silakan coba lagi.', 'error');
+            // Show error message from server
+            if (data.message) {
+                showPengirimanToast(data.message, 'error');
+            }
         }
     })
     .catch(error => {
@@ -369,26 +371,20 @@ function submitPengiriman() {
         // Reset UI elements
         resetPengirimanFormState(submitBtn, loadingOverlay, originalText);
         
-        // Handle different error types
-        let errorMessage = 'Gagal mengirim forecast. Silakan coba lagi.';
-        
+        // Handle specific error types only
         if (error.message.includes('Request timeout')) {
-            errorMessage = 'Request timeout. Silakan coba lagi.';
-            console.warn('Request timed out after 30 seconds');
+            showPengirimanToast('Request timeout. Silakan coba lagi.', 'error');
         } else if (error.name === 'AbortError') {
-            errorMessage = 'Request dibatalkan atau timeout. Silakan coba lagi.';
-            console.warn('Request was aborted - possible causes: timeout, network interruption, or manual cancellation');
+            showPengirimanToast('Request dibatalkan atau timeout. Silakan coba lagi.', 'error');
         } else if (error.message.includes('HTTP 500')) {
-            errorMessage = 'Terjadi kesalahan server. Silakan coba lagi.';
+            showPengirimanToast('Terjadi kesalahan server. Silakan coba lagi.', 'error');
         } else if (error.message.includes('HTTP 422')) {
-            errorMessage = 'Data tidak valid. Periksa form dan coba lagi.';
+            showPengirimanToast('Data tidak valid. Periksa form dan coba lagi.', 'error');
         } else if (error.message.includes('HTTP 404')) {
-            errorMessage = 'Forecast tidak ditemukan. Silakan refresh halaman.';
+            showPengirimanToast('Forecast tidak ditemukan. Silakan refresh halaman.', 'error');
         } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            errorMessage = 'Koneksi bermasalah. Periksa internet Anda.';
+            showPengirimanToast('Koneksi bermasalah. Periksa internet Anda.', 'error');
         }
-        
-        showPengirimanToast(errorMessage, 'error');
     });
 }
 

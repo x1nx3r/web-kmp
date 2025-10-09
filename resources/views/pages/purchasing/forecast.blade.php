@@ -15,7 +15,8 @@
 {{-- Tabs Navigation --}}
 <div class="mb-6">
     <div class="border-b-2">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        {{-- Desktop Navigation --}}
+        <nav class="-mb-px hidden sm:flex space-x-8" aria-label="Tabs">
             <button onclick="switchTab('buat-forecasting')" 
                     id="tab-buat-forecasting" 
                     class="tab-button active border-transparent text-green-600 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
@@ -27,21 +28,78 @@
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
                 <i class="fas fa-clock mr-2"></i>
                 Pending
-                <span class="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">3</span>
+                @if(isset($pendingForecasts) && $pendingForecasts->total() > 0)
+                    <span class="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{{ $pendingForecasts->total() }}</span>
+                @endif
             </button>
             <button onclick="switchTab('sukses')" 
                     id="tab-sukses" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
                 <i class="fas fa-check-circle mr-2"></i>
                 Sukses
-                <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">12</span>
+                @if(isset($suksesForecasts) && $suksesForecasts->total() > 0)
+                    <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{{ $suksesForecasts->total() }}</span>
+                @endif
             </button>
             <button onclick="switchTab('gagal')" 
                     id="tab-gagal" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
                 <i class="fas fa-times-circle mr-2"></i>
                 Gagal
-                <span class="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">2</span>
+                @if(isset($gagalForecasts) && $gagalForecasts->total() > 0)
+                    <span class="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{{ $gagalForecasts->total() }}</span>
+                @endif
+            </button>
+        </nav>
+
+        {{-- Mobile Navigation --}}
+        <nav class="-mb-px flex sm:hidden overflow-x-auto scrollbar-hide" aria-label="Tabs">
+            <button onclick="switchTab('buat-forecasting')" 
+                    id="tab-buat-forecasting-mobile" 
+                    class="tab-button active border-transparent text-green-600 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max">
+                <div class="flex flex-col items-center space-y-1">
+                    <i class="fas fa-plus-circle text-sm"></i>
+                    <span>Buat</span>
+                </div>
+            </button>
+            <button onclick="switchTab('pending')" 
+                    id="tab-pending-mobile" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max relative">
+                <div class="flex flex-col items-center space-y-1">
+                    <div class="relative">
+                        <i class="fas fa-clock text-sm"></i>
+                        @if(isset($pendingForecasts) && $pendingForecasts->total() > 0)
+                            <span class="absolute -top-2 -right-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[1.25rem] h-5 flex items-center justify-center">{{ $pendingForecasts->total() > 99 ? '99+' : $pendingForecasts->total() }}</span>
+                        @endif
+                    </div>
+                    <span>Pending</span>
+                </div>
+            </button>
+            <button onclick="switchTab('sukses')" 
+                    id="tab-sukses-mobile" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max relative">
+                <div class="flex flex-col items-center space-y-1">
+                    <div class="relative">
+                        <i class="fas fa-check-circle text-sm"></i>
+                        @if(isset($suksesForecasts) && $suksesForecasts->total() > 0)
+                            <span class="absolute -top-2 -right-2 bg-green-100 text-green-800 text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[1.25rem] h-5 flex items-center justify-center">{{ $suksesForecasts->total() > 99 ? '99+' : $suksesForecasts->total() }}</span>
+                        @endif
+                    </div>
+                    <span>Sukses</span>
+                </div>
+            </button>
+            <button onclick="switchTab('gagal')" 
+                    id="tab-gagal-mobile" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max relative">
+                <div class="flex flex-col items-center space-y-1">
+                    <div class="relative">
+                        <i class="fas fa-times-circle text-sm"></i>
+                        @if(isset($gagalForecasts) && $gagalForecasts->total() > 0)
+                            <span class="absolute -top-2 -right-2 bg-red-100 text-red-800 text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[1.25rem] h-5 flex items-center justify-center">{{ $gagalForecasts->total() > 99 ? '99+' : $gagalForecasts->total() }}</span>
+                        @endif
+                    </div>
+                    <span>Gagal</span>
+                </div>
             </button>
         </nav>
     </div>
@@ -117,26 +175,27 @@ function updateUrl(tabName) {
     const url = new URL(window.location);
     url.searchParams.set('tab', tabName);
     
-    // Remove page parameters from other tabs, but preserve current tab's pagination
+    // Get current tab to check if we're switching tabs
     const currentParams = new URLSearchParams(window.location.search);
     const currentTab = currentParams.get('tab') || 'buat-forecasting';
     
-    // Remove pagination parameters from other tabs
-    if (tabName !== 'buat-forecasting') {
-        url.searchParams.delete('page_buat_forecasting');
-    }
-    if (tabName !== 'pending') {
-        url.searchParams.delete('page_pending');
-    }
-    
-    // Only remove current tab's pagination if switching to a different tab
+    // Only clean pagination if we're actually switching tabs
     if (tabName !== currentTab) {
-        if (tabName === 'buat-forecasting') {
-            url.searchParams.delete('page_buat_forecasting');
-        } else if (tabName === 'pending') {
+        // Remove pagination parameters from other tabs only
+        if (tabName !== 'buat-forecasting') {
+            url.searchParams.delete('page');
+        }
+        if (tabName !== 'pending') {
             url.searchParams.delete('page_pending');
         }
+        if (tabName !== 'sukses') {
+            url.searchParams.delete('page_sukses');
+        }
+        if (tabName !== 'gagal') {
+            url.searchParams.delete('page_gagal');
+        }
     }
+    // If we're staying on the same tab, preserve all pagination parameters
     
     window.history.replaceState({}, '', url);
 }
@@ -148,7 +207,13 @@ function switchTab(tabName) {
     const currentParams = new URLSearchParams(window.location.search);
     const currentTab = currentParams.get('tab') || 'buat-forecasting';
     
-    // Remove active class from all tabs
+    // If we're already on this tab, just return without doing anything
+    if (tabName === currentTab) {
+        console.log('Already on tab:', tabName);
+        return;
+    }
+    
+    // Remove active class from all tabs (both desktop and mobile)
     document.querySelectorAll('.tab-button').forEach(tab => {
         tab.classList.remove('active', 'border-green-500', 'text-green-600');
         tab.classList.add('border-transparent', 'text-gray-500');
@@ -185,20 +250,42 @@ function switchTab(tabName) {
         }
     }, 50);
     
-    // Add active class to clicked tab
-    const activeTab = document.getElementById('tab-' + tabName);
-    if (activeTab) {
-        activeTab.classList.remove('border-transparent', 'text-gray-500');
-        activeTab.classList.add('active', 'border-green-500', 'text-green-600');
+    // Add active class to clicked tab (both desktop and mobile versions)
+    const activeTabDesktop = document.getElementById('tab-' + tabName);
+    const activeTabMobile = document.getElementById('tab-' + tabName + '-mobile');
+    
+    if (activeTabDesktop) {
+        activeTabDesktop.classList.remove('border-transparent', 'text-gray-500');
+        activeTabDesktop.classList.add('active', 'border-green-500', 'text-green-600');
     }
     
-    // Update URL with tab parameter only if we're switching tabs
-    if (tabName !== currentTab) {
-        updateUrl(tabName);
+    if (activeTabMobile) {
+        activeTabMobile.classList.remove('border-transparent', 'text-gray-500');
+        activeTabMobile.classList.add('active', 'border-green-500', 'text-green-600');
     }
+    
+    // Update URL with tab parameter only when switching tabs
+    updateUrl(tabName);
     
     // Update breadcrumb
     updateBreadcrumb(tabName);
+}
+
+// Function to handle pagination without changing tabs
+function handlePagination(pageUrl) {
+    // Extract the current tab from URL to ensure we stay on it
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentTab = currentParams.get('tab') || 'buat-forecasting';
+    
+    // Parse the pagination URL to extract parameters
+    const url = new URL(pageUrl, window.location.origin);
+    const pageParams = new URLSearchParams(url.search);
+    
+    // Ensure tab parameter is preserved
+    pageParams.set('tab', currentTab);
+    
+    // Navigate to the pagination URL with preserved tab
+    window.location.href = url.pathname + '?' + pageParams.toString();
 }
 
 // Function to initialize tab based on URL parameter
@@ -235,11 +322,18 @@ function initializeTabFromUrl() {
         console.log('Showing pane:', activeContent.id);
     }
     
-    // Add active class to correct tab
-    const activeTabButton = document.getElementById('tab-' + activeTab);
-    if (activeTabButton) {
-        activeTabButton.classList.remove('border-transparent', 'text-gray-500');
-        activeTabButton.classList.add('active', 'border-green-500', 'text-green-600');
+    // Add active class to correct tab (both desktop and mobile)
+    const activeTabButtonDesktop = document.getElementById('tab-' + activeTab);
+    const activeTabButtonMobile = document.getElementById('tab-' + activeTab + '-mobile');
+    
+    if (activeTabButtonDesktop) {
+        activeTabButtonDesktop.classList.remove('border-transparent', 'text-gray-500');
+        activeTabButtonDesktop.classList.add('active', 'border-green-500', 'text-green-600');
+    }
+    
+    if (activeTabButtonMobile) {
+        activeTabButtonMobile.classList.remove('border-transparent', 'text-gray-500');
+        activeTabButtonMobile.classList.add('active', 'border-green-500', 'text-green-600');
     }
     
     // Update breadcrumb
@@ -280,8 +374,11 @@ function refreshWithPreservedParams() {
     
     // Preserve search and filter parameters for pending tab
     if (currentParams.get('search_pending')) params.append('search_pending', currentParams.get('search_pending'));
-    if (currentParams.get('date_range_pending')) params.append('date_range_pending', currentParams.get('date_range_pending'));
-    if (currentParams.get('sort_order_pending')) params.append('sort_order_pending', currentParams.get('sort_order_pending'));
+    if (currentParams.get('date_range')) params.append('date_range', currentParams.get('date_range'));
+    if (currentParams.get('sort_amount_pending')) params.append('sort_amount_pending', currentParams.get('sort_amount_pending'));
+    if (currentParams.get('sort_qty_pending')) params.append('sort_qty_pending', currentParams.get('sort_qty_pending'));
+    if (currentParams.get('sort_date_pending')) params.append('sort_date_pending', currentParams.get('sort_date_pending'));
+    if (currentParams.get('sort_hari_kirim')) params.append('sort_hari_kirim', currentParams.get('sort_hari_kirim'));
     
     // Preserve search and filter parameters for sukses tab
     if (currentParams.get('search_sukses')) params.append('search_sukses', currentParams.get('search_sukses'));
@@ -308,13 +405,128 @@ window.closeSuccessModal = function() {
     refreshWithPreservedParams();
 };
 
+// Global function to close detail modals and preserve state
+window.closeDetailModal = function() {
+    // Close any open detail modals
+    const detailModal = document.getElementById('detailForecastModal');
+    if (detailModal) {
+        detailModal.classList.add('hidden');
+    }
+    
+    // Check for modal in sukses tab
+    const suksesDetailModal = document.getElementById('detailSuksesForecastModal');
+    if (suksesDetailModal) {
+        suksesDetailModal.classList.add('hidden');
+    }
+    
+    // Check for modal in gagal tab
+    const gagalDetailModal = document.getElementById('detailGagalForecastModal');
+    if (gagalDetailModal) {
+        gagalDetailModal.classList.add('hidden');
+    }
+    
+    // No need to refresh page, just close modal
+};
+
+// Global function to close pengiriman modal and refresh with preserved params
+window.closePengirimanModal = function() {
+    // Close the modal first
+    const pengirimanModal = document.getElementById('pengirimanModal');
+    if (pengirimanModal) {
+        pengirimanModal.classList.add('hidden');
+    }
+    
+    // Refresh with preserved parameters
+    refreshWithPreservedParams();
+};
+
+// Global function to close batal modal and refresh with preserved params
+window.closeBatalModal = function() {
+    // Close the modal first
+    const batalModal = document.getElementById('batalModal');
+    if (batalModal) {
+        batalModal.classList.add('hidden');
+    }
+    
+    // Refresh with preserved parameters
+    refreshWithPreservedParams();
+};
+
 // Expose refresh function globally
 window.refreshWithPreservedParams = refreshWithPreservedParams;
+
+// Expose pagination handler globally
+window.handlePagination = handlePagination;
+
+// Global function to navigate to a page while preserving current tab
+window.navigateToPage = function(url) {
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentTab = currentParams.get('tab') || 'buat-forecasting';
+    
+    // Parse the target URL
+    const targetUrl = new URL(url, window.location.origin);
+    const targetParams = new URLSearchParams(targetUrl.search);
+    
+    // Ensure tab is preserved
+    targetParams.set('tab', currentTab);
+    
+    // Navigate to the URL with preserved tab
+    window.location.href = targetUrl.pathname + '?' + targetParams.toString();
+};
+
+// Override any pagination links to use our navigation function
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tab first
+    initializeTabFromUrl();
+    
+    // Override pagination links after a short delay to ensure they're rendered
+    setTimeout(function() {
+        const paginationLinks = document.querySelectorAll('a[href*="page"]');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const href = this.getAttribute('href');
+                if (href) {
+                    window.navigateToPage(href);
+                }
+            });
+        });
+    }, 500);
+});
 </script>
 
 <style>
 .tab-button.active {
     @apply border-green-800 text-green-600;
+}
+
+/* Mobile tab navigation scrolling */
+.scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+}
+
+/* Mobile tab responsive styling */
+@media (max-width: 640px) {
+    .tab-button {
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    /* Mobile tab badge positioning */
+    .tab-button .absolute {
+        font-size: 10px;
+        line-height: 1;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
 
 /* Tab content wrapper */

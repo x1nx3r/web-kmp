@@ -268,8 +268,9 @@
                                 </div>
                             @endforeach
                         </div>
-                    </div>
+                    </div>    
                 </div>
+            </div>
             @empty
                 <div class="text-center py-12 text-gray-500">
                     <i class="fas fa-clock text-gray-300 text-4xl mb-4"></i>
@@ -391,7 +392,7 @@
             </div>
         @endif
     </div>
-
+</div>
 <script>
 // Debounced search function for server-side filtering
 let searchTimeoutPending;

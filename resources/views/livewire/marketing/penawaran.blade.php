@@ -44,19 +44,17 @@
                         </div>
                     </div>
                 </div>
-                <div class="p-8 relative">
-                    <div id="klien-chart-container" class="h-80">
+                <div class="p-6">
+                    <div id="klien-chart-container" class="h-48">
                         <canvas id="klienPriceChart" class="w-full h-full"></canvas>
                     </div>
-                    <div id="klien-placeholder" class="absolute inset-0 m-8 flex items-center justify-center text-center" style="display: none;">
-                        <div class="flex flex-col items-center justify-center space-y-3">
-                            <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-chart-line text-blue-500 text-2xl"></i>
+                    <div id="klien-placeholder" class="h-48 flex items-center justify-center text-center text-gray-500" style="display: none;">
+                        <div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-chart-line text-blue-500 text-xl"></i>
                             </div>
-                            <div class="space-y-1">
-                                <h4 class="text-base font-semibold text-gray-800">Pilih material untuk melihat tren harga</h4>
-                                <p class="text-sm text-gray-500">Grafik akan menampilkan riwayat harga klien</p>
-                            </div>
+                            <h4 class="text-base font-medium text-gray-700 mb-1">Pilih material untuk melihat tren harga</h4>
+                            <p class="text-xs text-gray-500">Grafik akan menampilkan riwayat harga klien</p>
                         </div>
                     </div>
                 </div>
@@ -87,119 +85,27 @@
                         </div>
                     </div>
                 </div>
-                <div class="p-8 relative">
-                    <div id="supplier-chart-container" class="h-80">
+                <div class="p-6">
+                    <div id="supplier-chart-container" class="h-48">
                         <canvas id="supplierPriceChart" class="w-full h-full"></canvas>
                     </div>
-                    <div id="supplier-placeholder" class="absolute inset-0 m-8 flex items-center justify-center text-center" style="display: none;">
-                        <div class="flex flex-col items-center justify-center space-y-3">
-                            <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-chart-line text-orange-500 text-2xl"></i>
+                    <div id="supplier-placeholder" class="h-48 flex items-center justify-center text-center text-gray-500" style="display: none;">
+                        <div>
+                            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-chart-line text-orange-500 text-xl"></i>
                             </div>
-                            <div class="space-y-1">
-                                <h4 class="text-base font-semibold text-gray-800">Pilih material untuk melihat perbandingan supplier</h4>
-                                <p class="text-sm text-gray-500">Grafik akan menampilkan harga dari multiple supplier</p>
-                            </div>
+                            <h4 class="text-base font-medium text-gray-700 mb-1">Pilih material untuk melihat perbandingan supplier</h4>
+                            <p class="text-xs text-gray-500">Grafik akan menampilkan harga dari multiple supplier</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Unified Tab-Based Workflow Card --}}
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200" x-data="{ currentTab: {{ $selectedKlien ? ($selectedMaterials && count($selectedMaterials) > 0 ? 3 : 2) : 1 }} }">
-            {{-- Card Header --}}
-            <div class="border-b border-gray-200 p-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4">
-                            <i class="fas fa-file-alt text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900">Buat Penawaran Baru</h2>
-                            <p class="text-sm text-gray-500 mt-1">Ikuti langkah-langkah untuk membuat penawaran</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Tab Navigation --}}
-            <div class="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                <nav class="flex" role="tablist">
-                    {{-- Tab 1: Client Selection --}}
-                    <button 
-                        @click="currentTab = 1"
-                        :class="currentTab === 1 ? 'border-b-2 border-indigo-500 text-indigo-600 bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
-                        class="flex-1 px-6 py-4 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                        role="tab"
-                    >
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                             :class="currentTab === 1 ? 'bg-indigo-100 text-indigo-600' : '{{ $selectedKlien ? "bg-green-100 text-green-600" : "bg-gray-200 text-gray-500" }}'">
-                            @if($selectedKlien)
-                                <i class="fas fa-check"></i>
-                            @else
-                                1
-                            @endif
-                        </div>
-                        <div class="text-left">
-                            <div class="font-semibold">Pilih Klien</div>
-                            @if($selectedKlien)
-                                <div class="text-xs text-gray-600 truncate max-w-[150px]">{{ $selectedKlien }}</div>
-                            @endif
-                        </div>
-                    </button>
-
-                    {{-- Tab 2: Material Selection --}}
-                    <button 
-                        @click="currentTab = 2"
-                        :class="currentTab === 2 ? 'border-b-2 border-indigo-500 text-indigo-600 bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
-                        class="flex-1 px-6 py-4 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                        :disabled="!{{ $selectedKlien ? 'false' : 'true' }}"
-                        role="tab"
-                    >
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                             :class="currentTab === 2 ? 'bg-indigo-100 text-indigo-600' : '{{ count($selectedMaterials) > 0 ? "bg-green-100 text-green-600" : "bg-gray-200 text-gray-500" }}'">
-                            @if(count($selectedMaterials) > 0)
-                                <i class="fas fa-check"></i>
-                            @else
-                                2
-                            @endif
-                        </div>
-                        <div class="text-left">
-                            <div class="font-semibold">Pilih Material</div>
-                            @if(count($selectedMaterials) > 0)
-                                <div class="text-xs text-gray-600">{{ count($selectedMaterials) }} item dipilih</div>
-                            @endif
-                        </div>
-                    </button>
-
-                    {{-- Tab 3: Analysis & Review --}}
-                    <button 
-                        @click="currentTab = 3"
-                        :class="currentTab === 3 ? 'border-b-2 border-indigo-500 text-indigo-600 bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
-                        class="flex-1 px-6 py-4 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                        :disabled="!{{ count($selectedMaterials) > 0 ? 'false' : 'true' }}"
-                        role="tab"
-                    >
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                             :class="currentTab === 3 ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500'">
-                            3
-                        </div>
-                        <div class="text-left">
-                            <div class="font-semibold">Review & Simpan</div>
-                            @if($totalProfit > 0)
-                                <div class="text-xs text-green-600 font-medium">Profit: Rp {{ number_format($totalProfit, 0, ',', '.') }}</div>
-                            @endif
-                        </div>
-                    </button>
-                </nav>
-            </div>
-
-            {{-- Tab Content --}}
-            <div class="p-6">
-                {{-- Tab 1 Content: Client Selection --}}
-                <div x-show="currentTab === 1" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-                    <div class="space-y-4">
+        {{-- Secondary Content Layout --}}
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {{-- Left Section - Client & Material Selection --}}
+            <div class="xl:col-span-1 space-y-6">
                 {{-- Client Selection --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="border-b border-gray-200 p-4">
@@ -512,137 +418,140 @@
                             </div>
                         </div>
                     </div>
-                    <div class="max-h-[600px] overflow-y-auto">
-                        <table class="w-full table-fixed">
-                            <thead class="bg-gray-50 sticky top-0 z-10">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="w-12 px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Pilih</th>
-                                    <th class="w-auto px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Material & Supplier</th>
-                                    <th class="w-16 px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Qty</th>
-                                    <th class="w-24 px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">H. Klien</th>
-                                    <th class="w-24 px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">H. Supplier</th>
-                                    <th class="w-24 px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Revenue</th>
-                                    <th class="w-24 px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Cost</th>
-                                    <th class="w-24 px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Profit</th>
-                                    <th class="w-20 px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Margin</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material & Supplier</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Klien</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Supplier</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pendapatan</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biaya</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keuntungan</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white">
-                                @forelse($marginAnalysis as $materialIndex => $analysis)
-                                    {{-- Material Header Row --}}
-                                    @if($loop->first || true)
-                                        <tr class="bg-gradient-to-r from-blue-50 to-blue-25 border-t-2 border-blue-200">
-                                            <td colspan="9" class="px-3 py-2">
-                                                <div class="flex items-center gap-2">
-                                                    <div class="w-6 h-6 bg-blue-500 rounded flex items-center justify-center flex-shrink-0">
-                                                        <i class="fas fa-cube text-white text-xs"></i>
-                                                    </div>
-                                                    <div>
-                                                        <span class="font-bold text-sm text-blue-900">{{ $analysis['nama'] }}</span>
-                                                        <span class="text-xs text-blue-700 ml-2">{{ $analysis['satuan'] }}</span>
-                                                        <span class="text-xs text-blue-600 ml-2">• Qty: {{ number_format($analysis['quantity']) }}</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endif
-                                    
+                            <tbody class="divide-y divide-gray-200">
+                                @forelse($marginAnalysis as $analysis)
                                     @forelse($analysis['supplier_options'] ?? [] as $supplierIndex => $supplier)
-                                        @php
-                                            $isSelected = isset($selectedSuppliers[$materialIndex]) 
-                                                ? $selectedSuppliers[$materialIndex] == $supplier['supplier_id']
-                                                : $supplier['is_best'];
-                                        @endphp
-                                        <tr class="hover:bg-gray-50 transition-all border-b border-gray-100 {{ $isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'bg-white' }}">
-                                            {{-- Supplier Selection Radio --}}
-                                            <td class="px-2 py-2">
-                                                <div class="flex items-center justify-center">
-                                                    <input 
-                                                        type="radio" 
-                                                        name="selected_supplier_{{ $materialIndex }}"
-                                                        value="{{ $supplier['supplier_id'] }}"
-                                                        wire:model.live="selectedSuppliers.{{ $materialIndex }}"
-                                                        {{ $supplier['is_best'] ? 'checked' : '' }}
-                                                        class="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                    >
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <div class="flex items-center gap-2">
-                                                    <div class="w-6 h-6 {{ $isSelected ? 'bg-blue-600' : ($supplier['is_best'] ? 'bg-green-500' : 'bg-gray-400') }} rounded flex items-center justify-center flex-shrink-0">
-                                                        <i class="fas {{ $isSelected ? 'fa-check' : 'fa-building' }} text-white text-[10px]"></i>
+                                        <tr class="hover:bg-gray-50 transition-colors {{ $supplier['is_best'] ? 'bg-green-50' : '' }}">
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center">
+                                                    {{-- Material Icon --}}
+                                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-cube text-blue-600"></i>
                                                     </div>
-                                                    <div class="min-w-0 flex-1">
-                                                        <div class="text-xs font-semibold {{ $isSelected ? 'text-blue-900' : ($supplier['is_best'] ? 'text-green-800' : 'text-gray-900') }} truncate">
-                                                            {{ $supplier['supplier_name'] }}
+                                                    <div class="flex-1">
+                                                        {{-- Material Name (only show on first supplier) --}}
+                                                        @if($supplierIndex === 0)
+                                                            <div class="font-semibold text-gray-900">{{ $analysis['nama'] }}</div>
+                                                            <div class="text-sm text-gray-500">{{ $analysis['satuan'] }}</div>
+                                                        @else
+                                                            <div class="text-sm text-gray-400 italic">{{ $analysis['nama'] }}</div>
+                                                        @endif
+                                                        
+                                                        {{-- Supplier Info --}}
+                                                        <div class="flex items-center mt-2 p-2 {{ $supplier['is_best'] ? 'bg-green-50 border border-green-300' : 'bg-gray-50 border border-gray-200' }} rounded-lg">
+                                                            <div class="w-6 h-6 {{ $supplier['is_best'] ? 'bg-green-500' : 'bg-gray-400' }} rounded flex items-center justify-center mr-2">
+                                                                <i class="fas fa-building text-white text-xs"></i>
+                                                            </div>
+                                                            <div class="flex-1">
+                                                                <div class="text-sm font-medium {{ $supplier['is_best'] ? 'text-green-800' : 'text-gray-900' }}">
+                                                                    {{ $supplier['supplier_name'] }}
+                                                                    @if($supplier['is_best'])
+                                                                        <span class="text-xs bg-green-600 text-white px-2 py-0.5 rounded ml-2">Best</span>
+                                                                    @endif
+                                                                </div>
+                                                                <div class="text-xs {{ $supplier['is_best'] ? 'text-green-600' : 'text-gray-500' }}">
+                                                                    @if($supplier['pic_name'])
+                                                                        PIC: {{ $supplier['pic_name'] }} • Option {{ $supplierIndex + 1 }}
+                                                                    @else
+                                                                        Option {{ $supplierIndex + 1 }}
+                                                                    @endif
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        @if($supplier['pic_name'])
-                                                            <div class="text-[10px] text-gray-500 truncate">PIC: {{ $supplier['pic_name'] }}</div>
-                                                        @endif
-                                                    </div>
-                                                    <div class="flex gap-1">
-                                                        @if($isSelected)
-                                                            <span class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold flex-shrink-0">DIPILIH</span>
-                                                        @endif
-                                                        @if($supplier['is_best'])
-                                                            <span class="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded font-semibold flex-shrink-0">TERMURAH</span>
-                                                        @endif
                                                     </div>
                                                 </div>
                                             </td>
                                             
-                                            <td class="px-2 py-2 text-xs text-right font-medium text-gray-700">
-                                                {{ number_format($analysis['quantity']) }}
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-xs text-right font-medium text-gray-900">
-                                                {{ number_format($analysis['klien_price'], 0, ',', '.') }}
-                                                @if($analysis['is_custom_price'] ?? false)
-                                                    <span class="block text-[10px] text-purple-600">Custom</span>
+                                            {{-- Only show quantity on first supplier row --}}
+                                            <td class="px-4 py-4 text-sm font-medium text-gray-900">
+                                                @if($supplierIndex === 0)
+                                                    {{ number_format($analysis['quantity']) }}
+                                                @else
+                                                    <span class="text-gray-400">{{ number_format($analysis['quantity']) }}</span>
                                                 @endif
                                             </td>
                                             
-                                            <td class="px-2 py-2 text-xs text-right font-medium text-gray-900">
-                                                {{ number_format($supplier['price'], 0, ',', '.') }}
+                                            {{-- Only show client price on first supplier row --}}
+                                            <td class="px-4 py-4 text-sm font-medium text-gray-900">
+                                                @if($supplierIndex === 0)
+                                                    Rp {{ number_format($analysis['klien_price'], 0, ',', '.') }}
+                                                    @if($analysis['is_custom_price'] ?? false)
+                                                        <span class="ml-2 text-xs bg-purple-600 text-white px-2 py-0.5 rounded">Custom</span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-gray-400">Rp {{ number_format($analysis['klien_price'], 0, ',', '.') }}</span>
+                                                @endif
                                             </td>
                                             
-                                            <td class="px-2 py-2 text-right">
-                                                <span class="text-xs font-medium text-green-700">
-                                                    {{ number_format($analysis['revenue'], 0, ',', '.') }}
+                                            <td class="px-4 py-4 text-sm font-medium text-gray-900">
+                                                Rp {{ number_format($supplier['price'], 0, ',', '.') }}
+                                            </td>
+                                            
+                                            {{-- Only show revenue on first supplier row --}}
+                                            <td class="px-4 py-4">
+                                                @if($supplierIndex === 0)
+                                                    <span class="text-sm font-medium text-green-700 bg-green-50 px-2 py-1 rounded">
+                                                        Rp {{ number_format($analysis['revenue'], 0, ',', '.') }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-sm font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded">
+                                                        Rp {{ number_format($analysis['revenue'], 0, ',', '.') }}
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            
+                                            <td class="px-4 py-4">
+                                                <span class="text-sm font-medium text-red-700 bg-red-50 px-2 py-1 rounded">
+                                                    Rp {{ number_format($supplier['cost'], 0, ',', '.') }}
                                                 </span>
                                             </td>
                                             
-                                            <td class="px-2 py-2 text-right">
-                                                <span class="text-xs font-medium text-red-700">
-                                                    {{ number_format($supplier['cost'], 0, ',', '.') }}
+                                            <td class="px-4 py-4">
+                                                <span class="text-sm font-medium {{ $supplier['profit'] >= 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50' }} px-2 py-1 rounded">
+                                                    Rp {{ number_format($supplier['profit'], 0, ',', '.') }}
                                                 </span>
                                             </td>
                                             
-                                            <td class="px-2 py-2 text-right">
-                                                <span class="text-xs font-medium {{ $supplier['profit'] >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                                                    {{ number_format($supplier['profit'], 0, ',', '.') }}
-                                                </span>
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-center">
-                                                <span class="inline-block text-xs font-bold px-2 py-1 rounded {{ $supplier['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($supplier['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                            <td class="px-4 py-4">
+                                                <span class="text-sm font-medium px-2 py-1 rounded {{ $supplier['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($supplier['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                                     {{ number_format($supplier['margin_percent'], 1) }}%
                                                 </span>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="px-3 py-3 text-center text-gray-500">
-                                                <div class="flex items-center justify-center text-xs">
+                                            <td colspan="8" class="px-4 py-4 text-center text-gray-500">
+                                                <div class="flex items-center justify-center">
                                                     <i class="fas fa-exclamation-triangle mr-2"></i>
                                                     No suppliers found for {{ $analysis['nama'] }}
                                                 </div>
                                             </td>
                                         </tr>
                                     @endforelse
+                                    
+                                    {{-- Add spacing between different materials --}}
+                                    @if(!$loop->last)
+                                        <tr class="bg-gray-100">
+                                            <td colspan="8" class="px-4 py-1"></td>
+                                        </tr>
+                                    @endif
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="px-4 py-12 text-center text-gray-500">
+                                        <td colspan="8" class="px-4 py-12 text-center text-gray-500">
                                             <div class="flex flex-col items-center">
                                                 <div class="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
                                                     <i class="fas fa-table text-gray-400 text-2xl"></i>
@@ -658,77 +567,8 @@
                     </div>
                 </div>
 
-                {{-- Summary Review Section --}}
+                {{-- Action Buttons --}}
                 @if(count($selectedMaterials) > 0)
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-file-invoice text-blue-600"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-blue-900">Ringkasan Penawaran</h4>
-                                <p class="text-sm text-blue-700">Review sebelum menyimpan</p>
-                            </div>
-                        </div>
-                        
-                        {{-- Overview Stats --}}
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                                <span class="text-blue-700 block mb-1">Klien:</span>
-                                <span class="font-semibold text-blue-900">{{ $selectedKlien }}</span>
-                                <span class="text-blue-600 text-xs block">{{ $selectedKlienCabang }}</span>
-                            </div>
-                            <div>
-                                <span class="text-blue-700 block mb-1">Total Material:</span>
-                                <span class="font-semibold text-blue-900">{{ count($selectedMaterials) }} item</span>
-                            </div>
-                            <div>
-                                <span class="text-blue-700 block mb-1">Total Harga Klien:</span>
-                                <span class="font-semibold text-blue-900">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</span>
-                            </div>
-                            <div>
-                                <span class="text-blue-700 block mb-1">Estimasi Profit:</span>
-                                <span class="font-semibold {{ $totalProfit >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                                    Rp {{ number_format($totalProfit, 0, ',', '.') }}
-                                    <span class="text-xs">({{ number_format($overallMargin, 1) }}%)</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        {{-- Selected Suppliers Detail --}}
-                        <div class="border-t border-blue-200 pt-3">
-                            <div class="flex items-center mb-2">
-                                <i class="fas fa-check-circle text-blue-600 mr-2"></i>
-                                <span class="font-semibold text-blue-900 text-sm">Supplier yang Dipilih:</span>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                @foreach($marginAnalysis as $index => $analysis)
-                                    @php
-                                        $selectedSupplierId = $selectedSuppliers[$index] ?? $analysis['best_supplier_id'];
-                                        $selectedSupplier = collect($analysis['supplier_options'])->firstWhere('supplier_id', $selectedSupplierId);
-                                    @endphp
-                                    @if($selectedSupplier)
-                                        <div class="bg-white border border-blue-200 rounded-lg p-2 flex items-center gap-2">
-                                            <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-building text-white text-[10px]"></i>
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="text-xs font-semibold text-gray-900 truncate">{{ $analysis['nama'] }}</div>
-                                                <div class="text-[10px] text-blue-700 truncate">
-                                                    {{ $selectedSupplier['supplier_name'] }} • Rp {{ number_format($selectedSupplier['price'], 0, ',', '.') }}
-                                                </div>
-                                            </div>
-                                            <div class="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 {{ $selectedSupplier['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($selectedSupplier['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                                {{ number_format($selectedSupplier['margin_percent'], 1) }}%
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Action Buttons --}}
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
@@ -736,40 +576,20 @@
                                     <i class="fas fa-cogs text-indigo-600"></i>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-900">Aksi Penawaran</h3>
-                                    <p class="text-sm text-gray-600">Simpan sebagai draft atau kirim untuk verifikasi</p>
+                                    <h3 class="font-semibold text-gray-900">Aksi</h3>
+                                    <p class="text-sm text-gray-600">Lakukan tindakan berdasarkan analisis</p>
                                 </div>
                             </div>
-                            <div class="flex space-x-3">
-                                <button
-                                    wire:click="resetForm"
-                                    class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
-                                    wire:loading.attr="disabled"
-                                >
-                                    <i class="fas fa-undo mr-2"></i>
-                                    Reset
-                                </button>
-                                <button
-                                    wire:click="saveDraft"
-                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    wire:loading.attr="disabled"
-                                    wire:target="saveDraft"
-                                >
-                                    <i class="fas fa-save mr-2"></i>
-                                    <span wire:loading.remove wire:target="saveDraft">Simpan Draft</span>
-                                    <span wire:loading wire:target="saveDraft">Menyimpan...</span>
-                                </button>
-                                <button
-                                    wire:click="submitForVerification"
-                                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    wire:loading.attr="disabled"
-                                    wire:target="submitForVerification"
-                                >
-                                    <i class="fas fa-paper-plane mr-2"></i>
-                                    <span wire:loading.remove wire:target="submitForVerification">Kirim untuk Verifikasi</span>
-                                    <span wire:loading wire:target="submitForVerification">Mengirim...</span>
-                                </button>
-                            </div>
+                            <button
+                                wire:click="buatOrder"
+                                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                wire:loading.attr="disabled"
+                                wire:target="buatOrder"
+                            >
+                                <i class="fas fa-shopping-cart mr-2"></i>
+                                <span wire:loading.remove wire:target="buatOrder">Buat Penawaran</span>
+                                <span wire:loading wire:target="buatOrder">Memproses...</span>
+                            </button>
                         </div>
                     </div>
                 @endif

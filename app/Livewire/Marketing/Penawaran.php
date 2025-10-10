@@ -6,13 +6,8 @@ use App\Models\Klien;
 use App\Models\BahanBakuKlien;
 use App\Models\BahanBaku;
 use App\Models\Supplier;
-use App\Models\BahanBakuSupplier;
-use App\Models\Penawaran as PenawaranModel;
-use App\Models\PenawaranDetail;
-use App\Models\PenawaranAlternativeSupplier;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Illuminate\Support\Facades\DB;
 
 class Penawaran extends Component
 {
@@ -20,7 +15,6 @@ class Penawaran extends Component
 
     public $selectedKlien = null;
     public $selectedKlienCabang = null;
-    public $selectedKlienId = null;
     public $selectedMaterials = [];
     public $showAddMaterialModal = false;
     public $currentMaterial = null;
@@ -39,9 +33,6 @@ class Penawaran extends Component
     public $totalCost = 0;
     public $totalProfit = 0;
     public $overallMargin = 0;
-
-    // Supplier selection per material
-    public $selectedSuppliers = [];
 
     public function mount()
     {
@@ -118,16 +109,8 @@ class Penawaran extends Component
         [$klienNama, $klienCabang] = explode('|', $uniqueKey);
         $this->selectedKlien = $klienNama;
         $this->selectedKlienCabang = $klienCabang;
-        
-        // Get the actual Klien ID
-        $klien = Klien::where('nama', $this->selectedKlien)
-                     ->where('cabang', $this->selectedKlienCabang)
-                     ->first();
-        
-        $this->selectedKlienId = $klien ? $klien->id : null;
         $this->resetAnalysis();
         $this->selectedMaterials = [];
-        $this->selectedSuppliers = [];
     }
 
     public function clearKlienSearch()
@@ -234,41 +217,13 @@ class Penawaran extends Component
         }
     }
 
-    public function updatedSelectedSuppliers()
-    {
-        // Recalculate totals when supplier selection changes
-        $this->recalculateTotals();
-    }
-
-    private function recalculateTotals()
-    {
-        $this->totalRevenue = 0;
-        $this->totalCost = 0;
-
-        foreach ($this->marginAnalysis as $index => $analysis) {
-            // Get selected supplier for this material
-            $selectedSupplierId = $this->selectedSuppliers[$index] ?? $analysis['best_supplier_id'];
-            
-            // Find the selected supplier's data
-            $selectedSupplier = collect($analysis['supplier_options'])->firstWhere('supplier_id', $selectedSupplierId);
-            
-            if ($selectedSupplier) {
-                $this->totalRevenue += $analysis['revenue'];
-                $this->totalCost += $selectedSupplier['cost'];
-            }
-        }
-
-        $this->totalProfit = $this->totalRevenue - $this->totalCost;
-        $this->overallMargin = $this->totalRevenue > 0 ? ($this->totalProfit / $this->totalRevenue) * 100 : 0;
-    }
-
     public function calculateMarginAnalysis()
     {
         $this->marginAnalysis = [];
         $this->totalRevenue = 0;
         $this->totalCost = 0;
 
-        foreach ($this->selectedMaterials as $index => $material) {
+        foreach ($this->selectedMaterials as $material) {
             // Use custom price if available, otherwise use client price
             $finalPrice = $material['custom_price'] ?? $material['klien_price'];
             $revenue = $finalPrice * $material['quantity'];
@@ -305,16 +260,10 @@ class Penawaran extends Component
                 ];
             }
 
-            // Initialize selected supplier for this material if not set (default to best)
-            if (!isset($this->selectedSuppliers[$index])) {
-                $this->selectedSuppliers[$index] = $bestSupplier['supplier_id'];
-            }
-
             $this->marginAnalysis[] = [
                 'nama' => $material['nama'],
                 'satuan' => $material['satuan'],
                 'quantity' => $material['quantity'],
-                'material_id' => $material['material_id'], // BahanBakuKlien ID
                 'klien_price' => $material['klien_price'],
                 'is_custom_price' => $material['is_custom_price'] ?? false,
                 'custom_price' => $material['custom_price'] ?? null,
@@ -322,7 +271,6 @@ class Penawaran extends Component
                 'revenue' => $revenue,
                 'best_supplier' => $bestSupplier['supplier'],
                 'best_supplier_pic' => $bestSupplier['pic_name'],
-                'best_supplier_id' => $bestSupplier['supplier_id'],
                 'supplier_price' => $bestSupplier['price'],
                 'cost' => $cost,
                 'profit' => $profit,
@@ -333,11 +281,7 @@ class Penawaran extends Component
             ];
 
             $this->totalRevenue += $revenue;
-            
-            // Use selected supplier cost if available, otherwise use best supplier
-            $selectedSupplierId = $this->selectedSuppliers[$index] ?? $bestSupplier['supplier_id'];
-            $selectedSupplier = collect($supplierMargins)->firstWhere('supplier_id', $selectedSupplierId);
-            $this->totalCost += $selectedSupplier ? $selectedSupplier['cost'] : $cost;
+            $this->totalCost += $cost;
         }
 
         $this->totalProfit = $this->totalRevenue - $this->totalCost;
@@ -360,7 +304,6 @@ class Penawaran extends Component
 
         $bestPrice = PHP_INT_MAX;
         $bestSupplierName = 'N/A';
-        $bestSupplierId = null;
         $bestPicName = null;
 
         foreach ($suppliers as $supplier) {
@@ -368,7 +311,6 @@ class Penawaran extends Component
                 if ($bahanBaku->harga_per_satuan < $bestPrice) {
                     $bestPrice = $bahanBaku->harga_per_satuan;
                     $bestSupplierName = $supplier->nama;
-                    $bestSupplierId = $supplier->id;
                     $bestPicName = $supplier->picPurchasing ? $supplier->picPurchasing->nama : null;
                 }
             }
@@ -376,7 +318,6 @@ class Penawaran extends Component
 
         return [
             'supplier' => $bestSupplierName,
-            'supplier_id' => $bestSupplierId,
             'pic_name' => $bestPicName,
             'price' => $bestPrice === PHP_INT_MAX ? 0 : $bestPrice,
         ];
@@ -542,128 +483,42 @@ class Penawaran extends Component
         $this->dispatch('download-analysis', $pdfData, $fileName);
     }
 
-    public function saveDraft()
+    public function buatOrder()
     {
-        return $this->savePenawaran('draft');
-    }
-
-    public function submitForVerification()
-    {
-        return $this->savePenawaran('menunggu_verifikasi');
-    }
-
-    private function savePenawaran($status = 'draft')
-    {
-        // Validation
         if (empty($this->selectedMaterials)) {
-            session()->flash('error', 'Tidak ada material untuk membuat penawaran');
+            session()->flash('error', 'Tidak ada material untuk membuat order');
             return;
         }
 
-        if (!$this->selectedKlienId) {
-            session()->flash('error', 'Klien belum dipilih');
-            return;
+        // Create purchase order based on analysis
+        $orderData = [];
+
+        foreach ($this->marginAnalysis as $analysis) {
+            $orderData[] = [
+                'material' => $analysis['nama'],
+                'quantity' => $analysis['quantity'],
+                'supplier' => $analysis['best_supplier'],
+                'price' => $analysis['supplier_price'],
+                'total_cost' => $analysis['cost'],
+                'expected_revenue' => $analysis['revenue'],
+                'expected_profit' => $analysis['profit'],
+            ];
         }
 
-        try {
-            DB::beginTransaction();
+        // Store order data in session for order creation page
+        session(['pending_order' => [
+            'klien' => $this->selectedKlien . ' - ' . $this->selectedKlienCabang,
+            'materials' => $orderData,
+            'total_cost' => $this->totalCost,
+            'expected_revenue' => $this->totalRevenue,
+            'expected_profit' => $this->totalProfit,
+            'created_from_analysis' => true,
+        ]]);
 
-            // Create Penawaran record
-            $penawaran = PenawaranModel::create([
-                'klien_id' => $this->selectedKlienId,
-                'status' => $status,
-                'tanggal_penawaran' => now(),
-                'total_harga_klien' => $this->totalRevenue,
-                'total_harga_supplier' => $this->totalCost,
-                'total_profit' => $this->totalProfit,
-                'margin_persen' => $this->overallMargin,
-                'created_by' => auth()->id(),
-            ]);
+        session()->flash('message', 'Order siap dibuat. Data telah disimpan untuk proses selanjutnya.');
 
-            // Create PenawaranDetail records with alternative suppliers
-            foreach ($this->marginAnalysis as $index => $analysis) {
-                // Get selected supplier for this material
-                $selectedSupplierId = $this->selectedSuppliers[$index] ?? $analysis['best_supplier_id'];
-                
-                // Find the selected supplier's data
-                $selectedSupplierData = collect($analysis['supplier_options'])->firstWhere('supplier_id', $selectedSupplierId);
-                
-                if (!$selectedSupplierData) {
-                    // Fallback to best supplier if not found
-                    $selectedSupplierData = collect($analysis['supplier_options'])->firstWhere('is_best', true);
-                    $selectedSupplierId = $selectedSupplierData['supplier_id'];
-                }
-
-                // Get BahanBakuSupplier ID for the selected supplier
-                $bahanBakuSupplier = BahanBakuSupplier::where('supplier_id', $selectedSupplierId)
-                    ->where('nama', $analysis['nama'])
-                    ->first();
-
-                if (!$bahanBakuSupplier) {
-                    throw new \Exception("Bahan baku supplier tidak ditemukan untuk {$analysis['nama']}");
-                }
-
-                // Create detail record
-                $detail = PenawaranDetail::create([
-                    'penawaran_id' => $penawaran->id,
-                    'bahan_baku_klien_id' => $analysis['material_id'],
-                    'supplier_id' => $selectedSupplierId,
-                    'bahan_baku_supplier_id' => $bahanBakuSupplier->id,
-                    'quantity' => $analysis['quantity'],
-                    'harga_per_satuan' => $analysis['klien_price'],
-                    'harga_supplier' => $selectedSupplierData['price'],
-                    'subtotal_harga_klien' => $analysis['revenue'],
-                    'subtotal_harga_supplier' => $selectedSupplierData['cost'],
-                    'subtotal_profit' => $selectedSupplierData['profit'],
-                    'margin_persen' => $selectedSupplierData['margin_percent'],
-                ]);
-
-                // Save alternative suppliers (excluding the selected one)
-                foreach ($analysis['supplier_options'] as $supplierOption) {
-                    if ($supplierOption['supplier_id'] != $selectedSupplierId) {
-                        // Get BahanBakuSupplier for alternative
-                        $altBahanBakuSupplier = BahanBakuSupplier::where('supplier_id', $supplierOption['supplier_id'])
-                            ->where('nama', $analysis['nama'])
-                            ->first();
-
-                        if ($altBahanBakuSupplier) {
-                            PenawaranAlternativeSupplier::create([
-                                'penawaran_detail_id' => $detail->id,
-                                'supplier_id' => $supplierOption['supplier_id'],
-                                'bahan_baku_supplier_id' => $altBahanBakuSupplier->id,
-                                'harga_per_satuan' => $supplierOption['price'],
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            DB::commit();
-
-            // Success message
-            $statusText = $status === 'draft' ? 'draft' : 'verifikasi';
-            session()->flash('message', "Penawaran {$penawaran->nomor_penawaran} berhasil disimpan sebagai {$statusText}");
-
-            // Redirect to history page
-            return redirect()->route('penawaran.index');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal menyimpan penawaran: ' . $e->getMessage());
-            return;
-        }
-    }
-
-    public function resetForm()
-    {
-        $this->selectedKlien = null;
-        $this->selectedKlienCabang = null;
-        $this->selectedKlienId = null;
-        $this->selectedMaterials = [];
-        $this->selectedSuppliers = [];
-        $this->resetAnalysis();
-        
-        session()->flash('message', 'Form berhasil direset');
+        // Redirect to order creation page (when implemented)
+        // return redirect()->route('order.create');
     }
 
     private function resetAnalysis()

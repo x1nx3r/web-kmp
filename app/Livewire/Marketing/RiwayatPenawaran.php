@@ -288,17 +288,16 @@ class RiwayatPenawaran extends Component
         return $allData;
     }
 
-    public function viewDetail($id)
+    // View Detail
+    public function viewDetail($penawaranId)
     {
         $this->selectedPenawaran = Penawaran::with([
             'klien',
             'details.supplier',
             'details.bahanBakuKlien',
-            'details.bahanBakuSupplier',
-            'details.alternativeSuppliers.supplier',
             'createdBy',
             'verifiedBy'
-        ])->findOrFail($id);
+        ])->findOrFail($penawaranId);
         
         $this->showDetailModal = true;
     }
@@ -463,23 +462,6 @@ class RiwayatPenawaran extends Component
         $this->showRejectModal = false;
         $this->selectedPenawaran = null;
         $this->rejectReason = '';
-    }
-
-    public function exportPdf($id)
-    {
-        $penawaran = Penawaran::with([
-            'klien',
-            'details.supplier',
-            'details.bahanBakuKlien',
-            'createdBy'
-        ])->findOrFail($id);
-        
-        // In a real implementation, generate PDF using DomPDF or similar
-        // For now, just show a success message
-        session()->flash('message', "Export PDF untuk {$penawaran->nomor_penawaran} siap diunduh");
-        
-        // TODO: Implement actual PDF generation
-        // return response()->download($pdfPath);
     }
 
     public function render()

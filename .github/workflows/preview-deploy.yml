@@ -143,7 +143,7 @@ jobs:
             php artisan config:clear
             php artisan config:cache
             
-            echo "✅ Preview deployment is live at: $TUNNEL_URL"
+            echo "[SUCCESS] Preview deployment is live at: $TUNNEL_URL"
             break
           fi
           sleep 2
@@ -151,7 +151,7 @@ jobs:
         done
         
         if [ -z "$TUNNEL_URL" ]; then
-          echo "❌ Failed to get tunnel URL"
+          echo "[ERROR] Failed to get tunnel URL"
           cat tunnel.log
           exit 1
         fi
@@ -160,20 +160,20 @@ jobs:
     - name: Verify Assets Loading
       run: |
         sleep 3
-        echo "🔍 Verifying CSS and JS assets..."
+        echo "[INFO] Verifying CSS and JS assets..."
         
         # Check if main page loads
         if curl -s "$TUNNEL_URL" | grep -q "<!DOCTYPE html"; then
-          echo "✅ Main page loads successfully"
+          echo "[SUCCESS] Main page loads successfully"
         else
-          echo "❌ Main page not loading properly"
+          echo "[ERROR] Main page not loading properly"
         fi
         
         # Check if CSS is accessible (look for build files)
         if curl -s "$TUNNEL_URL" | grep -q "build/"; then
-          echo "✅ Vite build assets detected in HTML"
+          echo "[SUCCESS] Vite build assets detected in HTML"
         else
-          echo "⚠️  No Vite build assets found in HTML - assets might not be loading"
+          echo "[WARNING] No Vite build assets found in HTML - assets might not be loading"
         fi
 
     # Display deployment info
@@ -183,7 +183,7 @@ jobs:
         echo "   PREVIEW DEPLOYMENT READY!"
         echo "=================================="
         echo ""
-        echo "" URL: $TUNNEL_URL"
+        echo "URL: $TUNNEL_URL"
         echo "Duration: ${{ github.event.inputs.duration || '30' }} minutes"
         echo "Database: SQLite with seeded data"
         echo "Frontend: Built and optimized"
@@ -195,7 +195,7 @@ jobs:
         echo "   • Penawaran (quotation) system"
         echo "   • Forecasting functionality"
         echo ""
-        echo " This deployment will auto-shutdown in ${{ github.event.inputs.duration || '30' }} minutes"
+        echo "This deployment will auto-shutdown in ${{ github.event.inputs.duration || '30' }} minutes"
         echo "=================================="
 
     # Keep the deployment alive for specified duration
@@ -249,21 +249,21 @@ jobs:
         # Clean up temporary files
         rm -f tunnel.log /tmp/database.sqlite
         
-        echo "✅ Cleanup completed"
+        echo "[SUCCESS] Cleanup completed"
 
     # Final status
     - name: Deployment Complete
       if: always()
       run: |
-        echo "🏁 =================================="
+        echo "=================================="
         echo "   PREVIEW DEPLOYMENT COMPLETED"
-        echo "🏁 =================================="
+        echo "=================================="
         echo ""
         if [ "${{ job.status }}" = "success" ]; then
-          echo "✅ Deployment was successful"
+          echo "[SUCCESS] Deployment was successful"
           echo "   The preview ran for the full duration"
         else
-          echo "❌ Deployment encountered issues"
+          echo "[ERROR] Deployment encountered issues"
           echo "   Check the logs above for details"
         fi
         echo "=================================="

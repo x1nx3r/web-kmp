@@ -63,7 +63,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
+                        <a href="{{ route('penawaran.index') }}" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
                             <i class="fas fa-file-invoice w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
                             <span class="font-medium">Penawaran</span>
                         </a>

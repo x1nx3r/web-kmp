@@ -13,7 +13,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <a href="{{ route('penawaran') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                    <a href="{{ route('penawaran.index') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                         <i class="fas fa-plus mr-2"></i>
                         Buat Penawaran Baru
                     </a>
@@ -247,7 +247,7 @@
                                 Reset Filter
                             </button>
                         @else
-                            <a href="{{ route('penawaran') }}" class="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                            <a href="{{ route('penawaran.index') }}" class="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
                                 <i class="fas fa-plus mr-2"></i>
                                 Buat Penawaran Baru
                             </a>

@@ -13,7 +13,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{{ route('riwayat-penawaran') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center">
+                    <a href="{{ route('penawaran.riwayat') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center">
                         <i class="fas fa-history mr-2"></i>
                         Riwayat Penawaran
                     </a>

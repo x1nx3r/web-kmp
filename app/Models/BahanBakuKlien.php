@@ -127,4 +127,12 @@ class BahanBakuKlien extends Model
             $this->formatted_approved_price . '/' . $this->satuan : 
             'Harga belum disetujui';
     }
+
+    /**
+     * Relasi ke Penawaran Detail
+     */
+    public function penawaranDetails()
+    {
+        return $this->hasMany(PenawaranDetail::class);
+    }
 }

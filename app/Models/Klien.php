@@ -52,4 +52,10 @@ class Klien extends Model
     {
         return $this->hasMany(BahanBakuKlien::class)->withApprovedPrice();
     }
+
+    // Relationship dengan Penawaran
+    public function penawaran()
+    {
+        return $this->hasMany(Penawaran::class);
+    }
 }

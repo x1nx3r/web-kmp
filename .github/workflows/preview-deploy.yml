@@ -55,13 +55,15 @@ jobs:
 
     - name: Set environment for preview
       run: |
-        echo "APP_ENV=preview" >> .env
-        echo "APP_DEBUG=true" >> .env
+        echo "APP_ENV=production" >> .env
+        echo "APP_DEBUG=false" >> .env
+        echo "APP_URL=http://127.0.0.1:8000" >> .env
         echo "DB_CONNECTION=sqlite" >> .env
         echo "DB_DATABASE=/tmp/database.sqlite" >> .env
         echo "CACHE_DRIVER=file" >> .env
         echo "SESSION_DRIVER=file" >> .env
         echo "QUEUE_CONNECTION=sync" >> .env
+        echo "ASSET_URL=http://127.0.0.1:8000" >> .env
 
     - name: Clear Config Cache
       run: php artisan config:clear
@@ -90,7 +92,18 @@ jobs:
 
     # Build frontend
     - name: Build Frontend Assets
-      run: npm run build
+      run: |
+        npm run build
+        # Ensure public/build directory exists and has assets
+        ls -la public/build/
+        echo "Assets built successfully"
+
+    # Optimize Laravel for production
+    - name: Optimize Laravel
+      run: |
+        php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
 
     # Install cloudflared
     - name: Install cloudflared
@@ -110,6 +123,7 @@ jobs:
     # Start cloudflared tunnel and capture URL
     - name: Start Cloudflared Tunnel
       run: |
+        # Update APP_URL in .env after we know the tunnel URL will be different
         # Start cloudflared in background and capture the URL
         cloudflared tunnel --url http://127.0.0.1:8000 > tunnel.log 2>&1 &
         echo $! > tunnel.pid
@@ -120,6 +134,15 @@ jobs:
           if grep -q "https://.*\.trycloudflare\.com" tunnel.log; then
             TUNNEL_URL=$(grep -o "https://.*\.trycloudflare\.com" tunnel.log | head -1)
             echo "TUNNEL_URL=$TUNNEL_URL" >> $GITHUB_ENV
+            
+            # Update Laravel config with the actual tunnel URL
+            sed -i "s|APP_URL=http://127.0.0.1:8000|APP_URL=$TUNNEL_URL|g" .env
+            sed -i "s|ASSET_URL=http://127.0.0.1:8000|ASSET_URL=$TUNNEL_URL|g" .env
+            
+            # Clear config cache to apply new URL
+            php artisan config:clear
+            php artisan config:cache
+            
             echo "✅ Preview deployment is live at: $TUNNEL_URL"
             break
           fi
@@ -133,26 +156,46 @@ jobs:
           exit 1
         fi
 
+    # Verify assets are loading
+    - name: Verify Assets Loading
+      run: |
+        sleep 3
+        echo "🔍 Verifying CSS and JS assets..."
+        
+        # Check if main page loads
+        if curl -s "$TUNNEL_URL" | grep -q "<!DOCTYPE html"; then
+          echo "✅ Main page loads successfully"
+        else
+          echo "❌ Main page not loading properly"
+        fi
+        
+        # Check if CSS is accessible (look for build files)
+        if curl -s "$TUNNEL_URL" | grep -q "build/"; then
+          echo "✅ Vite build assets detected in HTML"
+        else
+          echo "⚠️  No Vite build assets found in HTML - assets might not be loading"
+        fi
+
     # Display deployment info
     - name: Display Deployment Info
       run: |
-        echo "🚀 =================================="
+        echo "=================================="
         echo "   PREVIEW DEPLOYMENT READY!"
-        echo "🚀 =================================="
+        echo "=================================="
         echo ""
-        echo "📍 URL: $TUNNEL_URL"
-        echo "⏰ Duration: ${{ github.event.inputs.duration || '30' }} minutes"
-        echo "🗄️  Database: SQLite with seeded data"
-        echo "🎨 Frontend: Built and optimized"
+        echo "" URL: $TUNNEL_URL"
+        echo "Duration: ${{ github.event.inputs.duration || '30' }} minutes"
+        echo "Database: SQLite with seeded data"
+        echo "Frontend: Built and optimized"
         echo ""
-        echo "🔧 Test the following features:"
+        echo "Test the following features:"
         echo "   • User authentication"
         echo "   • Supplier management"
         echo "   • Client management"
         echo "   • Penawaran (quotation) system"
         echo "   • Forecasting functionality"
         echo ""
-        echo "⚠️  This deployment will auto-shutdown in ${{ github.event.inputs.duration || '30' }} minutes"
+        echo " This deployment will auto-shutdown in ${{ github.event.inputs.duration || '30' }} minutes"
         echo "=================================="
 
     # Keep the deployment alive for specified duration

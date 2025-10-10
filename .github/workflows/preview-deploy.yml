@@ -84,6 +84,7 @@ jobs:
         echo "SESSION_DRIVER=file" >> .env
         echo "QUEUE_CONNECTION=sync" >> .env
         echo "ASSET_URL=http://127.0.0.1:8000" >> .env
+        echo "LIVEWIRE_ASSET_URL=http://127.0.0.1:8000" >> .env
 
     - name: Clear Config Cache
       run: php artisan config:clear
@@ -130,6 +131,12 @@ jobs:
         php artisan config:cache
         php artisan route:cache
         php artisan view:cache
+        
+    # Publish Livewire assets
+    - name: Publish Livewire Assets
+      run: |
+        php artisan livewire:publish --assets
+        echo "Livewire assets published successfully"
 
     # Install cloudflared
     - name: Install cloudflared
@@ -164,6 +171,7 @@ jobs:
             # Update Laravel config with the actual tunnel URL
             sed -i "s|APP_URL=http://127.0.0.1:8000|APP_URL=$TUNNEL_URL|g" .env
             sed -i "s|ASSET_URL=http://127.0.0.1:8000|ASSET_URL=$TUNNEL_URL|g" .env
+            sed -i "s|LIVEWIRE_ASSET_URL=http://127.0.0.1:8000|LIVEWIRE_ASSET_URL=$TUNNEL_URL|g" .env
             
             # Clear config cache to apply new URL
             php artisan config:clear
@@ -200,6 +208,13 @@ jobs:
           echo "[SUCCESS] Vite build assets detected in HTML"
         else
           echo "[WARNING] No Vite build assets found in HTML - assets might not be loading"
+        fi
+        
+        # Check if Livewire scripts are loaded
+        if curl -s "$TUNNEL_URL" | grep -q "livewire"; then
+          echo "[SUCCESS] Livewire scripts detected"
+        else
+          echo "[WARNING] Livewire scripts not found - Livewire may not work properly"
         fi
 
     # Display deployment info

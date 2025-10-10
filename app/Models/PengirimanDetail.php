@@ -17,9 +17,11 @@ class PengirimanDetail extends Model
         'qty_kirim',
         'harga_satuan',
         'total_harga',
-        'qty_sisa',
-        'kondisi_barang',
         'catatan_detail',
+        'refraksi_qty',
+        'percent_refraksi_qty',
+        'refraksi_rupiah',
+        'percent_refraksi_rupiah'
     ];
 
     protected $casts = [

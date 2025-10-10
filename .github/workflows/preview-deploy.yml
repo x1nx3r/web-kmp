@@ -14,6 +14,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: laravel_preview
+          MYSQL_USER: laravel_user
+          MYSQL_PASSWORD: laravel_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     steps:
     - uses: actions/checkout@v4
 
@@ -21,7 +37,7 @@ jobs:
     - uses: shivammathur/setup-php@v2
       with:
         php-version: '8.4'
-        extensions: ctype, dom, fileinfo, filter, hash, iconv, json, libxml, mbstring, openssl, pcre, phar, session, tokenizer, xml, xmlwriter, bcmath, pdo_sqlite, gd
+        extensions: ctype, dom, fileinfo, filter, hash, iconv, json, libxml, mbstring, openssl, pcre, phar, session, tokenizer, xml, xmlwriter, bcmath, pdo_mysql, gd
         coverage: none
 
     # Cache dependencies
@@ -58,8 +74,12 @@ jobs:
         echo "APP_ENV=production" >> .env
         echo "APP_DEBUG=false" >> .env
         echo "APP_URL=http://127.0.0.1:8000" >> .env
-        echo "DB_CONNECTION=sqlite" >> .env
-        echo "DB_DATABASE=/tmp/database.sqlite" >> .env
+        echo "DB_CONNECTION=mysql" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=laravel_preview" >> .env
+        echo "DB_USERNAME=laravel_user" >> .env
+        echo "DB_PASSWORD=laravel_password" >> .env
         echo "CACHE_DRIVER=file" >> .env
         echo "SESSION_DRIVER=file" >> .env
         echo "QUEUE_CONNECTION=sync" >> .env
@@ -71,24 +91,30 @@ jobs:
     - name: Directory Permissions
       run: chmod -R 777 storage bootstrap/cache
 
-    # Setup SQLite database
-    - name: Create Database
+    # Wait for MySQL to be ready
+    - name: Wait for MySQL
       run: |
-        mkdir -p /tmp
-        touch /tmp/database.sqlite
+        echo "Waiting for MySQL to be ready..."
+        timeout=30
+        while [ $timeout -gt 0 ]; do
+          if mysql -h 127.0.0.1 -u laravel_user -plaravel_password -e "SELECT 1" laravel_preview &> /dev/null; then
+            echo "MySQL is ready!"
+            break
+          fi
+          sleep 2
+          timeout=$((timeout-2))
+        done
+        if [ $timeout -le 0 ]; then
+          echo "MySQL failed to become ready"
+          exit 1
+        fi
 
     # Run migrations + seeders
     - name: Run Migrations
       run: php artisan migrate --force
-      env:
-        DB_CONNECTION: sqlite
-        DB_DATABASE: /tmp/database.sqlite
 
     - name: Run Seeders
       run: php artisan db:seed --force
-      env:
-        DB_CONNECTION: sqlite
-        DB_DATABASE: /tmp/database.sqlite
 
     # Build frontend
     - name: Build Frontend Assets
@@ -185,7 +211,7 @@ jobs:
         echo ""
         echo "URL: $TUNNEL_URL"
         echo "Duration: ${{ github.event.inputs.duration || '30' }} minutes"
-        echo "Database: SQLite with seeded data"
+        echo "Database: MySQL 8.0 with seeded data"
         echo "Frontend: Built and optimized"
         echo ""
         echo "Test the following features:"
@@ -247,7 +273,7 @@ jobs:
         fi
         
         # Clean up temporary files
-        rm -f tunnel.log /tmp/database.sqlite
+        rm -f tunnel.log
         
         echo "[SUCCESS] Cleanup completed"
 

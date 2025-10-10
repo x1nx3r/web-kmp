@@ -50,9 +50,12 @@
                         wire:model.live="statusFilter"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                        <option value="">Semua Status</option>
-                        <option value="butuh_verifikasi">Butuh Verifikasi</option>
-                        <option value="sudah_diverifikasi">Sudah Diverifikasi</option>
+                        <option value="">Semua Status ({{ $statusCounts['all'] }})</option>
+                        <option value="draft">Draft ({{ $statusCounts['draft'] }})</option>
+                        <option value="menunggu_verifikasi">Menunggu Verifikasi ({{ $statusCounts['menunggu_verifikasi'] }})</option>
+                        <option value="disetujui">Disetujui ({{ $statusCounts['disetujui'] }})</option>
+                        <option value="ditolak">Ditolak ({{ $statusCounts['ditolak'] }})</option>
+                        <option value="expired">Expired ({{ $statusCounts['expired'] }})</option>
                     </select>
                 </div>
 
@@ -68,8 +71,10 @@
                     >
                         <option value="tanggal_desc">Tanggal (Terbaru)</option>
                         <option value="tanggal_asc">Tanggal (Terlama)</option>
-                        <option value="nomor_desc">Nomor (Z-A)</option>
-                        <option value="nomor_asc">Nomor (A-Z)</option>
+                        <option value="margin_desc">Margin (Tertinggi)</option>
+                        <option value="margin_asc">Margin (Terendah)</option>
+                        <option value="total_desc">Total (Tertinggi)</option>
+                        <option value="total_asc">Total (Terendah)</option>
                     </select>
                 </div>
             </div>
@@ -88,27 +93,42 @@
                                 </div>
                                 <div>
                                     <div class="flex items-center space-x-3">
-                                        <h3 class="text-lg font-semibold text-gray-900">{{ $penawaran['nomor_penawaran'] }}</h3>
-                                        @if($penawaran['status'] === 'butuh_verifikasi')
+                                        <h3 class="text-lg font-semibold text-gray-900">{{ $penawaran->nomor_penawaran }}</h3>
+                                        @if($penawaran->status === 'draft')
+                                            <span class="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                                                <i class="fas fa-pencil-alt mr-1"></i>
+                                                Draft
+                                            </span>
+                                        @elseif($penawaran->status === 'menunggu_verifikasi')
                                             <span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
                                                 <i class="fas fa-clock mr-1"></i>
-                                                Butuh Verifikasi
+                                                Menunggu Verifikasi
                                             </span>
-                                        @else
+                                        @elseif($penawaran->status === 'disetujui')
                                             <span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
                                                 <i class="fas fa-check-circle mr-1"></i>
-                                                Sudah Diverifikasi
+                                                Disetujui
+                                            </span>
+                                        @elseif($penawaran->status === 'ditolak')
+                                            <span class="px-3 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                                                <i class="fas fa-times-circle mr-1"></i>
+                                                Ditolak
+                                            </span>
+                                        @elseif($penawaran->status === 'expired')
+                                            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                                                <i class="fas fa-hourglass-end mr-1"></i>
+                                                Expired
                                             </span>
                                         @endif
                                     </div>
                                     <div class="flex items-center space-x-4 mt-1 text-sm text-gray-600">
                                         <span>
                                             <i class="far fa-calendar mr-1"></i>
-                                            {{ \Carbon\Carbon::parse($penawaran['tanggal'])->format('d M Y') }}
+                                            {{ $penawaran->tanggal_penawaran->format('d M Y') }}
                                         </span>
                                         <span>
                                             <i class="fas fa-user mr-1"></i>
-                                            {{ $penawaran['created_by'] }}
+                                            {{ $penawaran->createdBy->nama }}
                                         </span>
                                     </div>
                                 </div>
@@ -116,10 +136,13 @@
                             <div class="text-right">
                                 <div class="text-sm text-gray-600">Total Revenue</div>
                                 <div class="text-xl font-bold text-green-600">
-                                    Rp {{ number_format($penawaran['total_revenue'], 0, ',', '.') }}
+                                    Rp {{ number_format($penawaran->total_revenue, 0, ',', '.') }}
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1">
-                                    Margin: <span class="font-semibold">{{ number_format($penawaran['margin'], 1) }}%</span>
+                                    Margin: <span class="font-semibold">{{ number_format($penawaran->margin_percentage, 1) }}%</span>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Profit: <span class="font-semibold text-green-600">Rp {{ number_format($penawaran->total_profit, 0, ',', '.') }}</span>
                                 </div>
                             </div>
                         </div>
@@ -127,15 +150,25 @@
 
                     {{-- Client Info --}}
                     <div class="bg-gray-50 border-b border-gray-200 px-4 py-3">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-building text-blue-600 text-sm"></i>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-building text-blue-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900">{{ $penawaran->klien->nama }}</div>
+                                    <div class="text-sm text-gray-600">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>
+                                        {{ $penawaran->klien->cabang }}
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="font-medium text-gray-900">{{ $penawaran['klien']['nama'] }}</div>
-                                <div class="text-sm text-gray-600">
-                                    <i class="fas fa-map-marker-alt mr-1"></i>
-                                    {{ $penawaran['klien']['cabang'] }}
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">
+                                    {{ $penawaran->details->count() }} material{{ $penawaran->details->count() > 1 ? 's' : '' }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{ $penawaran->details->unique('supplier_id')->count() }} supplier{{ $penawaran->details->unique('supplier_id')->count() > 1 ? 's' : '' }}
                                 </div>
                             </div>
                         </div>
@@ -145,7 +178,7 @@
                     <div class="p-4">
                         <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
                             <i class="fas fa-cubes mr-2 text-purple-600"></i>
-                            Daftar Bahan Baku ({{ count($penawaran['materials']) }} item)
+                            Daftar Bahan Baku ({{ $penawaran->details->count() }} item)
                         </h4>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
@@ -156,43 +189,53 @@
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Harga Klien</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Harga Supplier</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Keuntungan</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Margin</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
-                                    @foreach($penawaran['materials'] as $material)
+                                    @foreach($penawaran->details as $detail)
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-3 py-3">
-                                                <div class="font-medium text-gray-900">{{ $material['nama'] }}</div>
-                                                <div class="text-xs text-gray-500">{{ $material['satuan'] }}</div>
+                                                <div class="font-medium text-gray-900">{{ $detail->nama_material }}</div>
+                                                <div class="text-xs text-gray-500">per {{ $detail->satuan }}</div>
                                             </td>
                                             <td class="px-3 py-3 font-medium text-gray-900">
-                                                {{ number_format($material['quantity']) }}
+                                                {{ number_format($detail->quantity, 0, ',', '.') }} {{ $detail->satuan }}
                                             </td>
                                             <td class="px-3 py-3">
                                                 <span class="text-green-700 font-medium">
-                                                    Rp {{ number_format($material['harga_klien'], 0, ',', '.') }}
+                                                    Rp {{ number_format($detail->harga_klien, 0, ',', '.') }}
                                                 </span>
                                             </td>
                                             <td class="px-3 py-3">
-                                                <div class="font-medium text-gray-900">{{ $material['supplier'] }}</div>
-                                                <div class="text-xs text-gray-500">
-                                                    <i class="fas fa-user-tie mr-1"></i>
-                                                    PIC: {{ $material['pic'] }}
-                                                </div>
+                                                <div class="font-medium text-gray-900">{{ $detail->supplier->nama }}</div>
+                                                @if($detail->supplier->picPurchasing)
+                                                    <div class="text-xs text-gray-500">
+                                                        <i class="fas fa-user-tie mr-1"></i>
+                                                        PIC: {{ $detail->supplier->picPurchasing->nama }}
+                                                    </div>
+                                                @endif
                                             </td>
                                             <td class="px-3 py-3">
                                                 <span class="text-red-700 font-medium">
-                                                    Rp {{ number_format($material['harga_supplier'], 0, ',', '.') }}
+                                                    Rp {{ number_format($detail->harga_supplier, 0, ',', '.') }}
                                                 </span>
                                             </td>
                                             <td class="px-3 py-3">
-                                                @php
-                                                    $profit = ($material['harga_klien'] - $material['harga_supplier']) * $material['quantity'];
-                                                @endphp
-                                                <span class="text-blue-700 font-medium">
-                                                    Rp {{ number_format($profit, 0, ',', '.') }}
-                                                </span>
+                                                <div class="flex items-center">
+                                                    <span class="px-2 py-1 text-xs font-semibold rounded {{ $detail->margin_percentage >= 20 ? 'bg-green-100 text-green-800' : ($detail->margin_percentage >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                                        {{ number_format($detail->margin_percentage, 1) }}%
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="px-3 py-3 text-right">
+                                                <div class="font-medium text-gray-900">
+                                                    Rp {{ number_format($detail->subtotal_revenue, 0, ',', '.') }}
+                                                </div>
+                                                <div class="text-xs text-green-600">
+                                                    +Rp {{ number_format($detail->subtotal_profit, 0, ',', '.') }}
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -208,17 +251,17 @@
                                 <div>
                                     <span class="text-gray-600">Total Biaya:</span>
                                     <span class="font-semibold text-red-700 ml-2">
-                                        Rp {{ number_format($penawaran['total_cost'], 0, ',', '.') }}
+                                        Rp {{ number_format($penawaran->total_cost, 0, ',', '.') }}
                                     </span>
                                 </div>
                                 <div>
                                     <span class="text-gray-600">Total Keuntungan:</span>
                                     <span class="font-semibold text-green-700 ml-2">
-                                        Rp {{ number_format($penawaran['total_profit'], 0, ',', '.') }}
+                                        Rp {{ number_format($penawaran->total_profit, 0, ',', '.') }}
                                     </span>
                                 </div>
                             </div>
-                            @if($penawaran['status'] === 'butuh_verifikasi')
+                            @if($penawaran->status === 'menunggu_verifikasi')
                                 <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
                                     <i class="fas fa-check mr-2"></i>
                                     Verifikasi
@@ -256,5 +299,12 @@
                 </div>
             @endforelse
         </div>
+
+        {{-- Pagination --}}
+        @if($penawaranList->hasPages())
+            <div class="mt-6">
+                {{ $penawaranList->links() }}
+            </div>
+        @endif
     </div>
 </div>

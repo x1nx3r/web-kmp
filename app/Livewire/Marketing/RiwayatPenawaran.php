@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Marketing;
 
+use App\Models\Penawaran;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -25,9 +26,65 @@ class RiwayatPenawaran extends Component
         $this->resetPage();
     }
 
+    public function getPenawaranQuery()
+    {
+        $query = Penawaran::with([
+            'klien',
+            'details.supplier',
+            'details.bahanBakuKlien',
+            'createdBy',
+            'verifiedBy'
+        ]);
+
+        // Apply search filter
+        if ($this->search) {
+            $query->where(function($q) {
+                $q->where('nomor_penawaran', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('klien', function($subQ) {
+                      $subQ->where('nama', 'like', '%' . $this->search . '%')
+                           ->orWhere('cabang', 'like', '%' . $this->search . '%');
+                  })
+                  ->orWhereHas('details.bahanBakuKlien', function($subQ) {
+                      $subQ->where('nama', 'like', '%' . $this->search . '%');
+                  });
+            });
+        }
+
+        // Apply status filter
+        if ($this->statusFilter) {
+            $query->where('status', $this->statusFilter);
+        }
+
+        // Apply sorting
+        switch ($this->sortBy) {
+            case 'tanggal_asc':
+                $query->orderBy('tanggal_penawaran', 'asc');
+                break;
+            case 'tanggal_desc':
+                $query->orderBy('tanggal_penawaran', 'desc');
+                break;
+            case 'margin_asc':
+                $query->orderBy('margin_percentage', 'asc');
+                break;
+            case 'margin_desc':
+                $query->orderBy('margin_percentage', 'desc');
+                break;
+            case 'total_asc':
+                $query->orderBy('total_revenue', 'asc');
+                break;
+            case 'total_desc':
+                $query->orderBy('total_revenue', 'desc');
+                break;
+            default:
+                $query->orderBy('tanggal_penawaran', 'desc');
+        }
+
+        return $query;
+    }
+
     public function getDummyPenawaran()
     {
-        // Dummy data for demonstration
+        // DEPRECATED: Keep for reference, will be removed
         $allData = [
             [
                 'id' => 1,
@@ -225,10 +282,21 @@ class RiwayatPenawaran extends Component
 
     public function render()
     {
-        $penawaran = $this->getDummyPenawaran();
+        $penawaranList = $this->getPenawaranQuery()->paginate(10);
+        
+        // Get status counts for filter badges
+        $statusCounts = [
+            'all' => Penawaran::count(),
+            'draft' => Penawaran::where('status', 'draft')->count(),
+            'menunggu_verifikasi' => Penawaran::where('status', 'menunggu_verifikasi')->count(),
+            'disetujui' => Penawaran::where('status', 'disetujui')->count(),
+            'ditolak' => Penawaran::where('status', 'ditolak')->count(),
+            'expired' => Penawaran::where('status', 'expired')->count(),
+        ];
         
         return view('livewire.marketing.riwayat-penawaran', [
-            'penawaranList' => $penawaran,
+            'penawaranList' => $penawaranList,
+            'statusCounts' => $statusCounts,
         ]);
     }
 }

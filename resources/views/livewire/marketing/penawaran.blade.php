@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-gray-50">
     {{-- Header Section --}}
-    <x-penawaran.header />
+    <x-penawaran.header :editMode="$editMode" />
 
     <div class="p-6 space-y-6">
         {{-- Main Charts Section --}}
@@ -56,6 +56,7 @@
                 {{-- Action Buttons --}}
                 <x-penawaran.action-buttons 
                     :selectedMaterials="$selectedMaterials"
+                    :editMode="$editMode"
                 />
             </div>
         </div>

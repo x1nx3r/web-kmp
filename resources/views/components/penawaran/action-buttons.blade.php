@@ -1,4 +1,4 @@
-@props(['selectedMaterials'])
+@props(['selectedMaterials', 'editMode' => false])
 
 {{-- Action Buttons --}}
 @if(count($selectedMaterials) > 0)
@@ -10,7 +10,13 @@
                 </div>
                 <div>
                     <h3 class="font-semibold text-gray-900">Aksi Penawaran</h3>
-                    <p class="text-sm text-gray-600">Simpan sebagai draft atau kirim untuk verifikasi</p>
+                    <p class="text-sm text-gray-600">
+                        @if($editMode ?? false)
+                            Perbarui draft atau kirim untuk verifikasi
+                        @else
+                            Simpan sebagai draft atau kirim untuk verifikasi
+                        @endif
+                    </p>
                 </div>
             </div>
             <div class="flex space-x-3">
@@ -29,8 +35,20 @@
                     wire:target="saveDraft"
                 >
                     <i class="fas fa-save mr-2"></i>
-                    <span wire:loading.remove wire:target="saveDraft">Simpan Draft</span>
-                    <span wire:loading wire:target="saveDraft">Menyimpan...</span>
+                    <span wire:loading.remove wire:target="saveDraft">
+                        @if($editMode ?? false)
+                            Perbarui Draft
+                        @else
+                            Simpan Draft
+                        @endif
+                    </span>
+                    <span wire:loading wire:target="saveDraft">
+                        @if($editMode ?? false)
+                            Memperbarui...
+                        @else
+                            Menyimpan...
+                        @endif
+                    </span>
                 </button>
                 <button
                     wire:click="submitForVerification"
@@ -39,8 +57,20 @@
                     wire:target="submitForVerification"
                 >
                     <i class="fas fa-paper-plane mr-2"></i>
-                    <span wire:loading.remove wire:target="submitForVerification">Kirim untuk Verifikasi</span>
-                    <span wire:loading wire:target="submitForVerification">Mengirim...</span>
+                    <span wire:loading.remove wire:target="submitForVerification">
+                        @if($editMode ?? false)
+                            Perbarui & Kirim Verifikasi
+                        @else
+                            Kirim untuk Verifikasi
+                        @endif
+                    </span>
+                    <span wire:loading wire:target="submitForVerification">
+                        @if($editMode ?? false)
+                            Memperbarui...
+                        @else
+                            Mengirim...
+                        @endif
+                    </span>
                 </button>
             </div>
         </div>

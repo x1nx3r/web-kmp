@@ -5,6 +5,7 @@ namespace App\Livewire\Marketing;
 use App\Models\Penawaran;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\DB;
 
 class RiwayatPenawaran extends Component
 {
@@ -13,6 +14,13 @@ class RiwayatPenawaran extends Component
     public $search = '';
     public $statusFilter = '';
     public $sortBy = 'tanggal_desc';
+    
+    // Modal states
+    public $showDetailModal = false;
+    public $showDeleteModal = false;
+    public $showRejectModal = false;
+    public $selectedPenawaran = null;
+    public $rejectReason = '';
 
     protected $paginationTheme = 'tailwind';
 
@@ -278,6 +286,200 @@ class RiwayatPenawaran extends Component
         });
 
         return $allData;
+    }
+
+    public function viewDetail($id)
+    {
+        $this->selectedPenawaran = Penawaran::with([
+            'klien',
+            'details.supplier',
+            'details.bahanBakuKlien',
+            'details.bahanBakuSupplier',
+            'details.alternativeSuppliers.supplier',
+            'createdBy',
+            'verifiedBy'
+        ])->findOrFail($id);
+        
+        $this->showDetailModal = true;
+    }
+
+    public function closeDetailModal()
+    {
+        $this->showDetailModal = false;
+        $this->selectedPenawaran = null;
+    }
+
+    public function edit($id)
+    {
+        $penawaran = Penawaran::findOrFail($id);
+        
+        // Only draft can be edited
+        if ($penawaran->status !== 'draft') {
+            session()->flash('error', 'Hanya penawaran dengan status draft yang dapat diedit');
+            return;
+        }
+        
+        // Redirect to edit page or load in form
+        return redirect()->route('penawaran.edit', $id);
+    }
+
+    public function duplicate($id)
+    {
+        try {
+            $original = Penawaran::with(['details.alternativeSuppliers'])->findOrFail($id);
+            
+            DB::beginTransaction();
+            
+            // Create new penawaran
+            $newPenawaran = $original->replicate();
+            $newPenawaran->status = 'draft';
+            $newPenawaran->nomor_penawaran = null; // Will be auto-generated
+            $newPenawaran->created_by = auth()->id();
+            $newPenawaran->verified_by = null;
+            $newPenawaran->verified_at = null;
+            $newPenawaran->tanggal_penawaran = now();
+            $newPenawaran->tanggal_berlaku_sampai = now()->addDays(30);
+            $newPenawaran->save();
+            
+            // Duplicate details
+            foreach ($original->details as $detail) {
+                $newDetail = $detail->replicate();
+                $newDetail->penawaran_id = $newPenawaran->id;
+                $newDetail->save();
+                
+                // Duplicate alternative suppliers
+                foreach ($detail->alternativeSuppliers as $alt) {
+                    $newAlt = $alt->replicate();
+                    $newAlt->penawaran_detail_id = $newDetail->id;
+                    $newAlt->save();
+                }
+            }
+            
+            DB::commit();
+            
+            session()->flash('message', "Penawaran {$newPenawaran->nomor_penawaran} berhasil diduplikasi dari {$original->nomor_penawaran}");
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menduplikasi penawaran: ' . $e->getMessage());
+        }
+    }
+
+    public function confirmDelete($id)
+    {
+        $this->selectedPenawaran = Penawaran::findOrFail($id);
+        $this->showDeleteModal = true;
+    }
+
+    public function delete()
+    {
+        try {
+            if (!$this->selectedPenawaran) {
+                session()->flash('error', 'Penawaran tidak ditemukan');
+                return;
+            }
+            
+            $nomorPenawaran = $this->selectedPenawaran->nomor_penawaran;
+            
+            // Only draft can be permanently deleted
+            if ($this->selectedPenawaran->status === 'draft') {
+                $this->selectedPenawaran->forceDelete();
+                session()->flash('message', "Penawaran {$nomorPenawaran} berhasil dihapus");
+            } else {
+                // Soft delete for non-draft
+                $this->selectedPenawaran->delete();
+                session()->flash('message', "Penawaran {$nomorPenawaran} berhasil diarsipkan");
+            }
+            
+            $this->showDeleteModal = false;
+            $this->selectedPenawaran = null;
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal menghapus penawaran: ' . $e->getMessage());
+        }
+    }
+
+    public function cancelDelete()
+    {
+        $this->showDeleteModal = false;
+        $this->selectedPenawaran = null;
+    }
+
+    public function approve($id)
+    {
+        try {
+            $penawaran = Penawaran::findOrFail($id);
+            
+            if ($penawaran->approve(auth()->user())) {
+                session()->flash('message', "Penawaran {$penawaran->nomor_penawaran} berhasil disetujui");
+            } else {
+                session()->flash('error', 'Penawaran tidak dalam status yang tepat untuk disetujui');
+            }
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal menyetujui penawaran: ' . $e->getMessage());
+        }
+    }
+
+    public function confirmReject($id)
+    {
+        $this->selectedPenawaran = Penawaran::findOrFail($id);
+        $this->showRejectModal = true;
+        $this->rejectReason = '';
+    }
+
+    public function reject()
+    {
+        try {
+            if (!$this->selectedPenawaran) {
+                session()->flash('error', 'Penawaran tidak ditemukan');
+                return;
+            }
+            
+            if (empty($this->rejectReason)) {
+                session()->flash('error', 'Alasan penolakan harus diisi');
+                return;
+            }
+            
+            $nomorPenawaran = $this->selectedPenawaran->nomor_penawaran;
+            
+            if ($this->selectedPenawaran->reject(auth()->user(), $this->rejectReason)) {
+                session()->flash('message', "Penawaran {$nomorPenawaran} berhasil ditolak");
+            } else {
+                session()->flash('error', 'Penawaran tidak dalam status yang tepat untuk ditolak');
+            }
+            
+            $this->showRejectModal = false;
+            $this->selectedPenawaran = null;
+            $this->rejectReason = '';
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal menolak penawaran: ' . $e->getMessage());
+        }
+    }
+
+    public function cancelReject()
+    {
+        $this->showRejectModal = false;
+        $this->selectedPenawaran = null;
+        $this->rejectReason = '';
+    }
+
+    public function exportPdf($id)
+    {
+        $penawaran = Penawaran::with([
+            'klien',
+            'details.supplier',
+            'details.bahanBakuKlien',
+            'createdBy'
+        ])->findOrFail($id);
+        
+        // In a real implementation, generate PDF using DomPDF or similar
+        // For now, just show a success message
+        session()->flash('message', "Export PDF untuk {$penawaran->nomor_penawaran} siap diunduh");
+        
+        // TODO: Implement actual PDF generation
+        // return response()->download($pdfPath);
     }
 
     public function render()

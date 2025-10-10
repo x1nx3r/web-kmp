@@ -42,10 +42,49 @@ class Penawaran extends Component
 
     // Supplier selection per material
     public $selectedSuppliers = [];
+    
+    // Edit mode
+    public $editMode = false;
+    public $penawaranId = null;
 
-    public function mount()
+    public function mount($penawaran = null)
     {
-        $this->resetAnalysis();
+        if ($penawaran) {
+            $this->loadPenawaranForEdit($penawaran);
+        } else {
+            $this->resetAnalysis();
+        }
+    }
+    
+    private function loadPenawaranForEdit($penawaran)
+    {
+        $this->editMode = true;
+        $this->penawaranId = $penawaran->id;
+        
+        // Load client info
+        $this->selectedKlien = $penawaran->klien->nama;
+        $this->selectedKlienCabang = $penawaran->klien->cabang;
+        $this->selectedKlienId = $penawaran->klien_id;
+        
+        // Load materials from details
+        foreach ($penawaran->details as $detail) {
+            $this->selectedMaterials[] = [
+                'id' => uniqid(),
+                'material_id' => $detail->bahan_baku_klien_id,
+                'nama' => $detail->nama_material,
+                'satuan' => $detail->satuan,
+                'quantity' => $detail->quantity,
+                'klien_price' => $detail->harga_klien,
+                'is_custom_price' => $detail->is_custom_price,
+                'custom_price' => $detail->is_custom_price ? $detail->harga_klien : null,
+                'original_price' => $detail->bahanBakuKlien->harga_approved ?? $detail->harga_klien,
+            ];
+            
+            // Load selected supplier for this material
+            $this->selectedSuppliers[count($this->selectedMaterials) - 1] = $detail->bahan_baku_supplier_id;
+        }
+        
+        $this->refreshAnalysis();
     }
 
     public function render()
@@ -611,17 +650,44 @@ class Penawaran extends Component
         try {
             DB::beginTransaction();
 
-            // Create Penawaran record
-            $penawaran = PenawaranModel::create([
-                'klien_id' => $this->selectedKlienId,
-                'status' => $status,
-                'tanggal_penawaran' => now(),
-                'total_harga_klien' => $this->totalRevenue,
-                'total_harga_supplier' => $this->totalCost,
-                'total_profit' => $this->totalProfit,
-                'margin_persen' => $this->overallMargin,
-                'created_by' => auth()->id(),
-            ]);
+            if ($this->editMode && $this->penawaranId) {
+                // Update existing penawaran
+                $penawaran = PenawaranModel::findOrFail($this->penawaranId);
+                
+                // Can only edit draft
+                if ($penawaran->status !== 'draft') {
+                    throw new \Exception('Hanya penawaran dengan status draft yang dapat diedit');
+                }
+                
+                $penawaran->update([
+                    'klien_id' => $this->selectedKlienId,
+                    'status' => $status,
+                    'total_revenue' => $this->totalRevenue,
+                    'total_cost' => $this->totalCost,
+                    'total_profit' => $this->totalProfit,
+                    'margin_percentage' => $this->overallMargin,
+                ]);
+                
+                // Delete existing details and alternatives
+                foreach ($penawaran->details as $detail) {
+                    $detail->alternativeSuppliers()->delete();
+                }
+                $penawaran->details()->delete();
+                
+            } else {
+                // Create new Penawaran record
+                $penawaran = PenawaranModel::create([
+                    'klien_id' => $this->selectedKlienId,
+                    'status' => $status,
+                    'tanggal_penawaran' => now(),
+                    'tanggal_berlaku_sampai' => now()->addDays(30), // Valid for 30 days
+                    'total_revenue' => $this->totalRevenue,
+                    'total_cost' => $this->totalCost,
+                    'total_profit' => $this->totalProfit,
+                    'margin_percentage' => $this->overallMargin,
+                    'created_by' => auth()->id(),
+                ]);
+            }
 
             // Create PenawaranDetail records with alternative suppliers
             foreach ($this->marginAnalysis as $index => $analysis) {
@@ -650,13 +716,16 @@ class Penawaran extends Component
                     'bahan_baku_klien_id' => $analysis['material_id'],
                     'supplier_id' => $bahanBakuSupplier->supplier_id,
                     'bahan_baku_supplier_id' => $bahanBakuSupplier->id,
+                    'nama_material' => $analysis['nama'],
+                    'satuan' => $analysis['satuan'],
                     'quantity' => $analysis['quantity'],
-                    'harga_per_satuan' => $analysis['klien_price'],
+                    'harga_klien' => $analysis['klien_price'],
                     'harga_supplier' => $selectedSupplierData['price'],
-                    'subtotal_harga_klien' => $analysis['revenue'],
-                    'subtotal_harga_supplier' => $selectedSupplierData['cost'],
+                    'is_custom_price' => $analysis['is_custom_price'] ?? false,
+                    'subtotal_revenue' => $analysis['revenue'],
+                    'subtotal_cost' => $selectedSupplierData['cost'],
                     'subtotal_profit' => $selectedSupplierData['profit'],
-                    'margin_persen' => $selectedSupplierData['margin_percent'],
+                    'margin_percentage' => $selectedSupplierData['margin_percent'],
                 ]);
 
                 // Save alternative suppliers (excluding the selected one)
@@ -670,7 +739,7 @@ class Penawaran extends Component
                                 'penawaran_detail_id' => $detail->id,
                                 'supplier_id' => $altBahanBakuSupplier->supplier_id,
                                 'bahan_baku_supplier_id' => $altBahanBakuSupplier->id,
-                                'harga_per_satuan' => $supplierOption['price'],
+                                'harga_supplier' => $supplierOption['price'],
                             ]);
                         }
                     }
@@ -681,7 +750,8 @@ class Penawaran extends Component
 
             // Success message
             $statusText = $status === 'draft' ? 'draft' : 'verifikasi';
-            session()->flash('message', "Penawaran {$penawaran->nomor_penawaran} berhasil disimpan sebagai {$statusText}");
+            $actionText = $this->editMode ? 'diperbarui' : 'disimpan';
+            session()->flash('message', "Penawaran {$penawaran->nomor_penawaran} berhasil {$actionText} sebagai {$statusText}");
 
             // Redirect to history page
             return redirect()->route('penawaran.index');

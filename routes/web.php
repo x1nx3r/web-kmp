@@ -43,6 +43,9 @@ Route::get('/penawaran', function() {
 Route::get('/penawaran/buat', function() {
     return view('pages.marketing.penawaran');
 })->name('penawaran.create');
+Route::get('/penawaran/{penawaran}/edit', function(App\Models\Penawaran $penawaran) {
+    return view('pages.marketing.penawaran', compact('penawaran'));
+})->name('penawaran.edit');
 Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
 Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
 Route::get('/klien/{klien}/edit', function(App\Models\Klien $klien) {

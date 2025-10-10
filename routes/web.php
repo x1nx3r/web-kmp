@@ -32,11 +32,45 @@ Route::post('/purchasing/forecast/{id}/kirim', [ForecastingController::class, 'k
 Route::post('/purchasing/forecast/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
 
 // Klien routes
-Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');
+Route::get('/klien', function() {
+    return view('pages.marketing.daftar-klien-livewire');
+})->name('klien.index');
+
+// Penawaran routes
+Route::get('/penawaran', function() {
+    return view('pages.marketing.penawaran');
+})->name('penawaran');
+Route::get('/riwayat-penawaran', function() {
+    return view('pages.marketing.riwayat-penawaran');
+})->name('riwayat-penawaran');
+Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
 Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
+Route::get('/klien/{klien}/edit', function(App\Models\Klien $klien) {
+    return view('pages.marketing.klien.edit-livewire', compact('klien'));
+})->name('klien.edit');
 Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
 Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
 Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');
+// Klien material price history page
+Route::get('/klien/{klien}/bahan-baku/{material}/riwayat-harga', [KlienController::class, 'riwayatHarga'])->name('klien.riwayat-harga');
+
+// Company-level CRUD routes
+Route::post('/klien/company/store', [KlienController::class, 'storeCompany'])->name('klien.company.store');
+Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
+Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
+
+// Test route for debugging
+Route::get('/test-klien-modal', function() {
+    return response()->json(['success' => true, 'message' => 'Test route working', 'csrf' => csrf_token()]);
+});
+
+// Client Materials API routes
+Route::prefix('api/klien-materials')->group(function () {
+    Route::post('/', [KlienController::class, 'storeMaterial'])->name('api.klien-materials.store');
+    Route::put('/{material}', [KlienController::class, 'updateMaterial'])->name('api.klien-materials.update');
+    Route::delete('/{material}', [KlienController::class, 'destroyMaterial'])->name('api.klien-materials.destroy');
+    Route::get('/{material}/price-history', [KlienController::class, 'getMaterialPriceHistory'])->name('api.klien-materials.price-history');
+});
 
 // Pengelolaan Akun routes
 Route::resource('pengelolaan-akun', PengelolaanAkunController::class)->parameters([

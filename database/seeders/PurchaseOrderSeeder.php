@@ -16,11 +16,9 @@ class PurchaseOrderSeeder extends Seeder
      */
     public function run(): void
     {
-        $faker = Faker::create('id_ID');
-        
-        // Get existing klien and suppliers
-        $kliens = Klien::all();
-        $po_bahanbaku = PurchaseOrderBahanBaku::all();
+    // Deterministic seeding: no faker randomness
+    $kliens = Klien::all();
+    $po_bahanbaku = PurchaseOrderBahanBaku::all();
 
 
 
@@ -36,20 +34,24 @@ class PurchaseOrderSeeder extends Seeder
             'Muffin Special Edition'
         ];
 
+        $klienCount = $kliens->count() ?: 1;
         for ($i = 1; $i <= 25; $i++) {
-            $qtyTotal = $faker->randomFloat(2, 50, 500);
-            $totalAmount = $faker->randomFloat(2, 50000000, 5000000000);
+            $qtyTotal = 100;
+            $totalAmount = 1000000;
+            $klien = $kliens->get(($i - 1) % $klienCount);
+            $status = $statuses[($i - 1) % count($statuses)];
+            $spec = $spesifikasi[($i - 1) % count($spesifikasi)];
 
             PurchaseOrder::create([
-                'klien_id' => $kliens->random()->id,
+                'klien_id' => $klien->id,
                 'no_po' => 'PO-' . date('Y') . '-' . str_pad($i, 4, '0', STR_PAD_LEFT),
                 'qty_total' => $qtyTotal,
                 'total_amount' => $totalAmount,
-                'spesifikasi' => $faker->randomElement($spesifikasi),
-                'catatan' => $faker->boolean(60) ? $faker->sentence(10) : null,
-                'status' => $faker->randomElement($statuses),
-                'created_at' => $faker->dateTimeBetween('-6 months', 'now'),
-                'updated_at' => $faker->dateTimeBetween('-3 months', 'now'),
+                'spesifikasi' => $spec,
+                'catatan' => null,
+                'status' => $status,
+                'created_at' => now()->subDays(30 - ($i % 30)),
+                'updated_at' => now()->subDays(15 - ($i % 15)),
             ]);
         }
 

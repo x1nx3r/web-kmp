@@ -639,13 +639,22 @@ class Penawaran extends Component
         // Validation
         if (empty($this->selectedMaterials)) {
             session()->flash('error', 'Tidak ada material untuk membuat penawaran');
+            \Log::error('Save penawaran failed: No materials selected');
             return;
         }
 
         if (!$this->selectedKlienId) {
             session()->flash('error', 'Klien belum dipilih');
+            \Log::error('Save penawaran failed: No client selected');
             return;
         }
+
+        \Log::info('Starting savePenawaran', [
+            'status' => $status,
+            'klien_id' => $this->selectedKlienId,
+            'materials_count' => count($this->selectedMaterials),
+            'total_revenue' => $this->totalRevenue,
+        ]);
 
         try {
             DB::beginTransaction();
@@ -685,7 +694,7 @@ class Penawaran extends Component
                     'total_cost' => $this->totalCost,
                     'total_profit' => $this->totalProfit,
                     'margin_percentage' => $this->overallMargin,
-                    'created_by' => auth()->id(),
+                    'created_by' => auth()->id() ?? 1, // Fallback to user ID 1 if not authenticated
                 ]);
             }
 
@@ -748,6 +757,12 @@ class Penawaran extends Component
 
             DB::commit();
 
+            \Log::info('Penawaran saved successfully', [
+                'penawaran_id' => $penawaran->id,
+                'nomor_penawaran' => $penawaran->nomor_penawaran,
+                'status' => $penawaran->status,
+            ]);
+
             // Success message
             $statusText = $status === 'draft' ? 'draft' : 'verifikasi';
             $actionText = $this->editMode ? 'diperbarui' : 'disimpan';
@@ -758,6 +773,10 @@ class Penawaran extends Component
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Save penawaran failed with exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             session()->flash('error', 'Gagal menyimpan penawaran: ' . $e->getMessage());
             return;
         }

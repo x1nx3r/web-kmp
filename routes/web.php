@@ -38,11 +38,11 @@ Route::get('/klien', function() {
 
 // Penawaran routes
 Route::get('/penawaran', function() {
-    return view('pages.marketing.penawaran');
-})->name('penawaran.index');
-Route::get('/penawaran/riwayat', function() {
     return view('pages.marketing.riwayat-penawaran');
-})->name('penawaran.riwayat');
+})->name('penawaran.index');
+Route::get('/penawaran/buat', function() {
+    return view('pages.marketing.penawaran');
+})->name('penawaran.create');
 Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
 Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
 Route::get('/klien/{klien}/edit', function(App\Models\Klien $klien) {

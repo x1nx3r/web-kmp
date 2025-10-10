@@ -1,939 +1,78 @@
 <div class="min-h-screen bg-gray-50">
     {{-- Header Section --}}
-    <div class="bg-white border-b border-gray-200 shadow-sm">
-        <div class="px-6 py-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-chart-line text-blue-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Analisis Penawaran</h1>
-                        <p class="text-gray-600 text-sm">Dashboard analisis margin & profitabilitas</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{{ route('penawaran.index') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center">
-                        <i class="fas fa-list mr-2"></i>
-                        Lihat Semua Penawaran
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-penawaran.header />
 
     <div class="p-6 space-y-6">
-        {{-- Main Charts Section (Emphasized) --}}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {{-- Client Prices Chart --}}
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200">
-                <div class="border-b border-gray-200 p-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
-                                <i class="fas fa-chart-line text-blue-600 text-lg"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Tren Harga Klien</h3>
-                                <p class="text-sm text-gray-500 mt-1">Historical client pricing trends</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span class="text-xs text-gray-600">Client Prices</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-8 relative">
-                    <div id="klien-chart-container" class="h-80">
-                        <canvas id="klienPriceChart" class="w-full h-full"></canvas>
-                    </div>
-                    <div id="klien-placeholder" class="absolute inset-0 m-8 flex items-center justify-center text-center" style="display: none;">
-                        <div class="flex flex-col items-center justify-center space-y-3">
-                            <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-chart-line text-blue-500 text-2xl"></i>
-                            </div>
-                            <div class="space-y-1">
-                                <h4 class="text-base font-semibold text-gray-800">Pilih material untuk melihat tren harga</h4>
-                                <p class="text-sm text-gray-500">Grafik akan menampilkan riwayat harga klien</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Supplier Prices Chart --}}
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200">
-                <div class="border-b border-gray-200 p-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mr-4">
-                                <i class="fas fa-chart-line text-orange-600 text-lg"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Perbandingan Harga Supplier</h3>
-                                <p class="text-sm text-gray-500 mt-1">Multiple supplier price comparison</p>
-                            </div>
-                        </div>
-                        <div class="flex space-x-3">
-                            <div class="flex items-center text-xs">
-                                <div class="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
-                                <span class="text-gray-600">Terbaik</span>
-                            </div>
-                            <div class="flex items-center text-xs">
-                                <div class="w-3 h-3 bg-orange-500 rounded-full mr-1"></div>
-                                <span class="text-gray-600">Alternatif</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-8 relative">
-                    <div id="supplier-chart-container" class="h-80">
-                        <canvas id="supplierPriceChart" class="w-full h-full"></canvas>
-                    </div>
-                    <div id="supplier-placeholder" class="absolute inset-0 m-8 flex items-center justify-center text-center" style="display: none;">
-                        <div class="flex flex-col items-center justify-center space-y-3">
-                            <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-chart-line text-orange-500 text-2xl"></i>
-                            </div>
-                            <div class="space-y-1">
-                                <h4 class="text-base font-semibold text-gray-800">Pilih material untuk melihat perbandingan supplier</h4>
-                                <p class="text-sm text-gray-500">Grafik akan menampilkan harga dari multiple supplier</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- Main Charts Section --}}
+        <x-penawaran.charts />
 
         {{-- Secondary Content Layout --}}
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {{-- Left Section - Client & Material Selection --}}
             <div class="xl:col-span-1 space-y-6">
                 {{-- Client Selection --}}
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="border-b border-gray-200 p-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-users text-green-600 text-sm"></i>
-                                </div>
-                                <h3 class="font-semibold text-gray-900">Pilih Klien</h3>
-                            </div>
-                            <div class="text-sm text-gray-500 flex items-center">
-                                @if($klienSearch || $selectedKota)
-                                    <i class="fas fa-filter text-green-500 mr-1"></i>
-                                    <span class="font-medium">{{ $kliens->flatten()->count() }}</span> dari total klien
-                                    @if($selectedKota)
-                                        <span class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                                            {{ $selectedKota }}
-                                        </span>
-                                    @endif
-                                @else
-                                    <span class="font-medium">{{ $kliens->flatten()->count() }}</span> klien
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Search & Filter Controls --}}
-                    <div class="border-b border-gray-200 p-4 bg-gray-50">
-                        <div class="space-y-3">
-                            {{-- Search Input --}}
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-search text-gray-400 text-sm"></i>
-                                </div>
-                                <input 
-                                    type="text" 
-                                    wire:model.live.debounce.300ms="klienSearch" 
-                                    class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
-                                    placeholder="Cari nama perusahaan, kota/lokasi, atau no HP..."
-                                >
-                                @if($klienSearch)
-                                <button 
-                                    wire:click="clearKlienSearch"
-                                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
-                                >
-                                    <i class="fas fa-times text-gray-400 hover:text-gray-600 text-sm"></i>
-                                </button>
-                                @endif
-                            </div>
-
-                            {{-- Filter and Sort Row --}}
-                            <div class="grid grid-cols-2 gap-3">
-                                {{-- City Filter --}}
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-700 flex items-center">
-                                        <i class="fas fa-map-marker-alt text-gray-400 mr-1"></i>
-                                        Filter Kota:
-                                    </label>
-                                    <div class="relative">
-                                        <select 
-                                            wire:model.live="selectedKota" 
-                                            class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white pr-8"
-                                        >
-                                            <option value="">Semua Kota</option>
-                                            @foreach($availableCities as $city)
-                                                <option value="{{ $city }}">{{ $city }}</option>
-                                            @endforeach
-                                        </select>
-                                        @if($selectedKota)
-                                        <button 
-                                            wire:click="clearKotaFilter"
-                                            class="absolute inset-y-0 right-8 flex items-center"
-                                        >
-                                            <i class="fas fa-times text-gray-400 hover:text-gray-600 text-xs"></i>
-                                        </button>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                {{-- Sort Dropdown --}}
-                                <div class="space-y-1">
-                                    <label class="text-xs font-medium text-gray-700 flex items-center">
-                                        <i class="fas fa-sort text-gray-400 mr-1"></i>
-                                        Urutkan:
-                                    </label>
-                                    <select 
-                                        wire:model.live="klienSort" 
-                                        class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
-                                    >
-                                        <option value="nama_asc">Nama (A-Z)</option>
-                                        <option value="nama_desc">Nama (Z-A)</option>
-                                        <option value="cabang_asc">Kota (A-Z)</option>
-                                        <option value="cabang_desc">Kota (Z-A)</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-4">
-                        {{-- Loading State --}}
-                        <div wire:loading.delay wire:target="klienSearch,klienSort,selectedKota" class="flex items-center justify-center py-8">
-                            <div class="flex items-center text-gray-500">
-                                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-green-500 mr-3"></div>
-                                <span class="text-sm">Mencari klien...</span>
-                            </div>
-                        </div>
-
-                        {{-- Client List --}}
-                        <div wire:loading.remove wire:target="klienSearch,klienSort,selectedKota" class="space-y-3 max-h-80 overflow-y-auto">
-                            @forelse($kliens as $namaKlien => $cabangList)
-                                @if($cabangList->count() == 1)
-                                    {{-- Single location client --}}
-                                    @php $klien = $cabangList->first(); @endphp
-                                    <button
-                                        wire:click="selectKlien('{{ $klien->unique_key }}')"
-                                        class="w-full text-left p-3 rounded-lg border transition-all duration-200 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50' }}"
-                                    >
-                                        <div class="flex items-center">
-                                            <div class="w-8 h-8 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-100' : 'bg-gray-100' }} rounded-lg flex items-center justify-center mr-3">
-                                                <i class="fas fa-building {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'text-blue-600' : 'text-gray-600' }} text-sm"></i>
-                                            </div>
-                                            <div class="flex-1">
-                                                <div class="font-medium text-gray-900">{{ $klien->nama }}</div>
-                                                <div class="text-sm text-gray-500 flex items-center mt-1">
-                                                    <i class="fas fa-map-marker-alt text-gray-400 mr-1"></i>
-                                                    {{ $klien->cabang }}
-                                                    <span class="mx-2 text-gray-300">•</span>
-                                                    <span class="text-gray-500">{{ $klien->bahanBakuKliens->count() }} material</span>
-                                                </div>
-                                            </div>
-                                            @if($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang)
-                                                <div class="ml-3">
-                                                    <i class="fas fa-check-circle text-blue-500"></i>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </button>
-                                @else
-                                    {{-- Multi-location client --}}
-                                    <div class="border border-gray-200 rounded-lg">
-                                        <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-                                            <div class="flex items-center">
-                                                <div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center mr-3">
-                                                    <i class="fas fa-building text-gray-600 text-xs"></i>
-                                                </div>
-                                                <div class="font-medium text-gray-800">{{ $namaKlien }}</div>
-                                                <div class="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
-                                                    {{ $cabangList->count() }} lokasi
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="p-2 space-y-1">
-                                            @foreach($cabangList as $klien)
-                                                <button
-                                                    wire:click="selectKlien('{{ $klien->unique_key }}')"
-                                                    class="w-full text-left p-2 rounded transition-all duration-200 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50' }}"
-                                                >
-                                                    <div class="flex items-center">
-                                                        <div class="w-6 h-6 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-100' : 'bg-gray-100' }} rounded flex items-center justify-center mr-3">
-                                                            <i class="fas fa-map-marker-alt {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'text-blue-600' : 'text-gray-600' }} text-xs"></i>
-                                                        </div>
-                                                        <div class="flex-1">
-                                                            <div class="font-medium text-gray-900 text-sm">{{ $klien->cabang }}</div>
-                                                            <div class="text-xs text-gray-500">{{ $klien->bahanBakuKliens->count() }} material</div>
-                                                        </div>
-                                                        @if($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang)
-                                                            <div class="ml-2">
-                                                                <i class="fas fa-check-circle text-blue-500 text-sm"></i>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endif
-                            @empty
-                                <div class="text-center py-8">
-                                    <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                                        <i class="fas fa-search text-gray-400 text-xl"></i>
-                                    </div>
-                                    <h4 class="text-lg font-medium text-gray-900 mb-2">Tidak ada klien ditemukan</h4>
-                                    <p class="text-gray-500 text-sm">
-                                        @if($klienSearch || $selectedKota)
-                                            @if($klienSearch && $selectedKota)
-                                                Tidak ditemukan klien dengan kata kunci "<strong>{{ $klienSearch }}</strong>" di kota <strong>{{ $selectedKota }}</strong>.
-                                            @elseif($klienSearch)
-                                                Tidak ditemukan klien dengan kata kunci "<strong>{{ $klienSearch }}</strong>".
-                                            @else
-                                                Tidak ditemukan klien di kota <strong>{{ $selectedKota }}</strong>.
-                                            @endif
-                                            <br>
-                                            <button wire:click="clearKlienSearch" class="text-green-600 hover:text-green-700 underline mr-2">
-                                                Hapus pencarian
-                                            </button>
-                                            @if($selectedKota)
-                                            <button wire:click="clearKotaFilter" class="text-green-600 hover:text-green-700 underline">
-                                                Hapus filter kota
-                                            </button>
-                                            @endif
-                                        @else
-                                            Belum ada data klien tersedia.
-                                        @endif
-                                    </p>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
+                <x-penawaran.client-selector 
+                    :kliens="$kliens"
+                    :selectedKlien="$selectedKlien"
+                    :selectedKlienCabang="$selectedKlienCabang"
+                    :klienSearch="$klienSearch"
+                    :selectedKota="$selectedKota"
+                    :klienSort="$klienSort"
+                    :availableCities="$availableCities"
+                />
 
                 {{-- Selected Materials --}}
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="border-b border-gray-200 p-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-cubes text-purple-600 text-sm"></i>
-                                </div>
-                                <h3 class="font-semibold text-gray-900">Material Terpilih</h3>
-                            </div>
-                            <button
-                                wire:click="openAddMaterialModal"
-                                class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                {{ (!$selectedKlien || !$selectedKlienCabang) ? 'disabled' : '' }}
-                            >
-                                <i class="fas fa-plus mr-1"></i>Tambah
-                            </button>
-                        </div>
-                    </div>
-                    <div class="p-4">
-                        <div class="space-y-3 max-h-80 overflow-y-auto">
-                            @forelse($selectedMaterials as $index => $material)
-                                <div class="bg-gray-50 rounded-lg p-3 border-l-4 border-purple-400">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center flex-1">
-                                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                                                <i class="fas fa-cube text-purple-600 text-sm"></i>
-                                            </div>
-                                            <div class="flex-1">
-                                                <div class="font-medium text-gray-900">{{ $material['nama'] }}</div>
-                                                <div class="text-sm text-gray-500">{{ $material['satuan'] }}</div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            wire:click="removeMaterial({{ $index }})"
-                                            class="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
-                                        >
-                                            <i class="fas fa-trash text-sm"></i>
-                                        </button>
-                                    </div>
-                                    <div class="mt-3">
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Jumlah</label>
-                                        <input
-                                            type="number"
-                                            wire:change="updateQuantity({{ $index }}, $event.target.value)"
-                                            value="{{ $material['quantity'] }}"
-                                            min="1"
-                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-1 focus:ring-purple-200"
-                                            placeholder="Masukkan jumlah"
-                                        >
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="text-center py-8">
-                                    <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                                        <i class="fas fa-box-open text-gray-400 text-lg"></i>
-                                    </div>
-                                    <p class="text-gray-500 font-medium">Belum ada material dipilih</p>
-                                    <p class="text-sm text-gray-400 mt-1">Pilih klien dan tambahkan material</p>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
+                <x-penawaran.materials-list 
+                    :selectedMaterials="$selectedMaterials"
+                    :selectedKlien="$selectedKlien"
+                    :selectedKlienCabang="$selectedKlienCabang"
+                />
             </div>
 
             {{-- Right Section - Analysis Table --}}
             <div class="xl:col-span-2">
                 {{-- Detailed Analysis Table --}}
-                <div class="bg-white rounded-xl shadow-lg border border-gray-200">
-                    <div class="border-b border-gray-200 p-6">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center mr-4">
-                                    <i class="fas fa-table text-gray-600 text-lg"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900">Analisis Margin Detail</h3>
-                                    <p class="text-sm text-gray-500 mt-1">Detailed margin analysis per material</p>
-                                </div>
-                            </div>
-                            {{-- Summary Stats --}}
-                            <div class="flex space-x-4 text-sm">
-                                <div class="text-center">
-                                    <div class="font-semibold text-green-600">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</div>
-                                    <div class="text-xs text-gray-500">Revenue</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="font-semibold text-red-600">Rp {{ number_format($totalCost, 0, ',', '.') }}</div>
-                                    <div class="text-xs text-gray-500">Cost</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="font-semibold {{ $totalProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">Rp {{ number_format($totalProfit, 0, ',', '.') }}</div>
-                                    <div class="text-xs text-gray-500">Profit</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="font-semibold {{ $overallMargin >= 0 ? 'text-blue-600' : 'text-red-600' }}">{{ number_format($overallMargin, 1) }}%</div>
-                                    <div class="text-xs text-gray-500">Margin</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="max-h-[600px] overflow-y-auto">
-                        <table class="w-full table-fixed">
-                            <thead class="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                    <th class="w-[4%] px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Pilih</th>
-                                    <th class="w-[28%] px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Material & Supplier</th>
-                                    <th class="w-[8%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Qty</th>
-                                    <th class="w-[11%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">H. Klien</th>
-                                    <th class="w-[11%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">H. Supplier</th>
-                                    <th class="w-[11%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Revenue</th>
-                                    <th class="w-[10%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Cost</th>
-                                    <th class="w-[10%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Profit</th>
-                                    <th class="w-[7%] px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Margin</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white">
-                                @forelse($marginAnalysis as $materialIndex => $analysis)
-                                    {{-- Material Header Row --}}
-                                    <tr class="bg-gradient-to-r from-blue-50 to-blue-25 border-t-2 border-blue-200">
-                                        <td colspan="9" class="px-3 py-2">
-                                            <div class="flex items-center gap-2">
-                                                <div class="w-6 h-6 bg-blue-500 rounded flex items-center justify-center flex-shrink-0">
-                                                    <i class="fas fa-cube text-white text-xs"></i>
-                                                </div>
-                                                <div>
-                                                    <span class="font-bold text-sm text-blue-900">{{ $analysis['nama'] }}</span>
-                                                    <span class="text-xs text-blue-700 ml-2">{{ $analysis['satuan'] }}</span>
-                                                    <span class="text-xs text-blue-600 ml-2">• Qty: {{ number_format($analysis['quantity']) }}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    @forelse($analysis['supplier_options'] ?? [] as $supplierIndex => $supplier)
-                                        @php
-                                            $isSelected = isset($selectedSuppliers[$materialIndex]) 
-                                                ? $selectedSuppliers[$materialIndex] == $supplier['supplier_id']
-                                                : $supplier['is_best'];
-                                        @endphp
-                                        <tr class="hover:bg-gray-50 transition-all border-b border-gray-100 {{ $isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'bg-white' }}">
-                                            {{-- Supplier Selection Radio --}}
-                                            <td class="px-2 py-2">
-                                                <div class="flex items-center justify-center">
-                                                    <input 
-                                                        type="radio" 
-                                                        name="selected_supplier_{{ $materialIndex }}"
-                                                        value="{{ $supplier['supplier_id'] }}"
-                                                        wire:model.live="selectedSuppliers.{{ $materialIndex }}"
-                                                        {{ $supplier['is_best'] ? 'checked' : '' }}
-                                                        class="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                    >
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <div class="flex items-center gap-2">
-                                                    <div class="w-6 h-6 {{ $isSelected ? 'bg-blue-600' : ($supplier['is_best'] ? 'bg-green-500' : 'bg-gray-400') }} rounded flex items-center justify-center flex-shrink-0">
-                                                        <i class="fas {{ $isSelected ? 'fa-check' : 'fa-building' }} text-white text-[10px]"></i>
-                                                    </div>
-                                                    <div class="min-w-0 flex-1">
-                                                        <div class="text-xs font-semibold {{ $isSelected ? 'text-blue-900' : ($supplier['is_best'] ? 'text-green-800' : 'text-gray-900') }} truncate">
-                                                            {{ $supplier['supplier_name'] }}
-                                                        </div>
-                                                        @if($supplier['pic_name'])
-                                                            <div class="text-[10px] text-gray-500 truncate">PIC: {{ $supplier['pic_name'] }}</div>
-                                                        @endif
-                                                    </div>
-                                                    <div class="flex gap-1">
-                                                        @if($isSelected)
-                                                            <span class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold flex-shrink-0">DIPILIH</span>
-                                                        @endif
-                                                        @if($supplier['is_best'])
-                                                            <span class="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded font-semibold flex-shrink-0">TERMURAH</span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-xs text-right font-medium text-gray-700">
-                                                {{ number_format($analysis['quantity']) }}
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-xs text-right font-medium text-gray-900">
-                                                {{ number_format($analysis['klien_price'], 0, ',', '.') }}
-                                                @if($analysis['is_custom_price'] ?? false)
-                                                    <span class="block text-[10px] text-purple-600">Custom</span>
-                                                @endif
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-xs text-right font-medium text-gray-900">
-                                                {{ number_format($supplier['price'], 0, ',', '.') }}
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-right">
-                                                <span class="text-xs font-medium text-green-700">
-                                                    {{ number_format($analysis['revenue'], 0, ',', '.') }}
-                                                </span>
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-right">
-                                                <span class="text-xs font-medium text-red-700">
-                                                    {{ number_format($supplier['cost'], 0, ',', '.') }}
-                                                </span>
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-right">
-                                                <span class="text-xs font-medium {{ $supplier['profit'] >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                                                    {{ number_format($supplier['profit'], 0, ',', '.') }}
-                                                </span>
-                                            </td>
-                                            
-                                            <td class="px-2 py-2 text-center">
-                                                <span class="inline-block text-xs font-bold px-2 py-1 rounded {{ $supplier['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($supplier['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                                    {{ number_format($supplier['margin_percent'], 1) }}%
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="9" class="px-3 py-3 text-center text-gray-500">
-                                                <div class="flex items-center justify-center text-xs">
-                                                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                                                    No suppliers found for {{ $analysis['nama'] }}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="px-4 py-12 text-center text-gray-500">
-                                            <div class="flex flex-col items-center">
-                                                <div class="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
-                                                    <i class="fas fa-table text-gray-400 text-2xl"></i>
-                                                </div>
-                                                <h4 class="text-lg font-medium text-gray-700 mb-2">Belum ada data analisis</h4>
-                                                <p class="text-sm text-gray-500">Tambahkan material untuk melihat analisis detail margin</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <x-penawaran.analysis-table 
+                    :marginAnalysis="$marginAnalysis"
+                    :selectedSuppliers="$selectedSuppliers"
+                    :totalRevenue="$totalRevenue"
+                    :totalCost="$totalCost"
+                    :totalProfit="$totalProfit"
+                    :overallMargin="$overallMargin"
+                />
 
                 {{-- Summary Review Section --}}
-                @if(count($selectedMaterials) > 0)
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-file-invoice text-blue-600"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-blue-900">Ringkasan Penawaran</h4>
-                                <p class="text-sm text-blue-700">Review sebelum menyimpan</p>
-                            </div>
-                        </div>
-                        
-                        {{-- Overview Stats --}}
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                                <span class="text-blue-700 block mb-1">Klien:</span>
-                                <span class="font-semibold text-blue-900">{{ $selectedKlien }}</span>
-                                <span class="text-blue-600 text-xs block">{{ $selectedKlienCabang }}</span>
-                            </div>
-                            <div>
-                                <span class="text-blue-700 block mb-1">Total Material:</span>
-                                <span class="font-semibold text-blue-900">{{ count($selectedMaterials) }} item</span>
-                            </div>
-                            <div>
-                                <span class="text-blue-700 block mb-1">Total Harga Klien:</span>
-                                <span class="font-semibold text-blue-900">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</span>
-                            </div>
-                            <div>
-                                <span class="text-blue-700 block mb-1">Estimasi Profit:</span>
-                                <span class="font-semibold {{ $totalProfit >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                                    Rp {{ number_format($totalProfit, 0, ',', '.') }}
-                                    <span class="text-xs">({{ number_format($overallMargin, 1) }}%)</span>
-                                </span>
-                            </div>
-                        </div>
+                <x-penawaran.summary 
+                    :selectedMaterials="$selectedMaterials"
+                    :selectedKlien="$selectedKlien"
+                    :selectedKlienCabang="$selectedKlienCabang"
+                    :totalRevenue="$totalRevenue"
+                    :totalProfit="$totalProfit"
+                    :overallMargin="$overallMargin"
+                    :marginAnalysis="$marginAnalysis"
+                    :selectedSuppliers="$selectedSuppliers"
+                />
 
-                        {{-- Selected Suppliers Detail --}}
-                        <div class="border-t border-blue-200 pt-3">
-                            <div class="flex items-center mb-2">
-                                <i class="fas fa-check-circle text-blue-600 mr-2"></i>
-                                <span class="font-semibold text-blue-900 text-sm">Supplier yang Dipilih:</span>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                @foreach($marginAnalysis as $index => $analysis)
-                                    @php
-                                        $selectedSupplierId = $selectedSuppliers[$index] ?? $analysis['best_supplier_id'];
-                                        $selectedSupplier = collect($analysis['supplier_options'])->firstWhere('supplier_id', $selectedSupplierId);
-                                    @endphp
-                                    @if($selectedSupplier)
-                                        <div class="bg-white border border-blue-200 rounded-lg p-2 flex items-center gap-2">
-                                            <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-building text-white text-[10px]"></i>
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="text-xs font-semibold text-gray-900 truncate">{{ $analysis['nama'] }}</div>
-                                                <div class="text-[10px] text-blue-700 truncate">
-                                                    {{ $selectedSupplier['supplier_name'] }} • Rp {{ number_format($selectedSupplier['price'], 0, ',', '.') }}
-                                                </div>
-                                            </div>
-                                            <div class="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 {{ $selectedSupplier['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($selectedSupplier['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                                {{ number_format($selectedSupplier['margin_percent'], 1) }}%
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Action Buttons --}}
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-cogs text-indigo-600"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-semibold text-gray-900">Aksi Penawaran</h3>
-                                    <p class="text-sm text-gray-600">Simpan sebagai draft atau kirim untuk verifikasi</p>
-                                </div>
-                            </div>
-                            <div class="flex space-x-3">
-                                <button
-                                    wire:click="resetForm"
-                                    class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
-                                    wire:loading.attr="disabled"
-                                >
-                                    <i class="fas fa-undo mr-2"></i>
-                                    Reset
-                                </button>
-                                <button
-                                    wire:click="saveDraft"
-                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    wire:loading.attr="disabled"
-                                    wire:target="saveDraft"
-                                >
-                                    <i class="fas fa-save mr-2"></i>
-                                    <span wire:loading.remove wire:target="saveDraft">Simpan Draft</span>
-                                    <span wire:loading wire:target="saveDraft">Menyimpan...</span>
-                                </button>
-                                <button
-                                    wire:click="submitForVerification"
-                                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    wire:loading.attr="disabled"
-                                    wire:target="submitForVerification"
-                                >
-                                    <i class="fas fa-paper-plane mr-2"></i>
-                                    <span wire:loading.remove wire:target="submitForVerification">Kirim untuk Verifikasi</span>
-                                    <span wire:loading wire:target="submitForVerification">Mengirim...</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                @endif
+                {{-- Action Buttons --}}
+                <x-penawaran.action-buttons 
+                    :selectedMaterials="$selectedMaterials"
+                />
             </div>
         </div>
     </div>
 
     {{-- Add Material Modal --}}
-    @if($showAddMaterialModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            {{-- Backdrop --}}
-            <div class="fixed inset-0 transition-opacity" style="background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(4px);" wire:click="closeAddMaterialModal"></div>
-
-            {{-- Modal Container --}}
-            <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full transform transition-all" @click.stop>
-                    {{-- Modal Header --}}
-                    <div class="border-b border-gray-200 p-6">
-                        <div class="flex items-center justify-between">h-
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
-                                    <i class="fas fa-plus text-purple-600 text-lg"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-semibold text-gray-900">Tambah Material</h3>
-                                    <p class="text-gray-600 text-sm mt-1">Pilih material untuk analisis margin profitabilitas</p>
-                                </div>
-                            </div>
-                            <button 
-                                wire:click="closeAddMaterialModal"
-                                class="text-gray-400 hover:text-gray-600 transition-colors p-2"
-                            >
-                                <i class="fas fa-times text-xl"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Modal Body --}}
-                    <div class="p-6 space-y-6">
-                        {{-- Material Selection --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-3">
-                                <i class="fas fa-cube mr-1 text-gray-400"></i>
-                                Material
-                            </label>
-                            <div class="relative">
-                                <select
-                                    wire:model.live="currentMaterial"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                                           focus:border-purple-500 focus:ring-2 focus:ring-purple-200 
-                                           transition-all duration-200 bg-gray-50 focus:bg-white
-                                           appearance-none cursor-pointer"
-                                >
-                                    <option value="">Pilih material...</option>
-                                    @foreach($availableMaterials as $material)
-                                        <option value="{{ $material->id }}">
-                                            {{ $material->nama }} ({{ $material->satuan }}) - Rp {{ number_format($material->harga_approved, 0, ',', '.') }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
-                                </div>
-                            </div>
-                            @if($currentMaterial)
-                                @php
-                                    $selectedMaterial = $availableMaterials->find($currentMaterial);
-                                @endphp
-                                @if($selectedMaterial)
-                                    <div class="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                                        <div class="flex items-center text-sm">
-                                            <div class="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center mr-2">
-                                                <i class="fas fa-info text-purple-600 text-xs"></i>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-purple-900">{{ $selectedMaterial->nama }}</span>
-                                                <span class="text-purple-700 mx-2">•</span>
-                                                <span class="text-purple-700">Satuan: {{ $selectedMaterial->satuan }}</span>
-                                                <span class="text-purple-700 mx-2">•</span>
-                                                <span class="text-purple-700">Harga: Rp {{ number_format($selectedMaterial->harga_approved, 0, ',', '.') }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-                            @endif
-                        </div>
-
-                        {{-- Quantity Input --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-3">
-                                <i class="fas fa-calculator mr-1 text-gray-400"></i>
-                                Jumlah
-                                @if($currentMaterial)
-                                    @php
-                                        $selectedMaterial = $availableMaterials->find($currentMaterial);
-                                    @endphp
-                                    @if($selectedMaterial)
-                                        <span class="text-purple-600 font-normal">(dalam {{ $selectedMaterial->satuan }})</span>
-                                    @endif
-                                @endif
-                            </label>
-                            <div class="relative">
-                                <input
-                                    type="number"
-                                    wire:model="currentQuantity"
-                                    min="1"
-                                    step="1"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                                           focus:border-purple-500 focus:ring-2 focus:ring-purple-200 
-                                           transition-all duration-200 bg-gray-50 focus:bg-white
-                                           @if($currentMaterial) pr-20 @endif"
-                                    placeholder="Masukkan jumlah material"
-                                >
-                                @if($currentMaterial)
-                                    @php
-                                        $selectedMaterial = $availableMaterials->find($currentMaterial);
-                                    @endphp
-                                    @if($selectedMaterial)
-                                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                                            <span class="text-gray-500 text-sm font-medium">{{ $selectedMaterial->satuan }}</span>
-                                        </div>
-                                    @endif
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Custom Price Option --}}
-                        @if($currentMaterial)
-                            @php
-                                $selectedMaterial = $availableMaterials->find($currentMaterial);
-                            @endphp
-                            @if($selectedMaterial)
-                                <div>
-                                    <div class="flex items-center justify-between mb-3">
-                                        <label class="block text-sm font-medium text-gray-700">
-                                            <i class="fas fa-tags mr-1 text-gray-400"></i>
-                                            Harga Klien
-                                        </label>
-                                        <div class="flex items-center">
-                                            <label class="relative inline-flex items-center cursor-pointer">
-                                                <input type="checkbox" wire:model.live="useCustomPrice" class="sr-only peer">
-                                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                                                <span class="ml-3 text-sm text-gray-600">Custom Price</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    @if($useCustomPrice ?? false)
-                                        <div class="space-y-3">
-                                            <div class="relative">
-                                                <input
-                                                    type="number"
-                                                    wire:model="customPrice"
-                                                    min="0"
-                                                    step="100"
-                                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                                                           focus:border-purple-500 focus:ring-2 focus:ring-purple-200 
-                                                           transition-all duration-200 bg-white pl-12"
-                                                    placeholder="Masukkan harga custom"
-                                                >
-                                                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                                    <span class="text-gray-500 text-sm">Rp</span>
-                                                </div>
-                                            </div>
-                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                                <div class="flex items-start">
-                                                    <div class="w-5 h-5 bg-blue-100 rounded flex items-center justify-center mr-2 mt-0.5">
-                                                        <i class="fas fa-info text-blue-600 text-xs"></i>
-                                                    </div>
-                                                    <div class="text-sm">
-                                                        <div class="font-medium text-blue-900">Price Comparison</div>
-                                                        <div class="text-blue-700 mt-1">
-                                                            Default: <span class="font-medium">Rp {{ number_format($selectedMaterial->harga_approved, 0, ',', '.') }}</span>
-                                                            @if(($customPrice ?? 0) > 0)
-                                                                <br>Custom: <span class="font-medium">Rp {{ number_format($customPrice, 0, ',', '.') }}</span>
-                                                                @php
-                                                                    $difference = $customPrice - $selectedMaterial->harga_approved;
-                                                                    $percentage = $selectedMaterial->harga_approved > 0 ? ($difference / $selectedMaterial->harga_approved) * 100 : 0;
-                                                                @endphp
-                                                                <br>Difference: 
-                                                                <span class="font-medium {{ $difference >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                                                    {{ $difference >= 0 ? '+' : '' }}Rp {{ number_format($difference, 0, ',', '.') }} 
-                                                                    ({{ $difference >= 0 ? '+' : '' }}{{ number_format($percentage, 1) }}%)
-                                                                </span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @else
-                                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                            <div class="flex items-center text-sm text-gray-600">
-                                                <i class="fas fa-tag mr-2 text-gray-400"></i>
-                                                Using default price: <span class="font-medium text-gray-900 ml-1">Rp {{ number_format($selectedMaterial->harga_approved, 0, ',', '.') }}</span>
-                                            </div>
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
-                        @endif
-
-                        {{-- Cost Estimation --}}
-                        @if($currentMaterial && $currentQuantity > 0)
-                            @php
-                                $selectedMaterial = $availableMaterials->find($currentMaterial);
-                                $finalPrice = ($useCustomPrice ?? false) && ($customPrice ?? 0) > 0 ? $customPrice : $selectedMaterial->harga_approved;
-                            @endphp
-                            @if($selectedMaterial)
-                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                                            <i class="fas fa-calculator text-green-600"></i>
-                                        </div>
-                                        <div>
-                                            <div class="font-medium text-green-900">Total Estimation</div>
-                                            <div class="text-sm text-green-700 mt-1">
-                                                {{ number_format($currentQuantity) }} {{ $selectedMaterial->satuan }} × Rp {{ number_format($finalPrice, 0, ',', '.') }} = 
-                                                <span class="font-semibold text-green-800">Rp {{ number_format($finalPrice * $currentQuantity, 0, ',', '.') }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        @endif
-                    </div>
-
-                    {{-- Modal Footer --}}
-                    <div class="border-t border-gray-200 px-6 py-4 flex justify-end space-x-3 bg-gray-50 rounded-b-xl">
-                        <button
-                            wire:click="closeAddMaterialModal"
-                            class="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg 
-                                   hover:bg-gray-50 font-medium transition-colors duration-200 
-                                   focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                        >
-                            <i class="fas fa-times mr-2"></i>
-                            Batal
-                        </button>
-                        <button
-                            wire:click="addMaterial"
-                            class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium 
-                                   rounded-lg transition-colors duration-200 shadow-sm
-                                   focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
-                                   disabled:opacity-50 disabled:cursor-not-allowed"
-                            {{ !$currentMaterial || !$currentQuantity ? 'disabled' : '' }}
-                        >
-                            <i class="fas fa-plus mr-2"></i>
-                            Tambah Material
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
+    <x-penawaran.add-material-modal 
+        :showAddMaterialModal="$showAddMaterialModal"
+        :availableMaterials="$availableMaterials"
+        :currentMaterial="$currentMaterial"
+        :currentQuantity="$currentQuantity"
+        :useCustomPrice="$useCustomPrice"
+        :customPrice="$customPrice"
+    />
 </div>
 
+{{-- Chart.js Script --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -972,101 +111,71 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Data source:', dataSource);
         console.log('Analysis data:', analysisData);
 
-        // Dummy data for testing
-        const dummyAnalysisData = [
-            {
-                nama: 'Semen Portland',
-                klien_price_history: [
-                    { tanggal: '2025-01-15', harga: 95000, formatted_tanggal: '15 Jan' },
-                    { tanggal: '2025-01-20', harga: 97000, formatted_tanggal: '20 Jan' },
-                    { tanggal: '2025-01-25', harga: 94000, formatted_tanggal: '25 Jan' },
-                    { tanggal: '2025-01-28', harga: 96000, formatted_tanggal: '28 Jan' }
-                ],
-                supplier_price_history: [
-                    { tanggal: '2025-01-15', harga: 85000, formatted_tanggal: '15 Jan' },
-                    { tanggal: '2025-01-20', harga: 87000, formatted_tanggal: '20 Jan' },
-                    { tanggal: '2025-01-25', harga: 84000, formatted_tanggal: '25 Jan' },
-                    { tanggal: '2025-01-28', harga: 86000, formatted_tanggal: '28 Jan' }
-                ]
-            },
-            {
-                nama: 'Pasir Halus',
-                klien_price_history: [
-                    { tanggal: '2025-01-15', harga: 45000, formatted_tanggal: '15 Jan' },
-                    { tanggal: '2025-01-20', harga: 47000, formatted_tanggal: '20 Jan' },
-                    { tanggal: '2025-01-25', harga: 46000, formatted_tanggal: '25 Jan' },
-                    { tanggal: '2025-01-28', harga: 48000, formatted_tanggal: '28 Jan' }
-                ],
-                supplier_price_history: [
-                    { tanggal: '2025-01-15', harga: 38000, formatted_tanggal: '15 Jan' },
-                    { tanggal: '2025-01-20', harga: 39000, formatted_tanggal: '20 Jan' },
-                    { tanggal: '2025-01-25', harga: 37000, formatted_tanggal: '25 Jan' },
-                    { tanggal: '2025-01-28', harga: 40000, formatted_tanggal: '28 Jan' }
-                ]
+        try {
+            // Get placeholders
+            const klienPlaceholder = document.getElementById('klien-placeholder');
+            const supplierPlaceholder = document.getElementById('supplier-placeholder');
+            const klienCtx = document.getElementById('klienPriceChart');
+            const supplierCtx = document.getElementById('supplierPriceChart');
+
+            // Check if DOM elements exist (might be removed during navigation)
+            if (!klienCtx || !supplierCtx) {
+                console.log('Chart canvas elements not found - likely page changed');
+                return;
             }
-        ];
 
-        // Use dummy data for testing - comment this line to use real data
-        const testData = dummyAnalysisData;
+            // Use real data
+            const dataToUse = analysisData;
 
-        // Get placeholders
-        const klienPlaceholder = document.getElementById('klien-placeholder');
-        const supplierPlaceholder = document.getElementById('supplier-placeholder');
-        const klienCtx = document.getElementById('klienPriceChart');
-        const supplierCtx = document.getElementById('supplierPriceChart');
+            // Debug: log detailed chart data
+            if (dataToUse && dataToUse.length > 0) {
+                console.log('Number of materials:', dataToUse.length);
+                console.log('First material klien_price_history:', dataToUse[0].klien_price_history);
+                console.log('First material supplier_price_history:', dataToUse[0].supplier_price_history);
+            } else {
+                console.log('No data available - showing placeholders');
+            }
 
-        // Use real data instead of test data now that we fixed the backend
-        const dataToUse = analysisData;
+            if (!dataToUse || dataToUse.length === 0) {
+                // Show placeholders, hide canvas
+                if (klienPlaceholder && klienCtx) {
+                    klienPlaceholder.style.display = 'flex';
+                    klienCtx.style.display = 'none';
+                }
+                if (supplierPlaceholder && supplierCtx) {
+                    supplierPlaceholder.style.display = 'flex';
+                    supplierCtx.style.display = 'none';
+                }
 
-        // Debug: log detailed chart data
-        if (dataToUse && dataToUse.length > 0) {
-            console.log('Number of materials:', dataToUse.length);
-            console.log('First material klien_price_history:', dataToUse[0].klien_price_history);
-            console.log('First material supplier_price_history:', dataToUse[0].supplier_price_history);
-        } else {
-            console.log('No data available - showing placeholders');
-        }
+                // Destroy existing charts
+                if (klienChart) {
+                    klienChart.destroy();
+                    klienChart = null;
+                }
+                if (supplierChart) {
+                    supplierChart.destroy();
+                    supplierChart = null;
+                }
+                return;
+            }
 
-        if (!dataToUse || dataToUse.length === 0) {
-            // Show placeholders, hide canvas
+            // Hide placeholders, show canvas
             if (klienPlaceholder && klienCtx) {
-                klienPlaceholder.style.display = 'flex';
-                klienCtx.style.display = 'none';
+                klienPlaceholder.style.display = 'none';
+                klienCtx.style.display = 'block';
             }
             if (supplierPlaceholder && supplierCtx) {
-                supplierPlaceholder.style.display = 'flex';
-                supplierCtx.style.display = 'none';
+                supplierPlaceholder.style.display = 'none';
+                supplierCtx.style.display = 'block';
             }
 
-            // Destroy existing charts
+            // Destroy existing charts before recreating
             if (klienChart) {
                 klienChart.destroy();
-                klienChart = null;
             }
             if (supplierChart) {
                 supplierChart.destroy();
-                supplierChart = null;
             }
-            return;
-        }
-
-        // Hide placeholders, show canvas
-        if (klienPlaceholder && klienCtx) {
-            klienPlaceholder.style.display = 'none';
-            klienCtx.style.display = 'block';
-        }
-        if (supplierPlaceholder && supplierCtx) {
-            supplierPlaceholder.style.display = 'none';
-            supplierCtx.style.display = 'block';
-        }
-
-        // Destroy existing charts before recreating
-        if (klienChart) {
-            klienChart.destroy();
-        }
-        if (supplierChart) {
-            supplierChart.destroy();
-        }
 
         // Chart Enhancement: Prepare synchronized data with today's extrapolation
         const today = new Date();
@@ -1141,13 +250,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const minPrice = Math.min(...allPrices);
             const maxPrice = Math.max(...allPrices);
             
-            console.log('Price range details:', {
-                minPrice,
-                maxPrice,
-                priceRange: maxPrice - minPrice,
-                allPrices: allPrices.slice(0, 10) // Show first 10 prices for debugging
-            });
-            
             // Add 15% padding for visual breathing room
             const padding = (maxPrice - minPrice) * 0.15;
             
@@ -1155,17 +257,11 @@ document.addEventListener('DOMContentLoaded', function() {
             let calculatedMin = minPrice - padding;
             let calculatedMax = maxPrice + padding;
             
-            console.log('After padding:', { calculatedMin, calculatedMax, padding });
-            
             // Round to nice numbers based on price magnitude
-            // For prices under 100k, round to nearest 1,000
-            // For prices over 100k, round to nearest 10,000
             const roundingFactor = maxPrice < 100000 ? 1000 : 10000;
             
             yAxisMin = Math.floor(calculatedMin / roundingFactor) * roundingFactor;
             yAxisMax = Math.ceil(calculatedMax / roundingFactor) * roundingFactor;
-            
-            console.log('After rounding:', { yAxisMin, yAxisMax, roundingFactor });
             
             // Ensure yMin is not negative
             yAxisMin = Math.max(0, yAxisMin);
@@ -1546,13 +642,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+        
+        } catch (error) {
+            console.error('Error creating charts:', error);
+            // Don't throw - just log and continue
+        }
     }
 
     // Initial chart creation
     updateCharts();
 
+    // Track if we're in the middle of a save/submit action
+    let isSaving = false;
+
+    // Listen for save/submit actions to prevent chart updates during save
+    window.addEventListener('livewire:request', function(event) {
+        const method = event.detail?.params?.[0]?.method;
+        if (method === 'saveDraft' || method === 'submitForVerification' || method === 'resetForm') {
+            console.log('Save/submit action detected, pausing chart updates');
+            isSaving = true;
+        }
+    });
+
+    // Reset the saving flag when request completes
+    window.addEventListener('livewire:finish', function(event) {
+        const method = event.detail?.params?.[0]?.method;
+        if (method === 'saveDraft' || method === 'submitForVerification' || method === 'resetForm') {
+            console.log('Save/submit action completed');
+            isSaving = false;
+            
+            // If it was a reset, clear the charts
+            if (method === 'resetForm') {
+                setTimeout(() => {
+                    updateCharts();
+                }, 100);
+            }
+        }
+    });
+
     // Listen for Livewire updates and rerender charts
     document.addEventListener('livewire:morph', function() {
+        // Don't update charts during save operations
+        if (isSaving) {
+            console.log('Skipping chart update during save operation');
+            return;
+        }
+
         setTimeout(() => {
             // Only update if we don't have recent event data
             if (lastDataSource !== 'from event' || Date.now() - lastUpdateTime > 2000) {

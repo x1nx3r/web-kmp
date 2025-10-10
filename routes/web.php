@@ -27,6 +27,9 @@ Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga'
 Route::get('/forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
 Route::get('/forecasting/bahan-baku-suppliers/{purchaseOrderBahanBakuId}', [ForecastingController::class, 'getBahanBakuSuppliers'])->name('forecasting.get-bahan-baku-suppliers');
 Route::post('/forecasting/create', [ForecastingController::class, 'createForecast'])->name('forecasting.create');
+Route::get('/purchasing/forecast/{id}/detail', [ForecastingController::class, 'getForecastDetail'])->name('forecasting.detail');
+Route::post('/purchasing/forecast/{id}/kirim', [ForecastingController::class, 'kirimForecast'])->name('forecasting.kirim');
+Route::post('/purchasing/forecast/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
 
 // Klien routes
 Route::get('/klien', [KlienController::class, 'index'])->name('klien.index');

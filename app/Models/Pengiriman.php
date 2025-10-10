@@ -16,12 +16,12 @@ class Pengiriman extends Model
     protected $fillable = [
         'purchase_order_id',
         'purchasing_id',
+        'forecast_id',
         'no_pengiriman',
         'tanggal_kirim',
         'hari_kirim',
         'total_qty_kirim',
         'total_harga_kirim',
-        'total_qty_sisa',
         'bukti_foto_bongkar',
         'status',
         'catatan'
@@ -29,7 +29,6 @@ class Pengiriman extends Model
 
     protected $casts = [
         'tanggal_kirim' => 'date',
-        'hari_kirim' => 'date',
         'total_qty_kirim' => 'decimal:2',
         'total_harga_kirim' => 'decimal:2',
         'total_qty_sisa' => 'decimal:2',
@@ -43,6 +42,14 @@ class Pengiriman extends Model
     public function purchasing()
     {
         return $this->belongsTo(User::class, 'purchasing_id');
+    }
+
+    /**
+     * Relasi ke Forecast
+     */
+    public function forecast()
+    {
+        return $this->belongsTo(Forecast::class, 'forecast_id');
     }
 
     /**

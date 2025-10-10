@@ -2,27 +2,35 @@
 <div id="forecastModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {{-- Backdrop --}}
-        <div class="fixed inset-0  transition-opacity backdrop-blur-xs" aria-hidden="true" onclick="closeForecastModal()"></div>
+        <div class="fixed inset-0 transition-opacity backdrop-blur-xs" aria-hidden="true" onclick="closeForecastModal()"></div>
         
         {{-- Center the modal --}}
         <span class="hidden sm:inline-block border border-green-600 sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
-        <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[95vh] overflow-y-auto m-2 sm:m-0 border-4 border-green-500">
+        <div class="relative inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[95vh] overflow-y-auto m-2 sm:m-0 border-4 border-green-500">
             <form id="forecastForm">
-                <div class="bg-white px-3 pt-4 pb-4 sm:p-6 sm:pb-4">
+                <div class="bg-white px-0 pt-0 pb-4 sm:px-0 sm:pb-4">
                     <div class="sm:flex sm:items-start">
-                        <div class="w-full mt-3 sm:mt-0 sm:text-left">
+                        <div class="w-full mt-0 sm:mt-0 sm:text-left">
                             {{-- Header with close button --}}
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                                    Buat Forecast Bahan Baku
-                                </h3>
+                            <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-green-300 rounded-t-xl mb-6">
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-10 h-10 bg-gray-400 rounded-lg flex items-center justify-center shadow-sm">
+                                        <i class="fas fa-chart-bar text-white text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-gray-900">Buat Forecast Bahan Baku</h3>
+                                        <p class="text-sm text-gray-600" id="forecastModalSubtitle">Buat forecast berdasarkan purchase order</p>
+                                    </div>
+                                </div>
                                 <button type="button" onclick="closeForecastModal()" 
-                                        class="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition ease-in-out duration-150">
+                                        class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-all duration-200">
                                     <i class="fas fa-times text-xl"></i>
                                 </button>
                             </div>
+                            
+                            {{-- Modal Content --}}
+                            <div class="px-6 pb-6">
                             
                             {{-- Info PO dan Bahan Baku --}}
                             <div class="bg-green-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
@@ -89,7 +97,7 @@
                                 
                                 {{-- Detail supplier terpilih --}}
                                 <div id="selectedSupplierInfo" class="hidden mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
-                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                                         <div>
                                             <span class="text-gray-600">Stok Tersedia:</span>
                                             <p class="font-semibold text-green-700" id="infoStok">-</p>
@@ -101,6 +109,10 @@
                                         <div>
                                             <span class="text-gray-600">Supplier:</span>
                                             <p class="font-semibold text-green-700" id="infoSupplier">-</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-600">PIC Purchasing:</span>
+                                            <p class="font-semibold text-green-700" id="infoPICPurchasing">-</p>
                                         </div>
                                     </div>
                                 </div>
@@ -200,6 +212,9 @@
                             <input type="hidden" id="harga_satuan_po" name="harga_satuan_po">
                             <input type="hidden" id="tanggal_forecast" name="tanggal_forecast">
                             <input type="hidden" id="hari_kirim_forecast" name="hari_kirim_forecast">
+                            
+                            </div>
+                            {{-- End Modal Content --}}
                         </div>
                     </div>
                 </div>
@@ -350,6 +365,7 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
                 const supplierNama = supplier.supplier_nama || supplier.supplier?.nama || 'Supplier tidak diketahui';
                 const bahanBakuNama = supplier.nama || 'Bahan Baku tidak diketahui';
                 const satuan = supplier.satuan || 'unit';
+                const picPurchasing = supplier.pic_purchasing_nama || 'Belum ditentukan';
                 
                 // Tampilkan semua supplier untuk debugging (nanti bisa dikembalikan filter stok > 0)
                 const optionText = `${bahanBakuNama} - ${supplierNama} (Stok: ${formatRupiah(stok)} ${satuan}) - Rp ${formatRupiah(Math.round(hargaSatuan))}`;
@@ -359,6 +375,7 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
                 option.dataset.satuan = satuan;
                 option.dataset.supplierNama = supplierNama;
                 option.dataset.bahanBakuNama = bahanBakuNama;
+                option.dataset.picPurchasing = picPurchasing;
                 
                 // Disable option jika stok kosong
                 if (stok <= 0) {
@@ -503,6 +520,7 @@ function selectBahanBakuSupplier() {
         document.getElementById('infoStok').className = `font-semibold ${stokClass}`;
         document.getElementById('infoHarga').textContent = `Rp ${formatRupiah(Math.round(price))} / ${selectedOption.dataset.satuan}`;
         document.getElementById('infoSupplier').textContent = selectedOption.dataset.supplierNama;
+        document.getElementById('infoPICPurchasing').textContent = selectedOption.dataset.picPurchasing || 'Belum ditentukan';
         
         infoDiv.classList.remove('hidden');
         
@@ -514,6 +532,7 @@ function selectBahanBakuSupplier() {
         document.getElementById('bahan_baku_supplier_id').value = '';
         document.getElementById('harga_satuan_forecast').value = '';
         document.getElementById('harga_satuan_forecast').dataset.rawValue = '';
+        document.getElementById('infoPICPurchasing').textContent = '-';
         calculateTotal();
     }
 }
@@ -616,8 +635,15 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
             throw new Error('Hari forecast tidak valid');
         }
         
+        // Get and validate CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            throw new Error('CSRF token tidak ditemukan. Silakan refresh halaman.');
+        }
+        
         // Prepare data for API
         const data = {
+            _token: csrfToken,
             purchase_order_id: purchaseOrderId,
             tanggal_forecast: tanggalForecast,
             hari_kirim_forecast: hariForecast,
@@ -645,7 +671,6 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Accept': 'application/json'
             },
             body: JSON.stringify(data),
@@ -767,24 +792,13 @@ function showTimeoutModal() {
 function closeTimeoutModal() {
     document.getElementById('timeoutModal').classList.add('hidden');
     
-    // Preserve current page parameters when reloading
-    const currentParams = new URLSearchParams(window.location.search);
-    const currentPage = currentParams.get('page') || '1';
-    const currentTab = currentParams.get('tab') || 'buat-forecasting';
-    
-    // Build URL with preserved parameters
-    const params = new URLSearchParams();
-    params.append('tab', currentTab);
-    params.append('page', currentPage);
-    
-    // Preserve other filters
-    if (currentParams.get('search')) params.append('search', currentParams.get('search'));
-    if (currentParams.get('status')) params.append('status', currentParams.get('status'));
-    if (currentParams.get('sort_amount')) params.append('sort_amount', currentParams.get('sort_amount'));
-    if (currentParams.get('sort_items')) params.append('sort_items', currentParams.get('sort_items'));
-    
-    // Reload with preserved parameters
-    window.location.href = window.location.pathname + '?' + params.toString();
+    // Use global refresh function to preserve all parameters
+    if (window.refreshWithPreservedParams) {
+        window.refreshWithPreservedParams();
+    } else {
+        // Fallback to simple refresh
+        window.location.reload();
+    }
 }
 
 // Close timeout modal only (without refresh)

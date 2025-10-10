@@ -94,6 +94,15 @@ class Forecast extends Model
     }
 
     /**
+     * Relasi ke Pengiriman (One-to-Many)
+     * Satu forecast bisa punya beberapa pengiriman
+     */
+    public function pengiriman()
+    {
+        return $this->hasMany(Pengiriman::class, 'forecast_id');
+    }
+
+    /**
      * Scope untuk filter berdasarkan status
      */
     public function scopeByStatus($query, $status)

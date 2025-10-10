@@ -369,7 +369,7 @@
                             $prevUrl = $purchaseOrders->previousPageUrl();
                             $prevUrlParts = parse_url($prevUrl);
                             parse_str($prevUrlParts['query'] ?? '', $prevParams);
-                            $prevParams['tab'] = request('tab', 'buat-forecasting');
+                            $prevParams['tab'] = 'buat-forecasting';
                             // Preserve other filters
                             if (request('search')) $prevParams['search'] = request('search');
                             if (request('status')) $prevParams['status'] = request('status');
@@ -395,7 +395,7 @@
                                     @php
                                         $pageUrlParts = parse_url($url);
                                         parse_str($pageUrlParts['query'] ?? '', $pageUrlParams);
-                                        $pageUrlParams['tab'] = request('tab', 'buat-forecasting');
+                                        $pageUrlParams['tab'] = 'buat-forecasting';
                                         // Preserve other filters
                                         if (request('search')) $pageUrlParams['search'] = request('search');
                                         if (request('status')) $pageUrlParams['status'] = request('status');
@@ -422,7 +422,7 @@
                             $nextUrl = $purchaseOrders->nextPageUrl();
                             $nextUrlParts = parse_url($nextUrl);
                             parse_str($nextUrlParts['query'] ?? '', $nextParams);
-                            $nextParams['tab'] = request('tab', 'buat-forecasting');
+                            $nextParams['tab'] = 'buat-forecasting';
                             // Preserve other filters
                             if (request('search')) $nextParams['search'] = request('search');
                             if (request('status')) $nextParams['status'] = request('status');
@@ -444,16 +444,7 @@
             </div>
         </div>
     @endif
-           
-        </div>
-    </div>
 </div>
-
-{{-- Include Modal Buat Forecast --}}
-@include('pages.purchasing.forecast.buat-forecasting.modal-buat-forecasting')
-
-{{-- Include Universal Success Modal --}}
-@include('components.success-modal')
 
 {{-- Modal Timeout --}}
 <div id="timeoutModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="timeout-modal-title" role="dialog" aria-modal="true">
@@ -525,14 +516,13 @@ function applyFilters() {
     if (sortAmount) params.append('sort_amount', sortAmount);
     if (sortItems) params.append('sort_items', sortItems);
     
-    // Always preserve the current tab
-    const currentTab = new URLSearchParams(window.location.search).get('tab') || 'buat-forecasting';
-    params.append('tab', currentTab);
+    // Always preserve the current tab and ensure it's buat-forecasting
+    params.append('tab', 'buat-forecasting');
 
     // Show active filters
     showActiveFilters(search, status, sortAmount, sortItems);
 
-    // Redirect with new parameters
+    // Redirect with new parameters (without page to start from page 1)
     const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
     window.location.href = newUrl;
 }

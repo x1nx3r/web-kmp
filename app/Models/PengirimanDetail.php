@@ -18,10 +18,6 @@ class PengirimanDetail extends Model
         'harga_satuan',
         'total_harga',
         'catatan_detail',
-        'refraksi_qty',
-        'percent_refraksi_qty',
-        'refraksi_rupiah',
-        'percent_refraksi_rupiah'
     ];
 
     protected $casts = [

@@ -209,22 +209,12 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="flex space-x-1">
-                                            <button onclick="showPengirimanDetail({{ $pengiriman->id }})" 
-                                                    class="text-blue-600 hover:text-blue-800 p-1 rounded" title="Detail">
-                                                <i class="fas fa-eye text-xs"></i>
-                                            </button>
-                                            <a href="{{ route('purchasing.pengiriman.edit', $pengiriman->id) }}" 
-                                               class="text-green-600 hover:text-green-800 p-1 rounded" title="Edit">
-                                                <i class="fas fa-edit text-xs"></i>
-                                            </a>
-                                            <button onclick="konfirmasiKirim({{ $pengiriman->id }})" 
-                                                    class="text-amber-600 hover:text-amber-800 p-1 rounded" title="Konfirmasi">
-                                                <i class="fas fa-paper-plane text-xs"></i>
-                                            </button>
-                                            <button onclick="batalPengiriman({{ $pengiriman->id }})" 
-                                                    class="text-red-600 hover:text-red-800 p-1 rounded" title="Batal">
-                                                <i class="fas fa-times text-xs"></i>
+                                        <div class="flex space-x-2">
+                                            <button onclick="openAksiModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}', '{{ $pengiriman->status }}')" 
+                                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs flex items-center transition-all duration-200" 
+                                                    title="Aksi Pengiriman">
+                                                <i class="fas fa-cog mr-1"></i>
+                                                Aksi Pengiriman
                                             </button>
                                         </div>
                                     </div>
@@ -262,6 +252,14 @@
                 </div>
             </div>
         @endif
+    </div>
+</div>
+
+{{-- Modal Aksi Pengiriman --}}
+<div id="aksiModal" class="fixed inset-0 backdrop-blur-xs bg-opacity-50 z-50 hidden" style="display: none; align-items: center; justify-content: center;">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-full overflow-y-auto border border-blue-600">
+        <div class="p-2" id="aksiModalContent">
+        </div>
     </div>
 </div>
 
@@ -473,55 +471,293 @@ function togglePengirimanList(poId) {
     }
 }
 
-// Initialize filters on page load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded - initializing filters');
+// Open Aksi Modal
+function openAksiModal(pengirimanId, noPengiriman, status) {
+    const modal = document.getElementById('aksiModal');
+    const modalContent = document.getElementById('aksiModalContent');
     
-    // Set filter values from URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
+    // Show loading
+    modalContent.innerHTML = `
+        <div class="flex items-center justify-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+            <span class="ml-2 text-gray-600">Loading...</span>
+        </div>
+    `;
     
-    // Set search value
-    const searchValue = urlParams.get('search_masuk');
-    if (searchValue) {
-        console.log('Setting search value:', searchValue);
-        document.getElementById('searchInputMasuk').value = searchValue;
+    // Show modal
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+    
+    // Load content from detail.blade.php
+    fetch(`/purchasing/pengiriman/${pengirimanId}/aksi-modal`)
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            modalContent.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="text-red-500 mb-4">
+                        <i class="fas fa-exclamation-triangle text-4xl"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Gagal Memuat Data</h3>
+                    <p class="text-gray-600 mb-4">Terjadi kesalahan saat memuat detail pengiriman</p>
+                    <button onclick="closeAksiModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                        Tutup
+                    </button>
+                </div>
+            `;
+        });
+}
+
+// Close Aksi Modal
+function closeAksiModal() {
+    const modal = document.getElementById('aksiModal');
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('aksiModal');
+    if (event.target === modal) {
+        closeAksiModal();
+    }
+});
+
+// Close modal with ESC key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeAksiModal();
+    }
+});
+
+// =================== GLOBAL FUNCTIONS FOR MODAL ===================
+// These functions need to be in global scope because they are called from modal HTML loaded via AJAX
+
+// Update hari kirim berdasarkan tanggal (global function)
+function updateHariKirim() {
+    const deliveryDate = document.getElementById('tanggal_kirim');
+    const hariKirimField = document.getElementById('hari_kirim');
+    
+    if (!deliveryDate || !hariKirimField) {
+        console.log('Tanggal kirim atau hari kirim field tidak ditemukan');
+        return;
     }
     
-    // Set purchasing filter
-    const filterPurchasing = urlParams.get('filter_purchasing');
-    if (filterPurchasing) {
-        console.log('Setting filter purchasing:', filterPurchasing);
-        document.getElementById('filterPurchasing').value = filterPurchasing;
+    if (deliveryDate.value) {
+        const targetDate = new Date(deliveryDate.value);
+        console.log('Calculating day for date:', deliveryDate.value, targetDate);
+        
+        // Array nama hari dalam bahasa Indonesia
+        const hariIndonesia = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const namaHari = hariIndonesia[targetDate.getDay()];
+        
+        console.log('Setting hari kirim to:', namaHari);
+        hariKirimField.value = namaHari;
+    } else {
+        hariKirimField.value = '';
+    }
+}
+
+// Hitung subtotal untuk detail pengiriman (global function)
+function calculateSubtotal(index) {
+    console.log('calculateSubtotal called for index:', index);
+    
+    const qtyInput = document.querySelector(`input[name="details[${index}][qty_kirim]"]`);
+    const hargaInput = document.querySelector(`input[name="details[${index}][harga_satuan]"]`);
+    const totalInput = document.querySelector(`input[name="details[${index}][total_harga]"]`);
+    
+    if (!qtyInput || !hargaInput || !totalInput) {
+        console.error('Input elements not found for index:', index);
+        return;
     }
     
-    // Set sort date filter
-    const sortDate = urlParams.get('sort_date_masuk');
-    if (sortDate) {
-        console.log('Setting sort date:', sortDate);
-        document.getElementById('sortDateMasuk').value = sortDate;
+    const qty = parseFloat(qtyInput.value) || 0;
+    const harga = parseFloat(hargaInput.value) || 0;
+    const total = qty * harga;
+    
+    console.log('Calculation:', { qty, harga, total });
+    
+    // Update total input
+    totalInput.value = total.toFixed(2);
+    
+    // Update display format di div sebelahnya jika ada
+    const totalDisplay = totalInput.parentElement.querySelector('.text-gray-500');
+    if (totalDisplay) {
+        totalDisplay.textContent = 'Rp ' + total.toLocaleString('id-ID');
     }
     
-    // Update active filters display
-    updateActiveFiltersMasuk();
+    // Update total keseluruhan
+    updateTotals();
+}
+
+// Update total keseluruhan (global function)
+function updateTotals() {
+    let totalQty = 0;
+    let totalHarga = 0;
     
-    // Initialize pengiriman list states
-    document.querySelectorAll('.pengiriman-list').forEach(list => {
-        list.style.display = 'none';
+    const detailItems = document.querySelectorAll('.detail-item');
+    console.log('Found detail items:', detailItems.length);
+    
+    detailItems.forEach((item, idx) => {
+        const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');
+        const totalInput = item.querySelector('input[name*="[total_harga]"]');
+        
+        if (qtyInput && totalInput) {
+            const qty = parseFloat(qtyInput.value) || 0;
+            const total = parseFloat(totalInput.value) || 0;
+            
+            totalQty += qty;
+            totalHarga += total;
+            
+            console.log(`Item ${idx}:`, { qty, total });
+        }
     });
     
-    // Add event listeners for search input
-    const searchInput = document.getElementById('searchInputMasuk');
-    if (searchInput) {
-        searchInput.addEventListener('input', debounceSearchMasuk);
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                submitSearchMasuk();
-            }
-        });
+    console.log('Total calculation:', { totalQty, totalHarga });
+    
+    // Update tampilan summary
+    const totalQtyDisplay = document.getElementById('totalQtyKirim');
+    const totalHargaDisplay = document.getElementById('totalHargaKirim');
+    
+    if (totalQtyDisplay) {
+        totalQtyDisplay.textContent = totalQty.toLocaleString('id-ID') + ' kg';
     }
     
-    console.log('Filter initialization complete');
-});
+    if (totalHargaDisplay) {
+        totalHargaDisplay.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID');
+    }
+    
+    // Update hidden inputs untuk form submission
+    const totalQtyHidden = document.getElementById('total_qty_kirim');
+    const totalHargaHidden = document.getElementById('total_harga_kirim');
+    const totalQtyDisplayField = document.getElementById('total_qty_kirim_display');
+    const totalHargaDisplayField = document.getElementById('total_harga_kirim_display');
+    
+    if (totalQtyHidden) totalQtyHidden.value = totalQty;
+    if (totalHargaHidden) totalHargaHidden.value = totalHarga;
+    if (totalQtyDisplayField) totalQtyDisplayField.value = totalQty.toLocaleString('id-ID') + ' kg';
+    if (totalHargaDisplayField) totalHargaDisplayField.value = 'Rp ' + totalHarga.toLocaleString('id-ID');
+}
+
+// Test modal functions (global function for debugging)
+function testModalFunctions() {
+    console.log('Testing modal functions...');
+    
+    // Test updateHariKirim
+    const tanggalKirim = document.getElementById('tanggal_kirim');
+    if (tanggalKirim) {
+        console.log('Tanggal kirim field found:', tanggalKirim.value);
+        updateHariKirim();
+    } else {
+        console.log('Tanggal kirim field not found');
+    }
+    
+    // Test calculateSubtotal
+    const firstDetail = document.querySelector('.detail-item');
+    if (firstDetail) {
+        const index = firstDetail.getAttribute('data-index');
+        console.log('Testing calculateSubtotal with index:', index);
+        if (index !== null) {
+            calculateSubtotal(parseInt(index));
+        }
+    } else {
+        console.log('No detail items found');
+    }
+    
+    // Test updateTotals
+    updateTotals();
+}
+
+// Submit pengiriman (global function)
+function submitPengiriman() {
+    console.log('submitPengiriman called');
+    
+    const form = document.getElementById('pengirimanForm');
+    if (!form) {
+        console.error('Form pengirimanForm not found');
+        alert('Form tidak ditemukan');
+        return;
+    }
+    
+    // Validate form
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    // Check if detail exists
+    const detailItems = document.querySelectorAll('.detail-item');
+    if (detailItems.length === 0) {
+        alert('Tidak ada detail barang untuk dikirim');
+        return;
+    }
+    
+    // Validate all qty inputs are filled and > 0
+    let hasValidQty = false;
+    for (let item of detailItems) {
+        const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');
+        if (qtyInput && parseFloat(qtyInput.value) > 0) {
+            hasValidQty = true;
+            break;
+        }
+    }
+    
+    if (!hasValidQty) {
+        alert('Minimal satu barang harus memiliki qty kirim > 0');
+        return;
+    }
+    
+    // Create FormData
+    const formData = new FormData(form);
+    
+    // Add totals to form data
+    const totalQty = Array.from(detailItems).reduce((sum, item) => {
+        const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');
+        return sum + (parseFloat(qtyInput.value) || 0);
+    }, 0);
+    
+    const totalHarga = Array.from(detailItems).reduce((sum, item) => {
+        const totalInput = item.querySelector('input[name*="[total_harga]"]');
+        return sum + (parseFloat(totalInput.value) || 0);
+    }, 0);
+    
+    formData.append('total_qty_kirim', totalQty);
+    formData.append('total_harga_kirim', totalHarga);
+    
+    console.log('Form data prepared:', { totalQty, totalHarga });
+    
+    // Show confirmation dialog
+    if (confirm('Apakah Anda yakin ingin mengajukan verifikasi untuk pengiriman ini?')) {
+        // Submit form
+        const action = form.action || '/purchasing/pengiriman/submit';
+        
+        fetch(action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Pengiriman berhasil diajukan untuk verifikasi!');
+                closeAksiModal();
+                // Refresh page
+                window.location.reload();
+            } else {
+                alert('Gagal mengajukan pengiriman: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat mengajukan pengiriman');
+        });
+    }
+}
 </script>
 
 <style>
@@ -607,6 +843,26 @@ button.bg-red-500:hover {
 
 .po-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal styles */
+#aksiModal {
+    backdrop-filter: blur(4px);
+}
+
+#aksiModal .bg-white {
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 /* Summary stats */

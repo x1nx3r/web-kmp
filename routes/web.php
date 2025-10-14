@@ -37,6 +37,8 @@ Route::prefix('purchasing')->group(function () {
     // Routes tanpa parameter harus diletakkan sebelum resource routes
     Route::get('pengiriman/submit-modal', [PengirimanController::class, 'getSubmitModal'])->name('purchasing.pengiriman.submit-modal');
     Route::post('pengiriman/submit', [PengirimanController::class, 'submitPengiriman'])->name('purchasing.pengiriman.submit');
+    Route::get('pengiriman/batal-modal', [PengirimanController::class, 'getBatalModal'])->name('purchasing.pengiriman.batal-modal');
+    Route::post('pengiriman/batal', [PengirimanController::class, 'batalPengiriman'])->name('purchasing.pengiriman.batal');
     
     Route::resource('pengiriman', PengirimanController::class)->names([
         'index' => 'purchasing.pengiriman.index',

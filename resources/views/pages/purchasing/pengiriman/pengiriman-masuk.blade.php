@@ -262,6 +262,9 @@
     </div>
 </div>
 
+{{-- SweetAlert2 Library --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 {{-- JavaScript untuk Tab Pengiriman Masuk --}}
 <script>
 // Debounced search function for server-side filtering
@@ -545,6 +548,59 @@ document.addEventListener('keydown', function(event) {
 
 // =================== GLOBAL FUNCTIONS FOR MODAL ===================
 // These functions need to be in global scope because they are called from modal HTML loaded via AJAX
+
+// Open batal modal (global function)
+function openBatalModal() {
+    const pengirimanId = window.currentPengirimanId;
+    
+    if (!pengirimanId) {
+        console.error('Pengiriman ID not found');
+        alert('ID pengiriman tidak ditemukan');
+        return;
+    }
+    
+    console.log('Loading batal modal for pengiriman ID:', pengirimanId);
+    
+    // Load batal modal content with pengiriman_id parameter
+    fetch(`/purchasing/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
+    .then(response => {
+        console.log('Batal modal response status:', response.status);
+        return response.text();
+    })
+    .then(html => {
+        console.log('Batal modal HTML received, length:', html.length);
+        
+        // Create and show batal modal
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = html;
+        document.body.appendChild(modalContainer);
+        
+        console.log('Batal modal container added to body');
+        
+        // Find and show the modal
+        const batalModal = modalContainer.querySelector('#batalModal');
+        if (batalModal) {
+            console.log('Batal modal found, showing...');
+            // Make sure modal is visible
+            batalModal.style.display = 'flex';
+        } else {
+            console.error('Batal modal not found in HTML');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading batal modal:', error);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Gagal memuat modal pembatalan: ' + error.message,
+                icon: 'error',
+                confirmButtonColor: '#EF4444'
+            });
+        } else {
+            alert('Gagal memuat modal pembatalan: ' + error.message);
+        }
+    });
+}
 
 // Update hari kirim berdasarkan tanggal (global function)
 function updateHariKirim() {
@@ -968,6 +1024,133 @@ function confirmSubmit() {
             alert('Terjadi kesalahan pada sistem');
         }
     });
+}
+// Submit pembatalan pengiriman (global function)
+function submitBatalPengiriman() {
+    const form = document.getElementById('batalForm');
+    if (!form) {
+        console.error('Form batalForm not found');
+        alert('Form tidak ditemukan');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    
+    // Validate form
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Show confirmation
+    Swal.fire({
+        title: 'Konfirmasi Pembatalan',
+        text: 'Apakah Anda yakin ingin membatalkan pengiriman ini? Tindakan ini tidak dapat dibatalkan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Batalkan',
+        cancelButtonText: 'Tidak',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading
+            Swal.fire({
+                title: 'Memproses...',
+                text: 'Membatalkan pengiriman...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Submit form via AJAX
+            fetch('/purchasing/pengiriman/batal', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                
+                if (data.success) {
+                    // Success notification with animation (reuse existing function)
+                    showBatalSuccessNotification('Pengiriman berhasil dibatalkan!', data.no_pengiriman);
+                    
+                    // Close modal and reload page
+                    closeBatalModal();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    // Error notification
+                    Swal.fire({
+                        title: 'Error!',
+                        text: data.message || 'Terjadi kesalahan saat membatalkan pengiriman',
+                        icon: 'error',
+                        confirmButtonColor: '#EF4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.close();
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Terjadi kesalahan: ' + error.message,
+                    icon: 'error',
+                    confirmButtonColor: '#EF4444'
+                });
+            });
+        }
+    });
+}
+
+// Close batal modal (global function)
+function closeBatalModal() {
+    const modal = document.getElementById('batalModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Success notification for batal (global function)
+function showBatalSuccessNotification(message, noPengiriman) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-[9999] transform translate-x-full transition-transform duration-300 ease-in-out';
+    notification.innerHTML = `
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-check-circle text-xl"></i>
+            <div>
+                <div class="font-semibold">${message}</div>
+                ${noPengiriman ? `<div class="text-sm opacity-90">No. Pengiriman: ${noPengiriman}</div>` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Add to DOM
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto dismiss after 3 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
 }
 
 // ...existing code...

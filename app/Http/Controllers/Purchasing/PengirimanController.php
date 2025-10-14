@@ -526,4 +526,85 @@ class PengirimanController extends Controller
             ], 404);
         }
     }
+
+    /**
+     * Show batal modal for pengiriman confirmation
+     */
+    public function getBatalModal(Request $request)
+    {
+        try {
+            $pengiriman = Pengiriman::with([
+                'purchaseOrder', 
+                'purchaseOrder.klien', 
+                'purchasing', 
+                'forecast'
+            ])->findOrFail($request->get('pengiriman_id'));
+            
+            return view('pages.purchasing.pengiriman.pengiriman-masuk.batal', compact('pengiriman'));
+            
+        } catch (\Exception $e) {
+            return response('<div class="text-center py-8 text-red-500">Error: ' . $e->getMessage() . '</div>', 500);
+        }
+    }
+
+    /**
+     * Cancel pengiriman with catatan only
+     */
+    public function batalPengiriman(Request $request)
+    {
+        try {
+            // Validate request - only catatan is allowed to be updated
+            $validatedData = $request->validate([
+                'pengiriman_id' => 'required|exists:pengiriman,id',
+                'catatan' => 'required|string|max:1000',
+                'alasan_batal' => 'required|string|max:500'
+            ], [
+                'pengiriman_id.required' => 'ID pengiriman diperlukan',
+                'pengiriman_id.exists' => 'Pengiriman tidak ditemukan',
+                'catatan.required' => 'Catatan pembatalan harus diisi',
+                'catatan.max' => 'Catatan tidak boleh lebih dari 1000 karakter',
+                'alasan_batal.required' => 'Alasan pembatalan harus diisi',
+                'alasan_batal.max' => 'Alasan pembatalan tidak boleh lebih dari 500 karakter'
+            ]);
+
+            // Begin transaction
+            DB::beginTransaction();
+
+            // Update only catatan and status to 'batal'
+            $pengiriman = Pengiriman::findOrFail($validatedData['pengiriman_id']);
+            
+            // Combine existing catatan with cancellation reason
+            $newCatatan = $validatedData['catatan'] . "\n\n[PEMBATALAN]\n" . $validatedData['alasan_batal'] . "\n[Dibatalkan pada: " . now()->format('d M Y H:i') . "]";
+            
+            $pengiriman->update([
+                'catatan' => $newCatatan,
+                'status' => 'gagal'
+            ]);
+
+            // Commit transaction
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengiriman berhasil dibatalkan',
+                'no_pengiriman' => $pengiriman->no_pengiriman,
+                'pengiriman' => $pengiriman
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollback();
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

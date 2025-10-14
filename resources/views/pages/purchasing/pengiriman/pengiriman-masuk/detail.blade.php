@@ -307,11 +307,18 @@
 
 {{-- Footer - Sticky --}}
 <div class="sticky bottom-0 bg-white z-10 flex justify-between items-center p-6 border-t border-gray-200 rounded-b-xl">
-    <button type="button" onclick="closeAksiModal()" 
-            class="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium">
-        <i class="fas fa-times mr-2"></i>
-        Tutup
-    </button>
+    <div class="flex space-x-3">
+        <button type="button" onclick="closeAksiModal()" 
+                class="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium">
+            <i class="fas fa-times mr-2"></i>
+            Tutup
+        </button>
+        <button type="button" onclick="openBatalModal()" 
+                class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium">
+            <i class="fas fa-ban mr-2"></i>
+            Jadikan Pengiriman Batal
+        </button>
+    </div>
     <button type="button" onclick="submitPengiriman()" 
             class="px-8 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold shadow-md hover:shadow-lg">
         <i class="fas fa-paper-plane mr-2"></i>
@@ -324,6 +331,52 @@
 
 {{-- JavaScript khusus untuk modal aksi --}}
 <script>
+// Open batal modal
+function openBatalModal() {
+    const pengirimanId = document.querySelector('input[name="pengiriman_id"]').value;
+    console.log('Loading batal modal for pengiriman ID:', pengirimanId);
+    
+    // Load batal modal content with pengiriman_id parameter
+    fetch(`/purchasing/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
+    .then(response => {
+        console.log('Batal modal response status:', response.status);
+        return response.text();
+    })
+    .then(html => {
+        console.log('Batal modal HTML received, length:', html.length);
+        
+        // Create and show batal modal
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = html;
+        document.body.appendChild(modalContainer);
+        
+        console.log('Batal modal container added to body');
+        
+        // Find and show the modal
+        const batalModal = modalContainer.querySelector('#batalModal');
+        if (batalModal) {
+            console.log('Batal modal found, showing...');
+            // Make sure modal is visible
+            batalModal.style.display = 'flex';
+        } else {
+            console.error('Batal modal not found in HTML');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading batal modal:', error);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Gagal memuat modal pembatalan: ' + error.message,
+                icon: 'error',
+                confirmButtonColor: '#EF4444'
+            });
+        } else {
+            alert('Gagal memuat modal pembatalan: ' + error.message);
+        }
+    });
+}
+
 // Update hari kirim berdasarkan tanggal (mirip seperti di modal forecasting)
 function updateHariKirim() {
     const deliveryDate = document.getElementById('tanggal_kirim').value;

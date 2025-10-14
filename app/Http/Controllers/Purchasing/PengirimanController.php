@@ -12,18 +12,11 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class PengirimanController extends Controller
 {
-    /**
-     * Display a listing of the pengiri            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Pengiriman berhasil diajukan untuk verifikasi',
-                'no_pengiriman' => $pengiriman->no_pengiriman,
-                'pengiriman' => $pengiriman
-            ]);   */
+    
     public function index(Request $request): View
     {
         // Base query dengan eager loading
@@ -47,7 +40,22 @@ class PengirimanController extends Controller
                     })
                     ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
                         $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
-                    });
+                    })
+                    ->orWhere('no_pengiriman', 'LIKE', "%{$search}%");
+                });
+            }
+
+            // Apply search filter for pengiriman berhasil
+            if ($status === 'berhasil' && $request->filled('search_berhasil')) {
+                $search = $request->get('search_berhasil');
+                $query->where(function($q) use ($search) {
+                    $q->whereHas('purchaseOrder', function($poQuery) use ($search) {
+                        $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
+                        $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhere('no_pengiriman', 'LIKE', "%{$search}%");
                 });
             }
 
@@ -56,9 +64,24 @@ class PengirimanController extends Controller
                 $query->where('purchasing_id', $request->get('filter_purchasing'));
             }
 
+            // Apply purchasing filter for pengiriman berhasil
+            if ($status === 'berhasil' && $request->filled('filter_purchasing_berhasil')) {
+                $query->where('purchasing_id', $request->get('filter_purchasing_berhasil'));
+            }
+
+            // Apply date range filter for pengiriman berhasil
+            if ($status === 'berhasil' && $request->filled('date_range_berhasil')) {
+                $query->whereDate('tanggal_kirim', $request->get('date_range_berhasil'));
+            }
+
             // Apply date sorting for pengiriman masuk
             if ($status === 'pending' && $request->filled('sort_date_masuk')) {
                 $sortOrder = $request->get('sort_date_masuk') === 'oldest' ? 'asc' : 'desc';
+                $query->orderBy('created_at', $sortOrder);
+            } 
+            // Apply date sorting for pengiriman berhasil
+            elseif ($status === 'berhasil' && $request->filled('sort_order_berhasil')) {
+                $sortOrder = $request->get('sort_order_berhasil') === 'oldest' ? 'asc' : 'desc';
                 $query->orderBy('created_at', $sortOrder);
             } else {
                 $query->orderBy('created_at', 'desc');
@@ -604,6 +627,57 @@ class PengirimanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detail for pengiriman berhasil
+     */
+    public function getDetailBerhasil($id)
+    {
+        try {
+            $pengiriman = Pengiriman::with([
+                'purchaseOrder',
+                'purchaseOrder.klien',
+                'purchasing',
+                'pengirimanDetails.bahanBakuSupplier',
+                'pengirimanDetails.bahanBakuSupplier.supplier'
+            ])->where('status', 'berhasil')->findOrFail($id);
+
+            // Format data for response
+            $data = [
+                'id' => $pengiriman->id,
+                'no_pengiriman' => $pengiriman->no_pengiriman,
+                'status' => ucfirst($pengiriman->status),
+                'no_po' => $pengiriman->purchaseOrder->no_po ?? '-',
+                'pic_purchasing' => $pengiriman->purchasing->nama ?? '-',
+                'tanggal_kirim' => $pengiriman->tanggal_kirim ? Carbon::parse($pengiriman->tanggal_kirim)->format('d F Y') : '-',
+                'hari_kirim' => $pengiriman->hari_kirim ?? '-',
+                'total_qty' => number_format($pengiriman->total_qty_kirim ?? 0, 0, ',', '.') . ' kg',
+                'total_harga' => 'Rp ' . number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.'),
+                'total_items' => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->count() : 0,
+                'catatan' => $pengiriman->catatan,
+                'details' => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->map(function($detail) {
+                    return [
+                        'bahan_baku' => $detail->bahanBakuSupplier->nama ?? '-',
+                        'supplier' => $detail->bahanBakuSupplier->supplier->nama ?? '-',
+                        'qty_kirim' => $detail->qty_kirim,
+                        'harga_satuan' => $detail->harga_satuan,
+                        'total_harga' => $detail->total_harga
+                    ];
+                }) : []
+            ];
+
+            return response()->json([
+                'success' => true,
+                'pengiriman' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat detail pengiriman: ' . $e->getMessage()
             ], 500);
         }
     }

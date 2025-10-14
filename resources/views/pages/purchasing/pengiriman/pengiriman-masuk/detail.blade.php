@@ -206,17 +206,13 @@
                                         <div class="text-sm font-medium text-gray-900">
                                             {{ $detail->bahanBakuSupplier->nama ?? 'Unknown Bahan Baku' }}
                                         </div>
-                                        <div class="text-xs text-gray-500">
-                                            {{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}
-                                        </div>
+                                       
                                     </td>
                                     <td class="px-4 py-3 border-b">
                                         <div class="text-sm font-medium text-gray-900">
                                             {{ $detail->bahanBakuSupplier->supplier->nama ?? 'Unknown Supplier' }}
                                         </div>
-                                        <div class="text-xs text-gray-500">
-                                            {{ $detail->bahanBakuSupplier->supplier->picPurchasing->nama ?? '' }}
-                                        </div>
+                                      
                                     </td>
                                     <td class="px-4 py-3 border-b">                        <input type="number" 
                                name="details[{{ $index }}][qty_kirim]" 
@@ -467,36 +463,176 @@ function submitPengiriman() {
 
 // Show submit confirmation modal
 function showSubmitModal(formData) {
-    // Load submit modal content
-    fetch(`/purchasing/pengiriman/submit-modal`)
-    .then(response => response.text())
+    const pengirimanId = formData.get('pengiriman_id');
+    console.log('Loading submit modal for pengiriman ID:', pengirimanId);
+    
+    // Load submit modal content with pengiriman_id parameter
+    fetch(`/purchasing/pengiriman/submit-modal?pengiriman_id=${pengirimanId}`)
+    .then(response => {
+        console.log('Submit modal response status:', response.status);
+        return response.text();
+    })
     .then(html => {
+        console.log('Submit modal HTML received, length:', html.length);
+        
         // Create and show submit modal
         const modalContainer = document.createElement('div');
         modalContainer.innerHTML = html;
         document.body.appendChild(modalContainer);
         
-        // Populate summary dengan data form
-        if (typeof populateSummary === 'function') {
-            populateSummary(formData);
+        console.log('Modal container added to body');
+        
+        // Find and populate the modal immediately
+        const submitModal = modalContainer.querySelector('#submitModal');
+        if (submitModal) {
+            console.log('Submit modal found, populating data...');
+            // Populate data directly
+            populateModalSummary(formData, submitModal);
+            
+            // Make sure modal is visible
+            submitModal.style.display = 'flex';
+        } else {
+            console.error('Submit modal not found in HTML');
         }
         
-        // Close current modal
-        closeAksiModal();
+        // Close current modal after successful modal creation
+        setTimeout(() => {
+            closeAksiModal();
+        }, 200);
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('Error loading submit modal:', error);
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 title: 'Error!',
-                text: 'Gagal memuat modal konfirmasi',
+                text: 'Gagal memuat modal konfirmasi: ' + error.message,
                 icon: 'error',
                 confirmButtonColor: '#EF4444'
             });
         } else {
-            alert('Gagal memuat modal konfirmasi');
+            alert('Gagal memuat modal konfirmasi: ' + error.message);
         }
     });
+}
+
+// Populate modal summary (local version)
+function populateModalSummary(formData, modalElement) {
+    console.log('Populating modal summary with formData:', formData);
+    
+    // Tunggu sebentar untuk memastikan modal sudah ter-render
+    setTimeout(() => {
+        // Basic info
+        const setPengirimam = modalElement.querySelector('#summary-no-pengiriman');
+        if (setPengirimam) {
+            setPengirimam.textContent = formData.get('no_pengiriman') || '-';
+            console.log('Set no pengiriman:', formData.get('no_pengiriman'));
+        }
+        
+        const tanggalKirim = formData.get('tanggal_kirim');
+        if (tanggalKirim) {
+            const date = new Date(tanggalKirim + 'T00:00:00');
+            const setTanggal = modalElement.querySelector('#summary-tanggal-kirim');
+            if (setTanggal) {
+                setTanggal.textContent = date.toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long', 
+                    year: 'numeric'
+                });
+                console.log('Set tanggal kirim:', setTanggal.textContent);
+            }
+        }
+        
+        const setHari = modalElement.querySelector('#summary-hari-kirim');
+        if (setHari) {
+            setHari.textContent = formData.get('hari_kirim') || '-';
+            console.log('Set hari kirim:', formData.get('hari_kirim'));
+        }
+        
+        const setCatatan = modalElement.querySelector('#summary-catatan');
+        if (setCatatan) {
+            setCatatan.textContent = formData.get('catatan') || 'Tidak ada catatan';
+            console.log('Set catatan:', formData.get('catatan'));
+        }        // Detail barang
+        const detailContainer = modalElement.querySelector('#summary-detail-barang');
+        console.log('Detail container found:', detailContainer);
+        
+        if (detailContainer) {
+            detailContainer.innerHTML = '';
+            
+            let totalItems = 0;
+            let totalQty = 0;
+            let totalHarga = 0;
+            
+            // Get detail from current form
+            const detailRows = document.querySelectorAll('.detail-item');
+            console.log('Detail rows found:', detailRows.length);
+            
+            detailRows.forEach((row, index) => {
+                const qtyInput = row.querySelector('input[name*="[qty_kirim]"]');
+                const hargaInput = row.querySelector('input[name*="[harga_satuan]"]');
+                const totalInput = row.querySelector('input[name*="[total_harga]"]');
+                const bahanBakuEl = row.querySelector('.text-sm.font-medium.text-gray-900');
+                
+                const qty = parseFloat(qtyInput?.value) || 0;
+                const harga = parseFloat(hargaInput?.value) || 0;
+                const total = parseFloat(totalInput?.value) || 0;
+                const bahanBaku = bahanBakuEl?.textContent.trim() || 'Unknown';
+                
+                console.log(`Row ${index}: ${bahanBaku}, qty: ${qty}, harga: ${harga}, total: ${total}`);
+                
+                if (qty > 0) {
+                    totalItems++;
+                    totalQty += qty;
+                    totalHarga += total;
+                    
+                    const rowHtml = `
+                        <tr class="border-b">
+                            <td class="px-3 py-2 text-sm">${bahanBaku}</td>
+                            <td class="px-3 py-2 text-sm">${qty.toLocaleString('id-ID')} kg</td>
+                            <td class="px-3 py-2 text-sm">Rp ${harga.toLocaleString('id-ID')}</td>
+                            <td class="px-3 py-2 text-sm font-semibold">Rp ${total.toLocaleString('id-ID')}</td>
+                        </tr>
+                    `;
+                    detailContainer.insertAdjacentHTML('beforeend', rowHtml);
+                }
+            });
+            
+            console.log(`Totals - Items: ${totalItems}, Qty: ${totalQty}, Harga: ${totalHarga}`);
+            
+            // Update totals
+            const setTotalItem = modalElement.querySelector('#summary-total-item');
+            if (setTotalItem) {
+                setTotalItem.textContent = totalItems + ' item';
+                console.log('Set total item:', totalItems);
+            }
+            
+            const setTotalQty = modalElement.querySelector('#summary-total-qty');
+            if (setTotalQty) {
+                setTotalQty.textContent = totalQty.toLocaleString('id-ID') + ' kg';
+                console.log('Set total qty:', totalQty);
+            }
+            
+            const setTotalHarga = modalElement.querySelector('#summary-total-harga');
+            if (setTotalHarga) {
+                setTotalHarga.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID');
+                console.log('Set total harga:', totalHarga);
+            }
+        }        // Setup submission data in the modal's script context
+        const script = modalElement.querySelector('script');
+        if (script) {
+            // Inject formData into the modal's scope
+            const formDataEntries = Array.from(formData.entries()).map(([key, value]) => 
+                `submissionData.append('${key}', '${value}');`
+            ).join(' ');
+            
+            script.textContent = script.textContent.replace(
+                'let submissionData = null;',
+                `let submissionData = new FormData(); ${formDataEntries}`
+            );
+            console.log('Injected submission data into modal script');
+        }
+        
+    }, 100); // Delay 100ms untuk memastikan DOM sudah siap
 }
 
 // Initialize pengiriman modal (mirip seperti di modal forecasting)

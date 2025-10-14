@@ -11,12 +11,19 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class PengirimanController extends Controller
 {
     /**
-     * Display a listing of the pengiriman.
-     */
+     * Display a listing of the pengiri            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengiriman berhasil diajukan untuk verifikasi',
+                'no_pengiriman' => $pengiriman->no_pengiriman,
+                'pengiriman' => $pengiriman
+            ]);   */
     public function index(Request $request): View
     {
         // Base query dengan eager loading
@@ -361,7 +368,7 @@ class PengirimanController extends Controller
         try {
             // Validate request
             $validatedData = $request->validate([
-                'pengiriman_id' => 'required|exists:pengirimans,id',
+                'pengiriman_id' => 'required|exists:pengiriman,id',
                 'no_pengiriman' => 'required|string|max:255',
                 'tanggal_kirim' => 'required|date',
                 'hari_kirim' => 'required|string',
@@ -370,7 +377,7 @@ class PengirimanController extends Controller
                 'bukti_foto_bongkar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
                 'catatan' => 'nullable|string',
                 'details' => 'required|array|min:1',
-                'details.*.bahan_baku_supplier_id' => 'required|exists:bahan_baku_suppliers,id',
+                'details.*.bahan_baku_supplier_id' => 'required|exists:bahan_baku_supplier,id',
                 'details.*.qty_kirim' => 'required|numeric|min:0',
                 'details.*.harga_satuan' => 'required|numeric|min:0',
                 'details.*.total_harga' => 'required|numeric|min:0',
@@ -395,12 +402,22 @@ class PengirimanController extends Controller
             // Update pengiriman
             $pengiriman = Pengiriman::findOrFail($validatedData['pengiriman_id']);
             
-            // Handle file upload
-            $buktiPath = null;
+            // Handle file upload with old file deletion
+            $buktiFileName = $pengiriman->bukti_foto_bongkar; // Keep existing filename if no new file
+            
             if ($request->hasFile('bukti_foto_bongkar')) {
                 $file = $request->file('bukti_foto_bongkar');
-                $fileName = 'pengiriman_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
-                $buktiPath = $file->storeAs('pengiriman/bukti', $fileName, 'public');
+                
+                // Delete old photo if exists
+                if ($pengiriman->bukti_foto_bongkar && \Storage::disk('public')->exists('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar)) {
+                    \Storage::disk('public')->delete('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar);
+                }
+                
+                // Generate new filename (only filename, not path)
+                $buktiFileName = 'pengiriman_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                
+                // Store new file 
+                $file->storeAs('pengiriman/bukti', $buktiFileName, 'public');
             }
 
             // Update pengiriman data
@@ -410,24 +427,50 @@ class PengirimanController extends Controller
                 'hari_kirim' => $validatedData['hari_kirim'],
                 'total_qty_kirim' => $validatedData['total_qty_kirim'],
                 'total_harga_kirim' => $validatedData['total_harga_kirim'],
-                'bukti_foto_bongkar' => $buktiPath ?? $pengiriman->bukti_foto_bongkar,
+                'bukti_foto_bongkar' => $buktiFileName, // Store only filename
                 'catatan' => $validatedData['catatan'],
-                'status' => 'menunggu_verifikasi',
-                'tanggal_pengajuan' => now(),
+                'status' => 'menunggu_verifikasi'
             ]);
 
-            // Delete existing details
-            PengirimanDetail::where('pengiriman_id', $pengiriman->id)->delete();
-
-            // Create new details
-            foreach ($validatedData['details'] as $detail) {
-                PengirimanDetail::create([
-                    'pengiriman_id' => $pengiriman->id,
-                    'bahan_baku_supplier_id' => $detail['bahan_baku_supplier_id'],
-                    'qty_kirim' => $detail['qty_kirim'],
-                    'harga_satuan' => $detail['harga_satuan'],
-                    'total_harga' => $detail['total_harga'],
-                ]);
+            // Update existing details (don't delete and recreate)
+            foreach ($validatedData['details'] as $index => $detail) {
+                // Find existing detail by index (assuming index matches existing detail order)
+                $existingDetail = $pengiriman->pengirimanDetails->get($index);
+                
+                if ($existingDetail) {
+                    // Update existing detail
+                    $existingDetail->update([
+                        'qty_kirim' => $detail['qty_kirim'],
+                        'harga_satuan' => $detail['harga_satuan'],
+                        'total_harga' => $detail['total_harga'],
+                    ]);
+                } else {
+                    // If detail doesn't exist (shouldn't happen in this case), create new
+                    $bahanBakuSupplier = \App\Models\BahanBakuSupplier::find($detail['bahan_baku_supplier_id']);
+                    
+                    $poDetail = null;
+                    if ($bahanBakuSupplier) {
+                        $poDetail = \App\Models\PurchaseOrderBahanBaku::where('purchase_order_id', $pengiriman->purchase_order_id)
+                            ->whereHas('bahanBakuKlien', function($query) use ($bahanBakuSupplier) {
+                                $query->where('nama', $bahanBakuSupplier->nama);
+                            })
+                            ->first();
+                        
+                        if (!$poDetail) {
+                            $poDetail = \App\Models\PurchaseOrderBahanBaku::where('purchase_order_id', $pengiriman->purchase_order_id)
+                                ->first();
+                        }
+                    }
+                    
+                    PengirimanDetail::create([
+                        'pengiriman_id' => $pengiriman->id,
+                        'purchase_order_bahan_baku_id' => $poDetail ? $poDetail->id : null,
+                        'bahan_baku_supplier_id' => $detail['bahan_baku_supplier_id'],
+                        'qty_kirim' => $detail['qty_kirim'],
+                        'harga_satuan' => $detail['harga_satuan'],
+                        'total_harga' => $detail['total_harga'],
+                    ]);
+                }
             }
 
             // Commit transaction
@@ -436,7 +479,8 @@ class PengirimanController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Pengiriman berhasil diajukan untuk verifikasi',
-                'data' => $pengiriman
+                'no_pengiriman' => $pengiriman->no_pengiriman,
+                'pengiriman' => $pengiriman
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {

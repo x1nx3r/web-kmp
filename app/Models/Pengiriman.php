@@ -24,7 +24,7 @@ class Pengiriman extends Model
         'total_harga_kirim',
         'bukti_foto_bongkar',
         'status',
-        'catatan'
+        'catatan',
     ];
 
     protected $casts = [

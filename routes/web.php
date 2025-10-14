@@ -34,6 +34,10 @@ Route::post('/purchasing/forecast/{id}/batal', [ForecastingController::class, 'b
 
 // Pengiriman routes
 Route::prefix('purchasing')->group(function () {
+    // Routes tanpa parameter harus diletakkan sebelum resource routes
+    Route::get('pengiriman/submit-modal', [PengirimanController::class, 'getSubmitModal'])->name('purchasing.pengiriman.submit-modal');
+    Route::post('pengiriman/submit', [PengirimanController::class, 'submitPengiriman'])->name('purchasing.pengiriman.submit');
+    
     Route::resource('pengiriman', PengirimanController::class)->names([
         'index' => 'purchasing.pengiriman.index',
         'create' => 'purchasing.pengiriman.create',
@@ -46,8 +50,6 @@ Route::prefix('purchasing')->group(function () {
     Route::put('pengiriman/{pengiriman}/status', [PengirimanController::class, 'updateStatus'])->name('purchasing.pengiriman.update-status');
     Route::get('pengiriman/{pengiriman}/detail', [PengirimanController::class, 'getDetail'])->name('purchasing.pengiriman.get-detail');
     Route::get('pengiriman/{pengiriman}/aksi-modal', [PengirimanController::class, 'getAksiModal'])->name('purchasing.pengiriman.aksi-modal');
-    Route::get('pengiriman/submit-modal', [PengirimanController::class, 'getSubmitModal'])->name('purchasing.pengiriman.submit-modal');
-    Route::post('pengiriman/submit', [PengirimanController::class, 'submitPengiriman'])->name('purchasing.pengiriman.submit');
     Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
 });
 

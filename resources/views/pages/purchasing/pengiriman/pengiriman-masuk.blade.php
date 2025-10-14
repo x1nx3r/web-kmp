@@ -158,14 +158,14 @@
                             </div>
                             <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs flex items-center" onclick="togglePengirimanList('po-{{ $poId }}')">
                                 <i class="fas fa-chevron-right pengiriman-icon" id="icon-po-{{ $poId }}"></i>
-                                <span class="ml-1" id="text-po-{{ $poId }}">Detail</span>
+                                <span class="ml-1" id="text-po-{{ $poId }}">Tampilkan</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 {{-- Simplified Pengiriman List --}}
-                <div class="border-t border-gray-200 pengiriman-list" id="pengiriman-list-po-{{ $poId }}">
+                <div class="border-t border-gray-200 pengiriman-list" id="pengiriman-list-po-{{ $poId }}" style="display: none;">
                     <div class="p-3">
                         <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                             <i class="fas fa-truck text-blue-600 mr-2"></i>
@@ -208,15 +208,14 @@
                                                 @endif
                                             </div>
                                         </div>
-                                        
-                                        <div class="flex space-x-2">
-                                            <button onclick="openAksiModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}', '{{ $pengiriman->status }}')" 
-                                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs flex items-center transition-all duration-200" 
-                                                    title="Aksi Pengiriman">
-                                                <i class="fas fa-cog mr-1"></i>
-                                                Aksi Pengiriman
-                                            </button>
-                                        </div>
+                                                          <div class="flex space-x-2">
+                            <button onclick="openAksiModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}', '{{ $pengiriman->status }}')" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs flex items-center transition-all duration-200" 
+                                    title="Aksi Pengiriman">
+                                <i class="fas fa-cog mr-1"></i>
+                                Aksi Pengiriman
+                            </button>
+                        </div>
                                     </div>
                                     
                                     @if($pengiriman->catatan)
@@ -471,8 +470,19 @@ function togglePengirimanList(poId) {
     }
 }
 
+// Global variables untuk menyimpan state
+window.currentPengirimanId = null;
+window.currentNoKirim = null;
+window.currentStatus = null;
+window.globalSubmissionData = null;
+
 // Open Aksi Modal
 function openAksiModal(pengirimanId, noPengiriman, status) {
+    // Simpan informasi pengiriman ke global variables
+    window.currentPengirimanId = pengirimanId;
+    window.currentNoKirim = noPengiriman;
+    window.currentStatus = status;
+    
     const modal = document.getElementById('aksiModal');
     const modalContent = document.getElementById('aksiModalContent');
     
@@ -729,35 +739,238 @@ function submitPengiriman() {
     
     console.log('Form data prepared:', { totalQty, totalHarga });
     
-    // Show confirmation dialog
-    if (confirm('Apakah Anda yakin ingin mengajukan verifikasi untuk pengiriman ini?')) {
-        // Submit form
-        const action = form.action || '/purchasing/pengiriman/submit';
-        
-        fetch(action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    // Show submit modal instead of confirm dialog
+    showSubmitModal(formData);
+}
+
+// Show submit confirmation modal (global function)
+function showSubmitModal(formData) {
+    const pengirimanId = formData.get('pengiriman_id');
+    console.log('Loading submit modal for pengiriman ID:', pengirimanId);
+    
+    // Store formData immediately
+    window.globalSubmissionData = formData;
+    console.log('Stored formData in showSubmitModal:', window.globalSubmissionData);
+    
+    // Load submit modal content
+    fetch(`/purchasing/pengiriman/submit-modal?pengiriman_id=${pengirimanId}`)
+        .then(response => response.text())
+        .then(html => {
+            // Create and show submit modal
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = html;
+            document.body.appendChild(modalContainer);
+            
+            // Find and populate the modal immediately
+            const submitModal = modalContainer.querySelector('#submitModal');
+            if (submitModal) {
+                // Populate data directly
+                populateModalSummary(formData, submitModal);
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Pengiriman berhasil diajukan untuk verifikasi!');
-                closeAksiModal();
-                // Refresh page
-                window.location.reload();
-            } else {
-                alert('Gagal mengajukan pengiriman: ' + (data.message || 'Unknown error'));
-            }
+            
+            // Close current modal after successful modal creation
+            closeAksiModal();
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Terjadi kesalahan saat mengajukan pengiriman');
+            console.error('Error loading submit modal:', error);
+            alert('Gagal memuat modal konfirmasi');
         });
+}
+
+// Populate modal summary (global function)  
+function populateModalSummary(formData, modalElement) {
+    console.log('Populating modal summary with formData');
+    
+    // Basic info
+    const setPengiriman = modalElement.querySelector('#summary-no-pengiriman');
+    if (setPengiriman) {
+        setPengiriman.textContent = formData.get('no_pengiriman') || '-';
+    }
+    
+    const tanggalKirim = formData.get('tanggal_kirim');
+    if (tanggalKirim) {
+        const date = new Date(tanggalKirim + 'T00:00:00');
+        const setTanggal = modalElement.querySelector('#summary-tanggal-kirim');
+        if (setTanggal) {
+            setTanggal.textContent = date.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'long', 
+                year: 'numeric'
+            });
+        }
+    }
+    
+    const setHari = modalElement.querySelector('#summary-hari-kirim');
+    if (setHari) {
+        setHari.textContent = formData.get('hari_kirim') || '-';
+    }
+    
+    const setCatatan = modalElement.querySelector('#summary-catatan');
+    if (setCatatan) {
+        setCatatan.textContent = formData.get('catatan') || 'Tidak ada catatan';
+    }
+    
+    // Detail barang
+    const detailContainer = modalElement.querySelector('#summary-detail-barang');
+    if (detailContainer) {
+        detailContainer.innerHTML = '';
+        
+        let totalItems = 0;
+        let totalQty = 0;
+        let totalHarga = 0;
+        
+        // Get detail from current form in aksi modal
+        const detailRows = document.querySelectorAll('.detail-item');
+        
+        detailRows.forEach((row, index) => {
+            const qtyInput = row.querySelector('input[name*="[qty_kirim]"]');
+            const hargaInput = row.querySelector('input[name*="[harga_satuan]"]');
+            const totalInput = row.querySelector('input[name*="[total_harga]"]');
+            const bahanBakuEl = row.querySelector('.text-sm.font-medium.text-gray-900');
+            
+            const qty = parseFloat(qtyInput?.value) || 0;
+            const harga = parseFloat(hargaInput?.value) || 0;
+            const total = parseFloat(totalInput?.value) || 0;
+            const bahanBaku = bahanBakuEl?.textContent.trim() || 'Unknown';
+            
+            if (qty > 0) {
+                totalItems++;
+                totalQty += qty;
+                totalHarga += total;
+                
+                const rowHtml = `
+                    <tr class="border-b">
+                        <td class="px-3 py-2 text-sm">${bahanBaku}</td>
+                        <td class="px-3 py-2 text-sm">${qty.toLocaleString('id-ID')} kg</td>
+                        <td class="px-3 py-2 text-sm">Rp ${harga.toLocaleString('id-ID')}</td>
+                        <td class="px-3 py-2 text-sm font-semibold">Rp ${total.toLocaleString('id-ID')}</td>
+                    </tr>
+                `;
+                detailContainer.insertAdjacentHTML('beforeend', rowHtml);
+            }
+        });
+        
+        // Update totals
+        const setTotalItem = modalElement.querySelector('#summary-total-item');
+        if (setTotalItem) setTotalItem.textContent = totalItems + ' item';
+        
+        const setTotalQty = modalElement.querySelector('#summary-total-qty');
+        if (setTotalQty) setTotalQty.textContent = totalQty.toLocaleString('id-ID') + ' kg';
+        
+        const setTotalHarga = modalElement.querySelector('#summary-total-harga');
+        if (setTotalHarga) setTotalHarga.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID');
+    }
+    
+    // Store formData for submission
+    window.globalSubmissionData = formData;
+    console.log('Stored globalSubmissionData:', window.globalSubmissionData);
+}
+
+// Close submit modal
+function closeSubmitModal() {
+    const modal = document.getElementById('submitModal');
+    if (modal) {
+        modal.remove();
+    }
+    
+    // Reopen aksi modal dengan data yang sudah diisi
+    if (typeof openAksiModal === 'function') {
+        // Get pengiriman ID from global variable or modal data
+        const pengirimanId = window.currentPengirimanId || 1;
+        const noKirim = window.currentNoKirim || '';
+        const status = window.currentStatus || 'pending';
+        openAksiModal(pengirimanId, noKirim, status);
+    } else {
+        // Fallback untuk reload page jika parent function tidak ada
+        location.reload();
     }
 }
+
+// Confirm submit
+function confirmSubmit() {
+    console.log('confirmSubmit called');
+    console.log('window.globalSubmissionData:', window.globalSubmissionData);
+    
+    const dataToSubmit = window.globalSubmissionData;
+    
+    if (!dataToSubmit) {
+        console.error('No submission data available');
+        alert('Data tidak tersedia. Silakan coba lagi.');
+        return;
+    }
+    
+    console.log('Data to submit:', dataToSubmit);
+    
+    // Submit to backend
+    fetch('/purchasing/pengiriman/submit', {
+        method: 'POST',
+        body: dataToSubmit,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal first
+            const submitModal = document.getElementById('submitModal');
+            if (submitModal) submitModal.remove();
+            
+            // Show success notification (similar to forecast)
+            const successNotification = document.createElement('div');
+            successNotification.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2';
+            successNotification.style.animation = 'slideInRight 0.5s ease-out, fadeOut 0.5s ease-in 4.5s forwards';
+            successNotification.innerHTML = `
+                <i class="fas fa-check-circle text-lg"></i>
+                <span class="font-medium">Pengiriman ${data.no_pengiriman || 'berhasil'} diajukan untuk verifikasi!</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            document.body.appendChild(successNotification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (successNotification.parentElement) {
+                    successNotification.remove();
+                }
+            }, 5000);
+            
+            // Reload page after short delay
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            // Error
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Gagal!',
+                    text: data.message || 'Gagal mengajukan pengiriman',
+                    icon: 'error',
+                    confirmButtonColor: '#EF4444'
+                });
+            } else {
+                alert(data.message || 'Gagal mengajukan pengiriman');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Terjadi kesalahan pada sistem',
+                icon: 'error',
+                confirmButtonColor: '#EF4444'
+            });
+        } else {
+            alert('Terjadi kesalahan pada sistem');
+        }
+    });
+}
+
+// ...existing code...
 </script>
 
 <style>
@@ -1070,7 +1283,9 @@ button.bg-red-500:hover {
 .text-yellow-700 { color: #1d4ed8 !important; }
 .border-yellow-200 { border-color: #bfdbfe !important; }
 .ring-yellow-200 { --tw-ring-color: #bfdbfe !important; }
-    
+
+/* Mobile responsive filter grid */
+@media (max-width: 640px) {
     .filter-grid {
         grid-template-columns: 1fr;
         gap: 0.5rem;
@@ -1090,6 +1305,29 @@ button.bg-red-500:hover {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Success notification animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
     }
 }
 

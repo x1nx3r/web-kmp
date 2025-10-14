@@ -1,8 +1,11 @@
+{{-- Meta CSRF Token --}}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 {{-- SweetAlert2 CDN --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 {{-- Modal Konfirmasi Submit --}}
-<div id="submitModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
+<div id="submitModal" class="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         
         {{-- Header Modal --}}
@@ -10,7 +13,7 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-check-circle text-white text-xl"></i>
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
                     </div>
                     <div>
                         <h3 class="text-xl font-bold text-white">Konfirmasi Pengiriman</h3>
@@ -93,9 +96,8 @@
                     <div>
                         <h4 class="text-sm font-semibold text-red-900 mb-1">Perhatian!</h4>
                         <ul class="text-sm text-red-800 space-y-1">
-                            <li>• Data yang sudah diajukan tidak dapat diubah</li>
                             <li>• Pastikan semua informasi sudah benar</li>
-                            <li>• Pengiriman akan menunggu verifikasi dari supervisor</li>
+                            <li>• Pengiriman akan menunggu verifikasi dari Manajer Purchasing</li>
                         </ul>
                     </div>
                 </div>
@@ -120,16 +122,6 @@
     </div>
 </div>
 
-{{-- Loading Overlay --}}
-<div id="loadingOverlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 shadow-xl">
-        <div class="flex items-center space-x-4">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span class="text-gray-700 font-medium">Memproses pengiriman...</span>
-        </div>
-    </div>
-</div>
-
 <script>
 // Simpan data form untuk submit
 let submissionData = null;
@@ -143,7 +135,7 @@ function populateSummary(formData) {
     
     const tanggalKirim = formData.get('tanggal_kirim');
     if (tanggalKirim) {
-        const date = new Date(tanggalKirim);
+        const date = new Date(tanggalKirim + 'T00:00:00');
         document.getElementById('summary-tanggal-kirim').textContent = date.toLocaleDateString('id-ID', {
             day: 'numeric',
             month: 'long', 
@@ -168,11 +160,7 @@ function populateSummary(formData) {
         if (key.startsWith('details[') && key.includes('][bahan_baku_supplier_id]')) {
             const index = key.match(/\[(\d+)\]/)[1];
             if (!details[index]) details[index] = {};
-            
-            // Get bahan baku name from select option
-            const select = document.querySelector(`select[name="details[${index}][bahan_baku_supplier_id]"]`);
-            const selectedOption = select.options[select.selectedIndex];
-            details[index].bahan_baku = selectedOption.text;
+            // Bahan baku name akan di-set dari teks yang tampil di form
         } else if (key.startsWith('details[') && key.includes('][qty_kirim]')) {
             const index = key.match(/\[(\d+)\]/)[1];
             if (!details[index]) details[index] = {};
@@ -188,16 +176,27 @@ function populateSummary(formData) {
         }
     }
     
+    // Get bahan baku names from the DOM elements di aksi modal
+    const detailRows = parent.document.querySelectorAll('.detail-item');
+    detailRows.forEach((row, index) => {
+        if (details[index]) {
+            const bahanBakuEl = row.querySelector('.text-sm.font-medium.text-gray-900');
+            if (bahanBakuEl) {
+                details[index].bahan_baku = bahanBakuEl.textContent.trim();
+            }
+        }
+    });
+    
     // Populate table
     details.forEach(detail => {
-        if (detail.bahan_baku) {
+        if (detail.qty > 0) {
             totalItems++;
             totalQty += detail.qty;
             totalHarga += detail.total;
             
             const row = `
                 <tr>
-                    <td class="px-3 py-2">${detail.bahan_baku}</td>
+                    <td class="px-3 py-2">${detail.bahan_baku || 'Unknown'}</td>
                     <td class="px-3 py-2">${detail.qty.toLocaleString('id-ID')} kg</td>
                     <td class="px-3 py-2">Rp ${detail.harga.toLocaleString('id-ID')}</td>
                     <td class="px-3 py-2">Rp ${detail.total.toLocaleString('id-ID')}</td>
@@ -213,84 +212,7 @@ function populateSummary(formData) {
     document.getElementById('summary-total-harga').textContent = 'Rp ' + totalHarga.toLocaleString('id-ID');
 }
 
-// Close submit modal
-function closeSubmitModal() {
-    document.getElementById('submitModal').remove();
-    
-    // Reopon aksi modal dengan data yang sudah diisi
-    showAksiModal({{ $pengiriman->id }});
-}
-
-// Confirm submit
-function confirmSubmit() {
-    if (!submissionData) {
-        alert('Data tidak tersedia');
-        return;
-    }
-    
-    // Show loading
-    document.getElementById('loadingOverlay').classList.remove('hidden');
-    
-    // Submit to backend
-    fetch('{{ route("purchasing.pengiriman.submit") }}', {
-        method: 'POST',
-        body: submissionData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        
-        if (data.success) {
-            // Success
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    title: 'Berhasil!',
-                    text: 'Pengiriman berhasil diajukan untuk verifikasi',
-                    icon: 'success',
-                    confirmButtonColor: '#10B981'
-                }).then(() => {
-                    // Close modal and refresh page
-                    document.getElementById('submitModal').remove();
-                    location.reload();
-                });
-            } else {
-                alert('Pengiriman berhasil diajukan untuk verifikasi');
-                document.getElementById('submitModal').remove();
-                location.reload();
-            }
-        } else {
-            // Error
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    title: 'Gagal!',
-                    text: data.message || 'Gagal mengajukan pengiriman',
-                    icon: 'error',
-                    confirmButtonColor: '#EF4444'
-                });
-            } else {
-                alert(data.message || 'Gagal mengajukan pengiriman');
-            }
-        }
-    })
-    .catch(error => {
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        console.error('Error:', error);
-        
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Terjadi kesalahan pada sistem',
-                icon: 'error',
-                confirmButtonColor: '#EF4444'
-            });
-        } else {
-            alert('Terjadi kesalahan pada sistem');
-        }
-    });
-}
+// Fungsi closeSubmitModal dan confirmSubmit sudah dipindahkan ke global scope di pengiriman-masuk.blade.php
 
 // Initialize when modal is shown
 document.addEventListener('DOMContentLoaded', function() {

@@ -5,6 +5,7 @@ use App\Http\Controllers\Marketing\KlienController;
 use App\Http\Controllers\PengelolaanAkunController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\ForecastingController;
+use App\Http\Controllers\Purchasing\PengirimanController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -30,6 +31,21 @@ Route::post('/forecasting/create', [ForecastingController::class, 'createForecas
 Route::get('/purchasing/forecast/{id}/detail', [ForecastingController::class, 'getForecastDetail'])->name('forecasting.detail');
 Route::post('/purchasing/forecast/{id}/kirim', [ForecastingController::class, 'kirimForecast'])->name('forecasting.kirim');
 Route::post('/purchasing/forecast/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
+
+// Pengiriman routes
+Route::prefix('purchasing')->group(function () {
+    Route::resource('pengiriman', PengirimanController::class)->names([
+        'index' => 'purchasing.pengiriman.index',
+        'create' => 'purchasing.pengiriman.create',
+        'store' => 'purchasing.pengiriman.store',
+        'show' => 'purchasing.pengiriman.show',
+        'edit' => 'purchasing.pengiriman.edit',
+        'update' => 'purchasing.pengiriman.update',
+        'destroy' => 'purchasing.pengiriman.destroy',
+    ]);
+    Route::put('pengiriman/{pengiriman}/status', [PengirimanController::class, 'updateStatus'])->name('purchasing.pengiriman.update-status');
+    Route::get('pengiriman/{pengiriman}/detail', [PengirimanController::class, 'getDetail'])->name('purchasing.pengiriman.get-detail');
+});
 
 // Klien routes
 Route::get('/klien', function() {

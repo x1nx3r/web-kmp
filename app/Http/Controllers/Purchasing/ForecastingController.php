@@ -692,8 +692,8 @@ class ForecastingController extends Controller
                 'purchasing_id' => $forecast->purchasing_id,
                 'forecast_id' => $forecast->id, // Add forecast_id relation
                 'no_pengiriman' => $noPengiriman,
-                'tanggal_kirim' => $forecast->tanggal_forecast,
-                'hari_kirim' => $forecast->hari_kirim_forecast,
+                'tanggal_kirim' => NULL,
+                'hari_kirim' => NULL,
                 'total_qty_kirim' => 0, // Empty as requested
                 'total_harga_kirim' => 0, // Empty as requested
                 'status' => 'pending',

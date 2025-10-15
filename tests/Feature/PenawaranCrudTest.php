@@ -56,10 +56,9 @@ class PenawaranCrudTest extends TestCase
         // Create test bahan baku supplier
         $this->bahanBakuSupplier = BahanBakuSupplier::factory()->create([
             'supplier_id' => $this->supplier->id,
-            'bahan_baku_klien_id' => $this->bahanBakuKlien->id,
             'nama' => 'Test Material',
             'satuan' => 'kg',
-            'harga' => 8000,
+            'harga_per_satuan' => 8000,
         ]);
     }
 
@@ -155,8 +154,8 @@ class PenawaranCrudTest extends TestCase
         $altSupplier = Supplier::factory()->create(['nama' => 'Alternative Supplier']);
         $altBahanBakuSupplier = BahanBakuSupplier::factory()->create([
             'supplier_id' => $altSupplier->id,
-            'bahan_baku_klien_id' => $this->bahanBakuKlien->id,
-            'harga' => 7500,
+            'nama' => 'Alternative Test Material',
+            'harga_per_satuan' => 7500,
         ]);
 
         $alternative = PenawaranAlternativeSupplier::create([
@@ -272,7 +271,7 @@ class PenawaranCrudTest extends TestCase
 
         $this->assertTrue($result);
         $this->assertEquals('ditolak', $penawaran->fresh()->status);
-        $this->assertEquals($rejectReason, $penawaran->fresh()->catatan_verifikasi);
+        $this->assertEquals($rejectReason, $penawaran->fresh()->alasan_penolakan);
         $this->assertEquals($this->user->id, $penawaran->fresh()->verified_by);
     }
 

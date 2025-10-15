@@ -12,6 +12,7 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class PengirimanController extends Controller
@@ -73,6 +74,20 @@ class PengirimanController extends Controller
                 });
             }
 
+            // Apply search filter for menunggu verifikasi
+            if ($status === 'menunggu_verifikasi' && $request->filled('search_verifikasi')) {
+                $search = $request->get('search_verifikasi');
+                $query->where(function($q) use ($search) {
+                    $q->whereHas('purchaseOrder', function($poQuery) use ($search) {
+                        $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
+                        $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhere('no_pengiriman', 'LIKE', "%{$search}%");
+                });
+            }
+
             // Apply purchasing filter for pengiriman masuk
             if ($status === 'pending' && $request->filled('filter_purchasing')) {
                 $query->where('purchasing_id', $request->get('filter_purchasing'));
@@ -86,6 +101,11 @@ class PengirimanController extends Controller
             // Apply purchasing filter for pengiriman gagal
             if ($status === 'gagal' && $request->filled('filter_purchasing_gagal')) {
                 $query->where('purchasing_id', $request->get('filter_purchasing_gagal'));
+            }
+
+            // Apply purchasing filter for menunggu verifikasi
+            if ($status === 'menunggu_verifikasi' && $request->filled('filter_purchasing_verifikasi')) {
+                $query->where('purchasing_id', $request->get('filter_purchasing_verifikasi'));
             }
 
             // Apply date range filter for pengiriman berhasil
@@ -111,6 +131,11 @@ class PengirimanController extends Controller
             // Apply date sorting for pengiriman gagal
             elseif ($status === 'gagal' && $request->filled('sort_order_gagal')) {
                 $sortOrder = $request->get('sort_order_gagal') === 'oldest' ? 'asc' : 'desc';
+                $query->orderBy('created_at', $sortOrder);
+            } 
+            // Apply date sorting for menunggu verifikasi
+            elseif ($status === 'menunggu_verifikasi' && $request->filled('sort_date_verifikasi')) {
+                $sortOrder = $request->get('sort_date_verifikasi') === 'oldest' ? 'asc' : 'desc';
                 $query->orderBy('created_at', $sortOrder);
             } else {
                 $query->orderBy('created_at', 'desc');
@@ -338,7 +363,7 @@ class PengirimanController extends Controller
     public function getAksiModal(Request $request, $id)
     {
         try {
-            \Log::info("Loading aksi modal for pengiriman ID: {$id}");
+            Log::info("Loading aksi modal for pengiriman ID: {$id}");
             
             // Load step by step to debug relationship issues
             $pengiriman = Pengiriman::with([
@@ -350,7 +375,7 @@ class PengirimanController extends Controller
                 'pengirimanDetails.bahanBakuSupplier.supplier'
             ])->findOrFail($id);
 
-            \Log::info("Pengiriman loaded with " . $pengiriman->pengirimanDetails->count() . " details");
+            Log::info("Pengiriman loaded with " . $pengiriman->pengirimanDetails->count() . " details");
 
             // Load picPurchasing separately to avoid chain issues
             foreach ($pengiriman->pengirimanDetails as $detail) {
@@ -369,7 +394,7 @@ class PengirimanController extends Controller
             }
 
             // Debug: Log pengiriman details
-            \Log::info("Pengiriman details data:", [
+            Log::info("Pengiriman details data:", [
                 'id' => $pengiriman->id,
                 'no_pengiriman' => $pengiriman->no_pengiriman,
                 'tanggal_kirim' => $pengiriman->tanggal_kirim,
@@ -386,8 +411,8 @@ class PengirimanController extends Controller
             return view('pages.purchasing.pengiriman.pengiriman-masuk.detail', compact('pengiriman'));
             
         } catch (\Exception $e) {
-            \Log::error('Error in getAksiModal: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error in getAksiModal: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response('<div class="text-center py-8 text-red-500">Error: ' . $e->getMessage() . '<br><small>' . $e->getFile() . ':' . $e->getLine() . '</small></div>', 500);
         }
     }
@@ -461,8 +486,8 @@ class PengirimanController extends Controller
                 $file = $request->file('bukti_foto_bongkar');
                 
                 // Delete old photo if exists
-                if ($pengiriman->bukti_foto_bongkar && \Storage::disk('public')->exists('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar)) {
-                    \Storage::disk('public')->delete('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar);
+                if ($pengiriman->bukti_foto_bongkar && Storage::disk('public')->exists('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar)) {
+                    Storage::disk('public')->delete('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar);
                 }
                 
                 // Generate new filename (only filename, not path)
@@ -758,6 +783,267 @@ class PengirimanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memuat detail pengiriman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detail for pengiriman verifikasi
+     */
+    public function getDetailVerifikasi($id)
+    {
+        try {
+            // First, get the pengiriman with basic info
+            $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->findOrFail($id);
+            
+            // Load relations step by step with error handling
+            try {
+                $pengiriman->load('purchasing');
+            } catch (\Exception $e) {
+                Log::error('Error loading purchasing relation: ' . $e->getMessage());
+            }
+
+            try {
+                $pengiriman->load('forecast');
+            } catch (\Exception $e) {
+                Log::error('Error loading forecast relation: ' . $e->getMessage());
+            }
+
+            try {
+                $pengiriman->load([
+                    'purchaseOrder' => function($query) {
+                        $query->with('klien');
+                    }
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error loading purchaseOrder relation: ' . $e->getMessage());
+            }
+            
+            // Load pengiriman details with safer approach
+            try {
+                $pengiriman->load([
+                    'pengirimanDetails' => function($query) {
+                        $query->with([
+                            'purchaseOrderBahanBaku',
+                            'bahanBakuSupplier' => function($q) {
+                                $q->with('supplier');
+                            }
+                        ]);
+                    }
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error loading pengirimanDetails relation: ' . $e->getMessage());
+                // Load pengirimanDetails without nested relations as fallback
+                $pengiriman->load('pengirimanDetails');
+            }
+
+            return view('pages.purchasing.pengiriman.menunggu-verifikasi.detail', compact('pengiriman'));
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Pengiriman not found with ID: ' . $id);
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan atau bukan status menunggu verifikasi'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error in getDetailVerifikasi for ID ' . $id . ': ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat detail pengiriman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Verifikasi pengiriman - ubah status menjadi berhasil dan kurangi qty PO
+     */
+    public function verifikasiPengiriman($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $pengiriman = Pengiriman::with([
+                'purchaseOrder',
+                'pengirimanDetails.purchaseOrderBahanBaku'
+            ])->where('status', 'menunggu_verifikasi')->findOrFail($id);
+
+            // Update status pengiriman menjadi berhasil
+            $pengiriman->update([
+                'status' => 'berhasil',
+                'catatan' => 'berhasil'
+            ]);
+
+            // Kurangi qty di purchase_order_bahan_baku untuk setiap detail
+            foreach ($pengiriman->pengirimanDetails as $detail) {
+                $purchaseOrderBahanBaku = $detail->purchaseOrderBahanBaku;
+                if ($purchaseOrderBahanBaku) {
+                    $newQty = $purchaseOrderBahanBaku->jumlah - $detail->qty_kirim;
+                    $purchaseOrderBahanBaku->update([
+                        'jumlah' => max(0, $newQty) // Pastikan tidak negatif
+                    ]);
+                }
+            }
+
+            // Update qty_total di purchase_order
+            if ($pengiriman->purchaseOrder) {
+                $newQtyTotal = $pengiriman->purchaseOrder->qty_total - $pengiriman->total_qty_kirim;
+                $pengiriman->purchaseOrder->update([
+                    'qty_total' => max(0, $newQtyTotal) // Pastikan tidak negatif
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengiriman berhasil diverifikasi dan catatan diperbarui menjadi "berhasil"'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memverifikasi pengiriman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Revisi pengiriman - ubah status menjadi pending dan update catatan
+     */
+    public function revisiPengiriman(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'catatan' => 'required|string|max:1000'
+            ]);
+
+            $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->findOrFail($id);
+
+            $pengiriman->update([
+                'status' => 'pending',
+                'catatan' => $request->catatan
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengiriman berhasil direvisi dan dikembalikan ke status pending'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal merevisi pengiriman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get revisi modal for pengiriman verifikasi
+     */
+    public function getRevisiModal($id)
+    {
+        try {
+            // First, get the pengiriman with basic info
+            $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->findOrFail($id);
+            
+            // Load relations step by step with error handling
+            try {
+                $pengiriman->load('purchasing');
+            } catch (\Exception $e) {
+                Log::error('Error loading purchasing relation in revisi modal: ' . $e->getMessage());
+            }
+
+            try {
+                $pengiriman->load([
+                    'purchaseOrder' => function($query) {
+                        $query->with('klien');
+                    }
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error loading purchaseOrder relation in revisi modal: ' . $e->getMessage());
+            }
+
+            return view('pages.purchasing.pengiriman.menunggu-verifikasi.revisi', compact('pengiriman'));
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Pengiriman not found for revisi modal with ID: ' . $id);
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan atau bukan status menunggu verifikasi'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error in getRevisiModal for ID ' . $id . ': ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat modal revisi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get verifikasi modal for pengiriman verifikasi
+     */
+    public function getVerifikasiModal($id)
+    {
+        try {
+            // First, get the pengiriman with basic info
+            $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->findOrFail($id);
+            
+            // Load relations step by step with error handling
+            try {
+                $pengiriman->load('purchasing');
+            } catch (\Exception $e) {
+                Log::error('Error loading purchasing relation in verifikasi modal: ' . $e->getMessage());
+            }
+
+            try {
+                $pengiriman->load([
+                    'purchaseOrder' => function($query) {
+                        $query->with('klien');
+                    }
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error loading purchaseOrder relation in verifikasi modal: ' . $e->getMessage());
+            }
+            
+            // Load pengiriman details with safer approach
+            try {
+                $pengiriman->load([
+                    'pengirimanDetails' => function($query) {
+                        $query->with([
+                            'purchaseOrderBahanBaku',
+                            'bahanBakuSupplier' => function($q) {
+                                $q->with('supplier');
+                            }
+                        ]);
+                    }
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error loading pengirimanDetails relation in verifikasi modal: ' . $e->getMessage());
+                // Load pengirimanDetails without nested relations as fallback
+                $pengiriman->load('pengirimanDetails');
+            }
+
+            return view('pages.purchasing.pengiriman.menunggu-verifikasi.verifikasi', compact('pengiriman'));
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Pengiriman not found for verifikasi modal with ID: ' . $id);
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan atau bukan status menunggu verifikasi'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error in getVerifikasiModal for ID ' . $id . ': ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat modal verifikasi: ' . $e->getMessage()
             ], 500);
         }
     }

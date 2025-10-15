@@ -53,6 +53,13 @@ Route::prefix('purchasing')->group(function () {
     Route::get('pengiriman/{pengiriman}/detail', [PengirimanController::class, 'getDetail'])->name('purchasing.pengiriman.get-detail');
     Route::get('pengiriman/{pengiriman}/detail-berhasil', [PengirimanController::class, 'getDetailBerhasil'])->name('purchasing.pengiriman.detail-berhasil');
     Route::get('pengiriman/{pengiriman}/detail-gagal', [PengirimanController::class, 'getDetailGagal'])->name('purchasing.pengiriman.detail-gagal');
+    Route::get('pengiriman/{pengiriman}/detail-verifikasi', [PengirimanController::class, 'getDetailVerifikasi'])->name('purchasing.pengiriman.detail-verifikasi');
+    Route::get('pengiriman/{pengiriman}/revisi-modal', [PengirimanController::class, 'getRevisiModal'])->name('purchasing.pengiriman.revisi-modal');
+    Route::get('pengiriman/{pengiriman}/verifikasi-modal', [PengirimanController::class, 'getVerifikasiModal'])->name('purchasing.pengiriman.verifikasi-modal');
+    Route::get('pengiriman/{pengiriman}/modal/revisi', [PengirimanController::class, 'getRevisiModal'])->name('purchasing.pengiriman.modal.revisi');
+    Route::get('pengiriman/{pengiriman}/modal/verifikasi', [PengirimanController::class, 'getVerifikasiModal'])->name('purchasing.pengiriman.modal.verifikasi');
+    Route::post('pengiriman/{pengiriman}/verifikasi', [PengirimanController::class, 'verifikasiPengiriman'])->name('purchasing.pengiriman.verifikasi');
+    Route::post('pengiriman/{pengiriman}/revisi', [PengirimanController::class, 'revisiPengiriman'])->name('purchasing.pengiriman.revisi');
     Route::get('pengiriman/{pengiriman}/aksi-modal', [PengirimanController::class, 'getAksiModal'])->name('purchasing.pengiriman.aksi-modal');
     Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
 });

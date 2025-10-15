@@ -171,6 +171,11 @@
                                         <i class="fas fa-check-circle mr-1"></i>
                                         {{ ucfirst($pengiriman->status) }}
                                     </span>
+                                    @if($pengiriman->catatan)
+                                        <div class="text-xs text-gray-600 mt-1">
+                                            <i class="fas fa-sticky-note mr-1"></i>{{ $pengiriman->catatan }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <button onclick="openDetailModal({{ $pengiriman->id }})" 
@@ -229,8 +234,7 @@
     </div>
 </div>
 
-{{-- Modal Detail Pengiriman --}}
-<div id="detailPengirimanModal" class="fixed inset-0 backdrop-blur-xs  bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+{{-- Modal Detail Pengiriman --}}    <div id="detailPengirimanModal" class="fixed inset-0 backdrop-blur-xs bg-opacity-50 items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         
         {{-- Header Modal --}}

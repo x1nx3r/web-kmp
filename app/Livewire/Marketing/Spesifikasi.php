@@ -38,7 +38,7 @@ class Spesifikasi extends Component
     public $deleteModal = [
         'title' => '',
         'message' => '',
-        'material' => null,
+        'materialId' => null,
     ];
 
     protected $paginationTheme = 'tailwind';
@@ -92,7 +92,7 @@ class Spesifikasi extends Component
         $this->deleteModal = [
             'title' => '',
             'message' => '',
-            'material' => null,
+            'materialId' => null,
         ];
         $this->resetValidation();
     }
@@ -194,7 +194,7 @@ class Spesifikasi extends Component
         $this->deleteModal = [
             'title' => 'Hapus Spesifikasi Material',
             'message' => "Apakah Anda yakin ingin menghapus spesifikasi untuk material \"{$material->nama}\" dari klien \"{$material->klien->nama}\"?",
-            'material' => $material,
+            'materialId' => $materialId,
         ];
         $this->showDeleteModal = true;
     }
@@ -202,8 +202,9 @@ class Spesifikasi extends Component
     public function deleteMaterial()
     {
         try {
-            if ($this->deleteModal['material']) {
-                $this->deleteModal['material']->delete();
+            if ($this->deleteModal['materialId']) {
+                $material = BahanBakuKlien::findOrFail($this->deleteModal['materialId']);
+                $material->delete();
                 session()->flash('message', 'Spesifikasi material berhasil dihapus');
             }
             $this->cancelDelete();
@@ -218,7 +219,7 @@ class Spesifikasi extends Component
         $this->deleteModal = [
             'title' => '',
             'message' => '',
-            'material' => null,
+            'materialId' => null,
         ];
     }
 

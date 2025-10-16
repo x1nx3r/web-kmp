@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('order_details', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-            $table->foreignId('bahan_baku_klien_id')->constrained('bahan_baku_kliens')->onDelete('cascade');
+            $table->foreignId('bahan_baku_klien_id')->constrained('bahan_baku_klien')->onDelete('cascade');
             
             // Primary supplier (main supplier for this order item)
             $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('restrict');

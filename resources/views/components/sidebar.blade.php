@@ -57,8 +57,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-clipboard-list w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('spesifikasi.index') }}" class="flex items-center space-x-3 {{ request()->routeIs('spesifikasi.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-clipboard-list w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('spesifikasi.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Spesifikasi</span>
                         </a>
                     </li>
@@ -238,8 +238,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-clipboard-list w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('spesifikasi.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('spesifikasi.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-clipboard-list w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('spesifikasi.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Spesifikasi</span>
                         </a>
                     </li>
@@ -419,8 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Auto-expand marketing menu if on klien pages
-    if (currentPath.includes('/klien')) {
+    // Auto-expand marketing menu if on klien or spesifikasi pages
+    if (currentPath.includes('/klien') || currentPath.includes('/spesifikasi')) {
         const marketingMenu = document.getElementById('marketing-menu');
         const marketingChevron = document.getElementById('marketing-chevron');
         const mobileMarketingMenu = document.getElementById('mobile-marketing-menu');

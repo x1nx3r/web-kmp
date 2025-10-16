@@ -451,7 +451,7 @@ class PengirimanController extends Controller
                 'hari_kirim' => 'required|string',
                 'total_qty_kirim' => 'required|numeric|min:0',
                 'total_harga_kirim' => 'required|numeric|min:0',
-                'bukti_foto_bongkar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+                'bukti_foto_bongkar.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
                 'catatan' => 'nullable|string',
                 'details' => 'required|array|min:1',
                 'details.*.bahan_baku_supplier_id' => 'required|exists:bahan_baku_supplier,id',
@@ -479,22 +479,39 @@ class PengirimanController extends Controller
             // Update pengiriman
             $pengiriman = Pengiriman::findOrFail($validatedData['pengiriman_id']);
             
-            // Handle file upload with old file deletion
-            $buktiFileName = $pengiriman->bukti_foto_bongkar; // Keep existing filename if no new file
+            // Handle multiple file upload with old file deletion
+            $buktiFileNames = $pengiriman->bukti_foto_bongkar; // Keep existing files if no new files
             
             if ($request->hasFile('bukti_foto_bongkar')) {
-                $file = $request->file('bukti_foto_bongkar');
-                
-                // Delete old photo if exists
-                if ($pengiriman->bukti_foto_bongkar && Storage::disk('public')->exists('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar)) {
-                    Storage::disk('public')->delete('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar);
+                // Delete all old photos if exists
+                if ($pengiriman->bukti_foto_bongkar) {
+                    $oldPhotos = is_array($pengiriman->bukti_foto_bongkar) 
+                        ? $pengiriman->bukti_foto_bongkar 
+                        : [$pengiriman->bukti_foto_bongkar];
+                        
+                    foreach ($oldPhotos as $oldPhoto) {
+                        if (Storage::disk('public')->exists('pengiriman/bukti/' . $oldPhoto)) {
+                            Storage::disk('public')->delete('pengiriman/bukti/' . $oldPhoto);
+                        }
+                    }
                 }
                 
-                // Generate new filename (only filename, not path)
-                $buktiFileName = 'pengiriman_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                // Upload new files
+                $buktiFileNames = [];
+                $files = $request->file('bukti_foto_bongkar');
                 
-                // Store new file 
-                $file->storeAs('pengiriman/bukti', $buktiFileName, 'public');
+                // Handle single or multiple files
+                if (!is_array($files)) {
+                    $files = [$files];
+                }
+                
+                foreach ($files as $index => $file) {
+                    if ($file && $file->isValid()) {
+                        $buktiFileName = 'pengiriman_' . $pengiriman->id . '_' . time() . '_' . $index . '.' . $file->getClientOriginalExtension();
+                        $file->storeAs('pengiriman/bukti', $buktiFileName, 'public');
+                        $buktiFileNames[] = $buktiFileName;
+                    }
+                }
             }
 
             // Update pengiriman data
@@ -504,7 +521,7 @@ class PengirimanController extends Controller
                 'hari_kirim' => $validatedData['hari_kirim'],
                 'total_qty_kirim' => $validatedData['total_qty_kirim'],
                 'total_harga_kirim' => $validatedData['total_harga_kirim'],
-                'bukti_foto_bongkar' => $buktiFileName, // Store only filename
+                'bukti_foto_bongkar' => $buktiFileNames, // Store array of filenames
                 'catatan' => $validatedData['catatan'],
                 'status' => 'menunggu_verifikasi'
             ]);
@@ -793,49 +810,23 @@ class PengirimanController extends Controller
     public function getDetailVerifikasi($id)
     {
         try {
-            // First, get the pengiriman with basic info
+            // Load pengiriman dengan relasi basic terlebih dahulu
             $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->findOrFail($id);
             
-            // Load relations step by step with error handling
-            try {
-                $pengiriman->load('purchasing');
-            } catch (\Exception $e) {
-                Log::error('Error loading purchasing relation: ' . $e->getMessage());
-            }
-
-            try {
-                $pengiriman->load('forecast');
-            } catch (\Exception $e) {
-                Log::error('Error loading forecast relation: ' . $e->getMessage());
-            }
-
-            try {
-                $pengiriman->load([
-                    'purchaseOrder' => function($query) {
-                        $query->with('klien');
-                    }
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error loading purchaseOrder relation: ' . $e->getMessage());
-            }
+            // Load relasi satu per satu untuk menghindari timeout
+            $pengiriman->load('purchasing');
+            $pengiriman->load('forecast');  
+            $pengiriman->load('purchaseOrder.klien');
+            $pengiriman->load('pengirimanDetails');
             
-            // Load pengiriman details with safer approach
-            try {
-                $pengiriman->load([
-                    'pengirimanDetails' => function($query) {
-                        $query->with([
-                            'purchaseOrderBahanBaku',
-                            'bahanBakuSupplier' => function($q) {
-                                $q->with('supplier');
-                            }
-                        ]);
-                    }
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error loading pengirimanDetails relation: ' . $e->getMessage());
-                // Load pengirimanDetails without nested relations as fallback
-                $pengiriman->load('pengirimanDetails');
-            }
+            // Debug logging untuk troubleshoot
+            Log::info('Debug Pengiriman Detail:', [
+                'pengiriman_id' => $pengiriman->id,
+                'purchase_order_id' => $pengiriman->purchase_order_id,
+                'has_purchase_order' => $pengiriman->purchaseOrder ? 'YES' : 'NO',
+                'qty_total' => $pengiriman->purchaseOrder?->qty_total,
+                'total_amount' => $pengiriman->purchaseOrder?->total_amount,
+            ]);
 
             return view('pages.purchasing.pengiriman.menunggu-verifikasi.detail', compact('pengiriman'));
 
@@ -917,15 +908,35 @@ class PengirimanController extends Controller
     {
         try {
             $request->validate([
-                'catatan' => 'required|string|max:1000'
+                'catatan' => 'required|string|max:1000',
+                'hapus_foto' => 'nullable|boolean'
             ]);
 
             $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->findOrFail($id);
 
-            $pengiriman->update([
-                'status' => 'pending',
-                'catatan' => $request->catatan
-            ]);
+            // Jika diminta untuk hapus foto, hapus dari storage
+            if ($request->get('hapus_foto', false) && $pengiriman->bukti_foto_bongkar) {
+                $oldPhotos = is_array($pengiriman->bukti_foto_bongkar) 
+                    ? $pengiriman->bukti_foto_bongkar 
+                    : [$pengiriman->bukti_foto_bongkar];
+                    
+                foreach ($oldPhotos as $oldPhoto) {
+                    if (Storage::disk('public')->exists('pengiriman/bukti/' . $oldPhoto)) {
+                        Storage::disk('public')->delete('pengiriman/bukti/' . $oldPhoto);
+                    }
+                }
+                
+                $pengiriman->update([
+                    'status' => 'pending',
+                    'catatan' => $request->catatan,
+                    'bukti_foto_bongkar' => null
+                ]);
+            } else {
+                $pengiriman->update([
+                    'status' => 'pending',
+                    'catatan' => $request->catatan
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

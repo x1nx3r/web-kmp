@@ -261,6 +261,25 @@
 {{-- SweetAlert2 Library --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+{{-- CSS untuk styling gambar --}}
+<style>
+/* Image hover effects */
+.group:hover .group-hover\:opacity-100 {
+    opacity: 1;
+}
+
+.group:hover .group-hover\:bg-opacity-20 {
+    --tw-bg-opacity: 0.2;
+}
+
+/* Smooth transitions */
+.transition-opacity {
+    transition-property: opacity;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+}
+</style>
+
 {{-- JavaScript untuk Tab Menunggu Verifikasi --}}
 <script>
 // Variables for current pengiriman
@@ -532,6 +551,25 @@ function closeRevisiModal() {
 
 function closeVerifikasiModal() {
     closeVerifikasiModalFromDetail();
+}
+
+// Simple download function untuk gambar
+function downloadImage(imageSrc, imageName = 'bukti_foto_bongkar.jpg') {
+    try {
+        const link = document.createElement('a');
+        link.href = imageSrc;
+        link.download = imageName;
+        link.target = '_blank';
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+    } catch (error) {
+        // Fallback: open in new tab
+        window.open(imageSrc, '_blank');
+    }
 }
 
 // Submit revisi pengiriman (global function)

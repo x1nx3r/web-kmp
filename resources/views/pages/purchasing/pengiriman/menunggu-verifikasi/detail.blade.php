@@ -44,7 +44,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Kuantitas PO</label>
                 <input type="text" 
-                       value="{{ optional($pengiriman->purchaseOrder)->qty_total ? number_format($pengiriman->purchaseOrder->qty_total, 0, ',', '.') . ' KG' : '-' }}" 
+                       value="{{ optional($pengiriman->purchaseOrder)->qty_total ? number_format($pengiriman->purchaseOrder->qty_total, 0, ',', '.') . ' KG' : 'Data PO tidak ditemukan (ID: ' . ($pengiriman->purchase_order_id ?? 'null') . ')' }}" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
                        readonly>
             </div>
@@ -224,7 +224,7 @@
                                         @if(optional(optional($detail->bahanBakuSupplier)->supplier)->nama)
                                             {{ $detail->bahanBakuSupplier->supplier->nama }}
                                         @elseif(optional(optional(optional($detail->purchaseOrderBahanBaku)->bahanBakuSupplier)->supplier)->nama)
-                                            {{ $detail->purchaseOrderBahanBaku->bahanBakuSupplier->supplier->nama }}
+                                            {{ $detail->PurchaseOrderBahanBaku->bahanBakuSupplier->supplier->nama }}
                                         @else
                                             -
                                         @endif
@@ -253,7 +253,7 @@
     </div>
 
     {{-- Card 6: Bukti Foto Bongkar --}}
-    @if($pengiriman->bukti_foto_bongkar)
+    @if($pengiriman->bukti_foto_bongkar_raw)
         <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-4">
             <div class="flex items-center mb-4">
                 <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
@@ -263,37 +263,52 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 @php
-                    $photos = [];
-                    if ($pengiriman->bukti_foto_bongkar) {
-                        if (is_array($pengiriman->bukti_foto_bongkar)) {
-                            $photos = $pengiriman->bukti_foto_bongkar;
-                        } elseif (is_string($pengiriman->bukti_foto_bongkar)) {
-                            try {
-                                $decoded = json_decode($pengiriman->bukti_foto_bongkar, true);
-                                $photos = is_array($decoded) ? $decoded : [];
-                            } catch (\Exception $e) {
-                                $photos = [];
-                            }
-                        }
-                    }
+                    $photos = $pengiriman->bukti_foto_bongkar_array ?? [];
+                    // Debug
+                    // dd([
+                    //     'raw' => $pengiriman->bukti_foto_bongkar_raw,
+                    //     'array' => $photos,
+                    //     'count' => count($photos)
+                    // ]);
                 @endphp
                 @if(is_array($photos) && count($photos) > 0)
-                    @foreach($photos as $photo)
+                    @foreach($photos as $index => $photo)
                         @if($photo)
                             <div class="relative group">
-                                <img src="{{ \Illuminate\Support\Facades\Storage::url($photo) }}" 
-                                     alt="Bukti Foto Bongkar" 
-                                     class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
-                                     onclick="openImageModal('{{ \Illuminate\Support\Facades\Storage::url($photo) }}')"
-                                     onerror="this.src='/images/placeholder.png'; this.alt='Image not found';">
-                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
-                                    <i class="fas fa-search-plus text-white opacity-0 group-hover:opacity-100 transition-opacity text-2xl"></i>
+                                @php
+                                    $photoUrl = asset('storage/pengiriman/bukti/' . $photo);
+                                    $fullPath = public_path('storage/pengiriman/bukti/' . $photo);
+                                    $fileExists = file_exists($fullPath);
+                                @endphp
+                                
+                                <div class="relative group">
+                                    <a href="{{ $photoUrl }}" target="_blank" rel="noopener noreferrer" class="block">
+                                        <img src="{{ $photoUrl }}" 
+                                             alt="Bukti Foto Bongkar {{ $index + 1 }}" 
+                                             class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
+                                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDIwMCAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTkyIiBmaWxsPSIjRjNGNEY2IiBzdHJva2U9IiNEMUQ1REIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iNCIvPgo8Y2lyY2xlIGN4PSIxMDAiIGN5PSI3NiIgcj0iMjAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTkwIDg2SDE5MEwxNzAgMTA2SDE5MEwxNzAgMTI2SDkwVjg2WiIgZmlsbD0iIzlDQTNBRiIvPgo8dGV4dCB4PSIxMDAiIHk9IjE1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb50LXNpemU9IjEyIiBmaWxsPSIjNkI3MjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HYW1iYXIgdGlkYWsgZGl0ZW11a2FuPC90ZXh0Pgo8L3N2Zz4K'; this.alt='Gambar tidak ditemukan';"
+                                             loading="lazy">
+                                        
+                                        {{-- Overlay dengan icon --}}
+                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
+                                            <div class="bg-blue-600 bg-opacity-80 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <i class="fas fa-external-link-alt text-white text-lg" title="Buka gambar di tab baru"></i>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    
+                                    {{-- Download button terpisah --}}
+                                    <button onclick="event.preventDefault(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
+                                            class="absolute top-2 right-2 bg-green-600 hover:bg-green-700 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Download gambar">
+                                        <i class="fas fa-download text-sm"></i>
+                                    </button>
                                 </div>
                             </div>
                         @endif
                     @endforeach
                 @else
-                    <div class="text-center py-8 text-gray-500">
+                    <div class="col-span-full text-center py-8 text-gray-500">
                         <i class="fas fa-image text-gray-300 text-3xl mb-2"></i>
                         <p>Tidak ada foto bukti bongkar</p>
                     </div>
@@ -339,28 +354,6 @@
     </div>
 </div>
 
-{{-- Image Modal --}}
-<div id="imageModal" class="fixed inset-0 z-50 hidden" style="background-color: rgba(0,0,0,0.9);">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="relative max-w-4xl max-h-full">
-            <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
-            <img id="modalImage" src="" alt="Preview" class="max-w-full max-h-screen object-contain">
-        </div>
-    </div>
-</div>
-
-<script>
-function openImageModal(imageSrc) {
-    document.getElementById('modalImage').src = imageSrc;
-    document.getElementById('imageModal').classList.remove('hidden');
-}
-
-function closeImageModal() {
-    document.getElementById('imageModal').classList.add('hidden');
-}
-
-// Note: Fungsi openRevisiModalFromDetail dan openVerifikasiModalFromDetail 
-// sudah didefinisikan secara global di menunggu-verifikasi.blade.php
-</script>
+{{-- Note: Image modal functions sudah didefinisikan secara global di menunggu-verifikasi.blade.php --}}
+{{-- Note: Fungsi openRevisiModalFromDetail dan openVerifikasiModalFromDetail 
+     sudah didefinisikan secara global di menunggu-verifikasi.blade.php --}}

@@ -1,0 +1,344 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="px-6 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-eye text-blue-600 text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Detail Order #{{ $order->no_order }}</h1>
+                        <nav class="text-sm text-gray-600">
+                            <a href="{{ route('orders.index') }}" class="hover:text-blue-600">Order</a>
+                            <span class="mx-2">/</span>
+                            <span>{{ $order->no_order }}</span>
+                        </nav>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    @if($order->status === 'draft')
+                        <a href="{{ route('orders.edit', $order->id) }}" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors">
+                            <i class="fas fa-edit mr-2"></i>
+                            Edit
+                        </a>
+                        <form action="{{ route('orders.confirm', $order->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors" 
+                                    onclick="return confirm('Konfirmasi order ini?')">
+                                <i class="fas fa-check mr-2"></i>
+                                Konfirmasi
+                            </button>
+                        </form>
+                    @elseif($order->status === 'dikonfirmasi')
+                        <form action="{{ route('orders.start-processing', $order->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors" 
+                                    onclick="return confirm('Mulai proses order ini?')">
+                                <i class="fas fa-play mr-2"></i>
+                                Mulai Proses
+                            </button>
+                        </form>
+                    @elseif(in_array($order->status, ['diproses', 'sebagian_dikirim']))
+                        <form action="{{ route('orders.complete', $order->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors" 
+                                    onclick="return confirm('Selesaikan order ini?')">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Selesaikan
+                            </button>
+                        </form>
+                    @endif
+                    
+                    @if(!in_array($order->status, ['selesai', 'dibatalkan']))
+                        <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors" 
+                                    onclick="return confirm('Batalkan order ini?')">
+                                <i class="fas fa-times mr-2"></i>
+                                Batalkan
+                            </button>
+                        </form>
+                    @endif
+                    
+                    <a href="{{ route('orders.index') }}" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        Kembali
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Order Info -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Basic Info Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-info-circle text-blue-600 mr-3"></i>
+                            Informasi Order
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Nomor Order:</span>
+                                    <span class="text-sm text-gray-900">{{ $order->no_order }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Klien:</span>
+                                    <span class="text-sm text-gray-900">{{ $order->klien->nama }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-gray-500">Status:</span>
+                                    @include('components.order.status-badge', ['status' => $order->status])
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-gray-500">Prioritas:</span>
+                                    @include('components.order.priority-badge', ['priority' => $order->priority])
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Tanggal Order:</span>
+                                    <span class="text-sm text-gray-900">{{ $order->tanggal_order->format('d M Y') }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Dibuat Oleh:</span>
+                                    <span class="text-sm text-gray-900">{{ $order->creator->name }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Dibuat:</span>
+                                    <span class="text-sm text-gray-900">{{ $order->created_at->format('d M Y H:i') }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Diupdate:</span>
+                                    <span class="text-sm text-gray-900">{{ $order->updated_at->format('d M Y H:i') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        @if($order->catatan)
+                            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">Catatan:</h4>
+                                <p class="text-sm text-gray-600">{{ $order->catatan }}</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Order Details Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-list text-blue-600 mr-3"></i>
+                            Detail Order ({{ $order->orderDetails->count() }} item)
+                        </h3>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Supplier</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Jual</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @forelse($order->orderDetails as $detail)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div>
+                                                    <div class="text-sm font-medium text-gray-900">{{ $detail->bahanBakuKlien->nama }}</div>
+                                                    @if($detail->spesifikasi_khusus)
+                                                        <div class="text-sm text-gray-500">{{ $detail->spesifikasi_khusus }}</div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $detail->supplier->nama }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {{ number_format($detail->qty, 2) }} {{ $detail->satuan }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">Rp {{ number_format($detail->harga_supplier, 0, ',', '.') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                                Rp {{ number_format($detail->total_harga, 0, ',', '.') }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                                @include('components.order.profit-badge', ['margin' => $detail->margin_percentage])
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                                @include('components.order.detail-status-badge', ['status' => $detail->status])
+                                            </td>
+                                        </tr>
+                                        @if($detail->catatan)
+                                            <tr>
+                                                <td colspan="8" class="px-6 py-2 text-sm text-gray-500">
+                                                    <i class="fas fa-sticky-note mr-2"></i>
+                                                    {{ $detail->catatan }}
+                                                </td>
+                                            </tr>
+                                        @endif
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-500">
+                                                Tidak ada detail order
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <!-- Summary Sidebar -->
+            <div class="space-y-6">
+                <!-- Financial Summary -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-calculator text-blue-600 mr-3"></i>
+                            Ringkasan Keuangan
+                        </h3>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Total Harga Supplier:</span>
+                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($order->total_amount ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Total Harga Jual:</span>
+                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($order->total_amount ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                        <hr class="border-gray-200">
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700">Total Margin:</span>
+                            <span class="text-sm font-bold {{ ($order->total_amount ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                Rp {{ number_format($order->total_amount ?? 0, 0, ',', '.') }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700">Persentase Margin:</span>
+                            <span class="text-sm font-bold {{ ($order->total_amount ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                0%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Summary -->
+                @if($order->orderDetails->where('status', '!=', 'menunggu')->count() > 0)
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-shipping-fast text-blue-600 mr-3"></i>
+                                Progress Pengiriman
+                            </h3>
+                        </div>
+                        <div class="p-6">
+                            @php
+                                $statusCounts = $order->orderDetails->groupBy('status')->map->count();
+                                $totalItems = $order->orderDetails->count();
+                            @endphp
+                            
+                            <div class="space-y-3">
+                                @foreach(['menunggu' => 'Menunggu', 'diproses' => 'Diproses', 'sebagian_dikirim' => 'Sebagian Dikirim', 'selesai' => 'Selesai'] as $status => $label)
+                                    @if(isset($statusCounts[$status]))
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm text-gray-600">{{ $label }}:</span>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-sm font-semibold text-gray-900">{{ $statusCounts[$status] }}</span>
+                                                @include('components.order.detail-status-badge', ['status' => $status])
+                                            </div>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                            
+                            <hr class="my-4 border-gray-200">
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                @php
+                                    $completePercentage = ($statusCounts['selesai'] ?? 0) / $totalItems * 100;
+                                    $partialPercentage = ($statusCounts['sebagian_dikirim'] ?? 0) / $totalItems * 100;
+                                @endphp
+                                <div class="bg-green-600 h-2 rounded-full" style="width: {{ $completePercentage }}%"></div>
+                                <div class="bg-yellow-500 h-2 rounded-full" style="width: {{ $partialPercentage }}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">
+                                {{ number_format($completePercentage + $partialPercentage, 1) }}% progress
+                            </p>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Timeline -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-history text-blue-600 mr-3"></i>
+                            Timeline
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="timeline space-y-4">
+                            <div class="timeline-item flex items-start space-x-3">
+                                <div class="timeline-marker w-3 h-3 bg-blue-600 rounded-full mt-1.5"></div>
+                                <div class="timeline-content">
+                                    <h4 class="text-sm font-medium text-gray-900">Order Dibuat</h4>
+                                    <p class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
+                                </div>
+                            </div>
+                            
+                            @if($order->dikonfirmasi_at)
+                                <div class="timeline-item flex items-start space-x-3">
+                                    <div class="timeline-marker w-3 h-3 bg-cyan-600 rounded-full mt-1.5"></div>
+                                    <div class="timeline-content">
+                                        <h4 class="text-sm font-medium text-gray-900">Dikonfirmasi</h4>
+                                        <p class="text-xs text-gray-500">{{ $order->dikonfirmasi_at->format('d M Y, H:i') }}</p>
+                                    </div>
+                                </div>
+                            @endif
+                            
+                            @if($order->selesai_at)
+                                <div class="timeline-item flex items-start space-x-3">
+                                    <div class="timeline-marker w-3 h-3 bg-green-600 rounded-full mt-1.5"></div>
+                                    <div class="timeline-content">
+                                        <h4 class="text-sm font-medium text-gray-900">Selesai</h4>
+                                        <p class="text-xs text-gray-500">{{ $order->selesai_at->format('d M Y, H:i') }}</p>
+                                    </div>
+                                </div>
+                            @elseif($order->dibatalkan_at)
+                                <div class="timeline-item flex items-start space-x-3">
+                                    <div class="timeline-marker w-3 h-3 bg-red-600 rounded-full mt-1.5"></div>
+                                    <div class="timeline-content">
+                                        <h4 class="text-sm font-medium text-gray-900">Dibatalkan</h4>
+                                        <p class="text-xs text-gray-500">{{ $order->dibatalkan_at->format('d M Y, H:i') }}</p>
+                                        @if($order->alasan_pembatalan)
+                                            <p class="text-xs text-red-600 mt-1">{{ $order->alasan_pembatalan }}</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

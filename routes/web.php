@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Marketing\KlienController;
+use App\Http\Controllers\Marketing\OrderController;
 use App\Http\Controllers\PengelolaanAkunController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\ForecastingController;
@@ -44,6 +45,15 @@ Route::get('/spesifikasi', function() {
 Route::get('/marketing/spesifikasi', function() {
     return view('pages.marketing.spesifikasi');
 })->name('marketing.spesifikasi');
+
+// Order routes
+Route::resource('orders', OrderController::class);
+Route::prefix('orders/{order}')->group(function () {
+    Route::post('/confirm', [OrderController::class, 'confirm'])->name('orders.confirm');
+    Route::post('/start-processing', [OrderController::class, 'startProcessing'])->name('orders.start-processing');
+    Route::post('/complete', [OrderController::class, 'complete'])->name('orders.complete');
+    Route::post('/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+});
 
 // Penawaran routes
 Route::get('/penawaran', function() {

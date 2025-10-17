@@ -178,7 +178,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button onclick="openDetailModal({{ $pengiriman->id }})" 
+                                    <button onclick="openDetailModalBerhasil({{ $pengiriman->id }})" 
                                             class="inline-flex items-center px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-md transition-colors duration-150">
                                         <i class="fas fa-eye mr-1"></i>
                                         Detail
@@ -234,36 +234,8 @@
     </div>
 </div>
 
-{{-- Modal Detail Pengiriman --}}    <div id="detailPengirimanModal" class="fixed inset-0 backdrop-blur-xs bg-opacity-50 items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        
-        {{-- Header Modal --}}
-        <div class="bg-green-600 px-6 py-4 border-b border-green-700">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-truck text-green-600 text-xl"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-white">Detail Pengiriman</h3>
-                        <p class="text-sm text-green-100 opacity-90">Informasi lengkap pengiriman berhasil</p>
-                    </div>
-                </div>
-                <button type="button" onclick="closeDetailModal()" 
-                        class="text-white hover:text-gray-200 hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-all duration-200">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-        </div>
-
-        {{-- Content --}}
-        <div class="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
-            <div id="detailContent" class="space-y-6">
-                <!-- Content will be populated by JavaScript -->
-            </div>
-        </div>
-    </div>
-</div>
+{{-- Include Modal Detail Pengiriman Berhasil --}}
+@include('pages.purchasing.pengiriman.pengiriman-berhasil.detail')
 
 <script>
 // Debounce timer for search
@@ -319,169 +291,6 @@ function applyFiltersBerhasil() {
     submitSearchBerhasil();
 }
 
-// Function to open detail modal
-function openDetailModal(pengirimanId) {
-    console.log('Opening detail modal for pengiriman ID:', pengirimanId);
-    
-    // Show loading state
-    const modal = document.getElementById('detailPengirimanModal');
-    const content = document.getElementById('detailContent');
-    
-    content.innerHTML = `
-        <div class="flex justify-center items-center py-8">
-            <i class="fas fa-spinner fa-spin text-green-600 text-2xl mr-3"></i>
-            <span class="text-gray-600">Memuat detail pengiriman...</span>
-        </div>
-    `;
-    
-    // Show modal
-    modal.style.display = 'flex';
-    modal.classList.remove('hidden');
-    
-    // Fetch pengiriman detail
-    fetch(`/purchasing/pengiriman/${pengirimanId}/detail-berhasil`, {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            populateDetailModal(data.pengiriman);
-        } else {
-            throw new Error(data.message || 'Gagal memuat detail pengiriman');
-        }
-    })
-    .catch(error => {
-        console.error('Error loading pengiriman detail:', error);
-        content.innerHTML = `
-            <div class="text-center py-8">
-                <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>
-                <h4 class="text-lg font-medium text-gray-900 mb-2">Gagal Memuat Detail</h4>
-                <p class="text-gray-600">Terjadi kesalahan saat memuat detail pengiriman.</p>
-            </div>
-        `;
-    });
-}
-
-// Function to populate modal with pengiriman data
-function populateDetailModal(pengiriman) {
-    const content = document.getElementById('detailContent');
-    
-    let detailsTable = '';
-    if (pengiriman.details && pengiriman.details.length > 0) {
-        detailsTable = `
-            <div>
-                <h4 class="text-md font-semibold text-gray-900 mb-3">Detail Barang</h4>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bahan Baku</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Kirim</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga Satuan</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            ${pengiriman.details.map(detail => `
-                                <tr>
-                                    <td class="px-4 py-3 text-sm text-gray-900">${detail.bahan_baku || '-'}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">${detail.supplier || '-'}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-900 font-medium">${detail.qty_kirim || '0'} kg</td>
-                                    <td class="px-4 py-3 text-sm text-gray-900">Rp ${Number(detail.harga_satuan || 0).toLocaleString('id-ID')}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-900 font-medium">Rp ${Number(detail.total_harga || 0).toLocaleString('id-ID')}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
-    }
-    
-    content.innerHTML = `
-        <!-- Informasi Umum -->
-        <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-            <h4 class="text-md font-semibold text-gray-900 mb-3">Informasi Pengiriman</h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="text-sm font-medium text-gray-600">No Pengiriman</label>
-                    <p class="text-sm text-gray-900 font-medium">${pengiriman.no_pengiriman}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Status</label>
-                    <p class="text-sm">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <i class="fas fa-check-circle mr-1"></i>
-                            ${pengiriman.status}
-                        </span>
-                    </p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">No PO</label>
-                    <p class="text-sm text-gray-900">${pengiriman.no_po}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">PIC Purchasing</label>
-                    <p class="text-sm text-gray-900">${pengiriman.pic_purchasing}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Tanggal Kirim</label>
-                    <p class="text-sm text-gray-900">${pengiriman.tanggal_kirim}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Hari Kirim</label>
-                    <p class="text-sm text-gray-900">${pengiriman.hari_kirim}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Ringkasan -->
-        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <h4 class="text-md font-semibold text-gray-900 mb-3">Ringkasan</h4>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Total Quantity</label>
-                    <p class="text-lg font-bold text-blue-600">${pengiriman.total_qty}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Total Harga</label>
-                    <p class="text-lg font-bold text-green-600">${pengiriman.total_harga}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Total Item</label>
-                    <p class="text-lg font-bold text-purple-600">${pengiriman.total_items} item</p>
-                </div>
-            </div>
-        </div>
-
-        ${pengiriman.catatan ? `
-            <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                <h4 class="text-md font-semibold text-gray-900 mb-2">Catatan</h4>
-                <p class="text-sm text-gray-700">${pengiriman.catatan}</p>
-            </div>
-        ` : ''}
-
-        ${detailsTable}
-    `;
-}
-
-// Function to close detail modal
-function closeDetailModal() {
-    const modal = document.getElementById('detailPengirimanModal');
-    modal.style.display = 'none';
-    modal.classList.add('hidden');
-}
-
 // Function to clear all filters
 function clearAllFiltersBerhasil() {
     const currentParams = new URLSearchParams(window.location.search);
@@ -523,11 +332,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Close modal when clicking outside
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('detailPengirimanModal');
-    if (event.target === modal) {
-        closeDetailModal();
-    }
-});
+
 </script>

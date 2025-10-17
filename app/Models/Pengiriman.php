@@ -236,7 +236,7 @@ class Pengiriman extends Model
         $photos = $this->bukti_foto_bongkar_array;
         
         if (!$photos || empty($photos)) {
-            return null;
+            return [];
         }
         
         // Return array URLs

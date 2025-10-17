@@ -729,6 +729,8 @@ class PengirimanController extends Controller
                 'total_harga' => 'Rp ' . number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.'),
                 'total_items' => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->count() : 0,
                 'catatan' => $pengiriman->catatan,
+                'bukti_foto_bongkar' => $pengiriman->bukti_foto_bongkar_array ?? [],
+                'bukti_foto_urls' => $pengiriman->bukti_foto_bongkar_url ?? [],
                 'details' => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->map(function($detail) {
                     return [
                         'bahan_baku' => $detail->bahanBakuSupplier->nama ?? '-',

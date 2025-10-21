@@ -180,6 +180,14 @@
                             <span class="mx-1 text-gray-300">|</span>
                             <span class="text-xs font-bold text-blue-600">{{ number_format($supplier->bahanBakuSuppliers->sum('stok'), 0, ',', '.') }}</span>
                             <span class="text-xs text-blue-600">Stok</span>
+                            @php
+                                $avgRating = $supplier->getAverageRating();
+                            @endphp
+                            @if($avgRating)
+                                <span class="mx-1 text-gray-300">|</span>
+                                <i class="fas fa-star text-yellow-500 text-xs"></i>
+                                <span class="text-xs font-bold text-yellow-600">{{ $avgRating }}</span>
+                            @endif
                         </div>
                     </div>
                     
@@ -203,13 +211,26 @@
                 {{-- Mobile Actions --}}
                 <div class="p-3 bg-gray-50">
                     <div class="flex items-center justify-between">
-                        <button type="button" 
-                                onclick="toggleProductList({{ $supplier->id }})"
-                                class="flex items-center px-3 py-2 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-all duration-200">
-                            <i class="fas fa-box mr-1"></i>
-                            <span>Bahan Baku</span>
-                            <i class="fas fa-chevron-down transform transition-transform ml-2 text-xs" id="chevron-{{ $supplier->id }}"></i>
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button type="button" 
+                                    onclick="toggleProductList({{ $supplier->id }})"
+                                    class="flex items-center px-3 py-2 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-all duration-200">
+                                <i class="fas fa-box mr-1"></i>
+                                <span>Bahan Baku</span>
+                                <i class="fas fa-chevron-down transform transition-transform ml-2 text-xs" id="chevron-{{ $supplier->id }}"></i>
+                            </button>
+                            
+                            @php
+                                $totalReviews = $supplier->getTotalReviews();
+                            @endphp
+                            @if($totalReviews > 0)
+                                <a href="{{ route('supplier.reviews', $supplier->slug) }}" 
+                                   class="flex items-center px-3 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-star mr-1"></i>
+                                    <span>{{ $totalReviews }} Review{{ $totalReviews > 1 ? 's' : '' }}</span>
+                                </a>
+                            @endif
+                        </div>
                         
                         <div class="flex items-center space-x-2">
                             <span class="text-xs text-gray-500">{{ $supplier->updated_at->format('d/m/Y') }}</span>
@@ -242,7 +263,7 @@
                         </div>
 
                         {{-- Right Section: Stats --}}
-                        <div class="flex items-center space-x-6">
+                        <div class="flex items-center space-x-4">
                             <div class="text-center bg-green-50 rounded-lg px-4 py-3 border border-green-200">
                                 <p class="text-2xl font-bold text-green-600">{{ $supplier->bahanBakuSuppliers->count() }}</p>
                                 <p class="text-xs text-green-700 font-medium">Total Bahan Baku</p>
@@ -251,6 +272,27 @@
                                 <p class="text-2xl font-bold text-blue-600">{{ number_format($supplier->bahanBakuSuppliers->sum('stok'), 0, ',', '.') }}</p>
                                 <p class="text-xs text-blue-700 font-medium">Total Stok</p>
                             </div>
+                            @php
+                                $avgRating = $supplier->getAverageRating();
+                                $totalReviews = $supplier->getTotalReviews();
+                            @endphp
+                            @if($avgRating)
+                                <div class="text-center bg-yellow-50 rounded-lg px-4 py-3 border border-yellow-200">
+                                    <div class="flex items-center justify-center mb-1">
+                                        <i class="fas fa-star text-yellow-500 text-lg mr-1"></i>
+                                        <p class="text-2xl font-bold text-yellow-600">{{ $avgRating }}</p>
+                                    </div>
+                                    <p class="text-xs text-yellow-700 font-medium">{{ $totalReviews }} Reviews</p>
+                                </div>
+                            @else
+                                <div class="text-center bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                                    <div class="flex items-center justify-center mb-1">
+                                        <i class="fas fa-star text-gray-400 text-lg mr-1"></i>
+                                        <p class="text-2xl font-bold text-gray-400">-</p>
+                                    </div>
+                                    <p class="text-xs text-gray-500 font-medium">Belum ada review</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -294,16 +336,31 @@
 
                     {{-- Bottom Section --}}
                     <div class="flex items-center justify-between pt-4 border-t-2 border-green-100">
-                        {{-- Product Dropdown Button --}}
-                        <button type="button" 
-                                onclick="toggleProductList({{ $supplier->id }})"
-                                class="flex items-center px-5 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                            <i class="fas fa-box mr-2"></i>
-                            Lihat Daftar Bahan Baku & Harga
-                            <i class="fas fa-chevron-down transform transition-transform ml-3" id="chevron-desktop-{{ $supplier->id }}"></i>
-                        </button>
+                        {{-- Left Section: Product & Review Buttons --}}
+                        <div class="flex items-center space-x-3">
+                            {{-- Product Dropdown Button --}}
+                            <button type="button" 
+                                    onclick="toggleProductList({{ $supplier->id }})"
+                                    class="flex items-center px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                <i class="fas fa-box mr-2"></i>
+                                Lihat Daftar Bahan Baku
+                                <i class="fas fa-chevron-down transform transition-transform ml-2" id="chevron-desktop-{{ $supplier->id }}"></i>
+                            </button>
 
-                        {{-- Action Buttons --}}
+                            @php
+                                $totalReviews = $supplier->getTotalReviews();
+                            @endphp
+                            @if($totalReviews > 0)
+                                {{-- Review Button --}}
+                                <a href="{{ route('supplier.reviews', $supplier->slug) }}" 
+                                   class="flex items-center px-4 py-3 text-sm font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 hover:border-yellow-300 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                    <i class="fas fa-star mr-2"></i>
+                                    Lihat {{ $totalReviews }} Review{{ $totalReviews > 1 ? 's' : '' }}
+                                </a>
+                            @endif
+                        </div>
+
+                        {{-- Right Section: Action Buttons --}}
                         <div class="flex items-center space-x-4">
                             {{-- Last Updated --}}
                             <div class="flex items-center text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded-full">

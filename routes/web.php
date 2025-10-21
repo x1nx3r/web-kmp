@@ -22,6 +22,7 @@ Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->na
 Route::get('/supplier/{supplier:slug}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
 Route::put('/supplier/{supplier:slug}', [SupplierController::class, 'update'])->name('supplier.update');
 Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
+Route::get('/supplier/{supplier:slug}/reviews', [SupplierController::class, 'reviews'])->name('supplier.reviews');
 Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
 
 // Forecasting routes

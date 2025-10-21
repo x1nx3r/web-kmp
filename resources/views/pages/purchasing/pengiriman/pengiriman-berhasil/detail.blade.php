@@ -252,9 +252,62 @@ function populateDetailModalBerhasil(pengiriman) {
             </div>
         </div>
 
-        ${pengiriman.catatan ? `
+        <!-- Review Pengiriman -->
+        ${pengiriman.rating || pengiriman.ulasan ? `
             <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                <h4 class="text-md font-semibold text-gray-900 mb-2">Catatan</h4>
+                <h4 class="text-md font-semibold text-gray-900 mb-3 flex items-center">
+                    <i class="fas fa-star text-yellow-600 mr-2"></i>
+                    Review Pengiriman
+                </h4>
+                <div class="space-y-3">
+                    ${pengiriman.rating ? `
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-600">Rating:</span>
+                            <div class="flex items-center space-x-2">
+                                <div class="flex items-center">
+                                    ${Array.from({length: 5}, (_, i) => `
+                                        <i class="fas fa-star text-lg ${i < pengiriman.rating ? 'text-yellow-400' : 'text-gray-300'}"></i>
+                                    `).join('')}
+                                </div>
+                                <span class="text-sm font-semibold text-yellow-700">${pengiriman.rating}/5</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${pengiriman.ulasan ? `
+                        <div>
+                            <span class="text-sm font-medium text-gray-600">Ulasan:</span>
+                            <div class="mt-2 p-3 bg-white border border-yellow-300 rounded-lg">
+                                <p class="text-sm text-gray-800">${pengiriman.ulasan}</p>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${!pengiriman.rating && !pengiriman.ulasan ? `
+                        <div class="text-center py-3">
+                            <i class="fas fa-star-o text-gray-400 text-2xl mb-2"></i>
+                            <p class="text-sm text-gray-500 italic">Belum ada review untuk pengiriman ini</p>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        ` : `
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h4 class="text-md font-semibold text-gray-900 mb-3 flex items-center">
+                    <i class="fas fa-star text-gray-400 mr-2"></i>
+                    Review Pengiriman
+                </h4>
+                <div class="text-center py-3">
+                    <i class="fas fa-star-o text-gray-400 text-2xl mb-2"></i>
+                    <p class="text-sm text-gray-500 italic">Belum ada review untuk pengiriman ini</p>
+                </div>
+            </div>
+        `}
+
+        ${pengiriman.catatan ? `
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <h4 class="text-md font-semibold text-gray-900 mb-2 flex items-center">
+                    <i class="fas fa-sticky-note text-blue-600 mr-2"></i>
+                    Catatan
+                </h4>
                 <p class="text-sm text-gray-700">${pengiriman.catatan}</p>
             </div>
         ` : ''}

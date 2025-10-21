@@ -1,3 +1,6 @@
+{{-- Meta tags untuk CSRF --}}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 {{-- Modal Header - Sticky --}}
 <div class="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-gray-200 bg-blue-600 rounded-t-xl">
     <div class="flex items-center space-x-4">
@@ -300,6 +303,61 @@
             <input type="hidden" name="catatan" value="{{ $pengiriman->catatan ?? '' }}">
         </div>
 
+        {{-- Card 5: Review Pengiriman --}}
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div class="flex items-center mb-4">
+                <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-star text-yellow-600"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900">Review Pengiriman</h3>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Rating Pengiriman <span class="text-red-500">*</span></label>
+                <div class="flex items-center space-x-2">
+                    @for($i = 1; $i <= 5; $i++)
+                        <button type="button" 
+                                class="star-rating text-3xl transition-colors duration-200 {{ $pengiriman->rating && $i <= $pengiriman->rating ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400' }}" 
+                                data-rating="{{ $i }}"
+                                onclick="setRating({{ $i }})">
+                            <i class="fas fa-star"></i>
+                        </button>
+                    @endfor
+                    <span class="ml-3 text-sm text-gray-600" id="rating-text">
+                        {{ $pengiriman->rating ? $pengiriman->rating . ' dari 5 bintang' : 'Belum ada rating' }}
+                    </span>
+                </div>
+                <input type="hidden" id="rating_input" name="rating" value="{{ $pengiriman->rating ?? '' }}">
+                <div class="text-xs text-red-500 mt-1">Rating wajib diisi sebelum mengajukan verifikasi</div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Ulasan Pengiriman</label>
+                <textarea name="ulasan" 
+                          id="ulasan_input"
+                          rows="4" 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                          placeholder="Berikan ulasan tentang pengiriman ini...">{{ $pengiriman->ulasan ?? '' }}</textarea>
+                <div class="text-xs text-gray-500 mt-1">Maksimal 1000 karakter</div>
+            </div>
+            
+            @if($pengiriman->rating || $pengiriman->ulasan)
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Status Review:</span>
+                        <span class="text-sm text-blue-600 font-semibold">Sudah direview</span>
+                    </div>
+                </div>
+            @else
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Status Review:</span>
+                        <span class="text-sm text-orange-600 font-semibold">Belum direview</span>
+                    </div>
+                </div>
+            @endif
+        </div>
+
     </form>
 
 </div>
@@ -461,231 +519,6 @@ function updateTotals() {
     if (totalHargaHidden) totalHargaHidden.value = totalHarga;
     if (totalQtyDisplay) totalQtyDisplay.value = new Intl.NumberFormat('id-ID').format(totalQty) + ' kg';
     if (totalHargaDisplay) totalHargaDisplay.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHarga);
-}
-
-// Submit pengiriman
-function submitPengiriman() {
-    const form = document.getElementById('pengirimanForm');
-    const formData = new FormData(form);
-    
-    // Validate form
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-    
-    // Check if detail exists (should already exist from database)
-    const detailItems = document.querySelectorAll('.detail-item');
-    if (detailItems.length === 0) {
-        alert('Tidak ada detail barang untuk dikirim');
-        return;
-    }
-    
-    // Validate all qty inputs are filled and > 0
-    let hasValidQty = false;
-    for (let item of detailItems) {
-        const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');
-        if (qtyInput && parseFloat(qtyInput.value) > 0) {
-            hasValidQty = true;
-            break;
-        }
-    }
-    
-    if (!hasValidQty) {
-        alert('Minimal satu barang harus memiliki qty kirim > 0');
-        return;
-    }
-    
-    // Add totals to form data
-    const totalQty = document.querySelectorAll('.detail-item').reduce((sum, item) => {
-        const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');
-        return sum + (parseFloat(qtyInput.value) || 0);
-    }, 0);
-    
-    const totalHarga = document.querySelectorAll('.detail-item').reduce((sum, item) => {
-        const totalInput = item.querySelector('input[name*="[total_harga]"]');
-        return sum + (parseFloat(totalInput.value) || 0);
-    }, 0);
-    
-    formData.append('total_qty_kirim', totalQty);
-    formData.append('total_harga_kirim', totalHarga);
-    
-    // Show confirmation modal (submit.blade.php)
-    showSubmitModal(formData);
-}
-
-// Show submit confirmation modal
-function showSubmitModal(formData) {
-    const pengirimanId = formData.get('pengiriman_id');
-    console.log('Loading submit modal for pengiriman ID:', pengirimanId);
-    
-    // Load submit modal content with pengiriman_id parameter
-    fetch(`/purchasing/pengiriman/submit-modal?pengiriman_id=${pengirimanId}`)
-    .then(response => {
-        console.log('Submit modal response status:', response.status);
-        return response.text();
-    })
-    .then(html => {
-        console.log('Submit modal HTML received, length:', html.length);
-        
-        // Create and show submit modal
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = html;
-        document.body.appendChild(modalContainer);
-        
-        console.log('Modal container added to body');
-        
-        // Find and populate the modal immediately
-        const submitModal = modalContainer.querySelector('#submitModal');
-        if (submitModal) {
-            console.log('Submit modal found, populating data...');
-            // Populate data directly
-            populateModalSummary(formData, submitModal);
-            
-            // Make sure modal is visible
-            submitModal.style.display = 'flex';
-        } else {
-            console.error('Submit modal not found in HTML');
-        }
-        
-        // Close current modal after successful modal creation
-        setTimeout(() => {
-            closeAksiModal();
-        }, 200);
-    })
-    .catch(error => {
-        console.error('Error loading submit modal:', error);
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Gagal memuat modal konfirmasi: ' + error.message,
-                icon: 'error',
-                confirmButtonColor: '#EF4444'
-            });
-        } else {
-            alert('Gagal memuat modal konfirmasi: ' + error.message);
-        }
-    });
-}
-
-// Populate modal summary (local version)
-function populateModalSummary(formData, modalElement) {
-    console.log('Populating modal summary with formData:', formData);
-    
-    // Tunggu sebentar untuk memastikan modal sudah ter-render
-    setTimeout(() => {
-        // Basic info
-        const setPengirimam = modalElement.querySelector('#summary-no-pengiriman');
-        if (setPengirimam) {
-            setPengirimam.textContent = formData.get('no_pengiriman') || '-';
-            console.log('Set no pengiriman:', formData.get('no_pengiriman'));
-        }
-        
-        const tanggalKirim = formData.get('tanggal_kirim');
-        if (tanggalKirim) {
-            const date = new Date(tanggalKirim + 'T00:00:00');
-            const setTanggal = modalElement.querySelector('#summary-tanggal-kirim');
-            if (setTanggal) {
-                setTanggal.textContent = date.toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'long', 
-                    year: 'numeric'
-                });
-                console.log('Set tanggal kirim:', setTanggal.textContent);
-            }
-        }
-        
-        const setHari = modalElement.querySelector('#summary-hari-kirim');
-        if (setHari) {
-            setHari.textContent = formData.get('hari_kirim') || '-';
-            console.log('Set hari kirim:', formData.get('hari_kirim'));
-        }
-        
-        const setCatatan = modalElement.querySelector('#summary-catatan');
-        if (setCatatan) {
-            setCatatan.textContent = formData.get('catatan') || 'Tidak ada catatan';
-            console.log('Set catatan:', formData.get('catatan'));
-        }        // Detail barang
-        const detailContainer = modalElement.querySelector('#summary-detail-barang');
-        console.log('Detail container found:', detailContainer);
-        
-        if (detailContainer) {
-            detailContainer.innerHTML = '';
-            
-            let totalItems = 0;
-            let totalQty = 0;
-            let totalHarga = 0;
-            
-            // Get detail from current form
-            const detailRows = document.querySelectorAll('.detail-item');
-            console.log('Detail rows found:', detailRows.length);
-            
-            detailRows.forEach((row, index) => {
-                const qtyInput = row.querySelector('input[name*="[qty_kirim]"]');
-                const hargaInput = row.querySelector('input[name*="[harga_satuan]"]');
-                const totalInput = row.querySelector('input[name*="[total_harga]"]');
-                const bahanBakuEl = row.querySelector('.text-sm.font-medium.text-gray-900');
-                
-                const qty = parseFloat(qtyInput?.value) || 0;
-                const harga = parseFloat(hargaInput?.value) || 0;
-                const total = parseFloat(totalInput?.value) || 0;
-                const bahanBaku = bahanBakuEl?.textContent.trim() || 'Unknown';
-                
-                console.log(`Row ${index}: ${bahanBaku}, qty: ${qty}, harga: ${harga}, total: ${total}`);
-                
-                if (qty > 0) {
-                    totalItems++;
-                    totalQty += qty;
-                    totalHarga += total;
-                    
-                    const rowHtml = `
-                        <tr class="border-b">
-                            <td class="px-3 py-2 text-sm">${bahanBaku}</td>
-                            <td class="px-3 py-2 text-sm">${qty.toLocaleString('id-ID')} kg</td>
-                            <td class="px-3 py-2 text-sm">Rp ${harga.toLocaleString('id-ID')}</td>
-                            <td class="px-3 py-2 text-sm font-semibold">Rp ${total.toLocaleString('id-ID')}</td>
-                        </tr>
-                    `;
-                    detailContainer.insertAdjacentHTML('beforeend', rowHtml);
-                }
-            });
-            
-            console.log(`Totals - Items: ${totalItems}, Qty: ${totalQty}, Harga: ${totalHarga}`);
-            
-            // Update totals
-            const setTotalItem = modalElement.querySelector('#summary-total-item');
-            if (setTotalItem) {
-                setTotalItem.textContent = totalItems + ' item';
-                console.log('Set total item:', totalItems);
-            }
-            
-            const setTotalQty = modalElement.querySelector('#summary-total-qty');
-            if (setTotalQty) {
-                setTotalQty.textContent = totalQty.toLocaleString('id-ID') + ' kg';
-                console.log('Set total qty:', totalQty);
-            }
-            
-            const setTotalHarga = modalElement.querySelector('#summary-total-harga');
-            if (setTotalHarga) {
-                setTotalHarga.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID');
-                console.log('Set total harga:', totalHarga);
-            }
-        }        // Setup submission data in the modal's script context
-        const script = modalElement.querySelector('script');
-        if (script) {
-            // Inject formData into the modal's scope
-            const formDataEntries = Array.from(formData.entries()).map(([key, value]) => 
-                `submissionData.append('${key}', '${value}');`
-            ).join(' ');
-            
-            script.textContent = script.textContent.replace(
-                'let submissionData = null;',
-                `let submissionData = new FormData(); ${formDataEntries}`
-            );
-            console.log('Injected submission data into modal script');
-        }
-        
-    }, 100); // Delay 100ms untuk memastikan DOM sudah siap
 }
 
 // Initialize pengiriman modal (mirip seperti di modal forecasting)

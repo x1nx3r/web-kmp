@@ -125,6 +125,54 @@
                 </div>
             @endif
 
+            {{-- Review Pengiriman --}}
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                <h4 class="text-lg font-semibold text-purple-900 mb-3 flex items-center">
+                    <i class="fas fa-star text-purple-600 mr-2"></i>
+                    Review Pengiriman
+                </h4>
+                
+                @if($pengiriman->rating || $pengiriman->ulasan)
+                    <div class="space-y-3">
+                        {{-- Rating --}}
+                        @if($pengiriman->rating)
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Rating:</span>
+                                <div class="flex items-center space-x-2">
+                                    <div class="flex items-center">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            <i class="fas fa-star text-lg {{ $i <= $pengiriman->rating ? 'text-yellow-400' : 'text-gray-300' }}"></i>
+                                        @endfor
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-700">{{ $pengiriman->rating }}/5</span>
+                                </div>
+                            </div>
+                        @endif
+                        
+                        {{-- Ulasan --}}
+                        @if($pengiriman->ulasan)
+                            <div>
+                                <span class="text-sm text-gray-600">Ulasan:</span>
+                                <div class="mt-1 p-3 bg-white border border-purple-300 rounded-lg">
+                                    <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ $pengiriman->ulasan }}</p>
+                                </div>
+                            </div>
+                        @endif
+                        
+                        {{-- Status positif --}}
+                        <div class="flex items-center text-green-600">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <span class="text-sm font-medium">Pengiriman sudah direview</span>
+                        </div>
+                    </div>
+                @else
+                    <div class="flex items-center justify-center text-orange-600 py-2">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <span class="text-sm font-medium">Pengiriman belum direview</span>
+                    </div>
+                @endif
+            </div>
+
             {{-- Dampak Verifikasi --}}
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                 <div class="flex items-start">

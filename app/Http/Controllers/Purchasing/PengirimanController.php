@@ -729,6 +729,8 @@ class PengirimanController extends Controller
                 'total_harga' => 'Rp ' . number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.'),
                 'total_items' => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->count() : 0,
                 'catatan' => $pengiriman->catatan,
+                'rating' => $pengiriman->rating,
+                'ulasan' => $pengiriman->ulasan,
                 'bukti_foto_bongkar' => $pengiriman->bukti_foto_bongkar_array ?? [],
                 'bukti_foto_urls' => $pengiriman->bukti_foto_bongkar_url ?? [],
                 'details' => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->map(function($detail) {
@@ -1038,7 +1040,7 @@ class PengirimanController extends Controller
                 ]);
             } catch (\Exception $e) {
                 Log::error('Error loading pengirimanDetails relation in verifikasi modal: ' . $e->getMessage());
-                // Load pengirimanDetails without nested relations as fallback
+                // Load pengirimanDetails tanpa relasi bersarang sebagai fallback
                 $pengiriman->load('pengirimanDetails');
             }
 
@@ -1057,6 +1059,75 @@ class PengirimanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memuat modal verifikasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Simpan review pengiriman
+     */
+    public function storeReview(Request $request)
+    {
+        try {
+            $request->validate([
+                'pengiriman_id' => 'required|exists:pengiriman,id',
+                'rating' => 'required|integer|min:1|max:5',
+                'ulasan' => 'nullable|string|max:1000'
+            ]);
+
+            $pengiriman = Pengiriman::findOrFail($request->pengiriman_id);
+            
+            // Update pengiriman dengan review
+            $pengiriman->update([
+                'rating' => $request->rating,
+                'ulasan' => $request->ulasan,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Review berhasil disimpan!'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error storing review: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan review: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update review pengiriman yang sudah ada
+     */
+    public function updateReview(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'rating' => 'required|integer|min:1|max:5',
+                'ulasan' => 'nullable|string|max:1000'
+            ]);
+
+            $pengiriman = Pengiriman::findOrFail($id);
+            
+            // Update review
+            $pengiriman->update([
+                'rating' => $request->rating,
+                'ulasan' => $request->ulasan,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Review berhasil diperbarui!'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating review: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui review: ' . $e->getMessage()
             ], 500);
         }
     }

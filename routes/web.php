@@ -40,6 +40,10 @@ Route::prefix('purchasing')->group(function () {
     Route::get('pengiriman/batal-modal', [PengirimanController::class, 'getBatalModal'])->name('purchasing.pengiriman.batal-modal');
     Route::post('pengiriman/batal', [PengirimanController::class, 'batalPengiriman'])->name('purchasing.pengiriman.batal');
     
+    // Review routes
+    Route::post('pengiriman/review', [PengirimanController::class, 'storeReview'])->name('purchasing.pengiriman.store-review');
+    Route::put('pengiriman/{pengiriman}/review', [PengirimanController::class, 'updateReview'])->name('purchasing.pengiriman.update-review');
+    
     Route::resource('pengiriman', PengirimanController::class)->names([
         'index' => 'purchasing.pengiriman.index',
         'create' => 'purchasing.pengiriman.create',

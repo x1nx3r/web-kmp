@@ -25,6 +25,8 @@ class Pengiriman extends Model
         'bukti_foto_bongkar',
         'status',
         'catatan',
+        'rating',
+        'ulasan',
     ];
 
     protected $casts = [

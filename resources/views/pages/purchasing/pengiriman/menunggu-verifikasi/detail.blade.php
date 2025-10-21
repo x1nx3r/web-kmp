@@ -286,7 +286,7 @@
                                         <img src="{{ $photoUrl }}" 
                                              alt="Bukti Foto Bongkar {{ $index + 1 }}" 
                                              class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
-                                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDIwMCAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTkyIiBmaWxsPSIjRjNGNEY2IiBzdHJva2U9IiNEMUQ1REIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iNCIvPgo8Y2lyY2xlIGN4PSIxMDAiIGN5PSI3NiIgcj0iMjAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTkwIDg2SDE5MEwxNzAgMTA2SDE5MEwxNzAgMTI2SDkwVjg2WiIgZmlsbD0iIzlDQTNBRiIvPgo8dGV4dCB4PSIxMDAiIHk9IjE1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb50LXNpemU9IjEyIiBmaWxsPSIjNkI3MjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HYW1iYXIgdGlkYWsgZGl0ZW11a2FuPC90ZXh0Pgo8L3N2Zz4K'; this.alt='Gambar tidak ditemukan';"
+                                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDIwMCAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTkyIiBmaWxsPSIjRjNGNEY2IiBzdHJva2U9IiNEMUQ1REIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iNCIvPgo8Y2lyY2xlIGN4PSIxMDAiIGN5PSI3NiIgcj0iMjAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTkwIDg2SDE5MEwxNzAgMTA2SDE5MEwxNzAgMTI2SDkwVjg2WiIgZmlsbD0iIzlDQTNBRiIvPgo8dGV4dCB4PSIxMDAiIHk9IjE1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNkI3MjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HYW1iYXIgdGlkYWsgZGl0ZW11a2FuPC90ZXh0Pgo8L3N2Zz4K'; this.alt='Gambar tidak ditemukan';"
                                              loading="lazy">
                                         
                                         {{-- Overlay dengan icon --}}
@@ -317,7 +317,64 @@
         </div>
     @endif
 
-    {{-- Card 7: Catatan --}}
+    {{-- Card 7: Review Pengiriman --}}
+    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-4">
+        <div class="flex items-center mb-4">
+            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                <i class="fas fa-star text-yellow-600"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900">Review Pengiriman</h3>
+        </div>
+        
+        @if($pengiriman->rating || $pengiriman->ulasan)
+            <div class="space-y-4">
+                {{-- Rating --}}
+                @if($pengiriman->rating)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                        <div class="flex items-center space-x-2">
+                            @for($i = 1; $i <= 5; $i++)
+                                <i class="fas fa-star text-xl {{ $i <= $pengiriman->rating ? 'text-yellow-400' : 'text-gray-300' }}"></i>
+                            @endfor
+                            <span class="ml-3 text-sm font-medium text-gray-700">
+                                {{ $pengiriman->rating }} dari 5 bintang
+                            </span>
+                        </div>
+                    </div>
+                @endif
+                
+                {{-- Ulasan --}}
+                @if($pengiriman->ulasan)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ulasan</label>
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <p class="text-gray-700 whitespace-pre-wrap">{{ $pengiriman->ulasan }}</p>
+                        </div>
+                    </div>
+                @endif
+                
+                {{-- Status Review --}}
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Status Review:</span>
+                        <span class="text-sm text-blue-600 font-semibold">Sudah direview</span>
+                    </div>
+                </div>
+            </div>
+        @else
+            <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div class="flex items-center justify-center space-x-3">
+                    <i class="fas fa-exclamation-triangle text-orange-500 text-lg"></i>
+                    <div>
+                        <span class="text-sm font-medium text-gray-700">Status Review:</span>
+                        <span class="text-sm text-orange-600 font-semibold ml-1">Belum direview</span>
+                    </div>
+                </div>
+            </div>
+        @endif
+    </div>
+
+    {{-- Card 8: Catatan --}}
     @if($pengiriman->catatan)
         <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-4">
             <div class="flex items-center mb-4">

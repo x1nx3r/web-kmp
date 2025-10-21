@@ -64,6 +64,48 @@
                 </div>
             </div>
 
+            {{-- Review Pengiriman --}}
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 class="text-lg font-semibold text-blue-900 mb-3 flex items-center">
+                    <i class="fas fa-star text-blue-600 mr-2"></i>
+                    Review Pengiriman
+                </h4>
+                
+                @if($pengiriman->rating || $pengiriman->ulasan)
+                    <div class="space-y-3">
+                        {{-- Rating --}}
+                        @if($pengiriman->rating)
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Rating:</span>
+                                <div class="flex items-center space-x-2">
+                                    <div class="flex items-center">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            <i class="fas fa-star text-lg {{ $i <= $pengiriman->rating ? 'text-yellow-400' : 'text-gray-300' }}"></i>
+                                        @endfor
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-700">{{ $pengiriman->rating }}/5</span>
+                                </div>
+                            </div>
+                        @endif
+                        
+                        {{-- Ulasan --}}
+                        @if($pengiriman->ulasan)
+                            <div>
+                                <span class="text-sm text-gray-600">Ulasan:</span>
+                                <div class="mt-1 p-3 bg-white border border-blue-300 rounded-lg">
+                                    <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ $pengiriman->ulasan }}</p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @else
+                    <div class="flex items-center justify-center text-gray-500 py-2">
+                        <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i>
+                        <span class="text-sm">Pengiriman belum direview</span>
+                    </div>
+                @endif
+            </div>
+
             {{-- Form Catatan Revisi --}}
             <form id="revisiForm">
                 <input type="hidden" id="pengirimanId" value="{{ $pengiriman->id }}">

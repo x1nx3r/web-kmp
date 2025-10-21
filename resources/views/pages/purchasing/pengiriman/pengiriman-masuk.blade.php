@@ -240,13 +240,103 @@
         
         {{-- Pagination --}}
         @if(isset($pengirimanMasuk) && $pengirimanMasuk->hasPages())
-            <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-3 sm:px-6 py-3 sm:py-4 border-t-2 border-blue-200 rounded-b-lg sm:rounded-b-xl">
-                <div class="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0">
-                    <div class="text-xs sm:text-sm text-blue-700 font-semibold">
-                        Menampilkan {{ $pengirimanMasuk->firstItem() ?? 0 }} - {{ $pengirimanMasuk->lastItem() ?? 0 }} dari {{ $pengirimanMasuk->total() ?? 0 }} pengiriman
+            <div class="bg-white rounded-lg shadow-sm border p-4 mt-6">
+                <div class="flex flex-col sm:flex-row items-center justify-between">
+                    {{-- Results Info --}}
+                    <div class="mb-3 sm:mb-0">
+                        <p class="text-sm text-gray-700">
+                            Menampilkan
+                            <span class="font-medium">{{ $pengirimanMasuk->firstItem() }}</span>
+                            sampai
+                            <span class="font-medium">{{ $pengirimanMasuk->lastItem() }}</span>
+                            dari
+                            <span class="font-medium">{{ $pengirimanMasuk->total() }}</span>
+                            Pengiriman Masuk
+                        </p>
                     </div>
-                    <div class="pagination-custom">
-                        {{ $pengirimanMasuk->appends(request()->query())->links() }}
+
+                    {{-- Pagination Links --}}
+                    <div class="flex items-center space-x-2">
+                        {{-- Previous Page --}}
+                        @if ($pengirimanMasuk->onFirstPage())
+                            <span class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                                <i class="fas fa-chevron-left mr-1"></i>
+                                Sebelumnya
+                            </span>
+                        @else
+                            @php
+                                $prevUrl = $pengirimanMasuk->previousPageUrl();
+                                $prevUrlParts = parse_url($prevUrl);
+                                parse_str($prevUrlParts['query'] ?? '', $prevParams);
+                                $prevParams['tab'] = 'pengiriman-masuk';
+                                // Preserve other filters
+                                if (request('search_masuk')) $prevParams['search_masuk'] = request('search_masuk');
+                                if (request('filter_purchasing')) $prevParams['filter_purchasing'] = request('filter_purchasing');
+                                if (request('sort_date_masuk')) $prevParams['sort_date_masuk'] = request('sort_date_masuk');
+                                $prevUrl = $prevUrlParts['path'] . '?' . http_build_query($prevParams);
+                            @endphp
+                            <a href="{{ $prevUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors">
+                                <i class="fas fa-chevron-left mr-1"></i>
+                                Sebelumnya
+                            </a>
+                        @endif
+
+                        {{-- Page Numbers --}}
+                        @if($pengirimanMasuk->lastPage() > 1)
+                            <div class="hidden sm:flex items-center space-x-1">
+                                @foreach ($pengirimanMasuk->getUrlRange(1, $pengirimanMasuk->lastPage()) as $page => $url)
+                                    @php
+                                        $urlParts = parse_url($url);
+                                        parse_str($urlParts['query'] ?? '', $urlParams);
+                                        $urlParams['tab'] = 'pengiriman-masuk';
+                                        // Preserve other filters
+                                        if (request('search_masuk')) $urlParams['search_masuk'] = request('search_masuk');
+                                        if (request('filter_purchasing')) $urlParams['filter_purchasing'] = request('filter_purchasing');
+                                        if (request('sort_date_masuk')) $urlParams['sort_date_masuk'] = request('sort_date_masuk');
+                                        $pageUrl = $urlParts['path'] . '?' . http_build_query($urlParams);
+                                    @endphp
+                                    
+                                    @if ($page == $pengirimanMasuk->currentPage())
+                                        <span class="px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-lg">
+                                            {{ $page }}
+                                        </span>
+                                    @else
+                                        <a href="{{ $pageUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors">
+                                            {{ $page }}
+                                        </a>
+                                    @endif
+                                @endforeach
+                            </div>
+
+                            {{-- Mobile Page Indicator --}}
+                            <div class="sm:hidden px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-lg">
+                                {{ $pengirimanMasuk->currentPage() }} / {{ $pengirimanMasuk->lastPage() }}
+                            </div>
+                        @endif
+
+                        {{-- Next Page --}}
+                        @if ($pengirimanMasuk->hasMorePages())
+                            @php
+                                $nextUrl = $pengirimanMasuk->nextPageUrl();
+                                $nextUrlParts = parse_url($nextUrl);
+                                parse_str($nextUrlParts['query'] ?? '', $nextParams);
+                                $nextParams['tab'] = 'pengiriman-masuk';
+                                // Preserve other filters
+                                if (request('search_masuk')) $nextParams['search_masuk'] = request('search_masuk');
+                                if (request('filter_purchasing')) $nextParams['filter_purchasing'] = request('filter_purchasing');
+                                if (request('sort_date_masuk')) $nextParams['sort_date_masuk'] = request('sort_date_masuk');
+                                $nextUrl = $nextUrlParts['path'] . '?' . http_build_query($nextParams);
+                            @endphp
+                            <a href="{{ $nextUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors">
+                                Selanjutnya
+                                <i class="fas fa-chevron-right ml-1"></i>
+                            </a>
+                        @else
+                            <span class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                                Selanjutnya
+                                <i class="fas fa-chevron-right ml-1"></i>
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>

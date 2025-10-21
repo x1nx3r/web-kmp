@@ -145,10 +145,10 @@ class PengirimanController extends Controller
         };
 
         // Get data for each status
-        $pengirimanMasuk = $baseQuery('pending')->paginate(10, ['*'], 'masuk_page');
-        $menungguVerifikasi = $baseQuery('menunggu_verifikasi')->paginate(10, ['*'], 'verifikasi_page');
-        $pengirimanBerhasil = $baseQuery('berhasil')->paginate(10, ['*'], 'berhasil_page');
-        $pengirimanGagal = $baseQuery('gagal')->paginate(10, ['*'], 'gagal_page');
+        $pengirimanMasuk = $baseQuery('pending')->paginate(1, ['*'], 'masuk_page');
+        $menungguVerifikasi = $baseQuery('menunggu_verifikasi')->paginate(1, ['*'], 'verifikasi_page');
+        $pengirimanBerhasil = $baseQuery('berhasil')->paginate(1, ['*'], 'berhasil_page');
+        $pengirimanGagal = $baseQuery('gagal')->paginate(1, ['*'], 'gagal_page');
 
         return view('pages.purchasing.pengiriman', compact(
             'pengirimanMasuk', 

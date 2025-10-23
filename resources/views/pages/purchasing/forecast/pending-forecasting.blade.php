@@ -39,7 +39,7 @@
                     </div>
                     Filter & Urutan
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4 filter-grid">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-4 filter-grid">
                     {{-- Date Range Filter --}}
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
@@ -47,6 +47,23 @@
                             Perkiraan Tanggal Kirim
                         </label>
                         <input type="date" id="dateRangeFilter" name="date_range" value="{{ request('date_range') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
+                    </div>
+
+                    {{-- Filter by PIC Purchasing --}}
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
+                            <i class="fas fa-user-tie mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
+                            PIC Purchasing
+                        </label>
+                        <select id="filterPurchasingPending" name="filter_purchasing_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
+                            <option value="">Semua PIC</option>
+                            @php
+                                $purchasingOptions = collect($pendingForecasts->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
+                            @endphp
+                            @foreach($purchasingOptions as $id => $nama)
+                                <option value="{{ $id }}" {{ request('filter_purchasing_pending') == $id ? 'selected' : '' }}>{{ $nama }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     {{-- Sort by Amount --}}
@@ -105,6 +122,14 @@
                             <option value="minggu" {{ request('sort_hari_kirim') == 'minggu' ? 'selected' : '' }}>Minggu</option>
                         </select>
                     </div>
+                </div>
+                
+                {{-- Clear Filter Button (Below Grid) --}}
+                <div class="flex justify-end mt-3">
+                    <button onclick="clearAllFiltersPending()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+                        <i class="fas fa-times mr-1"></i>
+                        Hapus Semua Filter
+                    </button>
                 </div>
             </div>
 
@@ -314,6 +339,7 @@
                                 // Preserve other filters
                                 if (request('search_pending')) $prevParams['search_pending'] = request('search_pending');
                                 if (request('date_range')) $prevParams['date_range'] = request('date_range');
+                                if (request('filter_purchasing_pending')) $prevParams['filter_purchasing_pending'] = request('filter_purchasing_pending');
                                 if (request('sort_amount_pending')) $prevParams['sort_amount_pending'] = request('sort_amount_pending');
                                 if (request('sort_qty_pending')) $prevParams['sort_qty_pending'] = request('sort_qty_pending');
                                 if (request('sort_date_pending')) $prevParams['sort_date_pending'] = request('sort_date_pending');
@@ -341,6 +367,7 @@
                                             $pageUrlParams['tab'] = 'pending';
                                             // Preserve other filters
                                             if (request('search_pending')) $pageUrlParams['search_pending'] = request('search_pending');
+                                            if (request('filter_purchasing_pending')) $pageUrlParams['filter_purchasing_pending'] = request('filter_purchasing_pending');
                                             if (request('date_range')) $pageUrlParams['date_range'] = request('date_range');
                                             if (request('sort_amount_pending')) $pageUrlParams['sort_amount_pending'] = request('sort_amount_pending');
                                             if (request('sort_qty_pending')) $pageUrlParams['sort_qty_pending'] = request('sort_qty_pending');
@@ -371,6 +398,7 @@
                                 // Preserve other filters
                                 if (request('search_pending')) $nextParams['search_pending'] = request('search_pending');
                                 if (request('date_range')) $nextParams['date_range'] = request('date_range');
+                                if (request('filter_purchasing_pending')) $nextParams['filter_purchasing_pending'] = request('filter_purchasing_pending');
                                 if (request('sort_amount_pending')) $nextParams['sort_amount_pending'] = request('sort_amount_pending');
                                 if (request('sort_qty_pending')) $nextParams['sort_qty_pending'] = request('sort_qty_pending');
                                 if (request('sort_date_pending')) $nextParams['sort_date_pending'] = request('sort_date_pending');
@@ -433,6 +461,7 @@ function applyFiltersPending() {
     // Get filter values
     const searchValue = document.getElementById('searchInputPending').value;
     const dateRange = document.getElementById('dateRangeFilter').value;
+    const filterPurchasing = document.getElementById('filterPurchasingPending').value;
     const sortAmount = document.getElementById('sortAmountPending').value;
     const sortQty = document.getElementById('sortQtyPending').value;
     const sortDate = document.getElementById('sortDatePending').value;
@@ -441,6 +470,7 @@ function applyFiltersPending() {
     console.log('Filter values:', {
         searchValue,
         dateRange,
+        filterPurchasing,
         sortAmount,
         sortQty,
         sortDate,
@@ -456,6 +486,9 @@ function applyFiltersPending() {
     
     if (dateRange) currentParams.set('date_range', dateRange);
     else currentParams.delete('date_range');
+    
+    if (filterPurchasing) currentParams.set('filter_purchasing_pending', filterPurchasing);
+    else currentParams.delete('filter_purchasing_pending');
     
     if (sortAmount) currentParams.set('sort_amount_pending', sortAmount);
     else currentParams.delete('sort_amount_pending');
@@ -484,6 +517,7 @@ function updateActiveFiltersPending() {
     const activeFiltersContainer = document.getElementById('activeFiltersPending');
     const searchValue = document.getElementById('searchInputPending').value;
     const dateRange = document.getElementById('dateRangeFilter').value;
+    const filterPurchasing = document.getElementById('filterPurchasingPending').value;
     const sortAmount = document.getElementById('sortAmountPending').value;
     const sortQty = document.getElementById('sortQtyPending').value;
     const sortDate = document.getElementById('sortDatePending').value;
@@ -500,6 +534,13 @@ function updateActiveFiltersPending() {
     if (dateRange) {
         const formattedDate = new Date(dateRange).toLocaleDateString('id-ID');
         filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Tanggal: ${formattedDate}</span>`;
+        hasActiveFilters = true;
+    }
+    
+    if (filterPurchasing) {
+        const purchasingSelect = document.getElementById('filterPurchasingPending');
+        const purchasingName = purchasingSelect.options[purchasingSelect.selectedIndex].text;
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">PIC: ${purchasingName}</span>`;
         hasActiveFilters = true;
     }
     
@@ -606,6 +647,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dateRange) {
         console.log('Setting date range:', dateRange);
         document.getElementById('dateRangeFilter').value = dateRange;
+    }
+    
+    // Set purchasing filter
+    const filterPurchasing = urlParams.get('filter_purchasing_pending');
+    if (filterPurchasing) {
+        console.log('Setting filter purchasing:', filterPurchasing);
+        document.getElementById('filterPurchasingPending').value = filterPurchasing;
     }
     
     // Set sort filters

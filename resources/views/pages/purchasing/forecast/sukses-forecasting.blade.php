@@ -39,7 +39,7 @@ Tab Sukses Forecasting
                     </div>
                     Filter & Urutan
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                     {{-- Date Range Filter --}}
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
@@ -47,6 +47,23 @@ Tab Sukses Forecasting
                             Tanggal Forecast
                         </label>
                         <input type="date" id="dateRangeFilterSukses" name="date_range_sukses" value="{{ request('date_range_sukses') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersSukses()">
+                    </div>
+
+                    {{-- Filter by PIC Purchasing --}}
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
+                            <i class="fas fa-user-tie mr-1 sm:mr-2 text-green-500 text-xs"></i>
+                            PIC Purchasing
+                        </label>
+                        <select id="filterPurchasingSukses" name="filter_purchasing_sukses" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersSukses()">
+                            <option value="">Semua PIC</option>
+                            @php
+                                $purchasingOptions = collect($suksesForecasts->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
+                            @endphp
+                            @foreach($purchasingOptions as $id => $nama)
+                                <option value="{{ $id }}" {{ request('filter_purchasing_sukses') == $id ? 'selected' : '' }}>{{ $nama }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     {{-- Sort Order --}}
@@ -60,6 +77,14 @@ Tab Sukses Forecasting
                             <option value="oldest" {{ request('sort_order_sukses') == 'oldest' ? 'selected' : '' }}>Terlama</option>
                         </select>
                     </div>
+                </div>
+                
+                {{-- Clear Filter Button (Below Grid) --}}
+                <div class="flex justify-end mt-3">
+                    <button onclick="clearAllFiltersSukses()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+                        <i class="fas fa-times mr-1"></i>
+                        Hapus Semua Filter
+                    </button>
                 </div>
             </div>
         </div>
@@ -273,6 +298,7 @@ function debounceSearchSukses() {
 function submitSearchSukses() {
     const searchInput = document.getElementById('searchInputSukses');
     const dateFilter = document.getElementById('dateRangeFilterSukses');
+    const filterPurchasing = document.getElementById('filterPurchasingSukses');
     const sortOrder = document.getElementById('sortOrderSukses');
     
     // Build query parameters
@@ -284,6 +310,10 @@ function submitSearchSukses() {
     
     if (dateFilter.value) {
         params.append('date_range_sukses', dateFilter.value);
+    }
+    
+    if (filterPurchasing.value) {
+        params.append('filter_purchasing_sukses', filterPurchasing.value);
     }
     
     if (sortOrder.value) {
@@ -465,6 +495,47 @@ function closeDetailModal() {
     const modal = document.getElementById('detailForecastModal');
     modal.classList.add('hidden');
 }
+
+// Function to clear all filters
+function clearAllFiltersSukses() {
+    const currentParams = new URLSearchParams(window.location.search);
+    
+    // Keep only the tab parameter
+    const newParams = new URLSearchParams();
+    newParams.set('tab', 'sukses');
+    
+    window.location.href = '/forecasting?' + newParams.toString();
+}
+
+// Initialize filters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set filter values from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Set search value
+    const searchValue = urlParams.get('search_sukses');
+    if (searchValue) {
+        document.getElementById('searchInputSukses').value = searchValue;
+    }
+    
+    // Set date range filter
+    const dateRange = urlParams.get('date_range_sukses');
+    if (dateRange) {
+        document.getElementById('dateRangeFilterSukses').value = dateRange;
+    }
+    
+    // Set purchasing filter
+    const filterPurchasing = urlParams.get('filter_purchasing_sukses');
+    if (filterPurchasing) {
+        document.getElementById('filterPurchasingSukses').value = filterPurchasing;
+    }
+    
+    // Set sort order filter
+    const sortOrder = urlParams.get('sort_order_sukses');
+    if (sortOrder) {
+        document.getElementById('sortOrderSukses').value = sortOrder;
+    }
+});
 
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {

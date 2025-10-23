@@ -19,10 +19,6 @@ return new class extends Migration
             $table->decimal('qty_kirim', 15, 2);
             $table->decimal('harga_satuan', 15, 2);
             $table->decimal('total_harga', 15, 2);
-             $table->decimal('percent_refraksi_qty')->default(0);
-            $table->decimal('refraksi_qty')->default(0);
-            $table->decimal('percent_refraksi_rupiah')->default(0);
-            $table->decimal('refraksi_rupiah')->default(0);
             $table->text('catatan_detail')->nullable();
             $table->timestamps();
             $table->softDeletes();

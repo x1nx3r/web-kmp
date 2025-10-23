@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Purchasing;
 use App\Models\Supplier;
 use App\Models\BahanBakuSupplier;
 use App\Models\RiwayatHargaBahanBaku;
+use App\Models\Pengiriman; // Import Pengiriman model
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
@@ -439,5 +440,90 @@ class SupplierController extends Controller
         })->toArray();
 
         return view('pages.purchasing.supplier.riwayat-harga', compact('supplierData', 'bahanBakuData', 'riwayatHarga'));
+    }
+
+    /**
+     * Show supplier reviews page
+     */
+    public function reviews(Request $request, Supplier $supplier)
+    {
+        // Get all pengiriman for this supplier
+        $query = Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($q) use ($supplier) {
+            $q->where('supplier_id', $supplier->id);
+        })
+        ->whereIn('status', ['berhasil', 'gagal'])
+        ->with(['purchaseOrder.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier']);
+
+        // Filter by status if requested
+        if ($request->filled('status') && in_array($request->status, ['berhasil', 'gagal'])) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by rating if requested
+        if ($request->filled('rating') && $request->rating >= 1 && $request->rating <= 5) {
+            $query->where('rating', $request->rating);
+        }
+
+        // Filter by klien if requested
+        if ($request->filled('klien')) {
+            $query->whereHas('purchaseOrder.klien', function($klienQuery) use ($request) {
+                $klienQuery->where('id', $request->klien);
+            });
+        }
+
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('no_pengiriman', 'LIKE', "%{$search}%")
+                  ->orWhere('ulasan', 'LIKE', "%{$search}%")
+                  ->orWhereHas('purchaseOrder', function($poQuery) use ($search) {
+                      $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('purchaseOrder.klien', function($klienQuery) use ($search) {
+                      $klienQuery->where('nama', 'LIKE', "%{$search}%")
+                                 ->orWhere('cabang', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
+                      $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+
+        // Sort by latest
+        $pengiriman = $query->orderBy('created_at', 'desc')->paginate(10)->appends(request()->query());
+
+        // Get all klien for filter dropdown
+        $klienList = \App\Models\Klien::select('id', 'nama', 'cabang')
+            ->orderBy('nama')
+            ->get()
+            ->map(function($klien) {
+                return [
+                    'id' => $klien->id,
+                    'nama' => $klien->nama . ($klien->cabang ? ' - ' . $klien->cabang : '')
+                ];
+            });
+
+        // Get statistics
+        $stats = [
+            'average_rating' => $supplier->getAverageRating(),
+            'total_reviews' => $supplier->getTotalReviews(),
+            'berhasil_count' => $supplier->getPengirimanBerhasilCount(),
+            'gagal_count' => $supplier->getPengirimanGagalCount(),
+            'rating_distribution' => []
+        ];
+
+        // Get rating distribution
+        for ($i = 1; $i <= 5; $i++) {
+            $count = Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($q) use ($supplier) {
+                $q->where('supplier_id', $supplier->id);
+            })
+            ->where('rating', $i)
+            ->count();
+            
+            $stats['rating_distribution'][$i] = $count;
+        }
+
+        return view('pages.purchasing.supplier.reviews', compact('supplier', 'pengiriman', 'stats', 'klienList'));
     }
 }

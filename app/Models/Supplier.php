@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Pengiriman;
 
 class Supplier extends Model
 {
@@ -72,6 +73,84 @@ class Supplier extends Model
                     ->orWhereHas('bahanBakuSuppliers', function($subQuery) use ($search) {
                         $subQuery->where('nama', 'like', '%' . $search . '%');
                     });
+    }
+
+    /**
+     * Get all pengiriman reviews for this supplier
+     */
+    public function getPengirimanReviews()
+    {
+        return Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($query) {
+            $query->where('supplier_id', $this->id);
+        })
+        ->whereNotNull('rating')
+        ->with(['purchaseOrder.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier'])
+        ->orderBy('created_at', 'desc')
+        ->get();
+    }
+
+    /**
+     * Get average rating for this supplier
+     */
+    public function getAverageRating()
+    {
+        $avgRating = Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($query) {
+            $query->where('supplier_id', $this->id);
+        })
+        ->whereNotNull('rating')
+        ->avg('rating');
+
+        return $avgRating ? number_format($avgRating, 1) : null;
+    }
+
+    /**
+     * Get total reviews count for this supplier
+     */
+    public function getTotalReviews()
+    {
+        return Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($query) {
+            $query->where('supplier_id', $this->id);
+        })
+        ->whereNotNull('rating')
+        ->count();
+    }
+
+    /**
+     * Get pengiriman berhasil count for this supplier
+     */
+    public function getPengirimanBerhasilCount()
+    {
+        return Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($query) {
+            $query->where('supplier_id', $this->id);
+        })
+        ->where('status', 'berhasil')
+        ->count();
+    }
+
+    /**
+     * Get pengiriman gagal count for this supplier
+     */
+    public function getPengirimanGagalCount()
+    {
+        return Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($query) {
+            $query->where('supplier_id', $this->id);
+        })
+        ->where('status', 'gagal')
+        ->count();
+    }
+
+    /**
+     * Get all pengiriman for this supplier (berhasil + gagal)
+     */
+    public function getAllPengiriman()
+    {
+        return Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($query) {
+            $query->where('supplier_id', $this->id);
+        })
+        ->whereIn('status', ['berhasil', 'gagal'])
+        ->with(['purchaseOrder.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier'])
+        ->orderBy('created_at', 'desc')
+        ->get();
     }
 
     /**

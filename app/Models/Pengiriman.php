@@ -24,7 +24,9 @@ class Pengiriman extends Model
         'total_harga_kirim',
         'bukti_foto_bongkar',
         'status',
-        'catatan'
+        'catatan',
+        'rating',
+        'ulasan',
     ];
 
     protected $casts = [
@@ -182,10 +184,82 @@ class Pengiriman extends Model
     }
 
     /**
+     * Get bukti foto bongkar raw value
+     */
+    public function getBuktiFotoBongkarRawAttribute()
+    {
+        return $this->attributes['bukti_foto_bongkar'] ?? null;
+    }
+    
+    /**
+     * Get bukti foto bongkar sebagai array
+     */
+    public function getBuktiFotoBongkarArrayAttribute()
+    {
+        $value = $this->attributes['bukti_foto_bongkar'] ?? null;
+        
+        if (!$value) {
+            return [];
+        }
+        
+        // Jika string JSON, decode
+        if (is_string($value) && (str_starts_with($value, '[') || str_starts_with($value, '{'))) {
+            try {
+                $decoded = json_decode($value, true);
+                return is_array($decoded) ? $decoded : [$value];
+            } catch (\Exception $e) {
+                return [$value];
+            }
+        }
+        
+        // Jika string biasa, return sebagai array dengan satu element
+        return [$value];
+    }
+    
+    /**
+     * Set bukti foto bongkar
+     */
+    public function setBuktiFotoBongkarAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['bukti_foto_bongkar'] = json_encode($value);
+        } elseif (is_string($value)) {
+            $this->attributes['bukti_foto_bongkar'] = $value;
+        } else {
+            $this->attributes['bukti_foto_bongkar'] = null;
+        }
+    }
+
+    /**
      * Accessor untuk URL foto bukti bongkar
      */
     public function getBuktiFotoBongkarUrlAttribute()
     {
-        return $this->bukti_foto_bongkar ? asset('storage/' . $this->bukti_foto_bongkar) : null;
+        $photos = $this->bukti_foto_bongkar_array;
+        
+        if (!$photos || empty($photos)) {
+            return [];
+        }
+        
+        // Return array URLs
+        return array_map(function($photo) {
+            return asset('storage/pengiriman/bukti/' . $photo);
+        }, $photos);
+    }
+    
+    /**
+     * Get foto bukti paths untuk storage
+     */
+    public function getBuktiFotoBongkarPathsAttribute()
+    {
+        $photos = $this->bukti_foto_bongkar_array;
+        
+        if (!$photos || empty($photos)) {
+            return [];
+        }
+        
+        return array_map(function($photo) {
+            return 'pengiriman/bukti/' . $photo;
+        }, $photos);
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Marketing\KlienController;
 use App\Http\Controllers\PengelolaanAkunController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\ForecastingController;
+use App\Http\Controllers\Purchasing\PengirimanController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -21,6 +22,7 @@ Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->na
 Route::get('/supplier/{supplier:slug}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
 Route::put('/supplier/{supplier:slug}', [SupplierController::class, 'update'])->name('supplier.update');
 Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
+Route::get('/supplier/{supplier:slug}/reviews', [SupplierController::class, 'reviews'])->name('supplier.reviews');
 Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
 
 // Forecasting routes
@@ -30,6 +32,42 @@ Route::post('/forecasting/create', [ForecastingController::class, 'createForecas
 Route::get('/purchasing/forecast/{id}/detail', [ForecastingController::class, 'getForecastDetail'])->name('forecasting.detail');
 Route::post('/purchasing/forecast/{id}/kirim', [ForecastingController::class, 'kirimForecast'])->name('forecasting.kirim');
 Route::post('/purchasing/forecast/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
+
+// Pengiriman routes
+Route::prefix('purchasing')->group(function () {
+    // Routes tanpa parameter harus diletakkan sebelum resource routes
+    Route::get('pengiriman/submit-modal', [PengirimanController::class, 'getSubmitModal'])->name('purchasing.pengiriman.submit-modal');
+    Route::post('pengiriman/submit', [PengirimanController::class, 'submitPengiriman'])->name('purchasing.pengiriman.submit');
+    Route::get('pengiriman/batal-modal', [PengirimanController::class, 'getBatalModal'])->name('purchasing.pengiriman.batal-modal');
+    Route::post('pengiriman/batal', [PengirimanController::class, 'batalPengiriman'])->name('purchasing.pengiriman.batal');
+    
+    // Review routes
+    Route::post('pengiriman/review', [PengirimanController::class, 'storeReview'])->name('purchasing.pengiriman.store-review');
+    Route::put('pengiriman/{pengiriman}/review', [PengirimanController::class, 'updateReview'])->name('purchasing.pengiriman.update-review');
+    
+    Route::resource('pengiriman', PengirimanController::class)->names([
+        'index' => 'purchasing.pengiriman.index',
+        'create' => 'purchasing.pengiriman.create',
+        'store' => 'purchasing.pengiriman.store',
+        'show' => 'purchasing.pengiriman.show',
+        'edit' => 'purchasing.pengiriman.edit',
+        'update' => 'purchasing.pengiriman.update',
+        'destroy' => 'purchasing.pengiriman.destroy',
+    ]);
+    Route::put('pengiriman/{pengiriman}/status', [PengirimanController::class, 'updateStatus'])->name('purchasing.pengiriman.update-status');
+    Route::get('pengiriman/{pengiriman}/detail', [PengirimanController::class, 'getDetail'])->name('purchasing.pengiriman.get-detail');
+    Route::get('pengiriman/{pengiriman}/detail-berhasil', [PengirimanController::class, 'getDetailBerhasil'])->name('purchasing.pengiriman.detail-berhasil');
+    Route::get('pengiriman/{pengiriman}/detail-gagal', [PengirimanController::class, 'getDetailGagal'])->name('purchasing.pengiriman.detail-gagal');
+    Route::get('pengiriman/{pengiriman}/detail-verifikasi', [PengirimanController::class, 'getDetailVerifikasi'])->name('purchasing.pengiriman.detail-verifikasi');
+    Route::get('pengiriman/{pengiriman}/revisi-modal', [PengirimanController::class, 'getRevisiModal'])->name('purchasing.pengiriman.revisi-modal');
+    Route::get('pengiriman/{pengiriman}/verifikasi-modal', [PengirimanController::class, 'getVerifikasiModal'])->name('purchasing.pengiriman.verifikasi-modal');
+    Route::get('pengiriman/{pengiriman}/modal/revisi', [PengirimanController::class, 'getRevisiModal'])->name('purchasing.pengiriman.modal.revisi');
+    Route::get('pengiriman/{pengiriman}/modal/verifikasi', [PengirimanController::class, 'getVerifikasiModal'])->name('purchasing.pengiriman.modal.verifikasi');
+    Route::post('pengiriman/{pengiriman}/verifikasi', [PengirimanController::class, 'verifikasiPengiriman'])->name('purchasing.pengiriman.verifikasi');
+    Route::post('pengiriman/{pengiriman}/revisi', [PengirimanController::class, 'revisiPengiriman'])->name('purchasing.pengiriman.revisi');
+    Route::get('pengiriman/{pengiriman}/aksi-modal', [PengirimanController::class, 'getAksiModal'])->name('purchasing.pengiriman.aksi-modal');
+    Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
+});
 
 // Klien routes
 Route::get('/klien', function() {

@@ -37,31 +37,35 @@
             </div>
         </div>
 
-        {{-- Selected Suppliers Detail --}}
+        {{-- Note about supplier selection: penawaran records all offers, selection occurs at ordering --}}
         <div class="border-t border-blue-200 pt-3">
-            <div class="flex items-center mb-2">
-                <i class="fas fa-check-circle text-blue-600 mr-2"></i>
-                <span class="font-semibold text-blue-900 text-sm">Supplier yang Dipilih:</span>
+            <div class="flex items-start gap-2 mb-2">
+                <i class="fas fa-info-circle text-blue-600 mt-1"></i>
+                <div>
+                    <div class="font-semibold text-blue-900 text-sm">Supplier tercatat sebagai tawaran alternatif</div>
+                    <div class="text-xs text-blue-700">Semua tawaran supplier untuk setiap material akan disimpan pada bagian alternatif. Pilihan akhir supplier dilakukan saat pembuatan Purchase Order.</div>
+                </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+
+            {{-- Show cheapest supplier per material for quick reference --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
                 @foreach($marginAnalysis as $index => $analysis)
                     @php
-                        $selectedSupplierId = $selectedSuppliers[$index] ?? $analysis['best_supplier_id'];
-                        $selectedSupplier = collect($analysis['supplier_options'])->firstWhere('supplier_id', $selectedSupplierId);
+                        $best = collect($analysis['supplier_options'] ?? [])->firstWhere('is_best', true) ?? null;
                     @endphp
-                    @if($selectedSupplier)
+                    @if($best)
                         <div class="bg-white border border-blue-200 rounded-lg p-2 flex items-center gap-2">
-                            <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-building text-white text-[10px]"></i>
+                            <div class="w-6 h-6 bg-green-600 rounded flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-star text-white text-[10px]"></i>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="text-xs font-semibold text-gray-900 truncate">{{ $analysis['nama'] }}</div>
                                 <div class="text-[10px] text-blue-700 truncate">
-                                    {{ $selectedSupplier['supplier_name'] }} • Rp {{ number_format($selectedSupplier['price'], 0, ',', '.') }}
+                                    {{ $best['supplier_name'] }} • Rp {{ number_format($best['price'], 0, ',', '.') }}
                                 </div>
                             </div>
-                            <div class="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 {{ $selectedSupplier['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($selectedSupplier['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                {{ number_format($selectedSupplier['margin_percent'], 1) }}%
+                            <div class="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 {{ $best['margin_percent'] >= 20 ? 'bg-green-100 text-green-800' : ($best['margin_percent'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                {{ number_format($best['margin_percent'], 1) }}%
                             </div>
                         </div>
                     @endif

@@ -38,7 +38,7 @@
         <table class="w-full table-fixed">
             <thead class="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                    <th class="w-[4%] px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Pilih</th>
+                    {{-- Selection column removed: penawaran is a guide (all supplier offers persisted) --}}
                     <th class="w-[28%] px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Material & Supplier</th>
                     <th class="w-[8%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Qty</th>
                     <th class="w-[11%] px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">H. Klien</th>
@@ -69,31 +69,17 @@
                     
                     @forelse($analysis['supplier_options'] ?? [] as $supplierIndex => $supplier)
                         @php
-                            $isSelected = isset($selectedSuppliers[$materialIndex]) 
-                                ? $selectedSuppliers[$materialIndex] == $supplier['supplier_id']
-                                : $supplier['is_best'];
+                            // No persisted selection in the table view anymore. Highlight the cheapest option instead.
+                            $isBest = $supplier['is_best'];
                         @endphp
-                        <tr class="hover:bg-gray-50 transition-all border-b border-gray-100 {{ $isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'bg-white' }}">
-                            {{-- Supplier Selection Radio --}}
-                            <td class="px-2 py-2">
-                                <div class="flex items-center justify-center">
-                                    <input 
-                                        type="radio" 
-                                        name="selected_supplier_{{ $materialIndex }}"
-                                        value="{{ $supplier['supplier_id'] }}"
-                                        wire:model.live="selectedSuppliers.{{ $materialIndex }}"
-                                        {{ $supplier['is_best'] ? 'checked' : '' }}
-                                        class="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                    >
-                                </div>
-                            </td>
+                        <tr class="hover:bg-gray-50 transition-all border-b border-gray-100 {{ $isBest ? 'bg-green-50 border-l-4 border-l-green-400' : 'bg-white' }}">
                             <td class="px-3 py-2">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-6 h-6 {{ $isSelected ? 'bg-blue-600' : ($supplier['is_best'] ? 'bg-green-500' : 'bg-gray-400') }} rounded flex items-center justify-center flex-shrink-0">
-                                        <i class="fas {{ $isSelected ? 'fa-check' : 'fa-building' }} text-white text-[10px]"></i>
+                                    <div class="w-6 h-6 {{ $isBest ? 'bg-green-600' : 'bg-gray-400' }} rounded flex items-center justify-center flex-shrink-0">
+                                        <i class="fas {{ $isBest ? 'fa-star' : 'fa-building' }} text-white text-[10px]"></i>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <div class="text-xs font-semibold {{ $isSelected ? 'text-blue-900' : ($supplier['is_best'] ? 'text-green-800' : 'text-gray-900') }} truncate">
+                                        <div class="text-xs font-semibold {{ $isBest ? 'text-green-800' : 'text-gray-900' }} truncate">
                                             {{ $supplier['supplier_name'] }}
                                         </div>
                                         @if($supplier['pic_name'])
@@ -101,10 +87,7 @@
                                         @endif
                                     </div>
                                     <div class="flex gap-1">
-                                        @if($isSelected)
-                                            <span class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold flex-shrink-0">DIPILIH</span>
-                                        @endif
-                                        @if($supplier['is_best'])
+                                        @if($isBest)
                                             <span class="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded font-semibold flex-shrink-0">TERMURAH</span>
                                         @endif
                                     </div>

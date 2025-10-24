@@ -127,7 +127,7 @@ class OrderDetail extends Model
     /**
      * Business Logic Methods
      */
-    public function calculateTotals(): void
+    public function calculateTotals(bool $save = true): void
     {
         // Calculate total HPP
         $this->total_hpp = $this->qty * $this->harga_supplier;
@@ -146,7 +146,9 @@ class OrderDetail extends Model
             $this->margin_percentage = ($this->margin_per_unit / $this->harga_jual) * 100;
         }
         
-        $this->save();
+        if ($save) {
+            $this->save();
+        }
     }
 
     public function getProfitCategoryAttribute(): string
@@ -161,7 +163,7 @@ class OrderDetail extends Model
     {
         $this->harga_supplier = $supplierPrice;
         $this->harga_jual = $sellingPrice;
-        $this->calculateTotals();
+        $this->calculateTotals(true);
     }
 
     public function startProcessing(): bool
@@ -187,7 +189,7 @@ class OrderDetail extends Model
             $this->status = 'sebagian_dikirim';
         }
         
-        $this->calculateTotals();
+        $this->calculateTotals(true);
         
         // Update parent order status
         $this->order->updateShippingStatus();
@@ -221,14 +223,14 @@ class OrderDetail extends Model
         parent::boot();
         
         static::creating(function ($orderDetail) {
-            // Auto-calculate totals on creation
-            $orderDetail->calculateTotals();
+            // Auto-calculate totals on creation but don't save (will be saved by the main save operation)
+            $orderDetail->calculateTotals(false);
         });
         
         static::updating(function ($orderDetail) {
             // Recalculate totals when pricing changes
             if ($orderDetail->isDirty(['qty', 'harga_supplier', 'harga_jual'])) {
-                $orderDetail->calculateTotals();
+                $orderDetail->calculateTotals(false);
             }
         });
         

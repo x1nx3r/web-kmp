@@ -157,19 +157,39 @@ class Penawaran extends Model
     {
         $year = now()->year;
         $prefix = "PNW-{$year}-";
-        
-        // Get the latest sequence number for this year
-        $latestPenawaran = static::where('nomor_penawaran', 'like', "{$prefix}%")
-            ->orderBy('nomor_penawaran', 'desc')
-            ->first();
+        // Safely calculate the next sequence number using a DB-level MAX on the
+        // numeric suffix. When called inside a transaction this will use
+        // FOR UPDATE to avoid race conditions that produce duplicate keys.
+        $connectionDriver = DB::connection()->getDriverName();
 
-        if ($latestPenawaran) {
-            // Extract sequence number from nomor like "PNW-2025-0001"
-            $lastSequence = (int) substr($latestPenawaran->nomor_penawaran, -4);
-            $newSequence = $lastSequence + 1;
+        // Build a DB-agnostic expression to extract the numeric suffix
+        if ($connectionDriver === 'sqlite') {
+            // SQLite uses substr and INTEGER cast
+            $selectExpr = 'MAX(CAST(substr(nomor_penawaran, -4) AS INTEGER)) as max_seq';
         } else {
-            $newSequence = 1;
+            // MySQL / MariaDB: RIGHT + UNSIGNED
+            $selectExpr = 'MAX(CAST(RIGHT(nomor_penawaran, 4) AS UNSIGNED)) as max_seq';
         }
+
+        $query = DB::table($this->getTable())
+            ->where('nomor_penawaran', 'like', "{$prefix}%")
+            ->selectRaw($selectExpr);
+
+        // Attempt to apply a FOR UPDATE lock if a transaction is active. This
+        // reduces the chance of duplicate sequence generation under concurrent
+        // requests. If no transaction is active, lockForUpdate will be ignored
+        // (it's a no-op outside transactions on some drivers), but that's an
+        // acceptable fallback for local/dev runs.
+        try {
+            $query = $query->lockForUpdate();
+        } catch (\Exception $e) {
+            // Some DB drivers/environments may throw if lockForUpdate is used
+            // outside a transaction; ignore and continue.
+        }
+
+        $result = $query->first();
+        $lastSequence = $result->max_seq ?? 0;
+        $newSequence = ((int) $lastSequence) + 1;
 
         return $prefix . str_pad($newSequence, 4, '0', STR_PAD_LEFT);
     }

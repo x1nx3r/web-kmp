@@ -1,322 +1,480 @@
 @extends('layouts.app')
 
+@section('title', 'Buat Order Baru')
+
 @section('content')
-<div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white border-b border-gray-200 shadow-sm">
-        <div class="px-6 py-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-plus text-blue-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Buat Order Baru</h1>
-                        <nav class="text-sm text-gray-600">
-                            <a href="{{ route('orders.index') }}" class="hover:text-blue-600">Order</a>
-                            <span class="mx-2">/</span>
-                            <span>Buat Baru</span>
-                        </nav>
-                    </div>
-                </div>
-                <a href="{{ route('orders.index') }}" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    Kembali
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="p-6">
-
-        <!-- Form -->
-        <form action="{{ route('orders.store') }}" method="POST" id="order-form" class="space-y-6">
-            @csrf
-            
-            <!-- Basic Info Card -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                        <i class="fas fa-info-circle text-blue-600 mr-3"></i>
-                        Informasi Umum
-                    </h3>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="klien_id" class="block text-sm font-medium text-gray-700 mb-2">
-                                Klien <span class="text-red-500">*</span>
-                            </label>
-                            <select name="klien_id" id="klien_id" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klien_id') border-red-500 @enderror" 
-                                    required>
-                                <option value="">Pilih Klien</option>
-                                @foreach($kliens as $klien)
-                                    <option value="{{ $klien->id }}" {{ old('klien_id') == $klien->id ? 'selected' : '' }}>
-                                        {{ $klien->nama }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('klien_id')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        
-                        <div>
-                            <label for="tanggal_order" class="block text-sm font-medium text-gray-700 mb-2">
-                                Tanggal Order <span class="text-red-500">*</span>
-                            </label>
-                            <input type="date" name="tanggal_order" id="tanggal_order" 
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('tanggal_order') border-red-500 @enderror" 
-                                   value="{{ old('tanggal_order', date('Y-m-d')) }}" required>
-                            @error('tanggal_order')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                        <div>
-                            <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
-                                Prioritas <span class="text-red-500">*</span>
-                            </label>
-                            <select name="priority" id="priority" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('priority') border-red-500 @enderror" 
-                                    required>
-                                <option value="">Pilih Prioritas</option>
-                                <option value="rendah" {{ old('priority') == 'rendah' ? 'selected' : '' }}>Rendah</option>
-                                <option value="normal" {{ old('priority') == 'normal' ? 'selected' : '' }}>Normal</option>
-                                <option value="tinggi" {{ old('priority') == 'tinggi' ? 'selected' : '' }}>Tinggi</option>
-                                <option value="mendesak" {{ old('priority') == 'mendesak' ? 'selected' : '' }}>Mendesak</option>
-                            </select>
-                            @error('priority')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        
-                        <div>
-                            <label for="catatan" class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
-                            <textarea name="catatan" id="catatan" rows="3" 
-                                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('catatan') border-red-500 @enderror" 
-                                      placeholder="Catatan tambahan untuk order ini">{{ old('catatan') }}</textarea>
-                            @error('catatan')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Order Details Card -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                        <i class="fas fa-list text-blue-600 mr-3"></i>
-                        Detail Order
-                    </h3>
-                    <button type="button" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors" id="add-detail">
-                        <i class="fas fa-plus mr-2"></i>
-                        Tambah Item
-                    </button>
-                </div>
-                <div class="p-6">
-                    <div id="order-details">
-                        <!-- Dynamic order details will be added here -->
-                    </div>
-                    
-                    @error('order_details')
-                        <div class="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">{{ $message }}</div>
-                    @enderror
-                </div>
-            </div>
-
-            <!-- Submit Button -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-6">
-                    <div class="flex space-x-3">
-                        <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-                            <i class="fas fa-save mr-2"></i>
-                            Simpan Order
-                        </button>
-                        <a href="{{ route('orders.index') }}" class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors">
-                            Batal
-                        </a>
-                    </div>
-                </div>
-            </div>
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <form id="order-form" action="{{ route('orders.store') }}" method="POST" class="space-y-6">
+        @csrf
+        
+        {{-- Header Component --}}
+        <x-order.header />
+        
+        {{-- Client Selector Component --}}
+        <x-order.client-selector :kliens="$kliens" />
+        
+        {{-- Order Info Section Component --}}
+        <x-order.info-section />
+        
+        {{-- Order Details Component --}}
+        <x-order.order-details :materials="$materials" :suppliers="$suppliers" />
+        
+        {{-- Action Buttons Component --}}
+        <x-order.action-buttons />
     </form>
 </div>
 
-<!-- Order Detail Template -->
-<template id="order-detail-template">
-    <div class="order-detail-item border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
-        <div class="flex justify-between items-start mb-4">
-            <h4 class="text-lg font-semibold text-gray-900">Item Order #<span class="item-number">1</span></h4>
-            <button type="button" class="px-3 py-1 text-red-600 border border-red-300 hover:bg-red-50 rounded-lg transition-colors remove-detail">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Material <span class="text-red-500">*</span></label>
-                <select name="order_details[INDEX][bahan_baku_klien_id]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent material-select" required>
-                    <option value="">Pilih Material</option>
-                    @foreach($materials as $material)
-                        <option value="{{ $material->id }}">
-                            {{ $material->nama }} - {{ $material->klien->nama }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Supplier <span class="text-red-500">*</span></label>
-                <select name="order_details[INDEX][supplier_id]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent supplier-select" required>
-                    <option value="">Pilih Supplier</option>
-                    @foreach($suppliers as $supplier)
-                        <option value="{{ $supplier->id }}">{{ $supplier->nama }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-        
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Qty <span class="text-red-500">*</span></label>
-                <input type="number" name="order_details[INDEX][qty]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent qty-input" 
-                       step="0.01" min="0.01" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Satuan <span class="text-red-500">*</span></label>
-                <input type="text" name="order_details[INDEX][satuan]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                       placeholder="kg, ton, box, dll" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Harga Supplier <span class="text-red-500">*</span></label>
-                <input type="number" name="order_details[INDEX][harga_supplier]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent supplier-price" 
-                       step="0.01" min="0" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Harga Jual <span class="text-red-500">*</span></label>
-                <input type="number" name="order_details[INDEX][harga_jual]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent selling-price" 
-                       step="0.01" min="0" required>
-            </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Spesifikasi Khusus</label>
-                <textarea name="order_details[INDEX][spesifikasi_khusus]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="2" 
-                          placeholder="Spesifikasi khusus untuk item ini"></textarea>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
-                <textarea name="order_details[INDEX][catatan]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="2" 
-                          placeholder="Catatan untuk item ini"></textarea>
-            </div>
-        </div>
-        
-        <!-- Margin Info -->
-        <div class="mt-4">
-            <div class="margin-info p-3 bg-gray-100 rounded-lg">
-                <p class="text-sm text-gray-600">
-                    <strong>Margin:</strong> 
-                    <span class="margin-amount font-semibold">Rp 0</span> 
-                    (<span class="margin-percentage font-semibold">0%</span>)
-                </p>
-            </div>
-        </div>
-    </div>
-</template>
-
-@push('scripts')
+{{-- Order Create JavaScript Module --}}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let detailIndex = 0;
+class OrderCreateManager {
+    constructor() {
+        this.detailCount = 0;
+        this.materials = @json($materials);
+        this.suppliers = @json($suppliers);
+        console.log('OrderCreateManager initialized');
+        this.init();
+    }
     
-    const addDetailBtn = document.getElementById('add-detail');
-    const orderDetailsContainer = document.getElementById('order-details');
-    const template = document.getElementById('order-detail-template');
+    init() {
+        this.setupEventListeners();
+        this.updateItemsCount();
+        this.updateSummary();
+    }
     
-    // Add first detail on load
-    addDetail();
-    
-    addDetailBtn.addEventListener('click', addDetail);
-    
-    function addDetail() {
-        const clone = template.content.cloneNode(true);
+    setupEventListeners() {
+        // Add detail button
+        document.getElementById('add-detail')?.addEventListener('click', () => this.addOrderDetail());
         
-        // Replace INDEX placeholder with actual index
-        const html = clone.firstElementChild.outerHTML.replace(/INDEX/g, detailIndex);
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        const detailElement = tempDiv.firstElementChild;
-        
-        // Update item number
-        detailElement.querySelector('.item-number').textContent = detailIndex + 1;
-        
-        // Add event listeners
-        const removeBtn = detailElement.querySelector('.remove-detail');
-        removeBtn.addEventListener('click', function() {
-            if (orderDetailsContainer.children.length > 1) {
-                detailElement.remove();
-                updateItemNumbers();
+        // Client selection handling
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.client-button')) {
+                this.handleClientSelection(e.target.closest('.client-button'));
             }
         });
         
-        // Add margin calculation listeners
-        const qtyInput = detailElement.querySelector('.qty-input');
-        const supplierPrice = detailElement.querySelector('.supplier-price');
-        const sellingPrice = detailElement.querySelector('.selling-price');
-        
-        [qtyInput, supplierPrice, sellingPrice].forEach(input => {
-            input.addEventListener('input', function() {
-                calculateMargin(detailElement);
-            });
+        // Client search handling
+        document.getElementById('client-search')?.addEventListener('input', (e) => {
+            this.handleClientSearch(e.target.value);
         });
         
-        orderDetailsContainer.appendChild(detailElement);
-        detailIndex++;
-    }
-    
-    function updateItemNumbers() {
-        const items = orderDetailsContainer.querySelectorAll('.order-detail-item');
-        items.forEach((item, index) => {
-            item.querySelector('.item-number').textContent = index + 1;
+        // Form submission validation
+        document.getElementById('order-form')?.addEventListener('submit', (e) => {
+            if (!this.validateForm()) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Material change handlers will be attached to each new detail
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('material-select')) {
+                this.handleMaterialChange(e.target);
+            }
+            if (e.target.classList.contains('qty-input') || 
+                e.target.classList.contains('supplier-price') || 
+                e.target.classList.contains('selling-price')) {
+                this.updateMarginCalculation(e.target.closest('.order-detail-item'));
+                this.updateSummary();
+            }
+        });
+        
+        // Remove detail handlers
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-detail')) {
+                this.removeOrderDetail(e.target.closest('.order-detail-item'));
+            }
+            if (e.target.closest('.show-alternatives-btn')) {
+                this.toggleAlternatives(e.target.closest('.order-detail-item'));
+            }
         });
     }
     
-    function calculateMargin(element) {
-        const qty = parseFloat(element.querySelector('.qty-input').value) || 0;
-        const supplierPrice = parseFloat(element.querySelector('.supplier-price').value) || 0;
-        const sellingPrice = parseFloat(element.querySelector('.selling-price').value) || 0;
+    addOrderDetail() {
+        this.detailCount++;
+        const template = document.getElementById('order-detail-template');
+        const clone = template.content.cloneNode(true);
         
-        const totalCost = qty * supplierPrice;
-        const totalRevenue = qty * sellingPrice;
-        const margin = totalRevenue - totalCost;
-        const marginPercentage = totalCost > 0 ? (margin / totalCost * 100) : 0;
+        // Update indexes and IDs
+        this.updateDetailIndexes(clone, this.detailCount - 1);
         
-        const marginAmount = element.querySelector('.margin-amount');
-        const marginPercentageSpan = element.querySelector('.margin-percentage');
+        // Add to container
+        const container = document.getElementById('order-details');
+        container.appendChild(clone);
         
-        marginAmount.textContent = 'Rp ' + margin.toLocaleString('id-ID');
-        marginPercentageSpan.textContent = marginPercentage.toFixed(1) + '%';
+        // Update UI
+        this.updateItemsCount();
+        this.updateVisibility();
         
-        // Color coding
-        const marginInfo = element.querySelector('.margin-info');
-        marginInfo.className = 'margin-info p-2 rounded ';
-        
-        if (marginPercentage >= 20) {
-            marginInfo.classList.add('bg-success-subtle', 'text-success');
-        } else if (marginPercentage >= 10) {
-            marginInfo.classList.add('bg-warning-subtle', 'text-warning');
-        } else if (marginPercentage >= 0) {
-            marginInfo.classList.add('bg-info-subtle', 'text-info');
-        } else {
-            marginInfo.classList.add('bg-danger-subtle', 'text-danger');
+        // Trigger validation update
+        if (window.updateValidation) {
+            window.updateValidation();
         }
     }
+    
+    removeOrderDetail(detailElement) {
+        if (confirm('Hapus item ini dari order?')) {
+            detailElement.remove();
+            this.updateItemNumbers();
+            this.updateItemsCount();
+            this.updateVisibility();
+            this.updateSummary();
+            
+            if (window.updateValidation) {
+                window.updateValidation();
+            }
+        }
+    }
+    
+    updateDetailIndexes(element, index) {
+        // Update all name attributes
+        const inputs = element.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.name) {
+                input.name = input.name.replace('INDEX', index);
+            }
+        });
+        
+        // Update item number
+        const itemNumber = element.querySelector('.item-number');
+        if (itemNumber) {
+            itemNumber.textContent = index + 1;
+        }
+    }
+    
+    updateItemNumbers() {
+        const details = document.querySelectorAll('.order-detail-item');
+        details.forEach((detail, index) => {
+            const itemNumber = detail.querySelector('.item-number');
+            if (itemNumber) {
+                itemNumber.textContent = index + 1;
+            }
+            
+            // Update form indexes
+            const inputs = detail.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.name && input.name.includes('[')) {
+                    const baseName = input.name.substring(0, input.name.indexOf('['));
+                    const fieldName = input.name.substring(input.name.lastIndexOf('['));
+                    input.name = `${baseName}[${index}]${fieldName}`;
+                }
+            });
+        });
+    }
+    
+    updateItemsCount() {
+        const count = document.querySelectorAll('.order-detail-item').length;
+        const counter = document.getElementById('items-count');
+        if (counter) {
+            counter.textContent = `${count} items`;
+        }
+    }
+    
+    updateVisibility() {
+        const details = document.querySelectorAll('.order-detail-item');
+        const emptyState = document.getElementById('empty-state');
+        const summary = document.getElementById('order-summary');
+        
+        if (details.length === 0) {
+            emptyState?.classList.remove('hidden');
+            summary?.classList.add('hidden');
+        } else {
+            emptyState?.classList.add('hidden');
+            summary?.classList.remove('hidden');
+        }
+    }
+    
+    async handleMaterialChange(materialSelect) {
+        const materialId = materialSelect.value;
+        const detailItem = materialSelect.closest('.order-detail-item');
+        
+        if (!materialId) {
+            this.clearSupplierOptions(detailItem);
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/orders/material/${materialId}/suppliers`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.updateSupplierOptions(detailItem, data.suppliers);
+                this.updateAlternatives(detailItem, data.suppliers);
+            }
+        } catch (error) {
+            console.error('Error fetching suppliers:', error);
+            this.clearSupplierOptions(detailItem);
+        }
+    }
+    
+    updateSupplierOptions(detailItem, suppliers) {
+        const supplierSelect = detailItem.querySelector('.supplier-select');
+        if (!supplierSelect) return;
+        
+        // Clear existing options except the first one
+        supplierSelect.innerHTML = '<option value="">Pilih Supplier</option>';
+        
+        // Add supplier options
+        suppliers.forEach(supplier => {
+            const option = document.createElement('option');
+            option.value = supplier.supplier_id;
+            option.textContent = `${supplier.supplier_name} - ${this.formatCurrency(supplier.harga_per_unit)}`;
+            option.dataset.price = supplier.harga_per_unit;
+            supplierSelect.appendChild(option);
+        });
+        
+        // Auto-select first supplier if available
+        if (suppliers.length > 0) {
+            supplierSelect.value = suppliers[0].supplier_id;
+            this.updateSupplierPrice(detailItem, suppliers[0].harga_per_unit);
+        }
+    }
+    
+    updateSupplierPrice(detailItem, price) {
+        const supplierPriceInput = detailItem.querySelector('.supplier-price');
+        if (supplierPriceInput) {
+            supplierPriceInput.value = price;
+            this.updateMarginCalculation(detailItem);
+        }
+    }
+    
+    updateAlternatives(detailItem, suppliers) {
+        const alternativesList = detailItem.querySelector('.alternatives-list');
+        const showBtn = detailItem.querySelector('.show-alternatives-btn');
+        
+        if (!alternativesList || suppliers.length <= 1) {
+            showBtn?.style.setProperty('display', 'none');
+            return;
+        }
+        
+        showBtn?.style.setProperty('display', 'inline-block');
+        
+        alternativesList.innerHTML = suppliers.map((supplier, index) => `
+            <div class="flex justify-between items-center py-2 ${index > 0 ? 'border-t border-gray-100' : ''}">
+                <div>
+                    <span class="font-medium">${this.escapeHtml(supplier.supplier_name)}</span>
+                    ${index === 0 ? '<span class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Terpilih</span>' : ''}
+                </div>
+                <div class="text-right">
+                    <div class="font-semibold">${this.formatCurrency(supplier.harga_per_unit)}</div>
+                    ${supplier.margin_percentage ? '<div class="text-xs text-gray-500">Margin: ' + supplier.margin_percentage + '%</div>' : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    toggleAlternatives(detailItem) {
+        const alternativesList = detailItem.querySelector('.alternatives-list');
+        const btn = detailItem.querySelector('.show-alternatives-btn');
+        
+        if (alternativesList.classList.contains('hidden')) {
+            alternativesList.classList.remove('hidden');
+            btn.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> Sembunyikan alternatif';
+        } else {
+            alternativesList.classList.add('hidden');
+            btn.innerHTML = '<i class="fas fa-eye mr-1"></i> Lihat alternatif supplier';
+        }
+    }
+    
+    clearSupplierOptions(detailItem) {
+        const supplierSelect = detailItem.querySelector('.supplier-select');
+        const alternativesList = detailItem.querySelector('.alternatives-list');
+        const showBtn = detailItem.querySelector('.show-alternatives-btn');
+        
+        if (supplierSelect) {
+            supplierSelect.innerHTML = '<option value="">Pilih Supplier</option>';
+        }
+        if (alternativesList) {
+            alternativesList.innerHTML = '';
+            alternativesList.classList.add('hidden');
+        }
+        if (showBtn) {
+            showBtn.style.display = 'none';
+        }
+    }
+    
+    updateMarginCalculation(detailItem) {
+        const qty = parseFloat(detailItem.querySelector('.qty-input')?.value) || 0;
+        const supplierPrice = parseFloat(detailItem.querySelector('.supplier-price')?.value) || 0;
+        const sellingPrice = parseFloat(detailItem.querySelector('.selling-price')?.value) || 0;
+        
+        const totalCost = qty * supplierPrice;
+        const totalSelling = qty * sellingPrice;
+        const margin = totalSelling - totalCost;
+        const marginPercentage = totalCost > 0 ? (margin / totalCost) * 100 : 0;
+        
+        const marginAmountEl = detailItem.querySelector('.margin-amount');
+        const marginPercentageEl = detailItem.querySelector('.margin-percentage');
+        
+        if (marginAmountEl) {
+            marginAmountEl.textContent = this.formatCurrency(margin);
+            marginAmountEl.className = `margin-amount font-semibold ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        }
+        
+        if (marginPercentageEl) {
+            marginPercentageEl.textContent = `(${marginPercentage.toFixed(1)}%)`;
+            marginPercentageEl.className = `margin-percentage text-sm ml-2 ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        }
+    }
+    
+    updateSummary() {
+        const details = document.querySelectorAll('.order-detail-item');
+        let totalItems = 0;
+        let totalCost = 0;
+        let totalSelling = 0;
+        
+        details.forEach(detail => {
+            const qty = parseFloat(detail.querySelector('.qty-input')?.value) || 0;
+            const supplierPrice = parseFloat(detail.querySelector('.supplier-price')?.value) || 0;
+            const sellingPrice = parseFloat(detail.querySelector('.selling-price')?.value) || 0;
+            
+            if (qty > 0) {
+                totalItems += qty;
+                totalCost += qty * supplierPrice;
+                totalSelling += qty * sellingPrice;
+            }
+        });
+        
+        const margin = totalSelling - totalCost;
+        const marginPercentage = totalCost > 0 ? (margin / totalCost) * 100 : 0;
+        
+        // Update summary elements
+        document.getElementById('summary-items')?.textContent = totalItems.toFixed(2);
+        document.getElementById('summary-total')?.textContent = this.formatCurrency(totalSelling);
+        document.getElementById('summary-cost')?.textContent = this.formatCurrency(totalCost);
+        document.getElementById('summary-margin')?.textContent = 
+            `${this.formatCurrency(margin)} (${marginPercentage.toFixed(1)}%)`;
+    }
+    
+    formatCurrency(amount) {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount || 0);
+    }
+    
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+    
+    handleClientSelection(clientButton) {
+        const clientId = clientButton.dataset.clientId;
+        const clientName = clientButton.dataset.clientName;
+        
+        // Update hidden input
+        const klienIdInput = document.getElementById('klien_id');
+        if (klienIdInput) {
+            klienIdInput.value = clientId;
+        }
+        
+        // Update visual selection - remove all selections first
+        document.querySelectorAll('.client-button').forEach(button => {
+            button.classList.remove('border-blue-500', 'bg-blue-50');
+            button.classList.add('border-gray-200');
+            
+            // Hide selected icon, show unselected icon
+            button.querySelector('.client-selected-icon')?.classList.add('hidden');
+            button.querySelector('.client-unselected-icon')?.classList.remove('hidden');
+        });
+        
+        // Highlight selected client
+        clientButton.classList.remove('border-gray-200');
+        clientButton.classList.add('border-blue-500', 'bg-blue-50');
+        
+        // Show selected icon, hide unselected icon
+        clientButton.querySelector('.client-selected-icon')?.classList.remove('hidden');
+        clientButton.querySelector('.client-unselected-icon')?.classList.add('hidden');
+        
+        // Update header indicator
+        const indicator = document.getElementById('selected-client-indicator');
+        const nameSpan = document.getElementById('selected-client-name');
+        if (indicator && nameSpan) {
+            indicator.classList.remove('hidden');
+            nameSpan.textContent = clientName;
+        }
+        
+        console.log('Client selected:', clientName, 'ID:', clientId);
+    }
+    
+    handleClientSearch(searchTerm) {
+        const buttons = document.querySelectorAll('.client-button');
+        const grid = document.getElementById('client-grid');
+        const noResults = document.getElementById('no-search-results');
+        let visibleCount = 0;
+        
+        const search = searchTerm.toLowerCase().trim();
+        
+        buttons.forEach(button => {
+            const searchData = button.dataset.clientSearch;
+            const isVisible = !search || searchData.includes(search);
+            
+            button.style.display = isVisible ? 'block' : 'none';
+            if (isVisible) visibleCount++;
+        });
+        
+        // Show/hide no results message
+        if (visibleCount === 0 && search) {
+            grid.classList.add('hidden');
+            noResults.classList.remove('hidden');
+        } else {
+            grid.classList.remove('hidden');
+            noResults.classList.add('hidden');
+        }
+    }
+    
+    validateForm() {
+        const errors = [];
+        
+        // Check if client is selected
+        const klienId = document.getElementById('klien_id')?.value;
+        if (!klienId) {
+            errors.push('Silakan pilih klien terlebih dahulu');
+        }
+        
+        // Check if there are order details
+        const orderDetails = document.querySelectorAll('.order-detail-item');
+        if (orderDetails.length === 0) {
+            errors.push('Tambahkan minimal satu item order');
+        }
+        
+        // Check each order detail
+        orderDetails.forEach((detail, index) => {
+            const material = detail.querySelector('.material-select')?.value;
+            const supplier = detail.querySelector('.supplier-select')?.value;
+            const qty = detail.querySelector('.qty-input')?.value;
+            const satuan = detail.querySelector('input[name*="[satuan]"]')?.value;
+            const hargaSupplier = detail.querySelector('.supplier-price')?.value;
+            const hargaJual = detail.querySelector('.selling-price')?.value;
+            
+            if (!material) errors.push(`Item ${index + 1}: Pilih material`);
+            if (!supplier) errors.push(`Item ${index + 1}: Pilih supplier`);
+            if (!qty || parseFloat(qty) <= 0) errors.push(`Item ${index + 1}: Masukkan quantity yang valid`);
+            if (!satuan) errors.push(`Item ${index + 1}: Masukkan satuan`);
+            if (!hargaSupplier || parseFloat(hargaSupplier) < 0) errors.push(`Item ${index + 1}: Masukkan harga supplier`);
+            if (!hargaJual || parseFloat(hargaJual) < 0) errors.push(`Item ${index + 1}: Masukkan harga jual`);
+        });
+        
+        if (errors.length > 0) {
+            alert('Mohon perbaiki kesalahan berikut:\n\n' + errors.join('\n'));
+            return false;
+        }
+        
+        return true;
+    }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    new OrderCreateManager();
 });
 </script>
-@endpush
+
 @endsection

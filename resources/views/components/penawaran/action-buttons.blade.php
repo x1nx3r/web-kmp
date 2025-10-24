@@ -12,9 +12,9 @@
                     <h3 class="font-semibold text-gray-900">Aksi Penawaran</h3>
                     <p class="text-sm text-gray-600">
                         @if($editMode ?? false)
-                            Perbarui draft atau kirim untuk verifikasi
+                            Perbarui draft atau kirim untuk verifikasi. Penawaran disimpan sebagai panduan, bukan penetapan supplier.
                         @else
-                            Simpan sebagai draft atau kirim untuk verifikasi
+                            Simpan penawaran sebagai panduan atau kirim untuk verifikasi. Pilihan supplier akan dipilih saat membuat Purchase Order.
                         @endif
                     </p>
                 </div>

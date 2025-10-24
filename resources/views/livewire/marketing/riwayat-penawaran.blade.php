@@ -209,12 +209,21 @@
                                                 </span>
                                             </td>
                                             <td class="px-3 py-3">
-                                                <div class="font-medium text-gray-900">{{ $detail->supplier->nama }}</div>
-                                                @if($detail->supplier->picPurchasing)
-                                                    <div class="text-xs text-gray-500">
-                                                        <i class="fas fa-user-tie mr-1"></i>
-                                                        PIC: {{ $detail->supplier->picPurchasing->nama }}
-                                                    </div>
+                                                @if($detail->supplier)
+                                                    <div class="font-medium text-gray-900">{{ $detail->supplier->nama }}</div>
+                                                    @if($detail->supplier->picPurchasing)
+                                                        <div class="text-xs text-gray-500">
+                                                            <i class="fas fa-user-tie mr-1"></i>
+                                                            PIC: {{ $detail->supplier->picPurchasing->nama }}
+                                                        </div>
+                                                    @endif
+                                                @else
+                                                    <div class="font-medium text-gray-500">Belum dipilih</div>
+                                                    @if(method_exists($detail, 'alternativeSuppliers') && $detail->alternativeSuppliers && $detail->alternativeSuppliers->count())
+                                                        <div class="text-xs text-gray-500 truncate">
+                                                            Alternatif: {{ $detail->alternativeSuppliers->map(function($a){ return optional($a->supplier)->nama; })->filter()->unique()->join(', ') }}
+                                                        </div>
+                                                    @endif
                                                 @endif
                                             </td>
                                             <td class="px-3 py-3">

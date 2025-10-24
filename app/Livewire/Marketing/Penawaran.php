@@ -824,54 +824,57 @@ class Penawaran extends Component
                     $selectedSupplierId = $selectedSupplierData["supplier_id"];
                 }
 
-                // Get BahanBakuSupplier record to find the actual Supplier ID
-                $bahanBakuSupplier = BahanBakuSupplier::find(
-                    $selectedSupplierId,
-                );
+                // Determine the actual BahanBakuSupplier record for the selected supplier
+                $bahanBakuSupplierRecord = BahanBakuSupplier::find($selectedSupplierId);
 
-                if (!$bahanBakuSupplier) {
-                    throw new \Exception(
-                        "Bahan baku supplier tidak ditemukan untuk {$analysis["nama"]}",
-                    );
-                }
+                // Calculate financials based on the selected (best) supplier
+                $quantity = $analysis["quantity"];
+                $revenue = $analysis["revenue"];
+                $hargaSupplier = $selectedSupplierData["price"] ?? 0;
+                $subtotalCost = $hargaSupplier * $quantity;
+                $subtotalProfit = $revenue - $subtotalCost;
+                $marginPercentage = $revenue > 0 ? ($subtotalProfit / $revenue) * 100 : 0;
 
-                // Create detail record
+                // Create detail record and set the best supplier as the selected one
                 $detail = PenawaranDetail::create([
                     "penawaran_id" => $penawaran->id,
                     "bahan_baku_klien_id" => $analysis["material_id"],
-                    "supplier_id" => $bahanBakuSupplier->supplier_id,
-                    "bahan_baku_supplier_id" => $bahanBakuSupplier->id,
+                    // Persist the supplier table id and the bahan_baku_supplier id so other
+                    // UI/logic that expects a selected supplier continues to work.
+                    "supplier_id" => $bahanBakuSupplierRecord
+                        ? $bahanBakuSupplierRecord->supplier_id
+                        : null,
+                    "bahan_baku_supplier_id" => $bahanBakuSupplierRecord
+                        ? $bahanBakuSupplierRecord->id
+                        : null,
                     "nama_material" => $analysis["nama"],
                     "satuan" => $analysis["satuan"],
-                    "quantity" => $analysis["quantity"],
+                    "quantity" => $quantity,
                     "harga_klien" => $analysis["klien_price"],
-                    "harga_supplier" => $selectedSupplierData["price"],
+                    "harga_supplier" => $hargaSupplier,
+                    "subtotal_cost" => $subtotalCost,
+                    "subtotal_profit" => $subtotalProfit,
+                    "margin_percentage" => $marginPercentage,
                     "is_custom_price" => $analysis["is_custom_price"] ?? false,
-                    "subtotal_revenue" => $analysis["revenue"],
-                    "subtotal_cost" => $selectedSupplierData["cost"],
-                    "subtotal_profit" => $selectedSupplierData["profit"],
-                    "margin_percentage" =>
-                        $selectedSupplierData["margin_percent"],
+                    "subtotal_revenue" => $revenue,
                 ]);
 
-                // Save alternative suppliers (excluding the selected one)
+                // Persist ALL supplier offers for this detail into penawaran_alternative_suppliers
+                // (including the previously 'selected' or 'best' supplier).
                 foreach ($analysis["supplier_options"] as $supplierOption) {
-                    if ($supplierOption["supplier_id"] != $selectedSupplierId) {
-                        // Get BahanBakuSupplier for alternative
-                        $altBahanBakuSupplier = BahanBakuSupplier::find(
-                            $supplierOption["supplier_id"],
-                        );
+                    // supplierOption['supplier_id'] currently holds the BahanBakuSupplier id
+                    $altBahanBakuSupplier = BahanBakuSupplier::find(
+                        $supplierOption["supplier_id"],
+                    );
 
-                        if ($altBahanBakuSupplier) {
-                            PenawaranAlternativeSupplier::create([
-                                "penawaran_detail_id" => $detail->id,
-                                "supplier_id" =>
-                                    $altBahanBakuSupplier->supplier_id,
-                                "bahan_baku_supplier_id" =>
-                                    $altBahanBakuSupplier->id,
-                                "harga_supplier" => $supplierOption["price"],
-                            ]);
-                        }
+                    if ($altBahanBakuSupplier) {
+                        PenawaranAlternativeSupplier::create([
+                            "penawaran_detail_id" => $detail->id,
+                            // Use the actual Supplier id for the uniqueness constraint
+                            "supplier_id" => $altBahanBakuSupplier->supplier_id,
+                            "bahan_baku_supplier_id" => $altBahanBakuSupplier->id,
+                            "harga_supplier" => $supplierOption["price"],
+                        ]);
                     }
                 }
             }

@@ -5,16 +5,16 @@
     <div class="px-6 py-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-chart-line text-blue-600 text-lg"></i>
+                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-plus-circle text-indigo-600 text-lg"></i>
                 </div>
                 <div>
                     <div class="flex items-center space-x-3">
                         <h1 class="text-2xl font-bold text-gray-900">
                             @if($editMode)
-                                Edit Penawaran (Panduan)
+                                Edit Order
                             @else
-                                Analisis Penawaran — Panduan Pembelian
+                                Buat Order Baru
                             @endif
                         </h1>
                         @if($editMode)
@@ -26,17 +26,21 @@
                     </div>
                     <p class="text-gray-600 text-sm">
                         @if($editMode)
-                            Ubah data penawaran draft Anda. Catatan: penawaran bersifat panduan—semua tawaran supplier dicatat, pilihan final supplier dibuat saat pembuatan Purchase Order.
+                            Ubah detail order. Pastikan informasi sudah sesuai sebelum menyimpan.
                         @else
-                            Dashboard analisis margin & profitabilitas. Penawaran disimpan sebagai panduan untuk tim pembelian; pilihan supplier tidak dipilih secara permanen di sini.
+                            Pilih klien, tentukan material dan supplier untuk membuat order pembelian baru.
                         @endif
                     </p>
                 </div>
             </div>
             <div class="flex items-center space-x-4">
-                <a href="{{ route('penawaran.index') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center">
+                <a href="{{ route('orders.index') }}" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Kembali
+                </a>
+                <a href="{{ route('orders.index') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center">
                     <i class="fas fa-list mr-2"></i>
-                    Lihat Semua Penawaran
+                    Lihat Semua Order
                 </a>
             </div>
         </div>

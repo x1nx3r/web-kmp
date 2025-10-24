@@ -48,6 +48,8 @@ Route::get('/marketing/spesifikasi', function() {
 
 // Order routes
 Route::resource('orders', OrderController::class);
+// API: get top suppliers for a client material (used in order creation UI)
+Route::get('/orders/material/{material}/suppliers', [OrderController::class, 'getSuppliersForMaterial'])->name('orders.material.suppliers');
 Route::prefix('orders/{order}')->group(function () {
     Route::post('/confirm', [OrderController::class, 'confirm'])->name('orders.confirm');
     Route::post('/start-processing', [OrderController::class, 'startProcessing'])->name('orders.start-processing');

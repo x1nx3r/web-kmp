@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Superadmin;
+namespace App\Http\Controllers\Direktur;
 
 use App\Models\User;
 use Illuminate\Http\Request;

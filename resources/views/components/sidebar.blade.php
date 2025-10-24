@@ -133,13 +133,15 @@
             </li>
 
 
-            <!-- Pengelolaan Akun -->
+            <!-- Pengelolaan Akun - Only for Direktur -->
+            @if(auth()->check() && auth()->user()->role === 'direktur')
             <li>
                 <a href="{{ route('pengelolaan-akun.index') }}" class="flex items-center space-x-3 {{ request()->routeIs('pengelolaan-akun.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <i class="fas fa-users-cog w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('pengelolaan-akun.*') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Pengelolaan Akun</span>
                 </a>
             </li>
+            @endif
 
             <!-- Verifikasi Proyek -->
             <li>
@@ -163,7 +165,7 @@
                     </a>
                 </li>
                 <li>
-                    <button onclick="handleLogout()" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group w-full text-left">
+                    <button onclick="showSidebarLogoutModal()" class="flex items-center space-x-3 text-gray-800 hover:text-red-800 rounded-xl px-4 py-3 transition-all group w-full text-left">
                         <i class="fas fa-sign-out-alt w-5 text-lg group-hover:translate-x-1 transition-transform duration-300"></i>
                         <span class="font-medium">Keluar</span>
                     </button>
@@ -313,15 +315,17 @@
                 </ul>
             </li>
 
-            <!-- Other menu items -->
-     
+            <!-- Pengelolaan Akun - Only for Direktur (Mobile) -->
+            @if(auth()->check() && auth()->user()->role === 'direktur')
             <li>
                 <a href="{{ route('pengelolaan-akun.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('pengelolaan-akun.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <i class="fas fa-users-cog w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('pengelolaan-akun.*') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Pengelolaan Akun</span>
                 </a>
             </li>
+            @endif
 
+            <!-- Verifikasi Proyek -->
             <li>
                 <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
                     <i class="fas fa-check-double w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
@@ -340,7 +344,7 @@
                     </a>
                 </li>
                 <li>
-                    <button onclick="handleLogout()" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group w-full text-left">
+                    <button onclick="showSidebarLogoutModal()" class="flex items-center space-x-3 text-gray-800 hover:text-red-800 rounded-xl px-4 py-3 transition-all group w-full text-left">
                         <i class="fas fa-sign-out-alt w-5 text-lg group-hover:translate-x-1 transition-transform duration-300"></i>
                         <span class="font-medium">Keluar</span>
                     </button>
@@ -349,6 +353,7 @@
         </div>
     </nav>
 </div>
+
 
 <script>
 // Dropdown toggle functions for desktop
@@ -391,10 +396,35 @@ function closeMobileMenu() {
     }
 }
 
-function handleLogout() {
-    if (confirm('Apakah Anda yakin ingin keluar?')) {
-        alert('Logout berhasil! (Ini hanya demo)');
-    }
+// Show logout modal from sidebar
+function showSidebarLogoutModal() {
+    document.getElementById('sidebarLogoutModal').classList.remove('hidden');
+    document.getElementById('sidebarLogoutModal').style.display = 'flex';
+}
+
+// Hide sidebar logout modal
+function hideSidebarLogoutModal() {
+    const modal = document.getElementById('sidebarLogoutModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+}
+
+// Handle logout from sidebar
+function confirmSidebarLogout() {
+    // Create form and submit logout request
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("logout") }}';
+    
+    // Add CSRF token
+    const csrfToken = document.createElement('input');
+    csrfToken.type = 'hidden';
+    csrfToken.name = '_token';
+    csrfToken.value = '{{ csrf_token() }}';
+    form.appendChild(csrfToken);
+    
+    document.body.appendChild(form);
+    form.submit();
 }
 
 // Auto-expand menu based on current route
@@ -436,5 +466,49 @@ document.addEventListener('DOMContentLoaded', function() {
             mobileMarketingChevron.classList.add('rotate-180');
         }
     }
+    
+    // Close modal when clicking outside
+    document.getElementById('sidebarLogoutModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideSidebarLogoutModal();
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            hideSidebarLogoutModal();
+        }
+    });
 });
 </script>
+
+<!-- Sidebar Logout Modal -->
+<div id="sidebarLogoutModal" class="fixed inset-0 bg-black/20 bg-opacity-50 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div class="flex items-center mb-4">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                    <i class="fas fa-sign-out-alt text-red-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Logout</h3>
+                    <p class="text-sm text-gray-600">Apakah Anda yakin ingin keluar?</p>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <p class="text-gray-700">Anda akan keluar dari sistem dan perlu login kembali untuk mengakses halaman ini.</p>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="hideSidebarLogoutModal()" class="flex-1 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                    Batal
+                </button>
+                <button onclick="confirmSidebarLogout()" class="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Keluar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

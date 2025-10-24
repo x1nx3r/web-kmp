@@ -173,18 +173,8 @@
                                 <i class="fas fa-weight-hanging mr-1 text-{{ $color }}-500 text-xs"></i>
                                 Satuan
                             </label>
-                            <select name="bahan_baku[{{ $index }}][satuan]"
-                                    class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-{{ $color }}-200 focus:border-{{ $color }}-500 bg-white transition-all duration-200">
-                                <option value="">Pilih Satuan</option>
-                                <option value="kg" {{ $bahanBaku->satuan == 'kg' ? 'selected' : '' }}>KG</option>
-                                <option value="gram" {{ $bahanBaku->satuan == 'gram' ? 'selected' : '' }}>GR</option>
-                                <option value="ton" {{ $bahanBaku->satuan == 'ton' ? 'selected' : '' }}>Ton</option>
-                                <option value="liter" {{ $bahanBaku->satuan == 'liter' ? 'selected' : '' }}>L</option>
-                                <option value="ml" {{ $bahanBaku->satuan == 'ml' ? 'selected' : '' }}>ML</option>
-                                <option value="pcs" {{ $bahanBaku->satuan == 'pcs' ? 'selected' : '' }}>PCS</option>
-                                <option value="pack" {{ $bahanBaku->satuan == 'pack' ? 'selected' : '' }}>Pack</option>
-                                <option value="box" {{ $bahanBaku->satuan == 'box' ? 'selected' : '' }}>Box</option>
-                            </select>
+                            <input type="text" name="bahan_baku[{{ $index }}][satuan]" value="Kg" readonly
+                                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed transition-all duration-200">
                         </div>
                         
                         <div>
@@ -386,18 +376,8 @@ function addBahanBaku() {
                         <i class="fas fa-weight-hanging mr-1 ${colors.icon} text-xs"></i>
                         Satuan
                     </label>
-                    <select name="bahan_baku[${newIndex}][satuan]"
-                            class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg ${colors.focus} bg-white transition-all duration-200">
-                        <option value="">Pilih Satuan</option>
-                        <option value="kg">KG</option>
-                        <option value="gram">GR</option>
-                        <option value="ton">Ton</option>
-                        <option value="liter">L</option>
-                        <option value="ml">ML</option>
-                        <option value="pcs">PCS</option>
-                        <option value="pack">Pack</option>
-                        <option value="box">Box</option>
-                    </select>
+                    <input type="text" name="bahan_baku[${newIndex}][satuan]" value="Kg" readonly
+                           class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed transition-all duration-200">
                 </div>
                 
                 <div>
@@ -569,7 +549,7 @@ function showDetailModal(button) {
     const supplierSlug = actionUrl.match(/supplier\/([^\/]+)/)?.[1] || '{{ $supplier->slug }}';
     
     // Redirect to price history page using slugs
-    const url = `/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
+    const url = `/procurement/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
     window.location.href = url;
 }
 

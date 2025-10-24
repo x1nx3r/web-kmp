@@ -742,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Redirect to price history page
 function redirectToRiwayatHarga(supplierSlug, bahanBakuSlug) {
-    const url = `/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
+    const url = `/procurement/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
     window.location.href = url;
 }
 
@@ -773,7 +773,7 @@ function confirmDelete() {
         // Create and submit delete form
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/supplier/${supplierSlugToDelete}`;
+        form.action = `/procurement/supplier/${supplierSlugToDelete}`;
         form.style.display = 'none';
         
         // Add CSRF token

@@ -18,8 +18,13 @@
         <!-- Desktop Welcome Section -->
         <div class="hidden lg:flex items-center space-x-4">
             <div class="text-gray-800">
-                <h2 class="text-lg font-semibold">Selamat Datang, John Doe</h2>
-                <p class="text-sm text-gray-600">Administrator</p>
+                @auth
+                <h2 class="text-lg font-semibold">Selamat Datang, {{ auth()->user()->nama }}</h2>
+                <p class="text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</p>
+                @else
+                <h2 class="text-lg font-semibold">Selamat Datang, Guest</h2>
+                <p class="text-sm text-gray-600">Tamu</p>
+                @endauth
             </div>
         </div>
 
@@ -48,8 +53,13 @@
                         <i class="fas fa-user text-white text-xs lg:text-sm"></i>
                     </div>
                     <div class="hidden md:block text-left">
-                        <p class="font-semibold text-sm">John Doe</p>
-                        <p class="text-xs text-gray-500">Administrator</p>
+                        @auth
+                        <p class="font-semibold text-sm">{{ auth()->user()->nama }}</p>
+                        <p class="text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</p>
+                        @else
+                        <p class="font-semibold text-sm">Guest</p>
+                        <p class="text-xs text-gray-500">Tamu</p>
+                        @endauth
                     </div>
                     <i class="fas fa-chevron-down text-xs lg:text-sm"></i>
                 </button>
@@ -57,16 +67,22 @@
                 <!-- User Dropdown Menu -->
                 <div id="userMenu" class="absolute right-0 mt-3 w-48 lg:w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 hidden z-50">
                     <div class="px-4 py-3 border-b border-gray-100">
-                        <p class="font-semibold text-gray-800">John Doe</p>
-                        <p class="text-sm text-gray-500">john.doe@example.com</p>
-                        <p class="text-xs text-gray-400 mt-1">Administrator</p>
+                        @auth
+                        <p class="font-semibold text-gray-800">{{ auth()->user()->nama }}</p>
+                        <p class="text-sm text-gray-500">{{ auth()->user()->email }}</p>
+                        <p class="text-xs text-gray-400 mt-1">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</p>
+                        @else
+                        <p class="font-semibold text-gray-800">Guest</p>
+                        <p class="text-sm text-gray-500">-</p>
+                        <p class="text-xs text-gray-400 mt-1">Tamu</p>
+                        @endauth
                     </div>
 
                     <a href="#" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200">
                         <i class="fas fa-cog mr-3 w-4"></i>Pengaturan
                     </a>
                     <div class="border-t border-gray-100 mt-2"></div>
-                    <button onclick="handleLogout()" class="flex items-center w-full px-4 py-3 text-sm text-green-600 hover:bg-green-50 transition-colors duration-200">
+                    <button onclick="showLogoutModal()" class="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200">
                         <i class="fas fa-sign-out-alt mr-3 w-4"></i>Keluar
                     </button>
                 </div>
@@ -105,11 +121,37 @@ function closeMobileMenu() {
     }
 }
 
+// Show logout modal
+function showLogoutModal() {
+    const modal = document.getElementById('logoutModal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    document.getElementById('userMenu').classList.add('hidden');
+}
+
+// Hide logout modal
+function hideLogoutModal() {
+    const modal = document.getElementById('logoutModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+}
+
 // Handle logout
-function handleLogout() {
-    if (confirm('Apakah Anda yakin ingin keluar?')) {
-        alert('Logout berhasil! (Ini hanya demo)');
-    }
+function confirmLogout() {
+    // Create form and submit logout request
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("logout") }}';
+    
+    // Add CSRF token
+    const csrfToken = document.createElement('input');
+    csrfToken.type = 'hidden';
+    csrfToken.name = '_token';
+    csrfToken.value = '{{ csrf_token() }}';
+    form.appendChild(csrfToken);
+    
+    document.body.appendChild(form);
+    form.submit();
 }
 
 // Event Listeners
@@ -142,11 +184,50 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             closeMobileMenu();
+            hideLogoutModal();
             const userMenu = document.getElementById('userMenu');
             if (userMenu) {
                 userMenu.classList.add('hidden');
             }
         }
     });
+    
+    // Close logout modal when clicking outside
+    const logoutModal = document.getElementById('logoutModal');
+    if (logoutModal) {
+        logoutModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideLogoutModal();
+            }
+        });
+    }
 });
 </script>
+
+<!-- Logout Modal -->
+<div id="logoutModal" class="fixed inset-0 bg-black/20 bg-opacity-50 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+        <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <i class="fas fa-sign-out-alt text-red-600 text-xl"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Logout</h3>
+                <p class="text-sm text-gray-600">Apakah Anda yakin ingin keluar?</p>
+            </div>
+        </div>
+        
+        <div class="mb-6">
+            <p class="text-gray-700">Anda akan keluar dari sistem dan perlu login kembali untuk mengakses halaman ini.</p>
+        </div>
+        
+        <div class="flex space-x-3">
+            <button onclick="hideLogoutModal()" class="flex-1 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                Batal
+            </button>
+            <button onclick="confirmLogout()" class="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200">
+                <i class="fas fa-sign-out-alt mr-2"></i>Keluar
+            </button>
+        </div>
+    </div>
+</div>

@@ -354,7 +354,7 @@ function submitSearchGagal() {
     params.append('gagal_page', '1');
     
     // Redirect with new parameters
-    const url = '/purchasing/pengiriman' + (params.toString() ? '?' + params.toString() : '');
+    const url = '/procurement/pengiriman' + (params.toString() ? '?' + params.toString() : '');
     window.location.href = url;
 }
 
@@ -383,7 +383,7 @@ function openDetailModalGagal(pengirimanId) {
     modal.classList.remove('hidden');
     
     // Fetch pengiriman detail
-    fetch(`/purchasing/pengiriman/${pengirimanId}/detail-gagal`, {
+    fetch(`/procurement/pengiriman/${pengirimanId}/detail-gagal`, {
         method: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -534,7 +534,7 @@ function clearAllFiltersGagal() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pengiriman-gagal');
     
-    window.location.href = '/purchasing/pengiriman?' + newParams.toString();
+    window.location.href = '/procurement/pengiriman?' + newParams.toString();
 }
 
 // Initialize filters on page load

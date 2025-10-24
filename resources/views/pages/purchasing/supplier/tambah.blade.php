@@ -133,18 +133,8 @@
                             <i class="fas fa-weight-hanging mr-1 text-green-500 text-xs"></i>
                             Satuan
                         </label>
-                        <select name="bahan_baku[0][satuan]"
-                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200">
-                            <option value="">Pilih Satuan</option>
-                            <option value="kg">KG</option>
-                            <option value="gram">GR</option>
-                            <option value="ton">Ton</option>
-                            <option value="liter">L</option>
-                            <option value="ml">ML</option>
-                            <option value="pcs">PCS</option>
-                            <option value="pack">Pack</option>
-                            <option value="box">Box</option>
-                        </select>
+                        <input type="text" name="bahan_baku[0][satuan]" value="Kg" readonly
+                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed transition-all duration-200">
                     </div>
                     
                     <div>
@@ -333,18 +323,8 @@ function addBahanBaku() {
                         <i class="fas fa-weight-hanging mr-1 ${colors.icon} text-xs"></i>
                         Satuan
                     </label>
-                    <select name="bahan_baku[${newIndex}][satuan]"
-                            class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg ${colors.focus} bg-white transition-all duration-200">
-                        <option value="">Pilih Satuan</option>
-                        <option value="kg">KG</option>
-                        <option value="gram">GR</option>
-                        <option value="ton">Ton</option>
-                        <option value="liter">L</option>
-                        <option value="ml">ML</option>
-                        <option value="pcs">PCS</option>
-                        <option value="pack">Pack</option>
-                        <option value="box">Box</option>
-                    </select>
+                    <input type="text" name="bahan_baku[${newIndex}][satuan]" value="Kg" readonly
+                           class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed transition-all duration-200">
                 </div>
                 
                 <div>

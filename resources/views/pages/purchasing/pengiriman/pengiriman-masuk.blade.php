@@ -385,7 +385,7 @@ function submitSearchMasuk() {
     currentParams.delete('masuk_page');
     
     // Navigate to new URL
-    window.location.href = '/purchasing/pengiriman?' + currentParams.toString();
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Apply filters function for server-side filtering
@@ -420,7 +420,7 @@ function applyFiltersMasuk() {
     // Reset to first page when filtering
     currentParams.delete('masuk_page');
     
-    const newUrl = '/purchasing/pengiriman?' + currentParams.toString();
+    const newUrl = '/procurement/pengiriman?' + currentParams.toString();
     console.log('Navigating to:', newUrl);
     
     // Navigate to new URL
@@ -477,12 +477,12 @@ function clearAllFiltersMasuk() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pengiriman-masuk');
     
-    window.location.href = '/purchasing/pengiriman?' + newParams.toString();
+    window.location.href = '/procurement/pengiriman?' + newParams.toString();
 }
 
 function showPengirimanDetail(id) {
     // Open detail modal
-    fetch(`/purchasing/pengiriman/${id}/detail`)
+    fetch(`/procurement/pengiriman/${id}/detail`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -517,7 +517,7 @@ function updatePengirimanStatus(id, status, catatan = null) {
         payload.catatan = catatan;
     }
     
-    fetch(`/purchasing/pengiriman/${id}/status`, {
+    fetch(`/procurement/pengiriman/${id}/status`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -531,7 +531,7 @@ function updatePengirimanStatus(id, status, catatan = null) {
             // Refresh current tab
             const currentParams = new URLSearchParams(window.location.search);
             currentParams.set('tab', 'pengiriman-masuk');
-            window.location.href = '/purchasing/pengiriman?' + currentParams.toString();
+            window.location.href = '/procurement/pengiriman?' + currentParams.toString();
         } else {
             alert('Gagal mengupdate status pengiriman');
         }
@@ -592,7 +592,7 @@ function openAksiModal(pengirimanId, noPengiriman, status) {
     modal.classList.remove('hidden');
     
     // Load content from detail.blade.php
-    fetch(`/purchasing/pengiriman/${pengirimanId}/aksi-modal`)
+    fetch(`/procurement/pengiriman/${pengirimanId}/aksi-modal`)
         .then(response => response.text())
         .then(html => {
             modalContent.innerHTML = html;
@@ -652,7 +652,7 @@ function openBatalModal() {
     console.log('Loading batal modal for pengiriman ID:', pengirimanId);
     
     // Load batal modal content with pengiriman_id parameter
-    fetch(`/purchasing/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
+    fetch(`/procurement/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
     .then(response => {
         console.log('Batal modal response status:', response.status);
         return response.text();
@@ -839,7 +839,7 @@ function showSubmitModal(formData) {
     console.log('Stored formData in showSubmitModal:', window.globalSubmissionData);
     
     // Load submit modal content
-    fetch(`/purchasing/pengiriman/submit-modal?pengiriman_id=${pengirimanId}`)
+    fetch(`/procurement/pengiriman/submit-modal?pengiriman_id=${pengirimanId}`)
         .then(response => response.text())
         .then(html => {
             // Close any existing Swal loading
@@ -1051,7 +1051,7 @@ function confirmSubmit() {
     console.log('Data to submit:', dataToSubmit);
     
     // Submit to backend
-    fetch('/purchasing/pengiriman/submit', {
+    fetch('/procurement/pengiriman/submit', {
         method: 'POST',
         body: dataToSubmit,
         headers: {
@@ -1161,7 +1161,7 @@ function submitBatalPengiriman() {
             });
 
             // Submit form via AJAX
-            fetch('/purchasing/pengiriman/batal', {
+            fetch('/procurement/pengiriman/batal', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -1304,7 +1304,7 @@ function saveReviewThenSubmit(formData) {
     }
     
     // Submit review first
-    fetch('/purchasing/pengiriman/review', {
+    fetch('/procurement/pengiriman/review', {
         method: 'POST',
         body: reviewData,
         headers: {

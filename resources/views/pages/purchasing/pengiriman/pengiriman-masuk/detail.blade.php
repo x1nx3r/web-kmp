@@ -395,7 +395,7 @@ function openBatalModal() {
     console.log('Loading batal modal for pengiriman ID:', pengirimanId);
     
     // Load batal modal content with pengiriman_id parameter
-    fetch(`/purchasing/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
+    fetch(`/procurement/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
     .then(response => {
         console.log('Batal modal response status:', response.status);
         return response.text();

@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Marketing\KlienController;
-use App\Http\Controllers\PengelolaanAkunController;
+use App\Http\Controllers\Superadmin\PengelolaanAkunController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\ForecastingController;
 use App\Http\Controllers\Purchasing\PengirimanController;

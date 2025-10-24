@@ -392,7 +392,7 @@ function refreshWithPreservedParams() {
     if (currentParams.get('sort_order_gagal')) params.append('sort_order_gagal', currentParams.get('sort_order_gagal'));
     
     // Reload with preserved parameters
-    window.location.href = '/forecasting?' + params.toString();
+    window.location.href = '/procurement/forecasting?' + params.toString();
 }
 
 // Global function to close success modal and refresh

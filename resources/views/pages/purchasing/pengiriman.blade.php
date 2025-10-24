@@ -430,7 +430,7 @@ window.addEventListener('popstate', function(event) {
 function verifikasiPengiriman(id) {
     if (confirm('Apakah Anda yakin ingin memverifikasi pengiriman ini?')) {
         // Call API to verify pengiriman
-        fetch(`/purchasing/pengiriman/${id}/status`, {
+        fetch(`/procurement/pengiriman/${id}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -453,7 +453,7 @@ function tolakPengiriman(id) {
     const alasan = prompt('Masukkan alasan penolakan:');
     if (alasan) {
         // Call API to reject pengiriman
-        fetch(`/purchasing/pengiriman/${id}/status`, {
+        fetch(`/procurement/pengiriman/${id}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -476,7 +476,7 @@ function tolakPengiriman(id) {
 function kirimUlang(id) {
     if (confirm('Apakah Anda yakin ingin mengirim ulang pengiriman ini?')) {
         // Call API to resend pengiriman
-        fetch(`/purchasing/pengiriman/${id}/status`, {
+        fetch(`/procurement/pengiriman/${id}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

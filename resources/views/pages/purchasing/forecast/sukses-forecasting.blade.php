@@ -327,7 +327,7 @@ function submitSearchSukses() {
     params.append('page_sukses', '1');
     
     // Redirect with new parameters
-    const url = '/forecasting' + (params.toString() ? '?' + params.toString() : '');
+    const url = '/procurement/forecasting' + (params.toString() ? '?' + params.toString() : '');
     window.location.href = url;
 }
 
@@ -354,7 +354,7 @@ function openDetailModal(forecastId) {
     modal.classList.remove('hidden');
     
     // Fetch forecast detail
-    fetch(`/purchasing/forecast/${forecastId}/detail`, {
+    fetch(`/procurement/forecasting/${forecastId}/detail`, {
         method: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -504,7 +504,7 @@ function clearAllFiltersSukses() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'sukses');
     
-    window.location.href = '/forecasting?' + newParams.toString();
+    window.location.href = '/procurement/forecasting?' + newParams.toString();
 }
 
 // Initialize filters on page load

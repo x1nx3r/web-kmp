@@ -569,7 +569,7 @@ function showDetailModal(button) {
     const supplierSlug = actionUrl.match(/supplier\/([^\/]+)/)?.[1] || '{{ $supplier->slug }}';
     
     // Redirect to price history page using slugs
-    const url = `/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
+    const url = `/procurement/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
     window.location.href = url;
 }
 

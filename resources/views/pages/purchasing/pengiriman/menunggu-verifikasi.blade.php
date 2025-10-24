@@ -399,7 +399,7 @@ function submitSearchVerifikasi() {
     
     currentParams.delete('verifikasi_page');
     
-    window.location.href = '/purchasing/pengiriman?' + currentParams.toString();
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Apply filters function for server-side filtering
@@ -423,7 +423,7 @@ function applyFiltersVerifikasi() {
     
     currentParams.delete('verifikasi_page');
     
-    window.location.href = '/purchasing/pengiriman?' + currentParams.toString();
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Clear all filters
@@ -433,7 +433,7 @@ function clearAllFiltersVerifikasi() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'menunggu-verifikasi');
     
-    window.location.href = '/purchasing/pengiriman?' + newParams.toString();
+    window.location.href = '/procurement/pengiriman?' + newParams.toString();
 }
 
 // Open aksi verifikasi modal
@@ -442,7 +442,7 @@ function openAksiVerifikasiModal(id, noPengiriman, status) {
     currentPengirimanId = id;
     console.log('currentPengirimanId set to:', currentPengirimanId);
     
-    fetch(`/purchasing/pengiriman/${id}/detail-verifikasi`)
+    fetch(`/procurement/pengiriman/${id}/detail-verifikasi`)
         .then(response => {
             console.log('Response status:', response.status);
             if (!response.ok) {
@@ -557,7 +557,7 @@ function openRevisiModalFromDetail() {
         return;
     }
     
-    fetch(`/purchasing/pengiriman/${currentPengirimanId}/modal/revisi`)
+    fetch(`/procurement/pengiriman/${currentPengirimanId}/modal/revisi`)
     .then(response => response.text())
     .then(html => {
         // Create modal container if not exists
@@ -592,7 +592,7 @@ function openVerifikasiModalFromDetail() {
         return;
     }
     
-    fetch(`/purchasing/pengiriman/${currentPengirimanId}/modal/verifikasi`)
+    fetch(`/procurement/pengiriman/${currentPengirimanId}/modal/verifikasi`)
     .then(response => response.text())
     .then(html => {
         // Create modal container if not exists
@@ -733,7 +733,7 @@ function submitRevisiPengiriman() {
             });
             
             // Submit via AJAX
-            fetch(`/purchasing/pengiriman/${pengirimanId}/revisi`, {
+            fetch(`/procurement/pengiriman/${pengirimanId}/revisi`, {
                 method: 'POST',
                 body: JSON.stringify({
                     catatan: catatan
@@ -836,7 +836,7 @@ function submitVerifikasiPengiriman() {
             });
             
             // Submit to server
-            fetch(`/purchasing/pengiriman/${pengirimanId}/verifikasi`, {
+            fetch(`/procurement/pengiriman/${pengirimanId}/verifikasi`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

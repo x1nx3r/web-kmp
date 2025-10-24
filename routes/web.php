@@ -14,27 +14,29 @@ Route::get('/dashboard', function () {
     return view('pages.dashboard');
 })->name('dashboard');
 
-// Supplier routes
-Route::get('/supplier', [SupplierController::class, 'index'])->name('supplier.index');
-Route::get('/supplier/create', [SupplierController::class, 'create'])->name('supplier.create');
-Route::post('/supplier', [SupplierController::class, 'store'])->name('supplier.store');
-Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->name('supplier.show');
-Route::get('/supplier/{supplier:slug}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
-Route::put('/supplier/{supplier:slug}', [SupplierController::class, 'update'])->name('supplier.update');
-Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
-Route::get('/supplier/{supplier:slug}/reviews', [SupplierController::class, 'reviews'])->name('supplier.reviews');
-Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
+// Procurement routes wrapper
+Route::prefix('procurement')->group(function () {
+    
+    // Supplier routes
+    Route::get('/supplier', [SupplierController::class, 'index'])->name('supplier.index');
+    Route::get('/supplier/create', [SupplierController::class, 'create'])->name('supplier.create');
+    Route::post('/supplier', [SupplierController::class, 'store'])->name('supplier.store');
+    Route::get('/supplier/{supplier:slug}', [SupplierController::class, 'show'])->name('supplier.show');
+    Route::get('/supplier/{supplier:slug}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
+    Route::put('/supplier/{supplier:slug}', [SupplierController::class, 'update'])->name('supplier.update');
+    Route::delete('/supplier/{supplier:slug}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
+    Route::get('/supplier/{supplier:slug}/reviews', [SupplierController::class, 'reviews'])->name('supplier.reviews');
+    Route::get('/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga', [SupplierController::class, 'riwayatHarga'])->name('supplier.riwayat-harga');
 
-// Forecasting routes
-Route::get('/forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
-Route::get('/forecasting/bahan-baku-suppliers/{purchaseOrderBahanBakuId}', [ForecastingController::class, 'getBahanBakuSuppliers'])->name('forecasting.get-bahan-baku-suppliers');
-Route::post('/forecasting/create', [ForecastingController::class, 'createForecast'])->name('forecasting.create');
-Route::get('/purchasing/forecast/{id}/detail', [ForecastingController::class, 'getForecastDetail'])->name('forecasting.detail');
-Route::post('/purchasing/forecast/{id}/kirim', [ForecastingController::class, 'kirimForecast'])->name('forecasting.kirim');
-Route::post('/purchasing/forecast/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
+    // Forecasting routes
+    Route::get('/forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
+    Route::get('/forecasting/bahan-baku-suppliers/{purchaseOrderBahanBakuId}', [ForecastingController::class, 'getBahanBakuSuppliers'])->name('forecasting.get-bahan-baku-suppliers');
+    Route::post('/forecasting/create', [ForecastingController::class, 'createForecast'])->name('forecasting.create');
+    Route::get('/forecasting/{id}/detail', [ForecastingController::class, 'getForecastDetail'])->name('forecasting.detail');
+    Route::post('/forecasting/{id}/kirim', [ForecastingController::class, 'kirimForecast'])->name('forecasting.kirim');
+    Route::post('/forecasting/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
 
-// Pengiriman routes
-Route::prefix('purchasing')->group(function () {
+    // Pengiriman routes
     // Routes tanpa parameter harus diletakkan sebelum resource routes
     Route::get('pengiriman/submit-modal', [PengirimanController::class, 'getSubmitModal'])->name('purchasing.pengiriman.submit-modal');
     Route::post('pengiriman/submit', [PengirimanController::class, 'submitPengiriman'])->name('purchasing.pengiriman.submit');

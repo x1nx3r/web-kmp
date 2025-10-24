@@ -366,7 +366,7 @@ function submitSearchBerhasil() {
     params.append('berhasil_page', '1');
     
     // Redirect with new parameters
-    const url = '/purchasing/pengiriman' + (params.toString() ? '?' + params.toString() : '');
+    const url = '/procurement/pengiriman' + (params.toString() ? '?' + params.toString() : '');
     window.location.href = url;
 }
 
@@ -383,7 +383,7 @@ function clearAllFiltersBerhasil() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pengiriman-berhasil');
     
-    window.location.href = '/purchasing/pengiriman?' + newParams.toString();
+    window.location.href = '/procurement/pengiriman?' + newParams.toString();
 }
 
 // Initialize filters on page load

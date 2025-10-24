@@ -36,7 +36,7 @@ function openDetailModalSukses(forecastId) {
     modal.classList.remove('hidden');
     
     // Fetch forecast detail
-    fetch(`/purchasing/forecast/${forecastId}/detail`, {
+    fetch(`/procurement/forecasting/${forecastId}/detail`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',

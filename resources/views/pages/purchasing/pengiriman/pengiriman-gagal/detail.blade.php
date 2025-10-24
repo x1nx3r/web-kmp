@@ -36,7 +36,7 @@ function openDetailModalGagal(pengirimanId) {
     modal.classList.remove('hidden');
     
     // Fetch pengiriman detail
-    fetch(`/purchasing/pengiriman/${pengirimanId}/detail-gagal`, {
+    fetch(`/procurement/pengiriman/${pengirimanId}/detail-gagal`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',

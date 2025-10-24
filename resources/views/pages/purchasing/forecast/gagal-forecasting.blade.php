@@ -310,7 +310,7 @@ function submitSearchGagal() {
     params.append('page_gagal', '1');
     
     // Redirect with new parameters
-    const url = '/forecasting' + (params.toString() ? '?' + params.toString() : '');
+    const url = '/procurement/forecasting' + (params.toString() ? '?' + params.toString() : '');
     window.location.href = url;
 }
 
@@ -327,7 +327,7 @@ function clearAllFiltersGagal() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'gagal');
     
-    window.location.href = '/forecasting?' + newParams.toString();
+    window.location.href = '/procurement/forecasting?' + newParams.toString();
 }
 
 // Initialize filters on page load

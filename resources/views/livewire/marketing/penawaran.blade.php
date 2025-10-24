@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Chart state management
     let lastUpdateTime = 0;
     
-    // Function to interpolate missing data points for smoother lines
+    // Function to interpolate missing data points for smoother lines with backward extrapolation
     function interpolateData(priceHistory, allDates) {
         if (!priceHistory || priceHistory.length === 0) return [];
         
@@ -110,31 +110,76 @@ document.addEventListener('DOMContentLoaded', function() {
             historyMap.set(point.formatted_tanggal, point);
         });
         
-        let lastKnownPrice = null;
-        let nextKnownPrice = null;
+        // Sort all dates chronologically
+        const sortedDates = [...allDates].sort((a, b) => {
+            if (a === todayFormatted) return 1; // Today always last
+            if (b === todayFormatted) return -1;
+            return new Date(a + ', 2025') - new Date(b + ', 2025');
+        });
         
-        allDates.forEach((date, index) => {
+        // Find first and last actual data points for extrapolation bounds
+        let firstActualPrice = null;
+        let lastActualPrice = null;
+        
+        // Get first actual price
+        for (const date of sortedDates) {
+            if (historyMap.has(date)) {
+                firstActualPrice = historyMap.get(date).harga;
+                break;
+            }
+        }
+        
+        // Get last actual price  
+        for (let i = sortedDates.length - 1; i >= 0; i--) {
+            const date = sortedDates[i];
+            if (historyMap.has(date) && !historyMap.get(date).extrapolated) {
+                lastActualPrice = historyMap.get(date).harga;
+                break;
+            }
+        }
+        
+        sortedDates.forEach((date, index) => {
             if (historyMap.has(date)) {
                 // We have actual data for this date
                 const actualPoint = historyMap.get(date);
                 result.push(actualPoint);
-                lastKnownPrice = actualPoint.harga;
             } else {
-                // Find next known price for interpolation
-                nextKnownPrice = null;
-                for (let i = index + 1; i < allDates.length; i++) {
-                    if (historyMap.has(allDates[i])) {
-                        nextKnownPrice = historyMap.get(allDates[i]).harga;
+                // Need to interpolate/extrapolate this date
+                let interpolatedPrice = null;
+                
+                // Find surrounding actual data points
+                let prevPrice = null;
+                let nextPrice = null;
+                
+                // Look backwards for previous actual price
+                for (let i = index - 1; i >= 0; i--) {
+                    if (historyMap.has(sortedDates[i]) && !historyMap.get(sortedDates[i]).extrapolated) {
+                        prevPrice = historyMap.get(sortedDates[i]).harga;
                         break;
                     }
                 }
                 
-                // Interpolate or use last known price
-                let interpolatedPrice = lastKnownPrice;
-                if (lastKnownPrice && nextKnownPrice && lastKnownPrice !== nextKnownPrice) {
-                    // Simple linear interpolation could be added here
-                    // For now, just use the last known price to maintain trend
-                    interpolatedPrice = lastKnownPrice;
+                // Look forwards for next actual price
+                for (let i = index + 1; i < sortedDates.length; i++) {
+                    if (historyMap.has(sortedDates[i]) && !historyMap.get(sortedDates[i]).extrapolated) {
+                        nextPrice = historyMap.get(sortedDates[i]).harga;
+                        break;
+                    }
+                }
+                
+                // Determine interpolation strategy
+                if (prevPrice !== null && nextPrice !== null) {
+                    // Interpolate between two known points
+                    interpolatedPrice = prevPrice; // Use previous price for simplicity
+                } else if (prevPrice !== null) {
+                    // Forward extrapolation (use last known price)
+                    interpolatedPrice = prevPrice;
+                } else if (nextPrice !== null) {
+                    // Backward extrapolation (use first known price)
+                    interpolatedPrice = nextPrice;
+                } else if (firstActualPrice !== null) {
+                    // Fallback to first actual price if available
+                    interpolatedPrice = firstActualPrice;
                 }
                 
                 if (interpolatedPrice !== null) {
@@ -576,7 +621,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const extendedHistory = extrapolateToToday(supplier.price_history || [], `${materialData.nama} - ${supplier.supplier_name}`);
             
             return {
-                label: supplier.supplier_name + (supplier.is_best ? ' (Best)' : ''),
+                label: supplier.supplier_name + 
+                       (supplier.pic_name ? ` (PIC: ${supplier.pic_name})` : '') +
+                       (supplier.is_best ? ' (Best)' : ''),
                 data: extendedHistory.map(point => point.harga),
                 borderColor: supplier.is_best ? colors[0].border : color.border,
                 backgroundColor: supplier.is_best ? colors[0].bg : color.bg,
@@ -651,8 +698,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update point styling for the transformed data
             pointBackgroundColor: sortedDates.map(date => {
                 const point = dataset.extendedHistory.find(p => p.formatted_tanggal === date);
+                if (point?.interpolated) return 'transparent'; // Hide interpolated points
                 if (point?.extrapolated) return 'rgb(239, 68, 68)'; // Red for extrapolated
-                if (point?.interpolated) return 'rgb(59, 130, 246)'; // Blue for interpolated
                 return dataset.borderColor;
             }),
             pointRadius: sortedDates.map(date => {
@@ -660,8 +707,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isExtrapolated = point?.extrapolated;
                 const isInterpolated = point?.interpolated;
                 const isBest = dataset.label.includes('(Best)');
-                if (isBest) return isExtrapolated ? 6 : isInterpolated ? 4 : 5;
-                return isExtrapolated ? 5 : isInterpolated ? 3 : 4;
+                
+                // Hide interpolated points (make them invisible)
+                if (isInterpolated) return 0;
+                
+                // Show actual data points and today's extrapolated point
+                if (isBest) return isExtrapolated ? 6 : 5;
+                return isExtrapolated ? 5 : 4;
             })
         }));
         

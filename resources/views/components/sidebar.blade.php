@@ -101,15 +101,15 @@
                             <span class="font-medium">Forecasting</span>
                         </a>
                     </li>
-              
+
                 </ul>
             </li>
 
             <!-- Accounting Dropdown -->
             <li>
-                <button onclick="toggleDropdown('keuangan')" class="flex items-center justify-between w-full text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleDropdown('keuangan')" class="flex items-center justify-between w-full {{ request()->routeIs('accounting.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-coins w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                        <i class="fas fa-coins w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Accounting</span>
                     </div>
                     <i id="keuangan-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -118,14 +118,14 @@
                 <!-- Submenu -->
                 <ul id="keuangan-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="#" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-check-circle w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('accounting.approval-pembayaran') }}" class="flex items-center space-x-3 {{ request()->routeIs('accounting.approval-pembayaran') ? 'text-green-800 bg-green-100' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-money-check-alt w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.approval-pembayaran') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Approval Pembayaran</span>
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-receipt w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('accounting.approval-penagihan') }}" class="flex items-center space-x-3 {{ request()->routeIs('accounting.approval-penagihan') ? 'text-green-800 bg-green-100' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-file-invoice-dollar w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.approval-penagihan') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Approval Penagihan</span>
                         </a>
                     </li>
@@ -284,7 +284,7 @@
                             <span class="font-medium">Forecasting</span>
                         </a>
                     </li>
-                
+
                 </ul>
             </li>
 
@@ -360,7 +360,7 @@
 function toggleDropdown(menuName) {
     const menu = document.getElementById(menuName + '-menu');
     const chevron = document.getElementById(menuName + '-chevron');
-    
+
     if (menu.classList.contains('hidden')) {
         menu.classList.remove('hidden');
         chevron.classList.add('rotate-180');
@@ -374,7 +374,7 @@ function toggleDropdown(menuName) {
 function toggleMobileDropdown(menuName) {
     const menu = document.getElementById('mobile-' + menuName + '-menu');
     const chevron = document.getElementById('mobile-' + menuName + '-chevron');
-    
+
     if (menu.classList.contains('hidden')) {
         menu.classList.remove('hidden');
         chevron.classList.add('rotate-180');
@@ -415,14 +415,14 @@ function confirmSidebarLogout() {
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '{{ route("logout") }}';
-    
+
     // Add CSRF token
     const csrfToken = document.createElement('input');
     csrfToken.type = 'hidden';
     csrfToken.name = '_token';
     csrfToken.value = '{{ csrf_token() }}';
     form.appendChild(csrfToken);
-    
+
     document.body.appendChild(form);
     form.submit();
 }
@@ -430,50 +430,50 @@ function confirmSidebarLogout() {
 // Auto-expand menu based on current route
 document.addEventListener('DOMContentLoaded', function() {
     const currentPath = window.location.pathname;
-    
+
     // Auto-expand purchasing menu if on supplier pages
     if (currentPath.includes('/supplier')) {
         const purchasingMenu = document.getElementById('purchasing-menu');
         const purchasingChevron = document.getElementById('purchasing-chevron');
         const mobilePurchasingMenu = document.getElementById('mobile-purchasing-menu');
         const mobilePurchasingChevron = document.getElementById('mobile-purchasing-chevron');
-        
+
         if (purchasingMenu) {
             purchasingMenu.classList.remove('hidden');
             purchasingChevron.classList.add('rotate-180');
         }
-        
+
         if (mobilePurchasingMenu) {
             mobilePurchasingMenu.classList.remove('hidden');
             mobilePurchasingChevron.classList.add('rotate-180');
         }
     }
-    
+
     // Auto-expand marketing menu if on klien pages
     if (currentPath.includes('/klien')) {
         const marketingMenu = document.getElementById('marketing-menu');
         const marketingChevron = document.getElementById('marketing-chevron');
         const mobileMarketingMenu = document.getElementById('mobile-marketing-menu');
         const mobileMarketingChevron = document.getElementById('mobile-marketing-chevron');
-        
+
         if (marketingMenu) {
             marketingMenu.classList.remove('hidden');
             marketingChevron.classList.add('rotate-180');
         }
-        
+
         if (mobileMarketingMenu) {
             mobileMarketingMenu.classList.remove('hidden');
             mobileMarketingChevron.classList.add('rotate-180');
         }
     }
-    
+
     // Close modal when clicking outside
     document.getElementById('sidebarLogoutModal').addEventListener('click', function(e) {
         if (e.target === this) {
             hideSidebarLogoutModal();
         }
     });
-    
+
     // Close modal with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
@@ -496,11 +496,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p class="text-sm text-gray-600">Apakah Anda yakin ingin keluar?</p>
                 </div>
             </div>
-            
+
             <div class="mb-6">
                 <p class="text-gray-700">Anda akan keluar dari sistem dan perlu login kembali untuk mengakses halaman ini.</p>
             </div>
-            
+
             <div class="flex space-x-3">
                 <button onclick="hideSidebarLogoutModal()" class="flex-1 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
                     Batal

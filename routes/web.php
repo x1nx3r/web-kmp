@@ -17,7 +17,7 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 // Protected routes - require authentication
 Route::middleware(['auth'])->group(function () {
-    
+
     // Dashboard - accessible by all authenticated users
     Route::get('/dashboard', function () {
         return view('pages.dashboard');
@@ -25,7 +25,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Procurement routes - only for purchasing roles
     Route::prefix('procurement')->group(function () {
-    
+
     // Supplier routes
     Route::get('/supplier', [SupplierController::class, 'index'])->name('supplier.index');
     Route::get('/supplier/create', [SupplierController::class, 'create'])->name('supplier.create');
@@ -51,11 +51,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pengiriman/submit', [PengirimanController::class, 'submitPengiriman'])->name('purchasing.pengiriman.submit');
     Route::get('pengiriman/batal-modal', [PengirimanController::class, 'getBatalModal'])->name('purchasing.pengiriman.batal-modal');
     Route::post('pengiriman/batal', [PengirimanController::class, 'batalPengiriman'])->name('purchasing.pengiriman.batal');
-    
+
     // Review routes
     Route::post('pengiriman/review', [PengirimanController::class, 'storeReview'])->name('purchasing.pengiriman.store-review');
     Route::put('pengiriman/{pengiriman}/review', [PengirimanController::class, 'updateReview'])->name('purchasing.pengiriman.update-review');
-    
+
     Route::resource('pengiriman', PengirimanController::class)->names([
         'index' => 'purchasing.pengiriman.index',
         'create' => 'purchasing.pengiriman.create',
@@ -80,8 +80,25 @@ Route::middleware(['auth'])->group(function () {
         Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
     });
 
-    
-  
+    // Accounting routes - for accounting staff, manager, and superadmin
+    Route::prefix('accounting')->name('accounting.')->group(function () {
+        // Approval Pembayaran
+        Route::get('/approval-pembayaran', function() {
+            return view('pages.accounting.approval-pembayaran');
+        })->name('approval-pembayaran');
+
+        // Approval Penagihan
+        Route::get('/approval-penagihan', function() {
+            return view('pages.accounting.approval-penagihan');
+        })->name('approval-penagihan');
+
+        // Company Settings
+        Route::get('/company-settings', function() {
+            return view('pages.accounting.company-settings');
+        })->name('company-settings');
+    });
+
+
 
     // Pengelolaan Akun routes - only for direktur
     Route::middleware(['role:direktur'])->group(function () {
@@ -89,8 +106,8 @@ Route::middleware(['auth'])->group(function () {
             'pengelolaan-akun' => 'user'
         ]);
     });
-    
-}); 
+
+});
 
         // Marketing routes - only for marketing and direktur
         Route::get('/klien', function() {

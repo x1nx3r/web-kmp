@@ -19,6 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register Observers
+        \App\Models\Pengiriman::observe(\App\Observers\PengirimanObserver::class);
+
         // Register additional migration paths
         $this->loadMigrationsFrom([
             database_path('migrations'),

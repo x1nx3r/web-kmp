@@ -346,13 +346,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="h-80 w-full relative">
                         <canvas id="client-chart-${index}" class="w-full h-full"></canvas>
+                        </div>
                     </div>
-                    <!-- External Legend for Client Chart -->
-                    <div id="client-legend-${index}" class="mt-4 flex flex-wrap gap-2 justify-center"></div>
-                </div>
 
-                <!-- Supplier Chart -->
-                <div class="bg-gray-50 rounded-lg p-4">
+                    <!-- Supplier Chart -->
+                    <div class="bg-gray-50 rounded-lg p-4">
                     <div class="flex items-center justify-between mb-4">
                         <h4 class="text-md font-semibold text-gray-900">Supplier Options</h4>
                         <div class="flex items-center space-x-2 text-xs">
@@ -363,8 +361,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="h-80 w-full relative">
                         <canvas id="supplier-chart-${index}" class="w-full h-full"></canvas>
                     </div>
-                    <!-- External Legend for Supplier Chart -->
-                    <div id="supplier-legend-${index}" class="mt-4 flex flex-wrap gap-2 justify-center"></div>
+                </div>
+            </div>
+
+            <!-- Separate scrollable legends below charts to avoid squishing -->
+            <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-transparent">
+                    <h5 class="text-xs text-gray-500 mb-2">Client Legend</h5>
+                    <div class="overflow-x-auto">
+                        <div id="client-legend-${index}" class="inline-flex items-center space-x-2 px-2 py-1 whitespace-nowrap"></div>
+                    </div>
+                </div>
+                <div class="bg-transparent">
+                    <h5 class="text-xs text-gray-500 mb-2">Supplier Legend</h5>
+                    <div class="overflow-x-auto">
+                        <div id="supplier-legend-${index}" class="inline-flex items-center space-x-2 px-2 py-1 whitespace-nowrap"></div>
+                    </div>
                 </div>
             </div>
         `;
@@ -575,6 +587,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         ticks: { 
                             color: 'rgb(107, 114, 128)', 
                             maxTicksLimit: 8,
+                            autoSkip: true,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            align: 'center',
                             callback: function(value, index) {
                                 const label = this.getLabelForValue(value);
                                 return label === todayFormatted ? label + ' (Today)' : label;

@@ -208,9 +208,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="text-gray-600">${materialData.nama}</span>
                         </div>
                     </div>
-                    <div class="h-80 w-full">
+                    <div class="h-80 w-full relative">
                         <canvas id="client-chart-${index}" class="w-full h-full"></canvas>
                     </div>
+                    <!-- External Legend for Client Chart -->
+                    <div id="client-legend-${index}" class="mt-4 flex flex-wrap gap-2 justify-center"></div>
                 </div>
 
                 <!-- Supplier Chart -->
@@ -222,9 +224,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="text-gray-600">${materialData.supplier_options ? materialData.supplier_options.length : 0} suppliers</span>
                         </div>
                     </div>
-                    <div class="h-80 w-full">
+                    <div class="h-80 w-full relative">
                         <canvas id="supplier-chart-${index}" class="w-full h-full"></canvas>
                     </div>
+                    <!-- External Legend for Supplier Chart -->
+                    <div id="supplier-legend-${index}" class="mt-4 flex flex-wrap gap-2 justify-center"></div>
                 </div>
             </div>
         `;
@@ -255,10 +259,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Create client chart
-        const clientChart = createClientChart(clientCanvas, materialData);
+        const clientChart = createClientChart(clientCanvas, materialData, index);
         
         // Create supplier chart
-        const supplierChart = createSupplierChart(supplierCanvas, materialData);
+        const supplierChart = createSupplierChart(supplierCanvas, materialData, index);
         
         // Store chart instances
         materialCharts[index] = {
@@ -268,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to create client price chart
-    function createClientChart(canvas, materialData) {
+    function createClientChart(canvas, materialData, materialIndex) {
         const priceHistory = materialData.klien_price_history || [];
         
         const data = {
@@ -284,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }]
         };
         
-        return new Chart(canvas, {
+        const chart = new Chart(canvas, {
             type: 'line',
             data: data,
             options: {
@@ -292,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: false // Hide built-in legend
                     },
                     tooltip: {
                         backgroundColor: 'rgba(17, 24, 39, 0.95)',
@@ -325,10 +329,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+        
+        // Create external legend for client chart
+        createExternalLegend(chart, `client-legend-${materialIndex}`);
+        
+        return chart;
     }
     
     // Function to create supplier price chart
-    function createSupplierChart(canvas, materialData) {
+    function createSupplierChart(canvas, materialData, materialIndex) {
         const suppliers = materialData.supplier_options || [];
         
         const datasets = suppliers.map((supplier, index) => {
@@ -365,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return dateA - dateB;
         });
         
-        return new Chart(canvas, {
+        const chart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: sortedDates,
@@ -376,13 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15,
-                            font: { size: 10 }
-                        }
+                        display: false // Hide built-in legend
                     },
                     tooltip: {
                         backgroundColor: 'rgba(17, 24, 39, 0.95)',
@@ -415,6 +418,61 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
+        });
+        
+        // Create external legend for supplier chart
+        createExternalLegend(chart, `supplier-legend-${materialIndex}`);
+        
+        return chart;
+    }
+    
+    // Function to create external clickable legend
+    function createExternalLegend(chart, legendContainerId) {
+        const legendContainer = document.getElementById(legendContainerId);
+        if (!legendContainer) return;
+        
+        // Clear existing legend
+        legendContainer.innerHTML = '';
+        
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const legendItem = document.createElement('div');
+            legendItem.className = 'flex items-center space-x-2 px-3 py-2 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-all';
+            
+            // Determine if dataset is visible
+            const isVisible = chart.isDatasetVisible(datasetIndex);
+            if (!isVisible) {
+                legendItem.classList.add('opacity-50');
+            }
+            
+            // Create color indicator
+            const colorBox = document.createElement('div');
+            colorBox.className = 'w-3 h-3 rounded-sm flex-shrink-0';
+            colorBox.style.backgroundColor = dataset.borderColor;
+            
+            // Create label
+            const label = document.createElement('span');
+            label.className = 'text-xs font-medium text-gray-700 truncate';
+            label.textContent = dataset.label;
+            
+            legendItem.appendChild(colorBox);
+            legendItem.appendChild(label);
+            
+            // Add click handler for show/hide
+            legendItem.addEventListener('click', () => {
+                const meta = chart.getDatasetMeta(datasetIndex);
+                meta.hidden = meta.hidden === null ? !chart.data.datasets[datasetIndex].hidden : null;
+                
+                // Update legend item appearance
+                if (meta.hidden) {
+                    legendItem.classList.add('opacity-50');
+                } else {
+                    legendItem.classList.remove('opacity-50');
+                }
+                
+                chart.update('none'); // Update without animation for better performance
+            });
+            
+            legendContainer.appendChild(legendItem);
         });
     }
     

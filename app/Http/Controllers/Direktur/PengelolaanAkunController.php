@@ -57,7 +57,7 @@ class PengelolaanAkunController extends Controller
         }
         
         // Pagination
-        $users = $query->paginate(5)->withQueryString();
+        $users = $query->paginate(10)->withQueryString();
 
         return view('pages.pengelolaan-akun', compact('users'));
     }

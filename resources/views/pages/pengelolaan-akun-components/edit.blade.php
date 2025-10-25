@@ -33,8 +33,11 @@
                         {{-- User Profile Section --}}
                         <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                             <div class="flex-shrink-0">
-                                <div id="modalEditUserAvatar" class="h-16 w-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-                                    <span class="text-white font-bold text-xl" id="modalEditUserInitials">JD</span>
+                                <div id="modalEditUserAvatar" class="h-16 w-16 rounded-full overflow-hidden border-2 border-gray-200">
+                                    <img id="modalEditUserPhoto" src="" alt="Profile Photo" class="w-full h-full object-cover hidden">
+                                    <div id="modalEditUserInitialsContainer" class="w-full h-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+                                        <span class="text-white font-bold text-xl" id="modalEditUserInitials">JD</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="flex-1">
@@ -270,6 +273,20 @@ function populateEditModalWithUserData(user) {
     // Update user avatar and initials
     const initials = user.nama.split(' ').map(n => n[0]).join('').toUpperCase();
     document.getElementById('modalEditUserInitials').textContent = initials;
+    
+    // Handle profile photo
+    const editPhotoImg = document.getElementById('modalEditUserPhoto');
+    const editInitialsContainer = document.getElementById('modalEditUserInitialsContainer');
+    
+    if (user.foto_profil) {
+        const photoUrl = `/storage/profile-photos/${user.foto_profil}`;
+        editPhotoImg.src = photoUrl;
+        editPhotoImg.classList.remove('hidden');
+        editInitialsContainer.classList.add('hidden');
+    } else {
+        editPhotoImg.classList.add('hidden');
+        editInitialsContainer.classList.remove('hidden');
+    }
 
     // Populate form fields
     console.log('Setting form values...');
@@ -307,6 +324,8 @@ function updatePreview() {
     // Update initials
     const initials = nama.split(' ').map(n => n[0]).join('').toUpperCase();
     document.getElementById('modalEditUserInitials').textContent = initials;
+    
+    // Keep current photo display (don't change photo during preview update)
 
     // Update status badge
     const statusBadge = document.getElementById('modalEditUserStatusBadge');

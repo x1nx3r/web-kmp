@@ -49,9 +49,15 @@
             <!-- User Menu -->
             <div class="relative">
                 <button class="flex items-center space-x-2 lg:space-x-3 text-gray-700 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-xl px-2 lg:px-4 py-2 transition-all duration-200" onclick="toggleUserMenu()">
+                    @auth
+                    <div class="w-8 h-8 lg:w-10 lg:h-10 rounded-xl overflow-hidden shadow-lg ring-2 ring-gray-200">
+                        <img src="{{ auth()->user()->profile_photo_url }}" alt="Foto Profil {{ auth()->user()->nama }}" class="w-full h-full object-cover">
+                    </div>
+                    @else
                     <div class="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
                         <i class="fas fa-user text-white text-xs lg:text-sm"></i>
                     </div>
+                    @endauth
                     <div class="hidden md:block text-left">
                         @auth
                         <p class="font-semibold text-sm">{{ auth()->user()->nama }}</p>
@@ -68,17 +74,19 @@
                 <div id="userMenu" class="absolute right-0 mt-3 w-48 lg:w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 hidden z-50">
                     <div class="px-4 py-3 border-b border-gray-100">
                         @auth
-                        <p class="font-semibold text-gray-800">{{ auth()->user()->nama }}</p>
-                        <p class="text-sm text-gray-500">{{ auth()->user()->email }}</p>
-                        <p class="text-xs text-gray-400 mt-1">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</p>
+                        
+                                <p class="font-semibold text-gray-800">{{ auth()->user()->nama }}</p>
+                                <p class="text-sm text-gray-500">{{ auth()->user()->email }}</p>
+                                <p class="text-xs text-gray-400 mt-1">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</p>
                         @else
-                        <p class="font-semibold text-gray-800">Guest</p>
-                        <p class="text-sm text-gray-500">-</p>
-                        <p class="text-xs text-gray-400 mt-1">Tamu</p>
+                                <p class="font-semibold text-gray-800">Guest</p>
+                                <p class="text-sm text-gray-500">-</p>
+                                <p class="text-xs text-gray-400 mt-1">Tamu</p>
+
                         @endauth
                     </div>
 
-                    <a href="#" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+                    <a href="{{ route('pengaturan') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200">
                         <i class="fas fa-cog mr-3 w-4"></i>Pengaturan
                     </a>
                     <div class="border-t border-gray-100 mt-2"></div>
@@ -205,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Logout Modal -->
-<div id="logoutModal" class="fixed inset-0 bg-black/20 bg-opacity-50 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+<div id="logoutModal" class="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 hidden items-center justify-center">
     <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
         <div class="flex items-center mb-4">
             <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">

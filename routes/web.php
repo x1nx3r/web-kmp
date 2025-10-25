@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\Marketing\KlienController;
 use App\Http\Controllers\Direktur\PengelolaanAkunController;
 use App\Http\Controllers\Purchasing\SupplierController;
@@ -22,6 +23,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return view('pages.dashboard');
     })->name('dashboard');
+
+    // Pengaturan - accessible by all authenticated users
+    Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan');
+    Route::put('/pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
 
     // Procurement routes - only for purchasing roles
     Route::prefix('procurement')->group(function () {

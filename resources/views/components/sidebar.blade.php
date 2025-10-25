@@ -159,8 +159,8 @@
         <div class="border-t border-gray-200 pt-4">
             <ul class="space-y-1">
                 <li>
-                    <a href="#" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
-                        <i class="fas fa-cog w-5 text-lg group-hover:rotate-180 transition-transform duration-500"></i>
+                    <a href="{{ route('pengaturan') }}" class="flex items-center space-x-3 {{ request()->routeIs('pengaturan') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                        <i class="fas fa-cog w-5 text-lg group-hover:rotate-180 transition-transform duration-500 {{ request()->routeIs('pengaturan') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Pengaturan</span>
                     </a>
                 </li>
@@ -338,8 +338,8 @@
         <div class="px-4 mt-8 pt-4 border-t border-gray-200">
             <ul class="space-y-1">
                 <li>
-                    <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
-                        <i class="fas fa-cog w-5 text-lg group-hover:rotate-180 transition-transform duration-500"></i>
+                    <a href="{{ route('pengaturan') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('pengaturan') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                        <i class="fas fa-cog w-5 text-lg group-hover:rotate-180 transition-transform duration-500 {{ request()->routeIs('pengaturan') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Pengaturan</span>
                     </a>
                 </li>

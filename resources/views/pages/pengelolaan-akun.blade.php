@@ -209,7 +209,7 @@
                                 <div class="flex items-center">
                                     <div class="flex-shrink-0 h-10 w-10">
                                         @if($user->foto_profil)
-                                            <img class="h-10 w-10 rounded-full object-cover" src="{{ $user->foto_profil }}" alt="{{ $user->nama }}">
+                                            <img class="h-10 w-10 rounded-full object-cover border-2 border-green-200" src="{{ $user->profile_photo_url }}" alt="{{ $user->nama }}">
                                         @else
                                             <div class="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
                                                 <span class="text-white font-bold text-sm">{{ strtoupper(substr($user->nama, 0, 2)) }}</span>
@@ -294,7 +294,7 @@
                             <div class="flex items-center space-x-2 flex-1 min-w-0">
                                 <div class="flex-shrink-0">
                                     @if($user->foto_profil)
-                                        <img class="h-10 w-10 rounded-full object-cover" src="{{ $user->foto_profil }}" alt="{{ $user->nama }}">
+                                        <img class="h-10 w-10 rounded-full object-cover border-2 border-green-200" src="{{ $user->profile_photo_url }}" alt="{{ $user->nama }}">
                                     @else
                                         <div class="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
                                             <span class="text-white font-bold text-sm">{{ strtoupper(substr($user->nama, 0, 2)) }}</span>

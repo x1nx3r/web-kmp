@@ -49,4 +49,17 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the profile photo URL attribute.
+     */
+    public function getProfilePhotoUrlAttribute()
+    {
+        if ($this->foto_profil) {
+            return asset('storage/profile-photos/' . $this->foto_profil);
+        }
+        
+        // Return default avatar if no photo
+        return asset('assets/image/logo/ptkmp-logo.png');
+    }
 }

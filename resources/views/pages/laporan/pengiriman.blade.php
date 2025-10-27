@@ -2,7 +2,7 @@
 
 @section('report-content')
 <!-- Weekly Statistics Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
     <div class="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform ">
         <div class="flex items-center">
             <div class="p-2 sm:p-3 rounded-xl bg-blue-500 text-white shadow-lg">
@@ -113,7 +113,7 @@
     </div>
     <div class="p-4 sm:p-6">
         <form method="GET" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div class="grid grid-cols-3  md:grid-cols-3 xl:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
                     <input type="date" name="start_date" value="{{ $startDate }}" 

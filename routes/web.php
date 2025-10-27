@@ -28,6 +28,24 @@ Route::middleware(['auth'])->group(function () {
         return view('pages.dashboard');
     })->name('dashboard');
 
+    // Laporan routes - only for direktur
+         
+        
+        
+        Route::prefix('laporan')->name('laporan.')->group(function () {
+            Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
+            Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
+            
+            Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
+            Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
+            
+            Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
+            Route::post('/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
+            
+            Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
+            Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
+        });
+
     // Pengaturan - accessible by all authenticated users
     Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan');
     Route::put('/pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
@@ -142,31 +160,4 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{material}/price-history', [KlienController::class, 'getMaterialPriceHistory'])->name('api.klien-materials.price-history');
         });
 
-        // Laporan routes - only for direktur
-        Route::middleware(['role:direktur'])->group(function () {
-            Route::prefix('laporan')->group(function () {
-                Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('laporan.purchase-order');
-                Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('laporan.omset');
-                Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('laporan.pengiriman');
-                Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('laporan.penagihan');
-            });
-        });
-
-        // Laporan routes - accessible by all authenticated users
-        Route::get('/laporan', function () {
-            return view('pages.laporan-index');
-        })->name('laporan.index');
         
-        Route::prefix('laporan')->name('laporan.')->group(function () {
-            Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
-            Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
-            
-            Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
-            Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
-            
-            Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
-            Route::post('/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
-            
-            Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
-            Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
-        });

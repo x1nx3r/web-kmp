@@ -633,28 +633,41 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function exportData() {
-    const form = new FormData();
-    form.append('start_date', document.querySelector('input[name="start_date"]').value);
-    form.append('end_date', document.querySelector('input[name="end_date"]').value);
-    form.append('status', document.querySelector('select[name="status"]').value);
-    form.append('purchasing', document.querySelector('select[name="purchasing"]').value);
-    form.append('search', document.querySelector('input[name="search"]').value);
+    // Get current filter values
+    const startDate = document.querySelector('input[name="start_date"]').value;
+    const endDate = document.querySelector('input[name="end_date"]').value;
+
+    // Validate date range
+    if (!startDate || !endDate) {
+        showNotification('Harap pilih rentang tanggal terlebih dahulu', 'warning');
+        return;
+    }
+
+    // Get the existing filter form and change its action temporarily
+    const filterForm = document.querySelector('form[method="GET"]');
+    const originalAction = filterForm.action;
     
-    fetch('{{ route("laporan.pengiriman.export") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: form
-    })
-    .then(response => response.json())
-    .then(data => {
-        showNotification(data.message, 'success');
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Terjadi kesalahan saat export data', 'error');
-    });
+    filterForm.action = '{{ route("laporan.pengiriman.export") }}';
+    filterForm.method = 'POST';
+    
+    // Add CSRF token
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_token';
+    csrfInput.value = '{{ csrf_token() }}';
+    filterForm.appendChild(csrfInput);
+    
+    // Submit form
+    showNotification('Memproses export data...', 'info');
+    filterForm.submit();
+    
+    // Restore original form settings
+    setTimeout(() => {
+        filterForm.action = originalAction;
+        filterForm.method = 'GET';
+        filterForm.removeChild(csrfInput);
+    }, 1000);
 }
+
 </script>
 @endsection

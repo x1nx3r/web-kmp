@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Pengiriman;
 use App\Models\PengirimanDetail;
 use App\Models\User;
+use App\Exports\PengirimanExport;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PengirimanController extends Controller
 {
@@ -212,8 +215,40 @@ class PengirimanController extends Controller
     }
     
     public function export(Request $request)
-    {
-        // TODO: Implement export functionality
-        return response()->json(['message' => 'Export functionality will be implemented']);
+{
+    try {
+        // Get filter parameters
+        $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->get('end_date', now()->endOfMonth()->format('Y-m-d'));
+        $status = $request->get('status');
+        $purchasing = $request->get('purchasing');
+        $search = $request->get('search');
+
+        // Get purchasing users for filter information
+        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])->get();
+
+        // Debug: Check if data exists
+        $pengirimanCount = Pengiriman::whereBetween('tanggal_kirim', [$startDate, $endDate])->count();
+        
+        if ($pengirimanCount === 0) {
+            // Redirect back dengan pesan error (bukan JSON response)
+            return redirect()->back()->with('error', 'Tidak ada data pengiriman pada periode ' . date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)));
+        }
+
+        // Generate filename with current datetime
+        $filename = 'Laporan_Pengiriman_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+
+        // Export menggunakan Laravel Excel
+        return Excel::download(
+            new PengirimanExport($startDate, $endDate, $status, $purchasing, $search, $purchasingUsers),
+            $filename
+        );
+        
+    } catch (\Exception $e) {
+        Log::error('Export Error: ' . $e->getMessage());
+        
+        // Redirect back dengan pesan error (bukan JSON response)
+        return redirect()->back()->with('error', 'Error saat export: ' . $e->getMessage());
     }
+}
 }

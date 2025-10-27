@@ -28,11 +28,7 @@ Route::middleware(['auth'])->group(function () {
         return view('pages.dashboard');
     })->name('dashboard');
 
-    // Laporan routes - only for direktur
-         
-        
-        
-        Route::prefix('laporan')->name('laporan.')->group(function () {
+    Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
             Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
             
@@ -40,11 +36,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
             
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
-            Route::post('/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
-            
+            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');            
             Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
             Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
-        });
+    });
 
     // Pengaturan - accessible by all authenticated users
     Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan');
@@ -147,10 +142,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
         Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
 
-        // Test route for debugging
-        Route::get('/test-klien-modal', function() {
-            return response()->json(['success' => true, 'message' => 'Test route working', 'csrf' => csrf_token()]);
-        });
+     
 
         // Client Materials API routes
         Route::prefix('api/klien-materials')->group(function () {

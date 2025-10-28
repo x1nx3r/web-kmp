@@ -38,10 +38,10 @@ class PengirimanExport implements
         $data = [];
         
         // Baris 1: Judul
-        $data[] = ['LAPORAN PENGIRIMAN', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['LAPORAN PENGIRIMAN', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 2: Periode
-        $data[] = ['Periode: ' . date('d/m/Y', strtotime($this->startDate)) . ' - ' . date('d/m/Y', strtotime($this->endDate)), '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['Periode: ' . date('d/m/Y', strtotime($this->startDate)) . ' - ' . date('d/m/Y', strtotime($this->endDate)), '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 3: Filter
         $filterInfo = [];
@@ -59,23 +59,24 @@ class PengirimanExport implements
         }
         
         if (!empty($filterInfo)) {
-            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
         } else {
-            $data[] = ['Filter: Semua Data', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: Semua Data', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
         }
         
         // Baris 4: Waktu ekspor
-        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 5: Kosong
-        $data[] = ['', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
         
-        // Header tabel
+        // Header tabel (dengan 2 kolom baru)
         $data[] = [
             'No PO',
             'Nama Pabrik',
             'Bahan Baku PO', 
-            'PIC Supplier',
+            'Supplier',
+            'PIC Purchasing',
             'Tanggal Forecasting',
             'Hari Forecasting',
             'QTY Forecasting',
@@ -85,7 +86,8 @@ class PengirimanExport implements
             'No Pengiriman',
             'QTY Pengiriman',
             'Total Harga Pengiriman',
-            'Keterangan'
+            'Keterangan',
+            'Status Pengiriman'
         ];
 
         // Data pengiriman
@@ -101,7 +103,6 @@ class PengirimanExport implements
             // Gabungkan bahan baku dari forecast details
             $bahanBakuPO = $forecastDetails->map(function($detail) {
                 $bahanBaku = optional($detail->bahanBakuSupplier)->nama ?? 'N/A';
-               
                 return "{$bahanBaku}";
             })->implode(', ');
 
@@ -110,15 +111,34 @@ class PengirimanExport implements
                 return optional(optional($detail->bahanBakuSupplier)->supplier)->nama ?? 'N/A';
             })->unique()->implode(', ');
 
+            // PIC Purchasing name
+            $picPurchasing = optional($pengiriman->purchasing)->nama ?? 'N/A';
             
-            
-           
+            // Status label
+            $statusLabel = 'N/A';
+            switch($pengiriman->status) {
+                case 'pending':
+                    $statusLabel = 'Pending';
+                    break;
+                case 'menunggu_verifikasi':
+                    $statusLabel = 'Menunggu Verifikasi';
+                    break;
+                case 'berhasil':
+                    $statusLabel = 'Berhasil';
+                    break;
+                case 'gagal':
+                    $statusLabel = 'Gagal';
+                    break;
+                default:
+                    $statusLabel = ucfirst($pengiriman->status ?? 'N/A');
+            }
 
             $data[] = [
                 optional($pengiriman->purchaseOrder)->no_po ?? 'N/A',
-                optional(optional($pengiriman->purchaseOrder)->klien)->nama ?? 'N/A', 
+                (optional(optional($pengiriman->purchaseOrder)->klien)->nama ?? 'N/A') . ' - ' . (optional(optional($pengiriman->purchaseOrder)->klien)->cabang ?? 'N/A'),
                 $bahanBakuPO ?: 'Tidak ada detail',
                 $picSuppliers ?: 'N/A',
+                $picPurchasing, // Kolom PIC Purchasing
                 ($pengiriman->forecast && $pengiriman->forecast->tanggal_forecast) ? 
                     \Carbon\Carbon::parse($pengiriman->forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
                 ($pengiriman->forecast && $pengiriman->forecast->hari_kirim_forecast) ? 
@@ -131,7 +151,8 @@ class PengirimanExport implements
                 $pengiriman->no_pengiriman ?? 'N/A',
                 number_format((float)($pengiriman->total_qty_kirim ?? 0), 2),
                 'Rp ' . number_format((float)($pengiriman->total_harga_kirim ?? 0), 0),
-                $pengiriman->catatan ?: 'Tidak ada catatan'
+                $pengiriman->catatan ?: '-',
+                $statusLabel // Kolom Status Pengiriman
             ];
         }
 
@@ -178,23 +199,23 @@ class PengirimanExport implements
     {
         return [
             'A' => 15,  // No PO
-            'B' => 25,  // Nama Pabrik  
+            'B' => 35,  // Nama Pabrik (diperlebar untuk menampung nama + cabang)
             'C' => 40,  // Bahan Baku PO
             'D' => 25,  // PIC Supplier
-            'E' => 18,  // Tanggal Forecasting
-            'F' => 18,  // Hari Forecasting
-            'G' => 15,  // QTY Forecasting
-            'H' => 20,  // Total Harga Forecasting
-            'I' => 18,  // Tanggal Pengiriman
-            'J' => 18,  // Hari Pengiriman
-            'K' => 20,  // No Pengiriman
-            'L' => 15,  // QTY Pengiriman
-            'M' => 20,  // Total Harga Pengiriman
-            'N' => 40,  // Keterangan (Catatan)
+            'E' => 20,  // PIC Purchasing (kolom baru)
+            'F' => 18,  // Tanggal Forecasting
+            'G' => 18,  // Hari Forecasting
+            'H' => 15,  // QTY Forecasting
+            'I' => 20,  // Total Harga Forecasting
+            'J' => 18,  // Tanggal Pengiriman
+            'K' => 18,  // Hari Pengiriman
+            'L' => 20,  // No Pengiriman
+            'M' => 15,  // QTY Pengiriman
+            'N' => 20,  // Total Harga Pengiriman
+            'O' => 40,  // Keterangan (Catatan)
+            'P' => 20,  // Status Pengiriman (kolom baru)
         ];
     }
-
-
 
     /**
      * @return string

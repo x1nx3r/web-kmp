@@ -160,11 +160,11 @@
                     <i class="fas fa-refresh mr-2"></i>
                     <span>Reset</span>
                 </a>
-                <button type="button" onclick="exportData()" 
-                        class="flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                <a href="{{ route('laporan.pengiriman.export', request()->query()) }}" 
+                   class="flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
                     <i class="fas fa-download mr-2"></i>
                     <span>Export</span>
-                </button>
+                </a>
             </div>
         </form>
     </div>
@@ -632,42 +632,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function exportData() {
-    // Get current filter values
-    const startDate = document.querySelector('input[name="start_date"]').value;
-    const endDate = document.querySelector('input[name="end_date"]').value;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-        showNotification('Harap pilih rentang tanggal terlebih dahulu', 'warning');
-        return;
-    }
-
-    // Get the existing filter form and change its action temporarily
-    const filterForm = document.querySelector('form[method="GET"]');
-    const originalAction = filterForm.action;
-    
-    filterForm.action = '{{ route("laporan.pengiriman.export") }}';
-    filterForm.method = 'POST';
-    
-    // Add CSRF token
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = '_token';
-    csrfInput.value = '{{ csrf_token() }}';
-    filterForm.appendChild(csrfInput);
-    
-    // Submit form
-    showNotification('Memproses export data...', 'info');
-    filterForm.submit();
-    
-    // Restore original form settings
-    setTimeout(() => {
-        filterForm.action = originalAction;
-        filterForm.method = 'GET';
-        filterForm.removeChild(csrfInput);
-    }, 1000);
-}
 
 </script>
 @endsection

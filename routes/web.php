@@ -87,6 +87,16 @@ Route::middleware(['auth'])->group(function () {
             return view('pages.accounting.approval-pembayaran');
         })->name('approval-pembayaran');
 
+        // Approve Approval Pembayaran
+        Route::get('/approval-pembayaran/{id}/approve', function($id) {
+            return view('pages.accounting.approval-pembayaran.approve', ['approvalId' => $id]);
+        })->name('approval-pembayaran.approve');
+
+        // Detail Approval Pembayaran
+        Route::get('/approval-pembayaran/{id}/detail', function($id) {
+            return view('pages.accounting.approval-pembayaran.detail', ['approvalId' => $id]);
+        })->name('approval-pembayaran.detail');
+
         // Approval Penagihan
         Route::get('/approval-penagihan', function() {
             return view('pages.accounting.approval-penagihan');

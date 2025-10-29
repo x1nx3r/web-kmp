@@ -28,6 +28,14 @@
     @endif
 
     {{-- Navigation Breadcrumb --}}
+
+    {{-- Welcome Banner --}}
+    <x-welcome-banner
+        title="Approval Pembayaran"
+        subtitle="Verifikasi dan approve pembayaran pengiriman"
+        icon="fas fa-money-check-alt"
+    />
+
     <div class="bg-white border-b border-gray-200 mb-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -58,13 +66,6 @@
             </div>
         </div>
     </div>
-
-    {{-- Welcome Banner --}}
-    <x-welcome-banner
-        title="Approval Pembayaran"
-        subtitle="Verifikasi dan approve pembayaran pengiriman"
-        icon="fas fa-money-check-alt"
-    />
 
     {{-- Search and Filter Section --}}
     <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -191,13 +192,25 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <button
-                                    wire:click="showDetail({{ $approval->id }})"
-                                    class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    <i class="fas fa-eye mr-1"></i>
-                                    Detail
-                                </button>
+                                <div class="flex items-center justify-center space-x-2">
+                                    {{-- Approve Button (goes to approve page) --}}
+                                    <a
+                                        href="{{ route('accounting.approval-pembayaran.approve', $approval->id) }}"
+                                        class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                                    >
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Approve
+                                    </a>
+
+                                    {{-- Detail Button (goes to detail page) --}}
+                                    <a
+                                        href="{{ route('accounting.approval-pembayaran.detail', $approval->id) }}"
+                                        class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        <i class="fas fa-eye mr-1"></i>
+                                        Detail
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -222,13 +235,13 @@
         @endif
     </div>
 
-    {{-- Detail Modal --}}
+    {{-- Approval Modal --}}
     @if($showDetailModal && $selectedPengiriman)
         <div class="fixed inset-0 bg-green-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 {{-- Modal Header --}}
                 <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between">
-                    <h3 class="text-xl font-bold text-white">Detail Approval Pembayaran</h3>
+                    <h3 class="text-xl font-bold text-white">Approve Pembayaran</h3>
                     <button wire:click="closeModal" class="text-white hover:text-gray-200 transition-colors">
                         <i class="fas fa-times text-xl"></i>
                     </button>

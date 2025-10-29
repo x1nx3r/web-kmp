@@ -6,11 +6,17 @@ use App\Models\Pengiriman;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class PengirimanExport implements 
     FromArray, 
     WithColumnWidths, 
-    WithTitle
+    WithTitle,
+    WithStyles
 {
     protected $startDate;
     protected $endDate;
@@ -138,25 +144,146 @@ class PengirimanExport implements
                 (optional(optional($pengiriman->purchaseOrder)->klien)->nama ?? 'N/A') . ' - ' . (optional(optional($pengiriman->purchaseOrder)->klien)->cabang ?? 'N/A'),
                 $bahanBakuPO ?: 'Tidak ada detail',
                 $picSuppliers ?: 'N/A',
-                $picPurchasing, // Kolom PIC Purchasing
+                $picPurchasing,
                 ($pengiriman->forecast && $pengiriman->forecast->tanggal_forecast) ? 
                     \Carbon\Carbon::parse($pengiriman->forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
                 ($pengiriman->forecast && $pengiriman->forecast->hari_kirim_forecast) ? 
                     $pengiriman->forecast->hari_kirim_forecast : 'N/A',
                 number_format((float)(($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast) ? $pengiriman->forecast->total_qty_forecast : 0)),
-                'Rp ' . number_format((float)(($pengiriman->forecast && $pengiriman->forecast->total_harga_forecast) ? $pengiriman->forecast->total_harga_forecast : 0)),
+                (float)(($pengiriman->forecast && $pengiriman->forecast->total_harga_forecast) ? $pengiriman->forecast->total_harga_forecast : 0),
                 $pengiriman->tanggal_kirim ? 
                     \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d/m/Y') : 'N/A',
                 $pengiriman->hari_kirim ?? 'N/A',
                 $pengiriman->no_pengiriman ?? 'N/A',
                 number_format((float)($pengiriman->total_qty_kirim ?? 0), 2),
-                'Rp ' . number_format((float)($pengiriman->total_harga_kirim ?? 0), 0),
+                (float)($pengiriman->total_harga_kirim ?? 0),
                 $pengiriman->catatan ?: '-',
-                $statusLabel // Kolom Status Pengiriman
+                $statusLabel
             ];
         }
 
         return $data;
+    }
+
+    /**
+     * Apply styles to the worksheet
+     */
+    public function styles(Worksheet $sheet)
+    {
+        $pengirimanData = $this->getPengirimanData();
+        $lastRow = 6 + $pengirimanData->count(); // 6 adalah jumlah baris header + info
+        
+        // Style untuk judul (baris 1)
+        $sheet->mergeCells('A1:P1');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 14,
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+        // Style untuk info periode, filter, dan waktu ekspor (baris 2-4)
+        foreach ([2, 3, 4] as $row) {
+            $sheet->mergeCells("A{$row}:P{$row}");
+            $sheet->getStyle("A{$row}")->applyFromArray([
+                'font' => [
+                    'size' => 10,
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_LEFT,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ]);
+        }
+
+        // Style untuk header tabel (baris 6)
+        $sheet->getStyle('A6:P6')->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '4472C4'], // Biru seperti gambar
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000'],
+                ],
+            ],
+        ]);
+
+        // Set tinggi baris header
+        $sheet->getRowDimension(6)->setRowHeight(30);
+
+        // Style untuk data (baris 7 dan seterusnya)
+        if ($lastRow > 6) {
+            $sheet->getStyle("A7:P{$lastRow}")->applyFromArray([
+                'alignment' => [
+                    'vertical' => Alignment::VERTICAL_TOP,
+                    'wrapText' => true,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['rgb' => 'D0D0D0'],
+                    ],
+                ],
+            ]);
+
+            // Alignment khusus untuk kolom tertentu
+            // Kolom angka (H, I, M, N) - rata kanan
+            foreach (['H', 'I', 'M', 'N'] as $col) {
+                $sheet->getStyle("{$col}7:{$col}{$lastRow}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            }
+
+            // Format currency untuk kolom harga (I, N)
+            $sheet->getStyle("I7:I{$lastRow}")->getNumberFormat()
+                ->setFormatCode('"Rp "#,##0');
+            $sheet->getStyle("N7:N{$lastRow}")->getNumberFormat()
+                ->setFormatCode('"Rp "#,##0');
+
+            // Kolom tanggal (F, J) - rata tengah
+            foreach (['F', 'J'] as $col) {
+                $sheet->getStyle("{$col}7:{$col}{$lastRow}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            }
+
+            // Kolom hari (G, K) - rata tengah
+            foreach (['G', 'K'] as $col) {
+                $sheet->getStyle("{$col}7:{$col}{$lastRow}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            }
+
+            // Kolom status (P) - rata tengah
+            $sheet->getStyle("P7:P{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            // Zebra striping - baris bergantian
+            for ($row = 7; $row <= $lastRow; $row++) {
+                if ($row % 2 == 0) {
+                    $sheet->getStyle("A{$row}:P{$row}")->applyFromArray([
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => 'F2F2F2'], // Abu-abu muda
+                        ],
+                    ]);
+                }
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -199,10 +326,10 @@ class PengirimanExport implements
     {
         return [
             'A' => 15,  // No PO
-            'B' => 35,  // Nama Pabrik (diperlebar untuk menampung nama + cabang)
+            'B' => 35,  // Nama Pabrik
             'C' => 40,  // Bahan Baku PO
             'D' => 25,  // PIC Supplier
-            'E' => 20,  // PIC Purchasing (kolom baru)
+            'E' => 20,  // PIC Purchasing
             'F' => 18,  // Tanggal Forecasting
             'G' => 18,  // Hari Forecasting
             'H' => 15,  // QTY Forecasting
@@ -212,8 +339,8 @@ class PengirimanExport implements
             'L' => 20,  // No Pengiriman
             'M' => 15,  // QTY Pengiriman
             'N' => 20,  // Total Harga Pengiriman
-            'O' => 40,  // Keterangan (Catatan)
-            'P' => 20,  // Status Pengiriman (kolom baru)
+            'O' => 40,  // Keterangan
+            'P' => 20,  // Status Pengiriman
         ];
     }
 

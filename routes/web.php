@@ -8,6 +8,10 @@ use App\Http\Controllers\Direktur\PengelolaanAkunController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\ForecastingController;
 use App\Http\Controllers\Purchasing\PengirimanController;
+use App\Http\Controllers\Laporan\PurchaseOrderController as LaporanPOController;
+use App\Http\Controllers\Laporan\OmsetController as LaporanOmsetController;
+use App\Http\Controllers\Laporan\PengirimanController as LaporanPengirimanController;
+use App\Http\Controllers\Laporan\PenagihanController as LaporanPenagihanController;
 
 // Authentication routes
 Route::middleware('guest')->group(function () {
@@ -23,6 +27,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return view('pages.dashboard');
     })->name('dashboard');
+
+    Route::prefix('laporan')->name('laporan.')->group(function () {
+            Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
+            Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
+            
+            Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
+            Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
+            
+            Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
+            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');            
+            Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
+            Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
+    });
 
     // Pengaturan - accessible by all authenticated users
     Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan');
@@ -125,10 +142,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
         Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
 
-        // Test route for debugging
-        Route::get('/test-klien-modal', function() {
-            return response()->json(['success' => true, 'message' => 'Test route working', 'csrf' => csrf_token()]);
-        });
+     
 
         // Client Materials API routes
         Route::prefix('api/klien-materials')->group(function () {
@@ -137,3 +151,5 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{material}', [KlienController::class, 'destroyMaterial'])->name('api.klien-materials.destroy');
             Route::get('/{material}/price-history', [KlienController::class, 'getMaterialPriceHistory'])->name('api.klien-materials.price-history');
         });
+
+        

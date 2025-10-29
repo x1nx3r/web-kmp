@@ -61,7 +61,7 @@ class SupplierController extends Controller
             $query->orderBy('nama', 'asc');
         }
 
-        $suppliers = $query->paginate(5);
+        $suppliers = $query->paginate(10);
 
         // Get unique bahan baku names for filter dropdown
         $bahanBakuList = \App\Models\BahanBakuSupplier::select('nama')

@@ -31,12 +31,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
             Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
-            
+
             Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
             Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
-            
+
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
-            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');            
+            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
             Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
             Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
     });
@@ -124,6 +124,14 @@ Route::middleware(['auth'])->group(function () {
             return view('pages.accounting.approval-penagihan');
         })->name('approval-penagihan');
 
+        Route::get('/approval-penagihan/{approvalId}/approve', function($approvalId) {
+            return view('pages.accounting.approve-penagihan', ['approvalId' => $approvalId]);
+        })->name('approval-penagihan.detail');
+
+        Route::get('/approval-penagihan/{approvalId}/detail', function($approvalId) {
+            return view('pages.accounting.detail-penagihan', ['approvalId' => $approvalId]);
+        })->name('approval-penagihan.view');
+
         // Company Settings
         Route::get('/company-settings', function() {
             return view('pages.accounting.company-settings');
@@ -169,7 +177,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
         Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
 
-     
+
 
         // Client Materials API routes
         Route::prefix('api/klien-materials')->group(function () {

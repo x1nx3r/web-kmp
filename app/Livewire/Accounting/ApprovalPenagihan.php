@@ -19,6 +19,7 @@ class ApprovalPenagihan extends Component
 
     public $search = '';
     public $statusFilter = 'all';
+    public $activeTab = 'pending'; // pending or approved
     public $selectedData = null;
     public $showDetailModal = false;
     public $showCreateInvoiceModal = false;
@@ -32,13 +33,13 @@ class ApprovalPenagihan extends Component
         'customer_email' => '',
         'refraksi_type' => 'qty', // 'qty' or 'rupiah'
         'refraksi_value' => 0,
-        'discount_amount' => 0,
         'notes' => '',
     ];
 
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => 'all'],
+        'activeTab' => ['except' => 'pending'],
     ];
 
     protected $rules = [
@@ -46,38 +47,54 @@ class ApprovalPenagihan extends Component
         'invoiceForm.customer_address' => 'required|string',
         'invoiceForm.customer_phone' => 'nullable|string|max:20',
         'invoiceForm.customer_email' => 'nullable|email|max:255',
-        'invoiceForm.refraksi_type' => 'required|in:qty,rupiah',
+        'invoiceForm.refraksi_type' => 'required|in:qty,rupiah,lainnya',
         'invoiceForm.refraksi_value' => 'required|numeric|min:0',
-        'invoiceForm.discount_amount' => 'required|numeric|min:0',
         'invoiceForm.notes' => 'nullable|string',
     ];
 
     public function render()
     {
-        // Get pengiriman with status 'berhasil' (yang belum ada invoice)
-        $pengirimansWithoutInvoice = Pengiriman::where('status', 'berhasil')
-            ->doesntHave('invoicePenagihan')
-            ->with(['purchaseOrder.klien', 'forecast', 'purchasing'])
-            ->when($this->search, function ($q) {
-                $q->where('no_pengiriman', 'like', '%' . $this->search . '%');
-            })
-            ->latest()
-            ->paginate(10, ['*'], 'page_without_invoice');
+        // Get pengiriman with status 'berhasil' AND approval_pembayaran completed
+        // Show in 'pending' tab - untuk buat invoice
+        $pengirimansWithoutInvoice = null;
 
-        // Get approval penagihan (yang sudah ada invoice)
+        if ($this->activeTab === 'pending') {
+            $pengirimansWithoutInvoice = Pengiriman::where('status', 'berhasil')
+                ->doesntHave('invoicePenagihan')
+                ->whereHas('approvalPembayaran', function($q) {
+                    $q->where('status', 'completed');
+                })
+                ->with(['purchaseOrder.klien', 'forecast', 'purchasing'])
+                ->when($this->search, function ($q) {
+                    $q->where('no_pengiriman', 'like', '%' . $this->search . '%');
+                })
+                ->latest()
+                ->paginate(10, ['*'], 'page_without_invoice');
+        }
+
+        // Get approval penagihan based on active tab
         $query = ApprovalPenagihanModel::with([
             'invoice',
             'pengiriman.purchaseOrder.klien',
             'pengiriman.forecast',
             'pengiriman.purchasing',
             'staff',
-            'manager',
-            'superadmin'
+            'manager'
         ]);
+
+        // Filter by tab
+        if ($this->activeTab === 'pending') {
+            $query->whereIn('status', ['pending', 'staff_approved', 'manager_approved']);
+        } else {
+            // approved tab - hanya yang completed
+            $query->where('status', 'completed');
+        }
 
         if ($this->search) {
             $query->whereHas('pengiriman', function ($q) {
                 $q->where('no_pengiriman', 'like', '%' . $this->search . '%');
+            })->orWhereHas('invoice', function ($q) {
+                $q->where('invoice_number', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -98,19 +115,41 @@ class ApprovalPenagihan extends Component
         $pengiriman = Pengiriman::with([
             'purchaseOrder.klien',
             'forecast',
-            'details.bahanBakuKlien'
+            'details.bahanBakuKlien',
+            'approvalPembayaran.histories' => function($query) {
+                $query->where('approval_type', 'pembayaran')
+                      ->orderBy('created_at', 'desc');
+            }
         ])->findOrFail($pengirimanId);
 
-        // Pre-fill form with pengiriman data
+        // Pre-fill form with customer data from PO's Klien
         $klien = $pengiriman->purchaseOrder->klien ?? null;
+
+        // Get refraksi and notes from approval pembayaran if exists
+        $approvalPembayaran = $pengiriman->approvalPembayaran;
+        $refraksiType = 'qty';
+        $refraksiValue = 0;
+        $notes = '';
+
+        if ($approvalPembayaran) {
+            $refraksiType = $approvalPembayaran->refraksi_type ?? 'qty';
+            $refraksiValue = $approvalPembayaran->refraksi_value ?? 0;
+
+            // Get latest note from approval history
+            $latestHistory = $approvalPembayaran->histories->first();
+            if ($latestHistory && $latestHistory->notes) {
+                $notes = 'Catatan dari Pembayaran: ' . $latestHistory->notes;
+            }
+        }
 
         $this->invoiceForm = [
             'customer_name' => $klien->nama ?? '',
-            'customer_address' => $klien->alamat ?? '',
+            'customer_address' => $klien->cabang ?? '',
             'customer_phone' => $klien->no_hp ?? '',
-            'customer_email' => $klien->email ?? '',
-            'discount_amount' => 0,
-            'notes' => '',
+            'customer_email' => '',
+            'refraksi_type' => $refraksiType,
+            'refraksi_value' => $refraksiValue,
+            'notes' => $notes,
         ];
 
         $this->selectedData = $pengiriman;
@@ -167,12 +206,15 @@ class ApprovalPenagihan extends Component
                 // Contoh: potongan 40 rupiah/kg dari 5000kg = 200,000 rupiah
                 $refraksiAmount = $this->invoiceForm['refraksi_value'] * $qtyBeforeRefraksi;
                 $subtotal = $subtotal - $refraksiAmount;
+            } elseif ($this->invoiceForm['refraksi_type'] === 'lainnya') {
+                // Refraksi Lainnya: input manual langsung nominal total
+                $refraksiAmount = $this->invoiceForm['refraksi_value'];
+                $subtotal = $subtotal - $refraksiAmount;
             }
 
             // Calculate amounts
             $taxAmount = $subtotal * ($companySetting->tax_percentage / 100);
-            $discountAmount = floatval($this->invoiceForm['discount_amount']);
-            $totalAmount = $subtotal + $taxAmount - $discountAmount;
+            $totalAmount = $subtotal + $taxAmount;
 
             // Create invoice
             $invoice = InvoicePenagihan::create([
@@ -193,7 +235,7 @@ class ApprovalPenagihan extends Component
                 'subtotal' => $subtotal,
                 'tax_percentage' => $companySetting->tax_percentage,
                 'tax_amount' => $taxAmount,
-                'discount_amount' => $discountAmount,
+                'discount_amount' => 0,
                 'total_amount' => $totalAmount,
                 'notes' => $this->invoiceForm['notes'],
                 'payment_status' => 'unpaid',
@@ -229,7 +271,6 @@ class ApprovalPenagihan extends Component
             'pengiriman.details.bahanBakuKlien',
             'staff',
             'manager',
-            'superadmin',
             'histories.user'
         ])->findOrFail($approvalId);
 
@@ -241,7 +282,6 @@ class ApprovalPenagihan extends Component
         if ($approval->invoice) {
             $this->invoiceForm['refraksi_type'] = $approval->invoice->refraksi_type ?? 'qty';
             $this->invoiceForm['refraksi_value'] = $approval->invoice->refraksi_value ?? 0;
-            $this->invoiceForm['discount_amount'] = $approval->invoice->discount_amount ?? 0;
         }
     }
 
@@ -277,6 +317,10 @@ class ApprovalPenagihan extends Component
             } elseif ($invoice->refraksi_type === 'rupiah') {
                 // Refraksi Rupiah
                 $refraksiAmount = $invoice->refraksi_value * $qtyBeforeRefraksi;
+                $subtotal = $subtotal - $refraksiAmount;
+            } elseif ($invoice->refraksi_type === 'lainnya') {
+                // Refraksi Lainnya: input manual langsung nominal total
+                $refraksiAmount = $invoice->refraksi_value;
                 $subtotal = $subtotal - $refraksiAmount;
             }
 
@@ -328,13 +372,7 @@ class ApprovalPenagihan extends Component
                 $approval->update([
                     'manager_id' => $user->id,
                     'manager_approved_at' => now(),
-                    'status' => 'manager_approved',
-                ]);
-            } elseif ($role === 'superadmin' && $approval->canSuperadminApprove()) {
-                $approval->update([
-                    'superadmin_id' => $user->id,
-                    'superadmin_approved_at' => now(),
-                    'status' => 'completed',
+                    'status' => 'completed', // Manager is final approval
                 ]);
             } else {
                 throw new \Exception('Anda tidak dapat melakukan approval pada tahap ini');
@@ -366,9 +404,7 @@ class ApprovalPenagihan extends Component
 
     private function getUserRole($user)
     {
-        if ($user->role === 'direktur') {
-            return 'superadmin';
-        } elseif ($user->role === 'manager_accounting') {
+        if ($user->role === 'manager_accounting') {
             return 'manager_keuangan';
         } elseif ($user->role === 'staff_accounting') {
             return 'staff';
@@ -387,7 +423,8 @@ class ApprovalPenagihan extends Component
             'customer_address' => '',
             'customer_phone' => '',
             'customer_email' => '',
-            'discount_amount' => 0,
+            'refraksi_type' => 'qty',
+            'refraksi_value' => 0,
             'notes' => '',
         ];
     }
@@ -399,6 +436,13 @@ class ApprovalPenagihan extends Component
 
     public function updatingStatusFilter()
     {
+        $this->resetPage();
+    }
+
+    public function setActiveTab($tab)
+    {
+        $this->activeTab = $tab;
+        $this->statusFilter = 'all';
         $this->resetPage();
     }
 }

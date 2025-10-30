@@ -302,7 +302,7 @@
                                             @if($approval->status === 'pending')
                                                 <i class="fas fa-user text-blue-600 mr-1"></i>Staff Accounting
                                             @elseif($approval->status === 'staff_approved')
-                                                <i class="fas fa-user-tie text-purple-600 mr-1"></i>Manager Keuangan (Final)
+                                                <i class="fas fa-user-tie text-purple-600 mr-1"></i>Manager Keuangan
                                             @elseif($approval->status === 'completed')
                                                 <i class="fas fa-check-circle text-green-600 mr-1"></i>Selesai
                                             @else

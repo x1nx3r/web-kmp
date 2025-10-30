@@ -18,15 +18,12 @@ class ApprovalPenagihan extends Model
         'staff_approved_at',
         'manager_id',
         'manager_approved_at',
-        'superadmin_id',
-        'superadmin_approved_at',
         'status',
     ];
 
     protected $casts = [
         'staff_approved_at' => 'datetime',
         'manager_approved_at' => 'datetime',
-        'superadmin_approved_at' => 'datetime',
     ];
 
     /**
@@ -62,14 +59,6 @@ class ApprovalPenagihan extends Model
     }
 
     /**
-     * Relasi ke Superadmin (User)
-     */
-    public function superadmin()
-    {
-        return $this->belongsTo(User::class, 'superadmin_id');
-    }
-
-    /**
      * Relasi ke Approval History
      */
     public function histories()
@@ -92,13 +81,5 @@ class ApprovalPenagihan extends Model
     public function canManagerApprove()
     {
         return $this->status === 'staff_approved' && $this->staff_approved_at && !$this->manager_approved_at;
-    }
-
-    /**
-     * Check if superadmin can approve
-     */
-    public function canSuperadminApprove()
-    {
-        return $this->status === 'manager_approved' && $this->manager_approved_at && !$this->superadmin_approved_at;
     }
 }

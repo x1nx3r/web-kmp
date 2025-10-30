@@ -3,20 +3,25 @@
 namespace App\Livewire\Accounting;
 
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use App\Models\ApprovalPembayaran as ApprovalPembayaranModel;
 use App\Models\ApprovalHistory;
 use App\Models\InvoicePenagihan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ApprovePembayaran extends Component
 {
+    use WithFileUploads;
+
     public $approvalId;
     public $approval;
     public $pengiriman;
     public $invoicePenagihan;
     public $approvalHistory;
     public $notes = '';
+    public $buktiPembayaran;
 
     // Refraksi form
     public $refraksiForm = [
@@ -82,24 +87,43 @@ class ApprovePembayaran extends Component
                     'status' => 'staff_approved',
                 ]);
             } elseif ($role === 'manager_keuangan' && $this->approval->canManagerApprove()) {
+                // Validasi bukti pembayaran wajib untuk manager
+                if (!$this->buktiPembayaran) {
+                    throw new \Exception('Bukti pembayaran wajib diupload untuk approval manager');
+                }
+
+                // Validate file type and size
+                $this->validate([
+                    'buktiPembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // max 5MB
+                ]);
+
+                // Upload bukti pembayaran
+                $buktiPath = $this->buktiPembayaran->store('bukti-pembayaran', 'public');
+
                 $this->approval->update([
                     'manager_id' => $user->id,
                     'manager_approved_at' => now(),
-                    'status' => 'manager_approved',
-                ]);
-            } elseif ($role === 'superadmin' && $this->approval->canSuperadminApprove()) {
-                $this->approval->update([
-                    'superadmin_id' => $user->id,
-                    'superadmin_approved_at' => now(),
                     'status' => 'completed',
+                    'bukti_pembayaran' => $buktiPath,
                 ]);
 
-                // Update status pengiriman ke 'berhasil'
+                // Update status pengiriman ke 'berhasil' ketika manager approve (final approval)
                 $this->approval->pengiriman->update([
                     'status' => 'berhasil',
                 ]);
             } else {
-                throw new \Exception('Anda tidak dapat melakukan approval pada tahap ini');
+                // Detailed error message for debugging
+                $currentStatus = $this->approval->status;
+                $errorMsg = "Anda tidak dapat melakukan approval pada tahap ini. ";
+                $errorMsg .= "Role Anda: {$role}, Status approval saat ini: {$currentStatus}. ";
+
+                if ($role === 'staff') {
+                    $errorMsg .= "Staff hanya bisa approve jika status = 'pending'.";
+                } elseif ($role === 'manager_keuangan') {
+                    $errorMsg .= "Manager hanya bisa approve jika status = 'staff_approved'.";
+                }
+
+                throw new \Exception($errorMsg);
             }
 
             // Save history
@@ -203,6 +227,10 @@ class ApprovePembayaran extends Component
                 // Refraksi Rupiah: potongan harga per kg
                 $refraksiAmount = $this->approval->refraksi_value * $qtyBeforeRefraksi;
                 $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+            } elseif ($this->approval->refraksi_type === 'lainnya') {
+                // Refraksi Lainnya: input manual langsung nominal total potongan
+                $refraksiAmount = $this->approval->refraksi_value;
+                $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
             }
 
             $this->approval->qty_before_refraksi = $qtyBeforeRefraksi;
@@ -226,9 +254,7 @@ class ApprovePembayaran extends Component
 
     private function getUserRole($user)
     {
-        if ($user->role === 'direktur') {
-            return 'superadmin';
-        } elseif ($user->role === 'manager_accounting') {
+        if ($user->role === 'manager_accounting') {
             return 'manager_keuangan';
         } elseif ($user->role === 'staff_accounting') {
             return 'staff';

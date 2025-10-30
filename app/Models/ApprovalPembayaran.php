@@ -20,6 +20,7 @@ class ApprovalPembayaran extends Model
         'superadmin_id',
         'superadmin_approved_at',
         'status',
+        'bukti_pembayaran',
         'refraksi_type',
         'refraksi_value',
         'refraksi_amount',
@@ -91,18 +92,10 @@ class ApprovalPembayaran extends Model
     }
 
     /**
-     * Check if manager can approve
+     * Check if manager can approve (final approval)
      */
     public function canManagerApprove()
     {
         return $this->status === 'staff_approved' && $this->staff_approved_at && !$this->manager_approved_at;
-    }
-
-    /**
-     * Check if superadmin can approve
-     */
-    public function canSuperadminApprove()
-    {
-        return $this->status === 'manager_approved' && $this->manager_approved_at && !$this->superadmin_approved_at;
     }
 }

@@ -16,6 +16,7 @@ class ApprovalPembayaran extends Component
 
     public $search = '';
     public $statusFilter = 'all';
+    public $activeTab = 'pending'; // Tab for pending approval or approved
     public $selectedPengiriman = null;
     public $showDetailModal = false;
     public $notes = '';
@@ -29,6 +30,7 @@ class ApprovalPembayaran extends Component
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => 'all'],
+        'activeTab' => ['except' => 'pending'],
     ];
 
     public function render()
@@ -38,9 +40,17 @@ class ApprovalPembayaran extends Component
             'pengiriman.forecast',
             'pengiriman.purchasing',
             'staff',
-            'manager',
-            'superadmin'
+            'manager'
         ]);
+
+        // Filter by active tab
+        if ($this->activeTab === 'pending') {
+            // Pending approval: show items with status pending or staff_approved
+            $query->whereIn('status', ['pending', 'staff_approved']);
+        } elseif ($this->activeTab === 'approved') {
+            // Approved: show only completed items
+            $query->where('status', 'completed');
+        }
 
         // Filter by search
         if ($this->search) {
@@ -49,7 +59,7 @@ class ApprovalPembayaran extends Component
             });
         }
 
-        // Filter by status
+        // Filter by status (optional, can be removed or kept for additional filtering)
         if ($this->statusFilter !== 'all') {
             $query->where('status', $this->statusFilter);
         }
@@ -59,6 +69,12 @@ class ApprovalPembayaran extends Component
         return view('livewire.accounting.approval-pembayaran', [
             'approvals' => $approvals,
         ]);
+    }
+
+    public function setActiveTab($tab)
+    {
+        $this->activeTab = $tab;
+        $this->resetPage(); // Reset pagination when switching tabs
     }
 
     public function showDetail($approvalId)
@@ -71,7 +87,6 @@ class ApprovalPembayaran extends Component
             'pengiriman.invoicePenagihan.approvalPenagihan',
             'staff',
             'manager',
-            'superadmin',
             'histories.user'
         ])->findOrFail($approvalId);
 

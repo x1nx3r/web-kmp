@@ -260,61 +260,189 @@
                 </div>
             @endif
 
-            {{-- Approval Information --}}
+            {{-- Bukti Foto Bongkar --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-                <div class="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4">
+                <div class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4">
                     <h2 class="text-lg font-semibold text-gray-900 flex items-center">
-                        <i class="fas fa-check-circle text-indigo-600 mr-3"></i>
-                        Informasi Approval
+                        <i class="fas fa-camera text-blue-600 mr-3"></i>
+                        Bukti Foto Bongkar
                     </h2>
                 </div>
                 <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="text-sm font-medium text-gray-500">Current Approver Role</label>
-                            <p class="mt-1 text-base text-gray-900 font-semibold">
-                                @if($approval->current_approver_role === 'staff')
-                                    <i class="fas fa-user text-blue-600 mr-2"></i>Staff Accounting
-                                @elseif($approval->current_approver_role === 'manager_keuangan')
-                                    <i class="fas fa-user-tie text-purple-600 mr-2"></i>Manager Keuangan
-                                @elseif($approval->current_approver_role === 'superadmin')
-                                    <i class="fas fa-user-shield text-red-600 mr-2"></i>Direktur
-                                @endif
+                    @if($pengiriman->bukti_foto_bongkar)
+                        <div class="flex flex-col items-center">
+                            <div class="relative group w-full max-w-2xl">
+                                <img
+                                    src="{{ asset('storage/' . $pengiriman->bukti_foto_bongkar) }}"
+                                    alt="Bukti Foto Bongkar"
+                                    class="w-full h-auto rounded-lg shadow-md border-2 border-gray-200 hover:border-blue-400 transition-all cursor-pointer"
+                                    onclick="openImageModal('{{ asset('storage/' . $pengiriman->bukti_foto_bongkar) }}')"
+                                >
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-search-plus text-white text-3xl opacity-0 group-hover:opacity-100 transition-all"></i>
+                                </div>
+                            </div>
+                            <p class="mt-3 text-sm text-gray-500 flex items-center">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Klik gambar untuk memperbesar
                             </p>
                         </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500">Total Approval Level</label>
-                            <p class="mt-1 text-base text-gray-900">{{ $approval->total_approval_level }}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500">Current Level</label>
-                            <p class="mt-1 text-base text-gray-900">{{ $approval->current_level }}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500">Submitted By</label>
-                            <p class="mt-1 text-base text-gray-900">{{ $approval->submitted_by_user ?? '-' }}</p>
-                        </div>
-                        @if($approval->approved_by_user)
-                            <div>
-                                <label class="text-sm font-medium text-gray-500">Approved By</label>
-                                <p class="mt-1 text-base text-gray-900">{{ $approval->approved_by_user }}</p>
+                    @else
+                        <div class="flex flex-col items-center justify-center py-12">
+                            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-image text-gray-400 text-3xl"></i>
                             </div>
-                        @endif
-                        @if($approval->rejected_by_user)
-                            <div>
-                                <label class="text-sm font-medium text-gray-500">Rejected By</label>
-                                <p class="mt-1 text-base text-gray-900">{{ $approval->rejected_by_user }}</p>
-                            </div>
-                        @endif
-                        @if($approval->catatan)
-                            <div class="md:col-span-2">
-                                <label class="text-sm font-medium text-gray-500">Catatan</label>
-                                <p class="mt-1 text-base text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">{{ $approval->catatan }}</p>
-                            </div>
-                        @endif
-                    </div>
+                            <p class="text-gray-500 text-sm">Tidak ada bukti foto bongkar</p>
+                            <p class="text-gray-400 text-xs mt-1">Foto belum diunggah untuk pengiriman ini</p>
+                        </div>
+                    @endif
                 </div>
             </div>
+
+            {{-- Image Modal --}}
+            <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4" onclick="closeImageModal()">
+                <div class="relative max-w-6xl max-h-full">
+                    <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                    <img id="modalImage" src="" alt="Bukti Foto Bongkar" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl">
+                </div>
+            </div>
+
+            <script>
+                function openImageModal(imageSrc) {
+                    const modal = document.getElementById('imageModal');
+                    const modalImage = document.getElementById('modalImage');
+                    modalImage.src = imageSrc;
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.body.style.overflow = 'hidden';
+                }
+
+                function closeImageModal() {
+                    const modal = document.getElementById('imageModal');
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    document.body.style.overflow = '';
+                }
+
+                // Close modal with Escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        closeImageModal();
+                    }
+                });
+            </script>
+
+            {{-- Bukti Pembayaran --}}
+            @if($approval->bukti_pembayaran)
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+                    <div class="border-b border-gray-200 bg-gradient-to-r from-green-50 to-green-100 px-6 py-4">
+                        <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-receipt text-green-600 mr-3"></i>
+                            Bukti Pembayaran
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-col items-center">
+                            @php
+                                $extension = pathinfo($approval->bukti_pembayaran, PATHINFO_EXTENSION);
+                                $isPdf = strtolower($extension) === 'pdf';
+                            @endphp
+
+                            @if($isPdf)
+                                {{-- PDF Preview --}}
+                                <div class="w-full max-w-2xl">
+                                    <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-6 text-center">
+                                        <i class="fas fa-file-pdf text-red-500 text-6xl mb-4"></i>
+                                        <p class="text-gray-700 font-medium mb-2">Dokumen PDF</p>
+                                        <p class="text-sm text-gray-500 mb-4">Bukti pembayaran dalam format PDF</p>
+                                        <a
+                                            href="{{ asset('storage/' . $approval->bukti_pembayaran) }}"
+                                            target="_blank"
+                                            class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                                        >
+                                            <i class="fas fa-external-link-alt mr-2"></i>
+                                            Buka PDF
+                                        </a>
+                                        <a
+                                            href="{{ asset('storage/' . $approval->bukti_pembayaran) }}"
+                                            download
+                                            class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors ml-2"
+                                        >
+                                            <i class="fas fa-download mr-2"></i>
+                                            Download
+                                        </a>
+                                    </div>
+                                </div>
+                            @else
+                                {{-- Image Preview --}}
+                                <div class="relative group w-full max-w-2xl">
+                                    <img
+                                        src="{{ asset('storage/' . $approval->bukti_pembayaran) }}"
+                                        alt="Bukti Pembayaran"
+                                        class="w-full h-auto rounded-lg shadow-md border-2 border-gray-200 hover:border-green-400 transition-all cursor-pointer"
+                                        onclick="openPaymentModal('{{ asset('storage/' . $approval->bukti_pembayaran) }}')"
+                                    >
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-search-plus text-white text-3xl opacity-0 group-hover:opacity-100 transition-all"></i>
+                                    </div>
+                                </div>
+                                <p class="mt-3 text-sm text-gray-500 flex items-center">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Klik gambar untuk memperbesar
+                                </p>
+                            @endif
+
+                            <div class="mt-4 text-center">
+                                <p class="text-xs text-gray-500">
+                                    <i class="fas fa-user mr-1"></i>
+                                    Diupload oleh: {{ $approval->manager->nama ?? '-' }}
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    {{ $approval->manager_approved_at ? $approval->manager_approved_at->format('d M Y, H:i') : '-' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Payment Image Modal --}}
+                <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4" onclick="closePaymentModal()">
+                    <div class="relative max-w-6xl max-h-full">
+                        <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                        <img id="paymentModalImage" src="" alt="Bukti Pembayaran" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl">
+                    </div>
+                </div>
+
+                <script>
+                    function openPaymentModal(imageSrc) {
+                        const modal = document.getElementById('paymentModal');
+                        const modalImage = document.getElementById('paymentModalImage');
+                        modalImage.src = imageSrc;
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                        document.body.style.overflow = 'hidden';
+                    }
+
+                    function closePaymentModal() {
+                        const modal = document.getElementById('paymentModal');
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        document.body.style.overflow = '';
+                    }
+
+                    // Close payment modal with Escape key
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            closePaymentModal();
+                        }
+                    });
+                </script>
+            @endif
 
             {{-- Approval History --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200">

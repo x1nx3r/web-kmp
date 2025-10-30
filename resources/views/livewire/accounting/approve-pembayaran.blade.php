@@ -200,8 +200,10 @@
                                         <p class="mt-1 text-sm font-semibold">
                                             @if($approval->refraksi_type === 'qty')
                                                 <i class="fas fa-percentage text-green-600 mr-1"></i>Qty ({{ number_format($approval->refraksi_value, 2) }}%)
-                                            @else
+                                            @elseif($approval->refraksi_type === 'rupiah')
                                                 <i class="fas fa-money-bill text-green-600 mr-1"></i>Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                            @else
+                                                <i class="fas fa-calculator text-green-600 mr-1"></i>Refraksi Lainnya (Manual)
                                             @endif
                                         </p>
                                     </div>
@@ -228,6 +230,7 @@
                                         <select wire:model="refraksiForm.type" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500">
                                             <option value="qty">Qty (%)</option>
                                             <option value="rupiah">Rupiah (Rp/kg)</option>
+                                            <option value="lainnya">Refraksi Lainnya (Input Manual)</option>
                                         </select>
                                     </div>
                                     <div>
@@ -235,8 +238,10 @@
                                             Nilai Refraksi
                                             @if($refraksiForm['type'] === 'qty')
                                                 <span class="text-gray-500">(dalam %)</span>
-                                            @else
+                                            @elseif($refraksiForm['type'] === 'rupiah')
                                                 <span class="text-gray-500">(Rp per kg)</span>
+                                            @else
+                                                <span class="text-gray-500">(Total potongan dalam Rp)</span>
                                             @endif
                                         </label>
                                         <input
@@ -244,10 +249,27 @@
                                             step="0.01"
                                             wire:model="refraksiForm.value"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
-                                            placeholder="{{ $refraksiForm['type'] === 'qty' ? 'Contoh: 2.5' : 'Contoh: 1000' }}"
+                                            placeholder="{{ $refraksiForm['type'] === 'qty' ? 'Contoh: 2.5' : ($refraksiForm['type'] === 'rupiah' ? 'Contoh: 1000' : 'Contoh: 50000') }}"
                                         >
                                     </div>
                                 </div>
+
+                                {{-- Info berdasarkan jenis refraksi --}}
+                                <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p class="text-xs text-blue-800 flex items-start">
+                                        <i class="fas fa-info-circle mr-2 mt-0.5"></i>
+                                        <span>
+                                            @if($refraksiForm['type'] === 'qty')
+                                                <strong>Refraksi Qty:</strong> Potongan berdasarkan persentase dari total qty. Sistem akan menghitung potongan rupiah secara otomatis.
+                                            @elseif($refraksiForm['type'] === 'rupiah')
+                                                <strong>Refraksi Rupiah:</strong> Potongan harga per kilogram. Total potongan = nilai refraksi × total qty pengiriman.
+                                            @else
+                                                <strong>Refraksi Lainnya:</strong> Masukkan nominal potongan secara manual dalam rupiah. Nominal yang dimasukkan akan langsung menjadi total potongan pembayaran.
+                                            @endif
+                                        </span>
+                                    </p>
+                                </div>
+
                                 <button
                                     wire:click="updateRefraksi"
                                     class="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
@@ -280,9 +302,9 @@
                                             @if($approval->status === 'pending')
                                                 <i class="fas fa-user text-blue-600 mr-1"></i>Staff Accounting
                                             @elseif($approval->status === 'staff_approved')
-                                                <i class="fas fa-user-tie text-purple-600 mr-1"></i>Manager Keuangan
-                                            @elseif($approval->status === 'manager_approved')
-                                                <i class="fas fa-user-shield text-red-600 mr-1"></i>Direktur
+                                                <i class="fas fa-user-tie text-purple-600 mr-1"></i>Manager Keuangan (Final)
+                                            @elseif($approval->status === 'completed')
+                                                <i class="fas fa-check-circle text-green-600 mr-1"></i>Selesai
                                             @else
                                                 -
                                             @endif
@@ -301,20 +323,10 @@
 
                                     @if($approval->manager)
                                         <div>
-                                            <label class="text-xs font-medium text-gray-500">Manager</label>
+                                            <label class="text-xs font-medium text-gray-500">Manager (Final Approval)</label>
                                             <p class="mt-1 text-sm text-gray-900">
                                                 <i class="fas fa-check text-green-500 mr-1"></i>
                                                 {{ $approval->manager->nama }}
-                                            </p>
-                                        </div>
-                                    @endif
-
-                                    @if($approval->superadmin)
-                                        <div>
-                                            <label class="text-xs font-medium text-gray-500">Direktur</label>
-                                            <p class="mt-1 text-sm text-gray-900">
-                                                <i class="fas fa-check text-green-500 mr-1"></i>
-                                                {{ $approval->superadmin->nama }}
                                             </p>
                                         </div>
                                     @endif
@@ -330,6 +342,62 @@
                                         placeholder="Tambahkan catatan untuk approval..."
                                     ></textarea>
                                 </div>
+
+                                {{-- Upload Bukti Pembayaran (Only for Manager) --}}
+                                @php
+                                    $user = Auth::user();
+                                    $isManager = $user->role === 'manager_accounting' && $approval->status === 'staff_approved';
+                                @endphp
+
+                                @if($isManager)
+                                    <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                        <label class="flex items-center text-sm font-semibold text-gray-900 mb-2">
+                                            <i class="fas fa-file-upload text-blue-600 mr-2"></i>
+                                            Bukti Pembayaran <span class="text-red-500 ml-1">*</span>
+                                        </label>
+                                        <p class="text-xs text-gray-600 mb-3">
+                                            Upload bukti pembayaran dalam format JPG, PNG, atau PDF (Max: 5MB)
+                                        </p>
+
+                                        <input
+                                            type="file"
+                                            wire:model="buktiPembayaran"
+                                            accept="image/jpeg,image/jpg,image/png,application/pdf"
+                                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
+                                        >
+
+                                        @error('buktiPembayaran')
+                                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                                        @enderror
+
+                                        {{-- Preview --}}
+                                        @if($buktiPembayaran)
+                                            <div class="mt-3 p-3 bg-white border border-blue-200 rounded-md">
+                                                <p class="text-xs font-medium text-gray-700 mb-2 flex items-center">
+                                                    <i class="fas fa-file text-blue-600 mr-2"></i>
+                                                    File dipilih: {{ $buktiPembayaran->getClientOriginalName() }}
+                                                </p>
+                                                <p class="text-xs text-gray-500">
+                                                    Ukuran: {{ number_format($buktiPembayaran->getSize() / 1024, 2) }} KB
+                                                </p>
+
+                                                {{-- Image Preview --}}
+                                                @if(in_array($buktiPembayaran->getClientOriginalExtension(), ['jpg', 'jpeg', 'png']))
+                                                    <div class="mt-2">
+                                                        <img src="{{ $buktiPembayaran->temporaryUrl() }}" alt="Preview" class="w-full h-auto rounded border border-gray-200">
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        <div class="mt-2 flex items-start">
+                                            <i class="fas fa-info-circle text-blue-500 text-xs mt-0.5 mr-1"></i>
+                                            <p class="text-xs text-blue-700">
+                                                Bukti pembayaran wajib diupload untuk menyelesaikan approval sebagai Manager.
+                                            </p>
+                                        </div>
+                                    </div>
+                                @endif
 
                                 {{-- Action Buttons --}}
                                 @if($approval->status !== 'completed' && $approval->status !== 'rejected')

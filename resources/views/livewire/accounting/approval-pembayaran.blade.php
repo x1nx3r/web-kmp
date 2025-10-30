@@ -96,21 +96,23 @@
                     />
                 </div>
 
-                {{-- Status Filter --}}
+                {{-- Status Filter (contextual based on active tab) --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-tag mr-1 text-gray-400"></i>
-                        Status Approval
+                        Filter Status
                     </label>
                     <select
                         wire:model.live="statusFilter"
                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                         <option value="all">Semua Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="staff_approved">Staff Approved</option>
-                        <option value="manager_approved">Manager Approved</option>
-                        <option value="completed">Completed</option>
+                        @if($activeTab === 'pending')
+                            <option value="pending">Pending</option>
+                            <option value="staff_approved">Staff Approved</option>
+                        @else
+                            <option value="completed">Completed</option>
+                        @endif
                     </select>
                 </div>
             </div>
@@ -129,6 +131,26 @@
                 </div>
                 <span class="text-sm text-gray-600">Total: {{ $approvals->total() }} data</span>
             </div>
+        </div>
+
+        {{-- Tab Navigation --}}
+        <div class="border-b border-gray-200">
+            <nav class="flex -mb-px" aria-label="Tabs">
+                <button
+                    wire:click="setActiveTab('pending')"
+                    class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors {{ $activeTab === 'pending' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+                >
+                    <i class="fas fa-clock mr-2"></i>
+                    Pending Approval
+                </button>
+                <button
+                    wire:click="setActiveTab('approved')"
+                    class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors {{ $activeTab === 'approved' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+                >
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Approved
+                </button>
+            </nav>
         </div>
 
         <div class="overflow-x-auto">
@@ -185,31 +207,29 @@
                                         <i class="fas {{ $approval->manager_approved_at ? 'fa-check-circle' : 'fa-circle' }} mr-1"></i>
                                         <span>Manager {{ $approval->manager_approved_at ? '✓' : '' }}</span>
                                     </div>
-                                    <div class="flex items-center {{ $approval->superadmin_approved_at ? 'text-green-600' : 'text-gray-400' }}">
-                                        <i class="fas {{ $approval->superadmin_approved_at ? 'fa-check-circle' : 'fa-circle' }} mr-1"></i>
-                                        <span>Superadmin {{ $approval->superadmin_approved_at ? '✓' : '' }}</span>
-                                    </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center space-x-2">
-                                    {{-- Approve Button (goes to approve page) --}}
-                                    <a
-                                        href="{{ route('accounting.approval-pembayaran.approve', $approval->id) }}"
-                                        class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
-                                    >
-                                        <i class="fas fa-check-circle mr-1"></i>
-                                        Approve
-                                    </a>
-
-                                    {{-- Detail Button (goes to detail page) --}}
-                                    <a
-                                        href="{{ route('accounting.approval-pembayaran.detail', $approval->id) }}"
-                                        class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                                    >
-                                        <i class="fas fa-eye mr-1"></i>
-                                        Detail
-                                    </a>
+                                    @if($activeTab === 'pending')
+                                        {{-- Approve Button (only show in Pending tab) --}}
+                                        <a
+                                            href="{{ route('accounting.approval-pembayaran.approve', $approval->id) }}"
+                                            class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                                        >
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            Approve
+                                        </a>
+                                    @elseif($activeTab === 'approved')
+                                        {{-- Detail Button (only show in Approved tab) --}}
+                                        <a
+                                            href="{{ route('accounting.approval-pembayaran.detail', $approval->id) }}"
+                                            class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                                        >
+                                            <i class="fas fa-eye mr-1"></i>
+                                            Detail
+                                        </a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -218,7 +238,11 @@
                             <td colspan="6" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
-                                    <p class="text-gray-500 text-sm">Tidak ada data approval pembayaran</p>
+                                    @if($activeTab === 'pending')
+                                        <p class="text-gray-500 text-sm">Tidak ada approval pembayaran yang menunggu persetujuan</p>
+                                    @else
+                                        <p class="text-gray-500 text-sm">Tidak ada approval pembayaran yang sudah disetujui</p>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -486,27 +510,6 @@
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full {{ $selectedPengiriman->superadmin_approved_at ? 'bg-green-100' : 'bg-gray-100' }} flex items-center justify-center mr-3">
-                                        <i class="fas {{ $selectedPengiriman->superadmin_approved_at ? 'fa-check text-green-600' : 'fa-user-shield text-gray-400' }}"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">Superadmin</p>
-                                        <p class="text-xs text-gray-500">
-                                            {{ $selectedPengiriman->superadmin ? $selectedPengiriman->superadmin->nama : '-' }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    @if($selectedPengiriman->superadmin_approved_at)
-                                        <p class="text-xs text-green-600 font-medium">Approved</p>
-                                        <p class="text-xs text-gray-500">{{ $selectedPengiriman->superadmin_approved_at->format('d M Y H:i') }}</p>
-                                    @else
-                                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Pending</span>
-                                    @endif
-                                </div>
-                            </div>
                         </div>
                     </div>
 

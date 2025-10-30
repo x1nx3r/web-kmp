@@ -63,11 +63,35 @@ class Pengiriman extends Model
     }
 
     /**
+     * Alias for pengirimanDetails
+     */
+    public function details()
+    {
+        return $this->hasMany(PengirimanDetail::class);
+    }
+
+    /**
      * Relasi ke Purchase Order
      */
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    /**
+     * Relasi ke Approval Pembayaran
+     */
+    public function approvalPembayaran()
+    {
+        return $this->hasOne(ApprovalPembayaran::class);
+    }
+
+    /**
+     * Relasi ke Invoice Penagihan
+     */
+    public function invoicePenagihan()
+    {
+        return $this->hasOne(InvoicePenagihan::class);
     }
 
     /**
@@ -190,18 +214,18 @@ class Pengiriman extends Model
     {
         return $this->attributes['bukti_foto_bongkar'] ?? null;
     }
-    
+
     /**
      * Get bukti foto bongkar sebagai array
      */
     public function getBuktiFotoBongkarArrayAttribute()
     {
         $value = $this->attributes['bukti_foto_bongkar'] ?? null;
-        
+
         if (!$value) {
             return [];
         }
-        
+
         // Jika string JSON, decode
         if (is_string($value) && (str_starts_with($value, '[') || str_starts_with($value, '{'))) {
             try {
@@ -211,11 +235,11 @@ class Pengiriman extends Model
                 return [$value];
             }
         }
-        
+
         // Jika string biasa, return sebagai array dengan satu element
         return [$value];
     }
-    
+
     /**
      * Set bukti foto bongkar
      */
@@ -236,28 +260,28 @@ class Pengiriman extends Model
     public function getBuktiFotoBongkarUrlAttribute()
     {
         $photos = $this->bukti_foto_bongkar_array;
-        
+
         if (!$photos || empty($photos)) {
             return [];
         }
-        
+
         // Return array URLs
         return array_map(function($photo) {
             return asset('storage/pengiriman/bukti/' . $photo);
         }, $photos);
     }
-    
+
     /**
      * Get foto bukti paths untuk storage
      */
     public function getBuktiFotoBongkarPathsAttribute()
     {
         $photos = $this->bukti_foto_bongkar_array;
-        
+
         if (!$photos || empty($photos)) {
             return [];
         }
-        
+
         return array_map(function($photo) {
             return 'pengiriman/bukti/' . $photo;
         }, $photos);

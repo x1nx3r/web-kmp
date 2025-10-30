@@ -31,6 +31,8 @@ class DatabaseSeeder extends Seeder
             // RiwayatHargaKlienSeeder::class, // Price history created in BahanBakuKlienSeeder
             PurchaseOrderSeeder::class,
             PurchaseOrderBahanBakuSeeder::class,
+            CompanySettingSeeder::class,
+            PengirimanAccountingSeeder::class,
         ]);
     }
 }

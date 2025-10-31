@@ -9,6 +9,8 @@ use App\Models\BahanBakuKlien;
 use App\Models\BahanBakuSupplier;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Models\RiwayatHargaKlien;
+use App\Models\RiwayatHargaBahanBaku;
 use App\Services\AuthFallbackService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -159,8 +161,87 @@ class OrderController extends Controller
             'orderDetails.orderSuppliers.supplier',
             'orderDetails.orderSuppliers.bahanBakuSupplier'
         ])->findOrFail($id);
+        
+        // Prepare chart data for price analysis
+        $chartsData = $this->prepareOrderChartsData($order);
             
-        return view('pages.marketing.orders.show', compact('order'));
+        return view('pages.marketing.orders.show', compact('order', 'chartsData'));
+    }
+
+    /**
+     * Prepare charts data for order price analysis
+     */
+    private function prepareOrderChartsData(Order $order)
+    {
+        $chartsData = [];
+        
+        foreach ($order->orderDetails as $detail) {
+            $material = $detail->bahanBakuKlien;
+            if (!$material) continue;
+            
+            // Get client price history for this material
+            $clientPriceHistory = RiwayatHargaKlien::where('bahan_baku_klien_id', $material->id)
+                ->orderBy('tanggal_perubahan', 'asc')
+                ->get()
+                ->map(function ($riwayat) {
+                    return [
+                        'tanggal' => $riwayat->tanggal_perubahan,
+                        'harga' => (float) $riwayat->harga_approved_baru,
+                        'formatted_tanggal' => $riwayat->tanggal_perubahan->format('d M')
+                    ];
+                })
+                ->toArray();
+            
+            // Prepare supplier options with their price history
+            $supplierOptions = [];
+            foreach ($detail->orderSuppliers as $orderSupplier) {
+                $supplier = $orderSupplier->supplier;
+                if (!$supplier) continue;
+                
+                // Get price history for this supplier's material
+                $supplierPriceHistory = RiwayatHargaBahanBaku::whereHas('bahanBakuSupplier', function ($query) use ($supplier, $material) {
+                    $query->where('supplier_id', $supplier->id)
+                          ->where('nama', 'like', '%' . $material->nama . '%');
+                })
+                ->orderBy('tanggal_perubahan', 'asc')
+                ->get()
+                ->map(function ($riwayat) {
+                    return [
+                        'tanggal' => $riwayat->tanggal_perubahan,
+                        'harga' => (float) $riwayat->harga_baru,
+                        'formatted_tanggal' => $riwayat->tanggal_perubahan->format('d M')
+                    ];
+                })
+                ->toArray();
+                
+                $supplierOptions[] = [
+                    'supplier_name' => $supplier->nama,
+                    'pic_name' => $supplier->picPurchasing->nama ?? null,
+                    'current_price' => (float) $orderSupplier->harga_supplier,
+                    'price_history' => $supplierPriceHistory,
+                    'is_selected' => $orderSupplier->is_recommended ?? false
+                ];
+            }
+            
+            // Calculate margin percentage
+            $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first();
+            $marginPercent = 0;
+            if ($bestSupplier && $bestSupplier->harga_supplier > 0) {
+                $marginPercent = (($detail->harga_jual - $bestSupplier->harga_supplier) / $detail->harga_jual) * 100;
+            }
+            
+            $chartsData[] = [
+                'nama' => $material->nama,
+                'order_quantity' => (float) $detail->qty,
+                'order_price' => (float) $detail->harga_jual,
+                'satuan' => $detail->satuan,
+                'client_price_history' => $clientPriceHistory,
+                'supplier_options' => $supplierOptions,
+                'margin_percent' => $marginPercent
+            ];
+        }
+        
+        return $chartsData;
     }
 
     /**

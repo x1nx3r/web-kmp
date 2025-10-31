@@ -277,6 +277,9 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Price Analysis Chart -->
+                <x-order.price-analysis :order="$order" :chartsData="$chartsData" />
                 </div>
             </div>
 

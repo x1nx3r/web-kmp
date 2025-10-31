@@ -165,7 +165,7 @@
                             </div>
                             <div class="text-right">
                                 <div class="text-xs text-gray-500">
-                                    {{ $penawaran->details->count() }} material{{ $penawaran->details->count() > 1 ? 's' : '' }}
+                                    {{ $penawaran->details->count() }} bahan baku
                                 </div>
                                 <div class="text-xs text-gray-500">
                                     {{ $penawaran->details->unique('supplier_id')->count() }} supplier{{ $penawaran->details->unique('supplier_id')->count() > 1 ? 's' : '' }}
@@ -174,7 +174,7 @@
                         </div>
                     </div>
 
-                    {{-- Materials Table --}}
+                    {{-- Bahan Baku Table --}}
                     <div class="p-4">
                         <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
                             <i class="fas fa-cubes mr-2 text-purple-600"></i>
@@ -187,9 +187,8 @@
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bahan Baku</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Harga Klien</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Harga Supplier</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Margin</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Suppliers & Prices</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Best Margin</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
                                     </tr>
                                 </thead>
@@ -209,27 +208,89 @@
                                                 </span>
                                             </td>
                                             <td class="px-3 py-3">
-                                                @if($detail->supplier)
+                                                @if($detail->alternativeSuppliers && $detail->alternativeSuppliers->count())
+                                                    <div class="supplier-section" data-detail-id="{{ $detail->id }}">
+                                                        {{-- Collapsed view (default) --}}
+                                                        <div class="supplier-collapsed">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="text-sm">
+                                                                    @php $bestSupplier = $detail->alternativeSuppliers->sortBy('harga_supplier')->first(); @endphp
+                                                                    @if($bestSupplier && $bestSupplier->supplier)
+                                                                        <span class="font-medium text-green-700">
+                                                                            {{ Str::limit($bestSupplier->supplier->nama, 15) }}
+                                                                        </span>
+                                                                        <span class="mx-1 text-gray-400">•</span>
+                                                                        <span class="text-xs text-green-600 font-medium">
+                                                                            Rp {{ number_format($bestSupplier->harga_supplier / 1000, 0) }}k
+                                                                        </span>
+                                                                        <span class="ml-1 text-xs bg-green-100 text-green-700 px-1 rounded">Best</span>
+                                                                    @endif
+                                                                    <span class="text-xs text-gray-500 ml-2">
+                                                                        +{{ $detail->alternativeSuppliers->count() - 1 }} more
+                                                                    </span>
+                                                                </div>
+                                                                <button 
+                                                                    onclick="toggleSuppliers({{ $detail->id }})"
+                                                                    class="text-blue-600 hover:text-blue-800 text-xs ml-2 flex items-center"
+                                                                >
+                                                                    <span class="expand-text">Show All</span>
+                                                                    <i class="fas fa-chevron-down ml-1 expand-icon transition-transform"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {{-- Expanded view (hidden by default) --}}
+                                                        <div class="supplier-expanded hidden">
+                                                            <div class="space-y-1">
+                                                                @foreach($detail->alternativeSuppliers->sortBy('harga_supplier') as $altSupplier)
+                                                                    @if($altSupplier->supplier)
+                                                                        <div class="flex items-center justify-between p-2 rounded-lg {{ $loop->first ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }}">
+                                                                            <div class="flex-1 min-w-0">
+                                                                                <div class="font-medium text-sm {{ $loop->first ? 'text-green-900' : 'text-gray-900' }} truncate">
+                                                                                    {{ $altSupplier->supplier->nama }}
+                                                                                    @if($loop->first)
+                                                                                        <span class="ml-1 text-xs bg-green-100 text-green-700 px-1 rounded">Best</span>
+                                                                                    @endif
+                                                                                </div>
+                                                                                @if($altSupplier->supplier->picPurchasing)
+                                                                                    <div class="text-xs {{ $loop->first ? 'text-green-600' : 'text-gray-500' }} truncate">
+                                                                                        <i class="fas fa-user-tie mr-1"></i>
+                                                                                        PIC: {{ $altSupplier->supplier->picPurchasing->nama }}
+                                                                                    </div>
+                                                                                @endif
+                                                                            </div>
+                                                                            <div class="text-right ml-2">
+                                                                                <div class="text-sm font-medium {{ $loop->first ? 'text-green-700' : 'text-red-700' }}">
+                                                                                    Rp {{ number_format($altSupplier->harga_supplier, 0, ',', '.') }}
+                                                                                </div>
+                                                                                @if($detail->harga_klien > 0)
+                                                                                    @php
+                                                                                        $margin = (($detail->harga_klien - $altSupplier->harga_supplier) / $detail->harga_klien) * 100;
+                                                                                    @endphp
+                                                                                    <div class="text-xs {{ $margin >= 20 ? 'text-green-600' : ($margin >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                                                        {{ number_format($margin, 1) }}%
+                                                                                    </div>
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    @endif
+                                                                @endforeach
+                                                            </div>
+                                                            <button 
+                                                                onclick="toggleSuppliers({{ $detail->id }})"
+                                                                class="text-blue-600 hover:text-blue-800 text-xs mt-2 flex items-center"
+                                                            >
+                                                                <span class="collapse-text">Show Less</span>
+                                                                <i class="fas fa-chevron-up ml-1 collapse-icon"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                @elseif($detail->supplier)
+                                                    {{-- Fallback: Show selected supplier only --}}
                                                     <div class="font-medium text-gray-900">{{ $detail->supplier->nama }}</div>
-                                                    @if($detail->supplier->picPurchasing)
-                                                        <div class="text-xs text-gray-500">
-                                                            <i class="fas fa-user-tie mr-1"></i>
-                                                            PIC: {{ $detail->supplier->picPurchasing->nama }}
-                                                        </div>
-                                                    @endif
                                                 @else
-                                                    <div class="font-medium text-gray-500">Belum dipilih</div>
-                                                    @if(method_exists($detail, 'alternativeSuppliers') && $detail->alternativeSuppliers && $detail->alternativeSuppliers->count())
-                                                        <div class="text-xs text-gray-500 truncate">
-                                                            Alternatif: {{ $detail->alternativeSuppliers->map(function($a){ return optional($a->supplier)->nama; })->filter()->unique()->join(', ') }}
-                                                        </div>
-                                                    @endif
+                                                    <div class="font-medium text-gray-500">Tidak ada supplier</div>
                                                 @endif
-                                            </td>
-                                            <td class="px-3 py-3">
-                                                <span class="text-red-700 font-medium">
-                                                    Rp {{ number_format($detail->harga_supplier, 0, ',', '.') }}
-                                                </span>
                                             </td>
                                             <td class="px-3 py-3">
                                                 <div class="flex items-center">
@@ -375,11 +436,11 @@
     @if($showDetailModal && $selectedPenawaran)
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             {{-- Backdrop --}}
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" wire:click="closeDetailModal"></div>
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" wire:click="closeDetailModal"></div>
 
             {{-- Modal Container --}}
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-xl shadow-xl max-w-4xl w-full z-50" @click.stop>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-4xl w-full transform transition-all" @click.stop>
                     {{-- Modal Header --}}
                     <div class="border-b border-gray-200 px-6 py-4">
                         <div class="flex items-center justify-between">
@@ -436,17 +497,17 @@
                             </div>
                         </div>
 
-                        {{-- Materials --}}
+                        {{-- Bahan Baku --}}
                         <div class="mb-4">
-                            <h4 class="font-semibold text-gray-900 mb-3">Daftar Material ({{ $selectedPenawaran->details->count() }})</h4>
+                            <h4 class="font-semibold text-gray-900 mb-3">Daftar Bahan Baku ({{ $selectedPenawaran->details->count() }})</h4>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-sm">
                                     <thead class="bg-gray-50">
                                         <tr>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Material</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Bahan Baku</th>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Qty</th>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Supplier</th>
-                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Margin</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">All Suppliers</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Best Margin</th>
                                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Subtotal</th>
                                         </tr>
                                     </thead>
@@ -455,7 +516,32 @@
                                             <tr>
                                                 <td class="px-3 py-2">{{ $detail->nama_material }}</td>
                                                 <td class="px-3 py-2">{{ number_format($detail->quantity) }} {{ $detail->satuan }}</td>
-                                                <td class="px-3 py-2">{{ $detail->supplier->nama }}</td>
+                                                <td class="px-3 py-2">
+                                                    @if($detail->alternativeSuppliers && $detail->alternativeSuppliers->count())
+                                                        <div class="space-y-1">
+                                                            @foreach($detail->alternativeSuppliers->sortBy('harga_supplier') as $altSupplier)
+                                                                @if($altSupplier->supplier)
+                                                                    <div class="text-xs {{ $loop->first ? 'font-medium text-green-700' : 'text-gray-600' }}">
+                                                                        {{ $altSupplier->supplier->nama }}
+                                                                        <span class="ml-2">Rp {{ number_format($altSupplier->harga_supplier, 0, ',', '.') }}</span>
+                                                                        @if($loop->first)
+                                                                            <span class="ml-1 bg-green-100 text-green-700 px-1 rounded">Best</span>
+                                                                        @endif
+                                                                        @if($altSupplier->supplier->picPurchasing)
+                                                                            <div class="text-xs text-gray-500 ml-4">
+                                                                                PIC: {{ $altSupplier->supplier->picPurchasing->nama }}
+                                                                            </div>
+                                                                        @endif
+                                                                    </div>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                    @elseif($detail->supplier)
+                                                        <div class="text-sm">{{ $detail->supplier->nama }}</div>
+                                                    @else
+                                                        <div class="text-gray-500 text-sm">No suppliers</div>
+                                                    @endif
+                                                </td>
                                                 <td class="px-3 py-2 text-right">
                                                     <span class="px-2 py-1 text-xs font-semibold rounded {{ $detail->margin_percentage >= 20 ? 'bg-green-100 text-green-800' : ($detail->margin_percentage >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                                         {{ number_format($detail->margin_percentage, 1) }}%
@@ -513,11 +599,11 @@
     @if($showDeleteModal && $selectedPenawaran)
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             {{-- Backdrop --}}
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" wire:click="cancelDelete"></div>
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" wire:click="cancelDelete"></div>
 
             {{-- Modal Container --}}
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full z-50" @click.stop>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full transform transition-all" @click.stop>
                     {{-- Modal Header --}}
                     <div class="border-b border-gray-200 px-6 py-4">
                         <div class="flex items-center">
@@ -545,7 +631,7 @@
                             <div class="flex">
                                 <i class="fas fa-exclamation-triangle text-yellow-600 mt-0.5 mr-2"></i>
                                 <p class="text-sm text-yellow-800">
-                                    Semua data material dan supplier yang terkait akan ikut dihapus.
+                                    Semua data bahan baku dan supplier yang terkait akan ikut dihapus.
                                 </p>
                             </div>
                         </div>
@@ -578,11 +664,11 @@
     @if($showRejectModal && $selectedPenawaran)
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             {{-- Backdrop --}}
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" wire:click="cancelReject"></div>
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" wire:click="cancelReject"></div>
 
             {{-- Modal Container --}}
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full z-50" @click.stop>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full transform transition-all" @click.stop>
                     {{-- Modal Header --}}
                     <div class="border-b border-gray-200 px-6 py-4">
                         <div class="flex items-center">
@@ -636,3 +722,23 @@
         </div>
     @endif
 </div>
+
+<script>
+function toggleSuppliers(detailId) {
+    const section = document.querySelector(`[data-detail-id="${detailId}"]`);
+    if (!section) return;
+    
+    const collapsed = section.querySelector('.supplier-collapsed');
+    const expanded = section.querySelector('.supplier-expanded');
+    
+    if (collapsed.style.display === 'none') {
+        // Currently expanded, collapse it
+        collapsed.style.display = 'block';
+        expanded.style.display = 'none';
+    } else {
+        // Currently collapsed, expand it
+        collapsed.style.display = 'none';
+        expanded.style.display = 'block';
+    }
+}
+</script>

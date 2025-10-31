@@ -73,10 +73,15 @@
         </div>
     </div>
 
-    <div class="p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="p-6">
+        <!-- Price Analysis Chart - Full Width -->
+        <div class="mb-6">
+            <x-order.price-analysis :order="$order" :chartsData="$chartsData" />
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-6">
             <!-- Order Info -->
-            <div class="lg:col-span-2 space-y-6">
+            <div class="flex-1 lg:flex-[2] space-y-6">
                 <!-- Basic Info Card -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="px-6 py-4 border-b border-gray-200">
@@ -86,8 +91,8 @@
                         </h3>
                     </div>
                     <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-3">
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="flex-1 space-y-3">
                                 <div class="flex justify-between">
                                     <span class="text-sm font-medium text-gray-500">Nomor Order:</span>
                                     <span class="text-sm text-gray-900">{{ $order->no_order }}</span>
@@ -105,7 +110,7 @@
                                     @include('components.order.priority-badge', ['priority' => $order->priority])
                                 </div>
                             </div>
-                            <div class="space-y-3">
+                            <div class="flex-1 space-y-3">
                                 <div class="flex justify-between">
                                     <span class="text-sm font-medium text-gray-500">Tanggal Order:</span>
                                     <span class="text-sm text-gray-900">{{ $order->tanggal_order->format('d M Y') }}</span>
@@ -144,7 +149,7 @@
                     </div>
                     <div class="overflow-hidden">
                         <div class="overflow-x-auto">
-                            <table class="w-full">
+                            <table class="w-full min-w-[800px]">
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
@@ -277,14 +282,11 @@
                         </table>
                     </div>
                 </div>
-
-                <!-- Price Analysis Chart -->
-                <x-order.price-analysis :order="$order" :chartsData="$chartsData" />
                 </div>
             </div>
 
             <!-- Summary Sidebar -->
-            <div class="space-y-6">
+            <div class="w-full xl:w-1/3 min-w-0 space-y-6">
                 <!-- Financial Summary -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="px-6 py-4 border-b border-gray-200">

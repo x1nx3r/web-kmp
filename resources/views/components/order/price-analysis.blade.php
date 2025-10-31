@@ -208,16 +208,16 @@ document.addEventListener('DOMContentLoaded', function() {
         materialContent.innerHTML = `
             <div class="mb-6">
                 <div class="bg-blue-50 rounded-lg p-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
+                    <div class="flex flex-col sm:flex-row gap-4 text-sm">
+                        <div class="flex-1 min-w-0">
                             <span class="text-gray-600">Order Quantity:</span>
                             <span class="font-semibold ml-2">${materialData.order_quantity} ${materialData.satuan}</span>
                         </div>
-                        <div>
+                        <div class="flex-1 min-w-0">
                             <span class="text-gray-600">Order Price:</span>
                             <span class="font-semibold ml-2">Rp ${new Intl.NumberFormat('id-ID').format(materialData.order_price)}</span>
                         </div>
-                        <div>
+                        <div class="flex-1 min-w-0">
                             <span class="text-gray-600">Selected Suppliers:</span>
                             <span class="font-semibold ml-2">${materialData.supplier_options.filter(s => s.is_selected).length}</span>
                         </div>
@@ -225,9 +225,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="flex flex-col xl:flex-row gap-6">
                 <!-- Client Chart -->
-                <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex-1 min-w-0 bg-gray-50 rounded-lg p-4">
                     <div class="flex items-center justify-between mb-4">
                         <h4 class="text-md font-semibold text-gray-900">Client Price History</h4>
                         <div class="flex items-center space-x-2 text-xs">
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
 
                 <!-- Supplier Chart -->
-                <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex-1 min-w-0 bg-gray-50 rounded-lg p-4">
                     <div class="flex items-center justify-between mb-4">
                         <h4 class="text-md font-semibold text-gray-900">Supplier Options</h4>
                         <div class="flex items-center space-x-2 text-xs">
@@ -256,14 +256,14 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <!-- Legends -->
-            <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div class="bg-transparent">
+            <div class="mt-4 flex flex-col xl:flex-row gap-4">
+                <div class="flex-1 min-w-0 bg-transparent">
                     <h5 class="text-xs text-gray-500 mb-2">Client Legend</h5>
                     <div class="overflow-x-auto">
                         <div id="order-client-legend-${index}" class="inline-flex items-center space-x-2 px-2 py-1 whitespace-nowrap"></div>
                     </div>
                 </div>
-                <div class="bg-transparent">
+                <div class="flex-1 min-w-0 bg-transparent">
                     <h5 class="text-xs text-gray-500 mb-2">Supplier Legend</h5>
                     <div class="overflow-x-auto">
                         <div id="order-supplier-legend-${index}" class="inline-flex items-center space-x-2 px-2 py-1 whitespace-nowrap"></div>

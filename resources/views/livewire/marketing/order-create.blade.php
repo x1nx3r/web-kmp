@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-gray-50">
     {{-- Header Section --}}
     <div class="bg-white border-b border-gray-200">
-        <div class="p-6">
+        <div class="max-w-7xl mx-auto px-6 py-6">
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
                     <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
@@ -9,17 +9,15 @@
                     </div>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">Buat Order Baru</h1>
-                        <p class="text-gray-600">Buat order pembelian untuk klien</p>
+                        <p class="text-gray-600">Buat order pembelian untuk klien dengan sistem multi-supplier</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    @if(count($selectedOrderItems) > 0)
-                        <div class="text-right">
-                            <div class="text-sm text-gray-500">Total Estimasi</div>
-                            <div class="text-xl font-bold text-green-600">{{ number_format($totalAmount, 0, ',', '.') }}</div>
-                        </div>
-                    @endif
-                    <a href="{{ route('orders.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-900">
+                    <div class="text-right">
+                        <div class="text-sm text-gray-500">Status</div>
+                        <div class="text-lg font-semibold text-blue-600">Draft</div>
+                    </div>
+                    <a href="{{ route('orders.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                         <i class="fas fa-arrow-left mr-2"></i>Kembali
                     </a>
                 </div>
@@ -27,11 +25,11 @@
         </div>
     </div>
 
-    <div class="p-6 space-y-6">
-        {{-- Main Content Layout --}}
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+        {{-- Main Content Layout - More Symmetrical --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             {{-- Left Section - Client & Order Info --}}
-            <div class="xl:col-span-1 space-y-6">
+            <div class="space-y-6 order-2 lg:order-1">
                 {{-- Client Selection --}}
                 <x-order.client-selector-livewire 
                     :kliens="$kliens"
@@ -50,35 +48,27 @@
                     :catatan="$catatan"
                 />
 
-                {{-- Selected Items Summary --}}
-                <x-order.items-list 
-                    :selectedOrderItems="$selectedOrderItems"
-                    :selectedKlien="$selectedKlien"
-                    :selectedKlienCabang="$selectedKlienCabang"
-                />
-            </div>
-
-            {{-- Right Section - Order Summary & Actions --}}
-            <div class="xl:col-span-2">
-                {{-- Order Summary Table --}}
-                <x-order.summary-table 
-                    :selectedOrderItems="$selectedOrderItems"
-                    :totalAmount="$totalAmount"
-                    :totalMargin="$totalMargin"
-                />
-
                 {{-- Action Buttons --}}
-                <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
+                <div class="bg-white rounded-lg border border-gray-200 p-6 sticky top-4">
+                    <div class="space-y-4">
+                        <div class="text-center">
                             <h3 class="text-lg font-semibold text-gray-900">Review & Submit</h3>
                             <p class="text-sm text-gray-600">Pastikan semua informasi sudah benar sebelum membuat order</p>
                         </div>
-                        <div class="flex space-x-3">
+                        
+                        @if(count($selectedOrderItems) > 0)
+                            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                                <div class="text-sm text-gray-500 mb-1">Total Estimasi Order</div>
+                                <div class="text-2xl font-bold text-green-600">Rp {{ number_format($totalAmount, 0, ',', '.') }}</div>
+                                <div class="text-sm text-gray-500 mt-1">{{ count($selectedOrderItems) }} item dipilih</div>
+                            </div>
+                        @endif
+                        
+                        <div class="flex flex-col space-y-3">
                             <button 
                                 type="button"
                                 wire:click="createOrder"
-                                class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 {{ (!$selectedKlienId || count($selectedOrderItems) === 0) ? 'disabled' : '' }}
                             >
                                 <i class="fas fa-save mr-2"></i>
@@ -87,6 +77,23 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {{-- Right Section - Items Management & Summary --}}
+            <div class="space-y-6 order-1 lg:order-2">
+                {{-- Selected Items List --}}
+                <x-order.items-list 
+                    :selectedOrderItems="$selectedOrderItems"
+                    :selectedKlien="$selectedKlien"
+                    :selectedKlienCabang="$selectedKlienCabang"
+                />
+
+                {{-- Order Summary Table --}}
+                <x-order.summary-table 
+                    :selectedOrderItems="$selectedOrderItems"
+                    :totalAmount="$totalAmount"
+                    :totalMargin="$totalMargin"
+                />
             </div>
         </div>
     </div>

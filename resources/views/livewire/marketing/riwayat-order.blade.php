@@ -445,12 +445,12 @@
                     <div class="bg-gray-50 px-4 py-3 border-t border-gray-200">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2">
-                                <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                <a href="{{ route('orders.show', $order) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                                     <i class="fas fa-eye mr-1"></i>
                                     Lihat Detail
                                 </a>
                                 @if($order->status === 'draft')
-                                    <a href="#" class="text-green-600 hover:text-green-800 text-sm font-medium">
+                                    <a href="{{ route('orders.edit', $order) }}" class="text-green-600 hover:text-green-800 text-sm font-medium">
                                         <i class="fas fa-edit mr-1"></i>
                                         Edit
                                     </a>
@@ -545,9 +545,9 @@
     {{-- Delete Confirmation Modal --}}
     @if($showDeleteModal)
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" wire:click="cancelDelete"></div>
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="cancelDelete"></div>
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full transform transition-all">
+                <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
                     <div class="px-6 py-4 border-b border-gray-200">
                         <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Hapus Order</h3>
                     </div>

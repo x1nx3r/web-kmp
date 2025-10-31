@@ -34,9 +34,9 @@
 
             <!-- Marketing Dropdown -->
             <li>
-                <button onclick="toggleDropdown('marketing')" class="flex items-center justify-between w-full {{ request()->routeIs('klien.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleDropdown('marketing')" class="flex items-center justify-between w-full {{ request()->routeIs('klien.*') || request()->routeIs('orders.*') || request()->routeIs('spesifikasi.*') || request()->routeIs('penawaran.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') ? 'text-green-600' : '' }}"></i>
+                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') || request()->routeIs('orders.*') || request()->routeIs('spesifikasi.*') || request()->routeIs('penawaran.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Marketing</span>
                     </div>
                     <i id="marketing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -45,8 +45,8 @@
                 <!-- Submenu -->
                 <ul id="marketing-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="#" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-handshake w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('orders.index') }}" class="flex items-center space-x-3 {{ request()->routeIs('orders.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-shopping-cart w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('orders.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Order</span>
                         </a>
                     </li>
@@ -215,9 +215,9 @@
 
             <!-- Marketing Dropdown -->
             <li>
-                <button onclick="toggleMobileDropdown('marketing')" class="flex items-center justify-between w-full {{ request()->routeIs('klien.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleMobileDropdown('marketing')" class="flex items-center justify-between w-full {{ request()->routeIs('klien.*') || request()->routeIs('orders.*') || request()->routeIs('spesifikasi.*') || request()->routeIs('penawaran.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') ? 'text-green-600' : '' }}"></i>
+                        <i class="fas fa-bullhorn w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('klien.*') || request()->routeIs('orders.*') || request()->routeIs('spesifikasi.*') || request()->routeIs('penawaran.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Marketing</span>
                     </div>
                     <i id="mobile-marketing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -226,8 +226,8 @@
                 <!-- Submenu -->
                 <ul id="mobile-marketing-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-handshake w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('orders.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('orders.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-shopping-cart w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('orders.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Order</span>
                         </a>
                     </li>
@@ -244,8 +244,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-file-invoice w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('penawaran.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('penawaran.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-file-invoice w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('penawaran.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Penawaran</span>
                         </a>
                     </li>
@@ -419,8 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Auto-expand marketing menu if on klien or spesifikasi pages
-    if (currentPath.includes('/klien') || currentPath.includes('/spesifikasi')) {
+    // Auto-expand marketing menu if on klien, spesifikasi, orders, or penawaran pages
+    if (currentPath.includes('/klien') || currentPath.includes('/spesifikasi') || currentPath.includes('/orders') || currentPath.includes('/penawaran')) {
         const marketingMenu = document.getElementById('marketing-menu');
         const marketingChevron = document.getElementById('marketing-chevron');
         const mobileMarketingMenu = document.getElementById('mobile-marketing-menu');

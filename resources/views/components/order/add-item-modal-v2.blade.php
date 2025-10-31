@@ -1,8 +1,8 @@
 @props(['availableMaterials', 'currentMaterial', 'currentQuantity', 'currentSatuan', 'currentHargaJual', 'currentSpesifikasi', 'currentCatatan', 'autoSuppliers', 'bestMargin', 'recommendedPrice'])
 
 {{-- Add Item Modal V2 - Multi-Supplier Auto-Population --}}
-<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/4 xl:w-2/3 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+<div class="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50" wire:click.self="closeAddItemModal">
+    <div class="relative top-10 mx-auto p-5 border border-gray-200 w-11/12 md:w-4/5 lg:w-3/4 xl:w-2/3 shadow-2xl rounded-lg bg-white max-h-[90vh] overflow-y-auto">
         {{-- Modal Header --}}
         <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-4">
             <h3 class="text-lg font-semibold text-gray-900">Tambah Item Order - Multi-Supplier</h3>

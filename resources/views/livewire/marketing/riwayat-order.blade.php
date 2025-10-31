@@ -9,7 +9,7 @@
                     </div>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">Riwayat Order</h1>
-                        <p class="text-gray-600 text-sm">Kelola dan pantau semua order klien</p>
+                        <p class="text-gray-600 text-sm">Kelola dan pantau semua order klien dengan sistem multi-supplier</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
@@ -275,7 +275,7 @@
                                     {{ $order->orderDetails->count() }} material{{ $order->orderDetails->count() > 1 ? 's' : '' }}
                                 </div>
                                 <div class="text-xs text-gray-500">
-                                    {{ $order->orderDetails->unique('supplier_id')->count() }} supplier{{ $order->orderDetails->unique('supplier_id')->count() > 1 ? 's' : '' }}
+                                    {{ $order->orderDetails->sum(function($detail) { return $detail->orderSuppliers->count(); }) }} total supplier{{ $order->orderDetails->sum(function($detail) { return $detail->orderSuppliers->count(); }) > 1 ? 's' : '' }}
                                 </div>
                                 @if($order->status !== 'draft' && $order->total_qty > 0)
                                     <div class="text-xs text-gray-500">
@@ -286,15 +286,159 @@
                         </div>
                     </div>
 
-                    {{-- Materials Mini Table (truncated for now) --}}
+                    {{-- Materials List with Expandable Suppliers --}}
                     <div class="p-4">
-                        <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
-                            <i class="fas fa-cubes mr-2 text-purple-600"></i>
-                            Daftar Material ({{ $order->orderDetails->count() }} item)
-                        </h4>
-                        <div class="text-sm text-gray-600">
-                            Material details will be shown here...
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-cubes mr-2 text-purple-600"></i>
+                                Daftar Material & Supplier ({{ $order->orderDetails->count() }} item)
+                            </h4>
+                            <button
+                                wire:click="toggleOrderExpansion({{ $order->id }})"
+                                class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                            >
+                                @if(in_array($order->id, $expandedOrders))
+                                    <i class="fas fa-chevron-up mr-1"></i>
+                                    Sembunyikan Detail
+                                @else
+                                    <i class="fas fa-chevron-down mr-1"></i>
+                                    Lihat Detail Supplier
+                                @endif
+                            </button>
                         </div>
+
+                        {{-- Compact View (Default) --}}
+                        @if(!in_array($order->id, $expandedOrders))
+                            <div class="space-y-2">
+                                @foreach($order->orderDetails as $detail)
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div class="flex items-center">
+                                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                                                <i class="fas fa-box text-purple-600 text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="font-medium text-gray-900">{{ $detail->bahanBakuKlien->nama }}</div>
+                                                <div class="text-sm text-gray-600">
+                                                    {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} × 
+                                                    Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-sm font-semibold text-gray-900">
+                                                Rp {{ number_format($detail->total_amount, 0, ',', '.') }}
+                                            </div>
+                                            <div class="text-xs text-gray-500">
+                                                {{ $detail->orderSuppliers->count() }} supplier{{ $detail->orderSuppliers->count() > 1 ? 's' : '' }}
+                                                @if($detail->orderSuppliers->count() > 0)
+                                                    | Best margin: {{ number_format($detail->orderSuppliers->first()->margin_percentage ?? 0, 1) }}%
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        {{-- Expanded View with Supplier Details --}}
+                        @if(in_array($order->id, $expandedOrders))
+                            <div class="space-y-4">
+                                @foreach($order->orderDetails as $detail)
+                                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                        {{-- Material Header --}}
+                                        <div class="bg-purple-50 border-b border-purple-200 p-4">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center">
+                                                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                                                        <i class="fas fa-box text-purple-600"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="font-semibold text-gray-900">{{ $detail->bahanBakuKlien->nama }}</h5>
+                                                        <div class="text-sm text-gray-600">
+                                                            {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} × 
+                                                            Rp {{ number_format($detail->harga_jual, 0, ',', '.') }} = 
+                                                            <span class="font-semibold text-gray-900">Rp {{ number_format($detail->total_amount, 0, ',', '.') }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="text-sm text-gray-600">
+                                                        {{ $detail->orderSuppliers->count() }} supplier tersedia
+                                                    </div>
+                                                    @if($detail->qty_shipped > 0)
+                                                        <div class="text-xs text-green-600">
+                                                            Shipped: {{ number_format($detail->qty_shipped, 0) }} / {{ number_format($detail->qty, 0) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Supplier Options --}}
+                                        @if($detail->orderSuppliers->count() > 0)
+                                            <div class="p-4">
+                                                <div class="space-y-3">
+                                                    @foreach($detail->orderSuppliers->sortBy('price_rank') as $orderSupplier)
+                                                        <div class="flex items-center justify-between p-3 rounded-lg border 
+                                                            {{ $orderSupplier->is_recommended ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white' }}">
+                                                            <div class="flex items-center">
+                                                                @if($orderSupplier->is_recommended)
+                                                                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                                                        <i class="fas fa-star text-green-600 text-sm"></i>
+                                                                    </div>
+                                                                @else
+                                                                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                                                        <i class="fas fa-truck text-gray-600 text-sm"></i>
+                                                                    </div>
+                                                                @endif
+                                                                <div>
+                                                                    <div class="font-medium text-gray-900 flex items-center">
+                                                                        {{ $orderSupplier->supplier->nama }}
+                                                                        @if($orderSupplier->is_recommended)
+                                                                            <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                                                Recommended
+                                                                            </span>
+                                                                        @endif
+                                                                        <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                                                            Rank #{{ $orderSupplier->price_rank }}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div class="text-sm text-gray-600">
+                                                                        {{ $orderSupplier->supplier->lokasi }} | 
+                                                                        Material: {{ $orderSupplier->bahanBakuSupplier->nama ?? 'N/A' }}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="text-sm font-semibold text-gray-900">
+                                                                    Rp {{ number_format($orderSupplier->harga_supplier, 0, ',', '.') }}
+                                                                </div>
+                                                                <div class="text-xs text-gray-600">
+                                                                    per {{ $detail->bahanBakuKlien->satuan ?? 'unit' }}
+                                                                </div>
+                                                                <div class="text-xs {{ $orderSupplier->margin_percentage >= 20 ? 'text-green-600' : ($orderSupplier->margin_percentage >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                                    Margin: {{ number_format($orderSupplier->margin_percentage, 1) }}%
+                                                                </div>
+                                                                @if($orderSupplier->shipped_quantity > 0)
+                                                                    <div class="text-xs text-blue-600 mt-1">
+                                                                        Shipped: {{ number_format($orderSupplier->shipped_quantity, 0) }}
+                                                                    </div>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="p-4 text-center text-gray-500">
+                                                <i class="fas fa-exclamation-triangle mb-2"></i>
+                                                <div class="text-sm">Belum ada supplier yang tersedia untuk material ini</div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
 
                     {{-- Action Buttons --}}

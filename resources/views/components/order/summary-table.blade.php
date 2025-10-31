@@ -24,11 +24,11 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Suppliers</th>
                             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Jual</th>
                             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Best Margin</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -39,24 +39,30 @@
                                     <div class="text-sm text-gray-500">{{ $item['satuan'] }}</div>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <div class="text-sm text-gray-900">{{ $item['supplier_name'] }}</div>
-                                    <div class="text-xs text-gray-500">{{ number_format($item['harga_supplier'], 0, ',', '.') }}/{{ $item['satuan'] }}</div>
+                                    <div class="text-sm text-gray-900">
+                                        {{ $item['suppliers_count'] ?? 0 }} supplier tersedia
+                                    </div>
+                                    @if(isset($item['best_supplier_price']))
+                                        <div class="text-xs text-gray-500">
+                                            Best: Rp {{ number_format($item['best_supplier_price'], 0, ',', '.') }}/{{ $item['satuan'] }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <span class="text-sm font-medium">{{ number_format($item['qty'], 2) }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    <span class="text-sm">{{ number_format($item['harga_jual'], 0, ',', '.') }}</span>
+                                    <span class="text-sm">Rp {{ number_format($item['harga_jual'], 0, ',', '.') }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    <span class="font-medium">{{ number_format($item['total_harga'], 0, ',', '.') }}</span>
+                                    <span class="font-medium">Rp {{ number_format($item['total_harga'], 0, ',', '.') }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="text-sm">
-                                        <span class="font-medium text-green-600">{{ number_format($item['total_margin'], 0, ',', '.') }}</span>
+                                        <span class="font-medium text-green-600">Rp {{ number_format($item['total_margin'] ?? 0, 0, ',', '.') }}</span>
                                     </div>
                                     <div class="text-xs text-gray-500">
-                                        ({{ number_format($item['margin_percentage'], 1) }}%)
+                                        ({{ number_format($item['margin_percentage'] ?? 0, 1) }}%)
                                     </div>
                                 </td>
                             </tr>

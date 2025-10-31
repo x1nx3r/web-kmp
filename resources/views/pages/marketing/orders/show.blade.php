@@ -148,12 +148,12 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Suppliers</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Supplier</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Best Price</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Jual</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Best Margin</th>
                                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     </tr>
                                 </thead>
@@ -168,22 +168,96 @@
                                                     @endif
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $detail->supplier->nama }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-900">
+                                                    {{ $detail->orderSuppliers->count() }} supplier{{ $detail->orderSuppliers->count() > 1 ? 's' : '' }}
+                                                </div>
+                                                @if($detail->orderSuppliers->count() > 0)
+                                                    @php $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first(); @endphp
+                                                    <div class="text-sm text-gray-500">
+                                                        Best: {{ $bestSupplier->supplier->nama ?? 'N/A' }}
+                                                    </div>
+                                                @endif
+                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                                                 {{ number_format($detail->qty, 2) }} {{ $detail->satuan }}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">Rp {{ number_format($detail->harga_supplier, 0, ',', '.') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                @if($detail->orderSuppliers->count() > 0)
+                                                    @php $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first(); @endphp
+                                                    Rp {{ number_format($bestSupplier->harga_supplier ?? 0, 0, ',', '.') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
                                                 Rp {{ number_format($detail->total_harga, 0, ',', '.') }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                                @include('components.order.profit-badge', ['margin' => $detail->margin_percentage])
+                                                @if($detail->orderSuppliers->count() > 0)
+                                                    @php $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first(); @endphp
+                                                    @include('components.order.profit-badge', ['percentage' => $bestSupplier->margin_percentage ?? 0])
+                                                @else
+                                                    <span class="text-gray-400">-</span>
+                                                @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                                 @include('components.order.detail-status-badge', ['status' => $detail->status])
                                             </td>
                                         </tr>
+                                        
+                                        {{-- Expandable supplier details --}}
+                                        @if($detail->orderSuppliers->count() > 1)
+                                            <tr class="bg-gray-50">
+                                                <td colspan="8" class="px-6 py-3">
+                                                    <details class="group">
+                                                        <summary class="cursor-pointer text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                                            <i class="fas fa-chevron-right group-open:rotate-90 transition-transform mr-2"></i>
+                                                            Lihat semua {{ $detail->orderSuppliers->count() }} supplier
+                                                        </summary>
+                                                        <div class="mt-3 space-y-2">
+                                                            @foreach($detail->orderSuppliers->sortBy('price_rank') as $orderSupplier)
+                                                                <div class="flex items-center justify-between p-3 bg-white rounded border {{ $orderSupplier->is_recommended ? 'border-green-300' : 'border-gray-200' }}">
+                                                                    <div class="flex items-center">
+                                                                        @if($orderSupplier->is_recommended)
+                                                                            <i class="fas fa-star text-green-600 mr-2"></i>
+                                                                        @else
+                                                                            <i class="fas fa-truck text-gray-400 mr-2"></i>
+                                                                        @endif
+                                                                        <div>
+                                                                            <div class="text-sm font-medium text-gray-900">
+                                                                                {{ $orderSupplier->supplier->nama ?? 'N/A' }}
+                                                                                @if($orderSupplier->is_recommended)
+                                                                                    <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Recommended</span>
+                                                                                @endif
+                                                                            </div>
+                                                                            <div class="text-xs text-gray-500">
+                                                                                Rank #{{ $orderSupplier->price_rank }} | 
+                                                                                {{ $orderSupplier->supplier->lokasi ?? 'No location' }}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="text-right">
+                                                                        <div class="text-sm font-semibold text-gray-900">
+                                                                            Rp {{ number_format($orderSupplier->harga_supplier ?? 0, 0, ',', '.') }}
+                                                                        </div>
+                                                                        <div class="text-xs {{ ($orderSupplier->margin_percentage ?? 0) >= 20 ? 'text-green-600' : (($orderSupplier->margin_percentage ?? 0) >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                                            Margin: {{ number_format($orderSupplier->margin_percentage ?? 0, 1) }}%
+                                                                        </div>
+                                                                        @if($orderSupplier->shipped_quantity > 0)
+                                                                            <div class="text-xs text-blue-600">
+                                                                                Shipped: {{ number_format($orderSupplier->shipped_quantity, 0) }}
+                                                                            </div>
+                                                                        @endif
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </details>
+                                                </td>
+                                            </tr>
+                                        @endif
                                         @if($detail->catatan)
                                             <tr>
                                                 <td colspan="8" class="px-6 py-2 text-sm text-gray-500">

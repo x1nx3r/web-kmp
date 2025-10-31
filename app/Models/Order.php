@@ -70,16 +70,40 @@ class Order extends Model
         );
     }
 
-    public function suppliers(): HasManyThrough
+    public function orderSuppliers(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            OrderSupplier::class,
+            OrderDetail::class,
+            'order_id',
+            'order_detail_id',
+            'id',
+            'id'
+        );
+    }
+
+    public function allSuppliers(): HasManyThrough
     {
         return $this->hasManyThrough(
             Supplier::class,
-            OrderDetail::class,
-            'order_id',
+            OrderSupplier::class,
+            'order_detail_id',
             'id',
             'id',
             'supplier_id'
-        );
+        )->distinct();
+    }
+
+    public function usedSuppliers(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Supplier::class,
+            OrderSupplier::class,
+            'order_detail_id',
+            'id',
+            'id',
+            'supplier_id'
+        )->where('order_suppliers.has_been_used', true)->distinct();
     }
 
     /**
@@ -189,7 +213,7 @@ class Order extends Model
         return $this->save();
     }
 
-    public function cancel(string $reason = null): bool
+    public function cancel(?string $reason = null): bool
     {
         if (in_array($this->status, ['selesai', 'dibatalkan'])) return false;
         
@@ -205,20 +229,107 @@ class Order extends Model
         $totalQty = $this->total_qty;
         $shippedQty = $this->orderDetails->sum('qty_shipped');
         
+        // Prevent recursion by checking if status change is needed
+        $newStatus = null;
+        
         if ($shippedQty == 0) {
             // No items shipped yet
             if ($this->status === 'sebagian_dikirim') {
-                $this->status = 'diproses';
+                $newStatus = 'diproses';
             }
         } elseif ($shippedQty >= $totalQty) {
             // All items shipped
-            $this->complete();
+            if (!in_array($this->status, ['selesai'])) {
+                $newStatus = 'selesai';
+                $this->selesai_at = now();
+            }
         } else {
             // Partially shipped
-            $this->status = 'sebagian_dikirim';
+            if ($this->status !== 'sebagian_dikirim') {
+                $newStatus = 'sebagian_dikirim';
+            }
         }
         
+        // Only save if status actually needs to change
+        if ($newStatus && $newStatus !== $this->status) {
+            $this->status = $newStatus;
+            $this->saveQuietly(); // Use saveQuietly to prevent triggering events
+        }
+    }
+
+    /**
+     * Auto-Supplier Population Methods
+     */
+    public function populateAllSupplierOptions(): void
+    {
+        foreach ($this->orderDetails as $detail) {
+            $detail->populateSupplierOptions();
+        }
+
+        // Update order-level summary
+        $this->updateSupplierSummary();
+    }
+
+    public function updateSupplierSummary(): void
+    {
+        $details = $this->orderDetails()->with('orderSuppliers')->get();
+        
+        // Update each detail's supplier summary
+        foreach ($details as $detail) {
+            $detail->updateSupplierSummary();
+        }
+
+        // Update order totals
+        $this->calculateTotals();
+    }
+
+    public function updateAllFulfillmentTracking(): void
+    {
+        foreach ($this->orderDetails as $detail) {
+            $detail->updateFulfillmentTracking();
+        }
+
+        // Update order status based on overall completion
+        $this->updateOrderStatus();
+    }
+
+    public function updateOrderStatus(): void
+    {
+        $details = $this->orderDetails;
+        
+        if ($details->isEmpty()) return;
+
+        $totalQuantity = $details->sum('qty');
+        $shippedQuantity = $details->sum('total_shipped_quantity');
+        
+        if ($shippedQuantity >= $totalQuantity) {
+            $this->status = 'selesai';
+            $this->selesai_at = now();
+        } elseif ($shippedQuantity > 0) {
+            $this->status = 'sebagian_dikirim';
+        } elseif ($this->orderSuppliers()->where('has_been_used', true)->exists()) {
+            $this->status = 'diproses';
+        }
+
         $this->save();
+    }
+
+    public function getAvailableSupplierOptionsAttribute(): array
+    {
+        $summary = [];
+        
+        foreach ($this->orderDetails as $detail) {
+            $summary[] = [
+                'material' => $detail->bahanBakuKlien->nama_material,
+                'quantity' => $detail->qty,
+                'available_suppliers' => $detail->available_suppliers_count,
+                'recommended_supplier' => $detail->recommendedSupplier?->nama ?? null,
+                'best_margin' => $detail->best_margin_percentage,
+                'worst_margin' => $detail->worst_margin_percentage,
+            ];
+        }
+
+        return $summary;
     }
 
     /**
@@ -246,11 +357,7 @@ class Order extends Model
             }
         });
         
-        static::updating(function ($order) {
-            // Auto-update completion status based on order details
-            if ($order->isDirty(['status']) && $order->status === 'diproses') {
-                $order->updateShippingStatus();
-            }
-        });
+        // Remove the problematic updating event that causes recursion
+        // Status updates should be handled manually through business logic methods
     }
 }

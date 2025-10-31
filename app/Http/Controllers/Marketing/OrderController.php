@@ -152,8 +152,13 @@ class OrderController extends Controller
      */
     public function show(string $id)
     {
-        $order = Order::with(['klien', 'creator', 'orderDetails.bahanBakuKlien', 'orderDetails.supplier'])
-            ->findOrFail($id);
+        $order = Order::with([
+            'klien', 
+            'creator', 
+            'orderDetails.bahanBakuKlien', 
+            'orderDetails.orderSuppliers.supplier',
+            'orderDetails.orderSuppliers.bahanBakuSupplier'
+        ])->findOrFail($id);
             
         return view('pages.marketing.orders.show', compact('order'));
     }
@@ -163,12 +168,25 @@ class OrderController extends Controller
      */
     public function edit(string $id)
     {
-        $order = Order::with(['orderDetails.bahanBakuKlien', 'orderDetails.supplier'])
-            ->findOrFail($id);
+        $order = Order::with([
+            'orderDetails.bahanBakuKlien', 
+            'orderDetails.orderSuppliers.supplier',
+            'orderDetails.orderSuppliers.bahanBakuSupplier'
+        ])->findOrFail($id);
             
         if ($order->status !== 'draft') {
             return redirect()->route('orders.show', $order->id)
                 ->with('error', 'Hanya order dengan status draft yang dapat diedit.');
+        }
+
+        // Check if this order uses the new multi-supplier system
+        $hasMultiSupplierData = $order->orderDetails()
+            ->whereHas('orderSuppliers')
+            ->exists();
+            
+        if ($hasMultiSupplierData) {
+            return redirect()->route('orders.show', $order->id)
+                ->with('error', 'Order ini menggunakan sistem multi-supplier baru dan tidak dapat diedit dengan interface lama. Silakan gunakan interface order baru.');
         }
         
         $kliens = Klien::orderBy('nama')->get();

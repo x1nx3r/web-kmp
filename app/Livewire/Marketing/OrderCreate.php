@@ -32,13 +32,16 @@ class OrderCreate extends Component
     // Modal state
     public $showAddItemModal = false;
     public $currentMaterial = null;
-    public $currentSupplier = null;
     public $currentQuantity = 1;
     public $currentSatuan = '';
-    public $currentHargaSupplier = 0;
     public $currentHargaJual = 0;
     public $currentSpesifikasi = '';
     public $currentCatatan = '';
+    
+    // Auto-populated supplier data (read-only)
+    public $autoSuppliers = [];
+    public $bestMargin = 0;
+    public $recommendedPrice = 0;
     
     // Totals
     public $totalAmount = 0;
@@ -176,13 +179,14 @@ class OrderCreate extends Component
     private function resetCurrentItem()
     {
         $this->currentMaterial = null;
-        $this->currentSupplier = null;
         $this->currentQuantity = 1;
         $this->currentSatuan = '';
-        $this->currentHargaSupplier = 0;
         $this->currentHargaJual = 0;
         $this->currentSpesifikasi = '';
         $this->currentCatatan = '';
+        $this->autoSuppliers = [];
+        $this->bestMargin = 0;
+        $this->recommendedPrice = 0;
     }
     
     public function selectMaterial($materialId)
@@ -192,60 +196,79 @@ class OrderCreate extends Component
             $this->currentMaterial = $materialId;
             $this->currentSatuan = $material->satuan;
             
-            // Load suppliers for this material
-            $this->loadSuppliersForMaterial($materialId);
+            // Auto-populate all suppliers for this material
+            $this->autoPopulateSuppliers($material);
         }
     }
     
-    private function loadSuppliersForMaterial($materialId)
+    private function autoPopulateSuppliers($material)
     {
-        // Reset supplier selection
-        $this->currentSupplier = null;
-        $this->currentHargaSupplier = 0;
-    }
-    
-    public function getSuppliers()
-    {
-        if (!$this->currentMaterial) {
-            return collect();
-        }
-        
-        $material = BahanBakuKlien::find($this->currentMaterial);
-        if (!$material) {
-            return collect();
-        }
-        
-        // Get all suppliers that have this material with their prices - following penawaran pattern
+        // Get all suppliers for this material using name matching (like in OrderDetail model)
         $suppliers = Supplier::with([
             'bahanBakuSuppliers' => function ($q) use ($material) {
                 $q->where('nama', 'like', '%' . $material->nama . '%')
                     ->whereNotNull('harga_per_satuan')
+                    ->where('harga_per_satuan', '>', 0)
                     ->orderBy('harga_per_satuan', 'asc');
             },
             'picPurchasing'
         ])->get();
 
-        $supplierOptions = [];
+        $this->autoSuppliers = [];
+        $bestPrice = PHP_INT_MAX;
 
         foreach ($suppliers as $supplier) {
             foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
-                $supplierOptions[] = [
-                    'supplier_id' => $bahanBaku->id, // Use BahanBakuSupplier ID like penawaran
+                // Calculate margin with a default selling price (20% markup)
+                $suggestedPrice = $bahanBaku->harga_per_satuan * 1.2;
+                $margin = ($suggestedPrice - $bahanBaku->harga_per_satuan) / $suggestedPrice * 100;
+                
+                $this->autoSuppliers[] = [
+                    'supplier_id' => $supplier->id,
+                    'bahan_baku_supplier_id' => $bahanBaku->id,
                     'supplier_name' => $supplier->nama,
-                    'pic_name' => $supplier->picPurchasing ? $supplier->picPurchasing->nama : null,
-                    'harga_per_unit' => $bahanBaku->harga_per_satuan,
+                    'supplier_location' => $supplier->lokasi ?? 'N/A',
+                    'material_name' => $bahanBaku->nama,
+                    'harga_supplier' => $bahanBaku->harga_per_satuan,
                     'satuan' => $bahanBaku->satuan,
-                    'stok' => $bahanBaku->stok,
+                    'stok' => $bahanBaku->stok ?? 0,
+                    'suggested_price' => $suggestedPrice,
+                    'margin_percentage' => $margin,
+                    'is_recommended' => false, // Will set best one later
                 ];
+
+                if ($bahanBaku->harga_per_satuan < $bestPrice) {
+                    $bestPrice = $bahanBaku->harga_per_satuan;
+                }
             }
         }
 
-        // Sort by price (cheapest first) like penawaran
-        usort($supplierOptions, function ($a, $b) {
-            return $a['harga_per_unit'] <=> $b['harga_per_unit'];
+        // Sort by price and mark the best one as recommended
+        usort($this->autoSuppliers, function ($a, $b) {
+            return $a['harga_supplier'] <=> $b['harga_supplier'];
         });
 
-        return collect($supplierOptions);
+        // Mark the cheapest supplier as recommended and calculate suggested selling price
+        if (!empty($this->autoSuppliers)) {
+            $this->autoSuppliers[0]['is_recommended'] = true;
+            $this->recommendedPrice = $this->autoSuppliers[0]['suggested_price'];
+            $this->bestMargin = $this->autoSuppliers[0]['margin_percentage'];
+            
+            // Set current selling price to recommended price
+            $this->currentHargaJual = $this->recommendedPrice;
+        }
+    }
+    
+    private function updateTotals()
+    {
+        $this->totalAmount = collect($this->selectedOrderItems)->sum('total_harga');
+        $this->totalMargin = collect($this->selectedOrderItems)->sum('total_margin');
+    }
+    
+    private function resetTotals()
+    {
+        $this->totalAmount = 0;
+        $this->totalMargin = 0;
     }
     
     private function getBestSupplierForMaterial($materialName)
@@ -304,44 +327,47 @@ class OrderCreate extends Component
     {
         $this->validate([
             'currentMaterial' => 'required',
-            'currentSupplier' => 'required',
             'currentQuantity' => 'required|numeric|min:0.01',
             'currentSatuan' => 'required|string',
-            'currentHargaSupplier' => 'required|numeric|min:0',
             'currentHargaJual' => 'required|numeric|min:0',
         ]);
         
         $material = BahanBakuKlien::find($this->currentMaterial);
-        $bahanBakuSupplier = BahanBakuSupplier::with('supplier')->find($this->currentSupplier);
         
-        if (!$material || !$bahanBakuSupplier) {
-            session()->flash('error', 'Material atau supplier tidak ditemukan');
+        if (!$material) {
+            session()->flash('error', 'Material tidak ditemukan');
+            return;
+        }
+
+        if (empty($this->autoSuppliers)) {
+            session()->flash('error', 'Tidak ada supplier tersedia untuk material ini');
             return;
         }
         
-        $totalHpp = $this->currentQuantity * $this->currentHargaSupplier;
         $totalHarga = $this->currentQuantity * $this->currentHargaJual;
-        $marginPerUnit = $this->currentHargaJual - $this->currentHargaSupplier;
-        $totalMargin = $this->currentQuantity * $marginPerUnit;
-        $marginPercentage = $this->currentHargaJual > 0 ? ($marginPerUnit / $this->currentHargaJual) * 100 : 0;
+        
+        // Calculate best margin from available suppliers
+        $bestSupplier = collect($this->autoSuppliers)->sortBy('harga_supplier')->first();
+        $bestHpp = $this->currentQuantity * $bestSupplier['harga_supplier'];
+        $totalMargin = $totalHarga - $bestHpp;
+        $marginPercentage = $totalHarga > 0 ? ($totalMargin / $totalHarga) * 100 : 0;
         
         $this->selectedOrderItems[] = [
             'id' => uniqid(),
             'bahan_baku_klien_id' => $this->currentMaterial,
-            'supplier_id' => $this->currentSupplier, // This is BahanBakuSupplier ID like penawaran
-            'material_name' => $material->nama, // Correct field name
-            'supplier_name' => $bahanBakuSupplier->supplier->nama,
+            'material_name' => $material->nama,
             'qty' => $this->currentQuantity,
             'satuan' => $this->currentSatuan,
-            'harga_supplier' => $this->currentHargaSupplier,
             'harga_jual' => $this->currentHargaJual,
-            'total_hpp' => $totalHpp,
             'total_harga' => $totalHarga,
-            'margin_per_unit' => $marginPerUnit,
+            'best_supplier_price' => $bestSupplier['harga_supplier'],
+            'best_hpp' => $bestHpp,
             'total_margin' => $totalMargin,
             'margin_percentage' => $marginPercentage,
+            'suppliers_count' => count($this->autoSuppliers),
             'spesifikasi_khusus' => $this->currentSpesifikasi,
             'catatan' => $this->currentCatatan,
+            'auto_suppliers' => $this->autoSuppliers, // Store all supplier options
         ];
         
         $this->updateTotals();
@@ -361,19 +387,7 @@ class OrderCreate extends Component
         
         session()->flash('success', 'Item berhasil dihapus');
     }
-    
-    private function updateTotals()
-    {
-        $this->totalAmount = collect($this->selectedOrderItems)->sum('total_harga');
-        $this->totalMargin = collect($this->selectedOrderItems)->sum('total_margin');
-    }
-    
-    private function resetTotals()
-    {
-        $this->totalAmount = 0;
-        $this->totalMargin = 0;
-    }
-    
+
     public function createOrder()
     {
         $this->validate([
@@ -386,14 +400,13 @@ class OrderCreate extends Component
         try {
             DB::beginTransaction();
             
-            // Get user ID with fallback
-            $authService = new AuthFallbackService();
-            $userId = $authService->getUserId();
+            // Get user ID with fallback (hardcoded bypass for now)
+            $userId = AuthFallbackService::id() ?? 1; // Fallback to user ID 1 if auth fails
             
             // Create order
             $order = Order::create([
                 'klien_id' => $this->selectedKlienId,
-                'user_id' => $userId,
+                'created_by' => $userId, // Use created_by instead of user_id
                 'tanggal_order' => $this->tanggalOrder,
                 'priority' => $this->priority,
                 'status' => 'draft',
@@ -402,20 +415,22 @@ class OrderCreate extends Component
                 'total_margin' => 0, // Will be calculated by model
             ]);
             
-            // Create order details
+            // Create order details with auto-supplier population
             foreach ($this->selectedOrderItems as $item) {
-                OrderDetail::create([
+                $orderDetail = OrderDetail::create([
                     'order_id' => $order->id,
                     'bahan_baku_klien_id' => $item['bahan_baku_klien_id'],
-                    'supplier_id' => $item['supplier_id'],
                     'qty' => $item['qty'],
                     'satuan' => $item['satuan'],
-                    'harga_supplier' => $item['harga_supplier'],
                     'harga_jual' => $item['harga_jual'],
+                    'total_harga' => $item['total_harga'],
                     'spesifikasi_khusus' => $item['spesifikasi_khusus'],
                     'catatan' => $item['catatan'],
                     'status' => 'menunggu',
                 ]);
+
+                // Automatically populate all suppliers for this material
+                $orderDetail->populateSupplierOptions();
             }
             
             DB::commit();

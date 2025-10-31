@@ -135,4 +135,27 @@ class BahanBakuKlien extends Model
     {
         return $this->hasMany(PenawaranDetail::class);
     }
+
+    /**
+     * Get suppliers that have matching materials (by name similarity)
+     * This is a pseudo-relationship since there's no direct FK
+     */
+    public function bahanBakuSuppliers()
+    {
+        // Match by material name similarity
+        $materialName = $this->nama;
+        $firstWord = trim(explode(' ', $materialName)[0]);
+        
+        return \App\Models\BahanBakuSupplier::where('nama', 'LIKE', '%' . $materialName . '%')
+            ->orWhere('nama', 'LIKE', '%' . $firstWord . '%')
+            ->get();
+    }
+
+    /**
+     * Get suppliers that have matching materials (as relationship)
+     */
+    public function getMatchingSuppliersAttribute()
+    {
+        return $this->bahanBakuSuppliers();
+    }
 }

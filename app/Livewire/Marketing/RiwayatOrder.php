@@ -24,6 +24,7 @@ class RiwayatOrder extends Component
     // UI State
     public $showDeleteModal = false;
     public $orderToDelete = null;
+    public $expandedOrders = []; // Track which orders are expanded to show suppliers
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -57,6 +58,15 @@ class RiwayatOrder extends Component
     {
         $this->reset(['search', 'statusFilter', 'klienFilter', 'priorityFilter', 'sortBy']);
         $this->resetPage();
+    }
+
+    public function toggleOrderExpansion($orderId)
+    {
+        if (in_array($orderId, $this->expandedOrders)) {
+            $this->expandedOrders = array_diff($this->expandedOrders, [$orderId]);
+        } else {
+            $this->expandedOrders[] = $orderId;
+        }
     }
 
     public function confirmDelete($orderId)
@@ -126,7 +136,20 @@ class RiwayatOrder extends Component
     private function getOrders()
     {
         return Order::query()
-            ->with(['klien', 'creator', 'orderDetails.bahanBakuKlien', 'orderDetails.supplier'])
+            ->with([
+                'klien', 
+                'creator', 
+                'orderDetails' => function($query) {
+                    $query->with([
+                        'bahanBakuKlien',
+                        'orderSuppliers' => function($supplierQuery) {
+                            $supplierQuery->with('supplier')
+                                ->orderBy('price_rank');
+                        },
+                        'recommendedSupplier'
+                    ]);
+                }
+            ])
             ->when($this->search, function (Builder $query) {
                 $query->where(function (Builder $q) {
                     $q->where('no_order', 'like', '%' . $this->search . '%')
@@ -174,16 +197,14 @@ class RiwayatOrder extends Component
 
     private function getStatusCounts()
     {
-        $baseQuery = Order::query();
-
         return [
-            'all' => $baseQuery->count(),
-            'draft' => $baseQuery->where('status', 'draft')->count(),
-            'dikonfirmasi' => $baseQuery->where('status', 'dikonfirmasi')->count(),
-            'diproses' => $baseQuery->where('status', 'diproses')->count(),
-            'sebagian_dikirim' => $baseQuery->where('status', 'sebagian_dikirim')->count(),
-            'selesai' => $baseQuery->where('status', 'selesai')->count(),
-            'dibatalkan' => $baseQuery->where('status', 'dibatalkan')->count(),
+            'all' => Order::count(),
+            'draft' => Order::where('status', 'draft')->count(),
+            'dikonfirmasi' => Order::where('status', 'dikonfirmasi')->count(),
+            'diproses' => Order::where('status', 'diproses')->count(),
+            'sebagian_dikirim' => Order::where('status', 'sebagian_dikirim')->count(),
+            'selesai' => Order::where('status', 'selesai')->count(),
+            'dibatalkan' => Order::where('status', 'dibatalkan')->count(),
         ];
     }
 

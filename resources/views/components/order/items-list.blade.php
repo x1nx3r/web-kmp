@@ -31,13 +31,18 @@
                             <div class="flex-1">
                                 <div class="font-medium text-gray-900">{{ $item['material_name'] }}</div>
                                 <div class="text-sm text-gray-500">
-                                    {{ number_format($item['qty'], 2) }} {{ $item['satuan'] }} • {{ $item['supplier_name'] }}
+                                    {{ number_format($item['qty'], 2) }} {{ $item['satuan'] }} • {{ $item['suppliers_count'] ?? 0 }} supplier tersedia
                                 </div>
                                 <div class="text-sm text-gray-600 mt-1">
-                                    <span class="font-medium">{{ number_format($item['total_harga'], 0, ',', '.') }}</span>
+                                    <span class="font-medium">Rp {{ number_format($item['total_harga'], 0, ',', '.') }}</span>
                                     <span class="text-gray-500 ml-2">
-                                        (Margin: {{ number_format($item['margin_percentage'], 1) }}%)
+                                        (Margin: {{ number_format($item['margin_percentage'] ?? 0, 1) }}%)
                                     </span>
+                                    @if(isset($item['best_supplier_price']))
+                                        <span class="text-gray-500 ml-2">
+                                            • Best: Rp {{ number_format($item['best_supplier_price'], 0, ',', '.') }}
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
                         </div>

@@ -91,19 +91,19 @@
         </div>
     </div>
 
-    {{-- Add Item Modal --}}
+    {{-- Add Item Modal V2 - Multi-Supplier --}}
     @if($showAddItemModal)
-        <x-order.add-item-modal 
+        <x-order.add-item-modal-v2 
             :availableMaterials="$availableMaterials"
-            :suppliers="$this->getSuppliers()"
             :currentMaterial="$currentMaterial"
-            :currentSupplier="$currentSupplier"
             :currentQuantity="$currentQuantity"
             :currentSatuan="$currentSatuan"
-            :currentHargaSupplier="$currentHargaSupplier"
             :currentHargaJual="$currentHargaJual"
             :currentSpesifikasi="$currentSpesifikasi"
             :currentCatatan="$currentCatatan"
+            :autoSuppliers="$autoSuppliers"
+            :bestMargin="$bestMargin"
+            :recommendedPrice="$recommendedPrice"
         />
     @endif
 

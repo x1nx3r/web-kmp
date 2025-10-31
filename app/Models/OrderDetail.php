@@ -13,32 +13,46 @@ class OrderDetail extends Model
     protected $fillable = [
         'order_id',
         'bahan_baku_klien_id',
-        'supplier_id',
         'qty',
         'satuan',
-        'harga_supplier',
-        'total_hpp',
         'harga_jual',
         'total_harga',
-        'margin_per_unit',
-        'total_margin',
-        'margin_percentage',
         'qty_shipped',
         'status',
         'spesifikasi_khusus',
         'catatan',
+        // New fields for multi-supplier support
+        'cheapest_price',
+        'most_expensive_price',
+        'recommended_price',
+        'best_margin_percentage',
+        'worst_margin_percentage',
+        'recommended_margin_percentage',
+        'available_suppliers_count',
+        'recommended_supplier_id',
+        'total_shipped_quantity',
+        'remaining_quantity',
+        'suppliers_used_count',
+        'supplier_options_populated',
+        'options_populated_at',
     ];
 
     protected $casts = [
         'qty' => 'decimal:2',
-        'harga_supplier' => 'decimal:2',
-        'total_hpp' => 'decimal:2',
         'harga_jual' => 'decimal:2',
         'total_harga' => 'decimal:2',
-        'margin_per_unit' => 'decimal:2',
-        'total_margin' => 'decimal:2',
-        'margin_percentage' => 'decimal:2',
         'qty_shipped' => 'decimal:2',
+        // New fields
+        'cheapest_price' => 'decimal:2',
+        'most_expensive_price' => 'decimal:2',
+        'recommended_price' => 'decimal:2',
+        'best_margin_percentage' => 'decimal:2',
+        'worst_margin_percentage' => 'decimal:2',
+        'recommended_margin_percentage' => 'decimal:2',
+        'total_shipped_quantity' => 'decimal:2',
+        'remaining_quantity' => 'decimal:2',
+        'supplier_options_populated' => 'boolean',
+        'options_populated_at' => 'datetime',
     ];
 
     /**
@@ -54,9 +68,24 @@ class OrderDetail extends Model
         return $this->belongsTo(BahanBakuKlien::class);
     }
 
-    public function supplier(): BelongsTo
+    public function recommendedSupplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class, 'recommended_supplier_id');
+    }
+
+    public function orderSuppliers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OrderSupplier::class);
+    }
+
+    public function availableSuppliers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OrderSupplier::class)->where('is_available', true);
+    }
+
+    public function usedSuppliers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OrderSupplier::class)->where('has_been_used', true);
     }
 
     /**
@@ -125,26 +154,20 @@ class OrderDetail extends Model
     }
 
     /**
+     * Accessor for compatibility with view expectations
+     */
+    public function getTotalAmountAttribute(): float
+    {
+        return $this->total_harga ?? 0;
+    }
+
+    /**
      * Business Logic Methods
      */
     public function calculateTotals(bool $save = true): void
     {
-        // Calculate total HPP
-        $this->total_hpp = $this->qty * $this->harga_supplier;
-        
-        // Calculate total selling price
+        // Calculate total selling price (this still exists)
         $this->total_harga = $this->qty * $this->harga_jual;
-        
-        // Calculate margin per unit
-        $this->margin_per_unit = $this->harga_jual - $this->harga_supplier;
-        
-        // Calculate total margin
-        $this->total_margin = $this->qty * $this->margin_per_unit;
-        
-        // Calculate margin percentage
-        if ($this->harga_jual > 0) {
-            $this->margin_percentage = ($this->margin_per_unit / $this->harga_jual) * 100;
-        }
         
         if ($save) {
             $this->save();
@@ -216,6 +239,133 @@ class OrderDetail extends Model
     }
 
     /**
+     * Auto-Supplier Population Methods
+     */
+    public function populateSupplierOptions(): void
+    {
+        if ($this->supplier_options_populated) {
+            return; // Already populated
+        }
+
+        // Get the material name for matching
+        $material = $this->bahanBakuKlien;
+        if (!$material) {
+            return;
+        }
+
+        $materialName = $material->nama;
+        $firstWord = trim(explode(' ', $materialName)[0]);
+
+        // Find suppliers with matching material names
+        $bahanBakuSuppliers = BahanBakuSupplier::with('supplier')
+            ->where(function($query) use ($materialName, $firstWord) {
+                $query->where('nama', 'LIKE', '%' . $materialName . '%')
+                      ->orWhere('nama', 'LIKE', '%' . $firstWord . '%');
+            })
+            ->get();
+
+        if ($bahanBakuSuppliers->isEmpty()) {
+            return;
+        }
+
+        $suppliers = [];
+        $rank = 1;
+
+        // Sort by price to assign ranks (use harga_per_satuan field)
+        $sortedSuppliers = $bahanBakuSuppliers->sortBy('harga_per_satuan');
+
+        foreach ($sortedSuppliers as $bahanBakuSupplier) {
+            $orderSupplier = new OrderSupplier([
+                'order_detail_id' => $this->id,
+                'supplier_id' => $bahanBakuSupplier->supplier_id,
+                'bahan_baku_supplier_id' => $bahanBakuSupplier->id,
+                'unit_price' => $bahanBakuSupplier->harga_per_satuan, // Use correct field name
+                'price_rank' => $rank,
+                'is_recommended' => $rank === 1, // Best price is recommended
+                'price_updated_at' => now(),
+            ]);
+
+            // Calculate margin if selling price is set
+            if ($this->harga_jual > 0) {
+                $orderSupplier->calculateMargin($this->harga_jual);
+            }
+
+            $orderSupplier->save();
+            $suppliers[] = $orderSupplier;
+            $rank++;
+        }
+
+        // Update summary fields
+        $this->updateSupplierSummary($suppliers);
+        
+        // Mark as populated
+        $this->supplier_options_populated = true;
+        $this->options_populated_at = now();
+        $this->save();
+    }
+
+    public function updateSupplierSummary(?array $suppliers = null): void
+    {
+        if ($suppliers === null) {
+            $suppliers = $this->orderSuppliers()->get();
+        }
+
+        if (empty($suppliers)) {
+            return;
+        }
+
+        // Price analysis
+        $prices = collect($suppliers)->pluck('unit_price');
+        $this->cheapest_price = $prices->min();
+        $this->most_expensive_price = $prices->max();
+        
+        // Margin analysis
+        $margins = collect($suppliers)->whereNotNull('calculated_margin')->pluck('calculated_margin');
+        if ($margins->isNotEmpty()) {
+            $this->best_margin_percentage = $margins->max();
+            $this->worst_margin_percentage = $margins->min();
+        }
+
+        // Recommended supplier (best margin or cheapest if no margin calculated)
+        $recommended = collect($suppliers)->where('is_recommended', true)->first();
+        if ($recommended) {
+            $this->recommended_supplier_id = $recommended->supplier_id;
+            $this->recommended_price = $recommended->unit_price;
+            $this->recommended_margin_percentage = $recommended->calculated_margin;
+        }
+
+        $this->available_suppliers_count = collect($suppliers)->where('is_available', true)->count();
+    }
+
+    public function updateFulfillmentTracking(): void
+    {
+        $suppliers = $this->orderSuppliers()->get();
+        
+        // Update shipped quantities for each supplier
+        foreach ($suppliers as $supplier) {
+            $supplier->updateShippedQuantity();
+            $supplier->save();
+        }
+
+        // Update order detail summary
+        $this->total_shipped_quantity = $suppliers->sum('shipped_quantity');
+        $this->remaining_quantity = max(0, $this->qty - $this->total_shipped_quantity);
+        $this->suppliers_used_count = $suppliers->where('has_been_used', true)->count();
+        
+        // Update qty_shipped for compatibility with existing system
+        $this->qty_shipped = $this->total_shipped_quantity;
+        
+        // Update status based on fulfillment
+        if ($this->remaining_quantity <= 0) {
+            $this->status = 'selesai';
+        } elseif ($this->total_shipped_quantity > 0) {
+            $this->status = 'sebagian_dikirim';
+        }
+
+        $this->save();
+    }
+
+    /**
      * Boot method
      */
     protected static function boot()
@@ -229,7 +379,7 @@ class OrderDetail extends Model
         
         static::updating(function ($orderDetail) {
             // Recalculate totals when pricing changes
-            if ($orderDetail->isDirty(['qty', 'harga_supplier', 'harga_jual'])) {
+            if ($orderDetail->isDirty(['qty', 'harga_jual'])) {
                 $orderDetail->calculateTotals(false);
             }
         });

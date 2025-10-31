@@ -45,4 +45,13 @@ class AuthFallbackService
 
         return null;
     }
+
+    /**
+     * Alias for id() method for backward compatibility
+     * @return int|null
+     */
+    public static function getUserId(): ?int
+    {
+        return self::id();
+    }
 }

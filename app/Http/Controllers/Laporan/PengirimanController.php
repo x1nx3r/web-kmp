@@ -161,8 +161,9 @@ class PengirimanController extends Controller
             $dateField = 'created_at';
         }
         
-        // Get monthly data for the specified year
+        // Get monthly data for the specified year - ONLY status 'berhasil'
         $monthlyData = Pengiriman::whereYear($dateField, $year)
+            ->where('status', 'berhasil')  // Filter hanya pengiriman berhasil
             ->selectRaw("
                 MONTH({$dateField}) as month,
                 purchasing_id,

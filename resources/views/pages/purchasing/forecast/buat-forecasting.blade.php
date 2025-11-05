@@ -239,30 +239,39 @@
                     </div>
 
                     {{-- Detail Bahan Baku List (Hidden by default) --}}
-                    <div id="detail-list-{{ $po->id }}" class="hidden border-t-2 border-green-100 bg-green-50">
+                    <div id="detail-list-{{ $po->id }}" class="hidden border-t border-gray-200 bg-gray-50">
                         {{-- Mobile Detail List --}}
                         <div class="block sm:hidden p-3">
-                            <h4 class="text-sm font-bold text-green-800 mb-2">Detail Bahan Baku</h4>
-                            <div class="space-y-2 max-h-32 overflow-y-auto">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-list mr-2 text-gray-600"></i>
+                                Detail Bahan Baku & Harga
+                            </h4>
+                            <div class="space-y-2 max-h-80 overflow-y-auto">
                                 @forelse($po->purchaseOrderBahanBakus as $detail)
-                                    <div class="bg-white rounded-lg p-3 border border-green-200">
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-1">
-                                                <h6 class="text-xs font-bold text-gray-900">{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}</h6>
-                                                <p class="text-xs text-gray-600 mt-1">
-                                                    {{ number_format($detail->jumlah ?? 0, 2, ',', '.') }} {{ $detail->bahanBakuKlien->satuan ?? '' }} • 
-                                                    Rp {{ number_format($detail->harga_satuan ?? 0, 0, ',', '.') }}
-                                                </p>
+                                    <div class="bg-white rounded p-3 border border-gray-200 hover:border-green-300 transition-colors">
+                                        <div class="flex justify-between items-start gap-2">
+                                            <div class="flex-1 min-w-0">
+                                                <h6 class="text-xs font-semibold text-gray-900 truncate">{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}</h6>
+                                               
+                                                <div class="flex items-center gap-2 text-xs text-gray-600 mt-1.5">
+                                                    <span></i>{{ number_format($detail->jumlah ?? 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'kg' }}</span>
+                                                    <span>•</span>
+                                                    <span>Rp {{ number_format($detail->harga_satuan ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                                <div class="text-xs font-semibold text-gray-700 mt-1">
+                                                    Total: Rp {{ number_format($detail->total_harga ?? 0, 0, ',', '.') }}
+                                                </div>
                                             </div>
                                             <button type="button" 
                                                     onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->jumlah ?? 0 }}, {{ $po->id }}, '{{ $po->no_po ?? 'N/A' }}')"
-                                                    class="ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
-                                                Forecast
+                                                    class="flex-shrink-0 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                                                <i class="fas fa-chart-bar"></i>
                                             </button>
                                         </div>
                                     </div>
                                 @empty
-                                    <div class="text-center py-4 text-gray-500">
+                                    <div class="text-center py-6 text-gray-500">
+                                        <i class="fas fa-box-open text-gray-300 text-2xl mb-2"></i>
                                         <p class="text-xs">Tidak ada detail bahan baku</p>
                                     </div>
                                 @endforelse
@@ -270,53 +279,42 @@
                         </div>
 
                         {{-- Desktop Detail List --}}
-                        <div class="hidden sm:block p-6">
-                            <h4 class="text-lg font-bold text-green-800 mb-4 flex items-center">
-                                <i class="fas fa-list-ul mr-2"></i>
+                        <div class="hidden sm:block p-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-list mr-2 text-gray-600"></i>
                                 Detail Bahan Baku & Harga
                             </h4>
-                            <div class="space-y-3 max-h-64 overflow-y-auto">
+                            <div class="space-y-2 max-h-96 overflow-y-auto">
                                 @forelse($po->purchaseOrderBahanBakus as $detail)
-                                    <div class="bg-white rounded-lg p-4 border border-green-200 hover:border-green-300 transition-colors">
-                                        <div class="flex items-center justify-between">
-                                            <div class="flex-1">
-                                                <div class="flex items-center space-x-4">
-                                                    <div class="flex-1">
-                                                        <h6 class="font-semibold text-gray-900 mb-1">{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}</h6>
-                                                        @if($detail->bahanBakuKlien->spesifikasi ?? false)
-                                                            <p class="text-xs text-gray-500 mb-2">{{ $detail->bahanBakuKlien->spesifikasi }}</p>
-                                                        @endif
-                                                        <div class="flex items-center space-x-4 text-sm">
-                                                            <span class="flex items-center text-gray-600">
-                                                                <i class="fas fa-weight text-blue-500 mr-1"></i>
-                                                                <strong>{{ number_format($detail->jumlah ?? 0, 2, ',', '.') }}</strong> {{ $detail->bahanBakuKlien->satuan ?? '' }}
-                                                            </span>
-                                                            <span class="flex items-center text-gray-600">
-                                                                <i class="fas fa-tag text-green-500 mr-1"></i>
-                                                                <strong>Rp {{ number_format($detail->harga_satuan ?? 0, 0, ',', '.') }}</strong>/{{ $detail->bahanBakuKlien->satuan ?? 'unit' }}
-                                                            </span>
-                                                            <span class="flex items-center text-gray-600">
-                                                                <i class="fas fa-calculator text-yellow-500 mr-1"></i>
-                                                                <strong>Rp {{ number_format($detail->total_harga ?? 0, 0, ',', '.') }}</strong>
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                    <div class="bg-white rounded p-3 border border-gray-200 hover:border-green-300 transition-colors">
+                                        <div class="flex items-center justify-between gap-4">
+                                            <div class="flex-1 min-w-0">
+                                                <h6 class="text-sm font-semibold text-gray-900">{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}</h6>
+                                               
+                                                <div class="flex items-center gap-4 text-sm text-gray-600 mt-2">
+                                                    <span>
+                                                        <strong>{{ number_format($detail->jumlah ?? 0) }}</strong> {{ $detail->bahanBakuKlien->satuan ?? 'kg' }}
+                                                    </span>
+                                                    <span>
+                                                        <strong>Rp {{ number_format($detail->harga_satuan ?? 0, 0, ',', '.') }}</strong>/{{ $detail->bahanBakuKlien->satuan ?? 'kg' }}
+                                                    </span>
+                                                    <span>
+                                                        <strong>Rp {{ number_format($detail->total_harga ?? 0, 0, ',', '.') }}</strong>
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div class="flex items-center space-x-2">
-                                                <button type="button" 
-                                                        onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->jumlah ?? 0 }}, {{ $po->id }}, '{{ $po->no_po ?? 'N/A' }}')"
-                                                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm">
+                                            <button type="button" 
+                                                    onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->jumlah ?? 0 }}, {{ $po->id }}, '{{ $po->no_po ?? 'N/A' }}')"
+                                                    class="flex-shrink-0 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm">
                                                     <i class="fas fa-chart-bar mr-2"></i>
                                                     Buat Forecast
-                                                </button>
-                                            </div>
+                                            </button>
                                         </div>
                                     </div>
                                 @empty
                                     <div class="text-center py-8 text-gray-500">
                                         <i class="fas fa-box-open text-gray-300 text-3xl mb-3"></i>
-                                        <p class="text-gray-500">Tidak ada detail bahan baku</p>
+                                        <p class="text-sm">Tidak ada detail bahan baku</p>
                                     </div>
                                 @endforelse
                             </div>

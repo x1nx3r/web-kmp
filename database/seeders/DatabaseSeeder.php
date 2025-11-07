@@ -32,7 +32,7 @@ class DatabaseSeeder extends Seeder
             PurchaseOrderSeeder::class,
             PurchaseOrderBahanBakuSeeder::class,
             CompanySettingSeeder::class,
-            PengirimanAccountingSeeder::class,
+            // PengirimanAccountingSeeder::class,
         ]);
     }
 }

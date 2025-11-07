@@ -61,28 +61,6 @@
                 </div>
             </div>
 
-            {{-- Review Pengiriman --}}
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <h4 class="text-lg font-semibold text-yellow-900 mb-3">Review Pengiriman</h4>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">Rating:</span>
-                        <div class="flex items-center space-x-2">
-                            <div class="flex items-center" id="summary-rating-stars">
-                                {{-- Akan diisi via JavaScript --}}
-                            </div>
-                            <span class="text-sm font-medium" id="summary-rating-text">-</span>
-                        </div>
-                    </div>
-                    <div>
-                        <span class="text-sm text-gray-600">Ulasan:</span>
-                        <div class="mt-1 p-3 bg-white border border-yellow-300 rounded-lg">
-                            <p class="text-sm text-gray-800" id="summary-ulasan">-</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             {{-- Detail Barang --}}
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
                 <h4 class="text-lg font-semibold text-gray-900 mb-3">Detail Barang</h4>
@@ -167,41 +145,6 @@ function populateSummary(formData) {
     
     document.getElementById('summary-hari-kirim').textContent = formData.get('hari_kirim') || '-';
     document.getElementById('summary-catatan').textContent = formData.get('catatan') || 'Tidak ada catatan';
-    
-    // Review data
-    const rating = formData.get('rating');
-    const ulasan = formData.get('ulasan');
-    
-    // Populate rating stars
-    const ratingStarsContainer = document.getElementById('summary-rating-stars');
-    const ratingTextElement = document.getElementById('summary-rating-text');
-    const ulasanElement = document.getElementById('summary-ulasan');
-    
-    if (rating && rating >= 1 && rating <= 5) {
-        let starsHTML = '';
-        for (let i = 1; i <= 5; i++) {
-            if (i <= rating) {
-                starsHTML += '<i class="fas fa-star text-yellow-400 text-sm"></i>';
-            } else {
-                starsHTML += '<i class="fas fa-star text-gray-300 text-sm"></i>';
-            }
-        }
-        ratingStarsContainer.innerHTML = starsHTML;
-        ratingTextElement.textContent = rating + ' dari 5 bintang';
-    } else {
-        ratingStarsContainer.innerHTML = '<span class="text-sm text-gray-500 italic">Belum ada rating</span>';
-        ratingTextElement.textContent = '-';
-    }
-    
-    if (ulasan && ulasan.trim() !== '') {
-        ulasanElement.textContent = ulasan;
-        ulasanElement.classList.remove('italic', 'text-gray-500');
-        ulasanElement.classList.add('text-gray-800');
-    } else {
-        ulasanElement.textContent = 'Tidak ada ulasan';
-        ulasanElement.classList.add('italic', 'text-gray-500');
-        ulasanElement.classList.remove('text-gray-800');
-    }
     
     // Detail barang
     const detailContainer = document.getElementById('summary-detail-barang');

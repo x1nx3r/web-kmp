@@ -954,27 +954,28 @@ class ForecastingController extends Controller
             
             Log::info("Creating pengiriman with no: {$noPengiriman}");
             
-            // 1. Create Pengiriman record with optimized data (using raw insert for speed)
+            // 1. Create Pengiriman record with NULL values for qty and harga (pembatalan)
+            // Data forecast disimpan di catatan saja untuk referensi
             $pengirimanId = DB::table('pengiriman')->insertGetId([
                 'purchase_order_id' => $forecast->purchase_order_id,
                 'purchasing_id' => $forecast->purchasing_id,
-                'forecast_id' => $forecast->id, // Add forecast_id relation
+                'forecast_id' => $forecast->id,
                 'no_pengiriman' => $noPengiriman,
                 'tanggal_kirim' => $forecast->tanggal_forecast,
                 'hari_kirim' => $forecast->hari_kirim_forecast,
-                'total_qty_kirim' => $forecast->total_qty_forecast,
-                'total_harga_kirim' => $forecast->total_harga_forecast,
+                'total_qty_kirim' => null, // Set NULL karena pembatalan
+                'total_harga_kirim' => null, // Set NULL karena pembatalan
                 'status' => 'gagal',
-                'catatan' => "PEMBATALAN: {$request->alasan_batal} | Forecast: {$forecast->no_forecast} | " . $timestamp->format('d/m/Y H:i'),
+                'catatan' => $request->alasan_batal,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp
             ]);
             
-            Log::info("Pengiriman created with ID: {$pengirimanId}");
+            Log::info("Pengiriman created with ID: {$pengirimanId} (status gagal dengan qty dan harga NULL)");
 
-            // 2. Optimized: Batch insert pengiriman details
+            // 2. Batch insert pengiriman details dengan NULL values
             if ($forecast->forecastDetails->isNotEmpty()) {
-                Log::info("Creating pengiriman details, count: " . $forecast->forecastDetails->count());
+                Log::info("Creating pengiriman details with NULL values, count: " . $forecast->forecastDetails->count());
                 $pengirimanDetails = [];
                 $currentTime = $timestamp->format('Y-m-d H:i:s');
                 
@@ -983,10 +984,10 @@ class ForecastingController extends Controller
                         'pengiriman_id' => $pengirimanId,
                         'purchase_order_bahan_baku_id' => $detail->purchase_order_bahan_baku_id,
                         'bahan_baku_supplier_id' => $detail->bahan_baku_supplier_id,
-                        'qty_kirim' => $detail->qty_forecast,
-                        'harga_satuan' => $detail->harga_satuan_forecast,
-                        'total_harga' => $detail->total_harga_forecast,
-                        'catatan_detail' => $detail->catatan_detail,
+                        'qty_kirim' => null, // Set NULL karena pembatalan
+                        'harga_satuan' => null, // Set NULL karena pembatalan
+                        'total_harga' => null, // Set NULL karena pembatalan
+                        'catatan_detail' => $detail->catatan_detail ? "PEMBATALAN - Qty Forecast: {$detail->qty_forecast}, Harga Forecast: Rp " . number_format($detail->harga_satuan_forecast, 0, ',', '.') . " | {$detail->catatan_detail}" : "PEMBATALAN - Qty Forecast: {$detail->qty_forecast}, Harga Forecast: Rp " . number_format($detail->harga_satuan_forecast, 0, ',', '.'),
                         'created_at' => $currentTime,
                         'updated_at' => $currentTime
                     ];
@@ -995,7 +996,7 @@ class ForecastingController extends Controller
                 // Batch insert for better performance
                 Log::info("Inserting " . count($pengirimanDetails) . " pengiriman details");
                 DB::table('pengiriman_details')->insert($pengirimanDetails);
-                Log::info("Pengiriman details inserted successfully");
+                Log::info("Pengiriman details inserted successfully with NULL values");
             } else {
                 Log::info("No forecast details to copy");
             }

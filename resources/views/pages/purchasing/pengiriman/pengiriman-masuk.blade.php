@@ -914,51 +914,6 @@ function populateModalSummary(formData, modalElement) {
         setCatatan.textContent = formData.get('catatan') || 'Tidak ada catatan';
     }
     
-    // Review data
-    const rating = document.getElementById('rating_input')?.value;
-    const ulasan = document.getElementById('ulasan_input')?.value;
-    
-    // Add review data to formData if not already present
-    if (rating) {
-        formData.set('rating', rating);
-    }
-    if (ulasan) {
-        formData.set('ulasan', ulasan);
-    }
-    
-    // Populate review summary
-    const ratingStarsContainer = modalElement.querySelector('#summary-rating-stars');
-    const ratingTextElement = modalElement.querySelector('#summary-rating-text');
-    const ulasanElement = modalElement.querySelector('#summary-ulasan');
-    
-    if (ratingStarsContainer && ratingTextElement && ulasanElement) {
-        if (rating && rating >= 1 && rating <= 5) {
-            let starsHTML = '';
-            for (let i = 1; i <= 5; i++) {
-                if (i <= rating) {
-                    starsHTML += '<i class="fas fa-star text-yellow-400 text-sm"></i>';
-                } else {
-                    starsHTML += '<i class="fas fa-star text-gray-300 text-sm"></i>';
-                }
-            }
-            ratingStarsContainer.innerHTML = starsHTML;
-            ratingTextElement.textContent = rating + ' dari 5 bintang';
-        } else {
-            ratingStarsContainer.innerHTML = '<span class="text-sm text-gray-500 italic">Belum ada rating</span>';
-            ratingTextElement.textContent = '-';
-        }
-        
-        if (ulasan && ulasan.trim() !== '') {
-            ulasanElement.textContent = ulasan;
-            ulasanElement.classList.remove('italic', 'text-gray-500');
-            ulasanElement.classList.add('text-gray-800');
-        } else {
-            ulasanElement.textContent = 'Tidak ada ulasan';
-            ulasanElement.classList.add('italic', 'text-gray-500');
-            ulasanElement.classList.remove('text-gray-800');
-        }
-    }
-    
     // Detail barang
     const detailContainer = modalElement.querySelector('#summary-detail-barang');
     if (detailContainer) {
@@ -1247,133 +1202,7 @@ function showBatalSuccessNotification(message, noPengiriman) {
     }, 3000);
 }
 
-// Set rating bintang (global function)
-function setRating(rating) {
-    // Update hidden input
-    const ratingInput = document.getElementById('rating_input');
-    if (ratingInput) {
-        ratingInput.value = rating;
-    }
-    
-    // Update visual stars
-    const stars = document.querySelectorAll('.star-rating');
-    stars.forEach((star, index) => {
-        if (index < rating) {
-            star.classList.remove('text-gray-300');
-            star.classList.add('text-yellow-400');
-        } else {
-            star.classList.remove('text-yellow-400');
-            star.classList.add('text-gray-300');
-        }
-    });
-    
-    // Update rating text
-    const ratingText = document.getElementById('rating-text');
-    if (ratingText) {
-        ratingText.textContent = rating + ' dari 5 bintang';
-    }
-    
-    console.log('Rating set to:', rating);
-}
-
-// Save review then proceed with submission (global function)
-function saveReviewThenSubmit(formData) {
-    const pengirimanId = formData.get('pengiriman_id');
-    const rating = document.getElementById('rating_input')?.value;
-    const ulasan = document.getElementById('ulasan_input')?.value;
-    
-    console.log('saveReviewThenSubmit called with:', { pengirimanId, rating, ulasan });
-    
-    // Prepare review data
-    const reviewData = new FormData();
-    reviewData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]')?.value);
-    reviewData.append('pengiriman_id', pengirimanId);
-    reviewData.append('rating', rating);
-    reviewData.append('ulasan', ulasan || '');
-    
-    // Show loading
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: 'Menyimpan Review & Mengajukan Verifikasi...',
-            text: 'Sedang memproses pengiriman Anda',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-    }
-    
-    // Submit review first
-    fetch('/procurement/pengiriman/review', {
-        method: 'POST',
-        body: reviewData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('Review saved successfully');
-            // Update status review display
-            updateReviewStatus(true);
-            
-            // Now proceed with submission modal
-            showSubmitModal(formData);
-        } else {
-            console.error('Failed to save review:', data.message);
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'Gagal menyimpan review: ' + data.message,
-                    icon: 'error',
-                    confirmButtonColor: '#EF4444'
-                });
-            } else {
-                alert('Gagal menyimpan review: ' + data.message);
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error saving review:', error);
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Terjadi kesalahan saat menyimpan review',
-                icon: 'error',
-                confirmButtonColor: '#EF4444'
-            });
-        } else {
-            alert('Terjadi kesalahan saat menyimpan review');
-        }
-    });
-}
-
-// Update review status display (global function)
-function updateReviewStatus(isReviewed) {
-    const statusContainer = document.querySelector('.bg-orange-50, .bg-blue-50');
-    if (statusContainer) {
-        if (isReviewed) {
-            statusContainer.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4';
-            statusContainer.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700">Status Review:</span>
-                    <span class="text-sm text-blue-600 font-semibold">Sudah direview</span>
-                </div>
-            `;
-        } else {
-            statusContainer.className = 'bg-orange-50 border border-orange-200 rounded-lg p-4';
-            statusContainer.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700">Status Review:</span>
-                    <span class="text-sm text-orange-600 font-semibold">Belum direview</span>
-                </div>
-            `;
-        }
-    }
-}
-
-// Submit pengiriman (global function) - updated version
+// Submit pengiriman (global function)
 function submitPengiriman() {
     console.log('submitPengiriman called');
     
@@ -1412,39 +1241,6 @@ function submitPengiriman() {
         return;
     }
     
-    // Validasi review (rating wajib diisi)
-    const rating = document.getElementById('rating_input')?.value;
-    const ulasan = document.getElementById('ulasan_input')?.value;
-    
-    if (!rating || rating < 1 || rating > 5) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Review Diperlukan!',
-                text: 'Silakan berikan rating terlebih dahulu (1-5 bintang) sebelum mengajukan verifikasi',
-                icon: 'warning',
-                confirmButtonColor: '#EF4444'
-            });
-        } else {
-            alert('Silakan berikan rating terlebih dahulu (1-5 bintang) sebelum mengajukan verifikasi');
-        }
-        return;
-    }
-    
-    // Validasi ulasan
-    if (ulasan && ulasan.length > 1000) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Ulasan tidak boleh lebih dari 1000 karakter',
-                icon: 'error',
-                confirmButtonColor: '#EF4444'
-            });
-        } else {
-            alert('Ulasan tidak boleh lebih dari 1000 karakter');
-        }
-        return;
-    }
-    
     // Create FormData
     const formData = new FormData(form);
     
@@ -1462,15 +1258,75 @@ function submitPengiriman() {
     formData.append('total_qty_kirim', totalQty);
     formData.append('total_harga_kirim', totalHarga);
     
-    console.log('Form data prepared:', { totalQty, totalHarga, rating, ulasan });
+    console.log('Form data prepared:', { totalQty, totalHarga });
     
-    // First save the review, then proceed with submission
-    saveReviewThenSubmit(formData);
-}
-// Set initial rating if exists
-const initialRating = document.getElementById('rating_input')?.value;
-if (initialRating) {
-    setRating(initialRating);
+    // Show loading
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Mengajukan Verifikasi...',
+            text: 'Sedang memproses pengiriman Anda',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    }
+    
+    // Submit pengiriman
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Pengiriman submitted successfully');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Berhasil!',
+                    text: data.message || 'Pengiriman berhasil diajukan untuk verifikasi',
+                    icon: 'success',
+                    confirmButtonColor: '#10B981'
+                }).then(() => {
+                    // Close modal and reload
+                    closeAksiModal();
+                    location.reload();
+                });
+            } else {
+                alert(data.message || 'Pengiriman berhasil diajukan untuk verifikasi');
+                closeAksiModal();
+                location.reload();
+            }
+        } else {
+            console.error('Failed to submit pengiriman:', data.message);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Error!',
+                    text: data.message || 'Gagal mengajukan verifikasi',
+                    icon: 'error',
+                    confirmButtonColor: '#EF4444'
+                });
+            } else {
+                alert(data.message || 'Gagal mengajukan verifikasi');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting pengiriman:', error);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Terjadi kesalahan saat mengajukan verifikasi',
+                icon: 'error',
+                confirmButtonColor: '#EF4444'
+            });
+        } else {
+            alert('Terjadi kesalahan saat mengajukan verifikasi');
+        }
+    });
 }
 </script>
 

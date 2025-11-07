@@ -303,61 +303,6 @@
             <input type="hidden" name="catatan" value="{{ $pengiriman->catatan ?? '' }}">
         </div>
 
-        {{-- Card 5: Review Pengiriman --}}
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div class="flex items-center mb-4">
-                <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
-                    <i class="fas fa-star text-yellow-600"></i>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-900">Review Pengiriman</h3>
-            </div>
-            
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-3">Rating Pengiriman <span class="text-red-500">*</span></label>
-                <div class="flex items-center space-x-2">
-                    @for($i = 1; $i <= 5; $i++)
-                        <button type="button" 
-                                class="star-rating text-3xl transition-colors duration-200 {{ $pengiriman->rating && $i <= $pengiriman->rating ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400' }}" 
-                                data-rating="{{ $i }}"
-                                onclick="setRating({{ $i }})">
-                            <i class="fas fa-star"></i>
-                        </button>
-                    @endfor
-                    <span class="ml-3 text-sm text-gray-600" id="rating-text">
-                        {{ $pengiriman->rating ? $pengiriman->rating . ' dari 5 bintang' : 'Belum ada rating' }}
-                    </span>
-                </div>
-                <input type="hidden" id="rating_input" name="rating" value="{{ $pengiriman->rating ?? '' }}">
-                <div class="text-xs text-red-500 mt-1">Rating wajib diisi sebelum mengajukan verifikasi</div>
-            </div>
-            
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Ulasan Pengiriman</label>
-                <textarea name="ulasan" 
-                          id="ulasan_input"
-                          rows="4" 
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                          placeholder="Berikan ulasan tentang pengiriman ini...">{{ $pengiriman->ulasan ?? '' }}</textarea>
-                <div class="text-xs text-gray-500 mt-1">Maksimal 1000 karakter</div>
-            </div>
-            
-            @if($pengiriman->rating || $pengiriman->ulasan)
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-700">Status Review:</span>
-                        <span class="text-sm text-blue-600 font-semibold">Sudah direview</span>
-                    </div>
-                </div>
-            @else
-                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-700">Status Review:</span>
-                        <span class="text-sm text-orange-600 font-semibold">Belum direview</span>
-                    </div>
-                </div>
-            @endif
-        </div>
-
     </form>
 
 </div>

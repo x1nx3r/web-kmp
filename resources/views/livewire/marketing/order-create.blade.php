@@ -8,16 +8,25 @@
                         <i class="fas fa-shopping-cart text-blue-600"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Buat Order Baru</h1>
-                        <p class="text-gray-600">Buat order pembelian untuk klien dengan sistem multi-supplier</p>
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            {{ $isEditing ? 'Edit Order' : 'Buat Order Baru' }}
+                            @if($isEditing && $editingOrderNumber)
+                                <span class="text-base font-normal text-gray-500">&middot; {{ $editingOrderNumber }}</span>
+                            @endif
+                        </h1>
+                        <p class="text-gray-600">
+                            {{ $isEditing ? 'Perbarui detail order multi-supplier dengan data terbaru' : 'Buat order pembelian untuk klien dengan sistem multi-supplier' }}
+                        </p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
                     <div class="text-right">
                         <div class="text-sm text-gray-500">Status</div>
-                        <div class="text-lg font-semibold text-blue-600">Draft</div>
+                        <div class="text-lg font-semibold text-blue-600">
+                            {{ $currentStatus ? ucwords(str_replace('_', ' ', $currentStatus)) : 'Draft' }}
+                        </div>
                     </div>
-                    <a href="{{ route('orders.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                    <a href="{{ $isEditing && $editingOrderId ? route('orders.show', $editingOrderId) : route('orders.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                         <i class="fas fa-arrow-left mr-2"></i>Kembali
                     </a>
                 </div>
@@ -50,6 +59,9 @@
                     :poStartDate="$poStartDate"
                     :poEndDate="$poEndDate"
                     :poDocument="$poDocument"
+                    :isEditing="$isEditing"
+                    :existingPoDocumentName="$existingPoDocumentName"
+                    :existingPoDocumentUrl="$existingPoDocumentUrl"
                 />
 
                 {{-- Action Buttons --}}
@@ -71,12 +83,12 @@
                         <div class="flex flex-col space-y-3">
                             <button 
                                 type="button"
-                                wire:click="createOrder"
+                                wire:click="{{ $isEditing ? 'updateOrder' : 'createOrder' }}"
                                 class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 {{ $this->canSubmit ? '' : 'disabled' }}
                             >
                                 <i class="fas fa-save mr-2"></i>
-                                Buat Order
+                                {{ $isEditing ? 'Update Order' : 'Buat Order' }}
                             </button>
                         </div>
                     </div>

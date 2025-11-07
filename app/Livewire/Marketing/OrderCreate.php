@@ -24,6 +24,17 @@ class OrderCreate extends Component
     public $selectedKlienCabang = null;
     public $selectedKlienId = null;
     public $selectedOrderItems = [];
+
+    // Mode state
+    public bool $isEditing = false;
+    public ?int $editingOrderId = null;
+    public ?string $editingOrderNumber = null;
+    public ?string $currentStatus = 'draft';
+
+    // Existing PO metadata (edit mode)
+    public ?string $existingPoDocumentPath = null;
+    public ?string $existingPoDocumentName = null;
+    public ?string $existingPoDocumentUrl = null;
     
     // Order info
     public $tanggalOrder;
@@ -57,7 +68,7 @@ class OrderCreate extends Component
     public $totalAmount = 0;
     public $totalMargin = 0;
     
-    public function mount()
+    public function mount(?Order $order = null)
     {
         $this->tanggalOrder = now()->format('Y-m-d');
         $this->poStartDate = $this->tanggalOrder;
@@ -143,6 +154,11 @@ class OrderCreate extends Component
 
         $this->poNumber = '';
         $this->poDocument = null;
+        if ($this->isEditing) {
+            $this->existingPoDocumentPath = null;
+            $this->existingPoDocumentName = null;
+            $this->existingPoDocumentUrl = null;
+        }
         $this->poStartDate = $this->tanggalOrder;
         $this->poEndDate = now()->addDays(14)->format('Y-m-d');
         $this->updatePriorityFromSchedule();
@@ -279,13 +295,13 @@ class OrderCreate extends Component
         }
     }
     
-    private function updateTotals()
+    protected function updateTotals()
     {
         $this->totalAmount = collect($this->selectedOrderItems)->sum('total_harga');
         $this->totalMargin = collect($this->selectedOrderItems)->sum('total_margin');
     }
     
-    private function resetTotals()
+    protected function resetTotals()
     {
         $this->totalAmount = 0;
         $this->totalMargin = 0;
@@ -332,6 +348,16 @@ class OrderCreate extends Component
 
     public function getCanSubmitProperty(): bool
     {
+        if ($this->isEditing) {
+            return (bool) (
+                $this->selectedKlienId
+                && count($this->selectedOrderItems) > 0
+                && !empty($this->poNumber)
+                && !empty($this->poStartDate)
+                && !empty($this->poEndDate)
+            );
+        }
+
         return (bool) (
             $this->selectedKlienId
             && count($this->selectedOrderItems) > 0
@@ -439,6 +465,7 @@ class OrderCreate extends Component
             'spesifikasi_khusus' => $this->currentSpesifikasi,
             'catatan' => $this->currentCatatan,
             'auto_suppliers' => $this->autoSuppliers, // Store all supplier options
+            'recommended_bahan_baku_supplier_id' => $bestSupplier['bahan_baku_supplier_id'] ?? null,
         ];
         
         $this->updateTotals();
@@ -526,13 +553,15 @@ class OrderCreate extends Component
                     'satuan' => $item['satuan'],
                     'harga_jual' => $item['harga_jual'],
                     'total_harga' => $item['total_harga'],
-                    'spesifikasi_khusus' => $item['spesifikasi_khusus'],
-                    'catatan' => $item['catatan'],
+                    'spesifikasi_khusus' => $item['spesifikasi_khusus'] ?? null,
+                    'catatan' => $item['catatan'] ?? null,
                     'status' => 'menunggu',
                 ]);
 
                 // Automatically populate all suppliers for this material
                 $orderDetail->populateSupplierOptions();
+
+                $this->setRecommendedSupplier($orderDetail, $item);
             }
             
             DB::commit();
@@ -550,5 +579,204 @@ class OrderCreate extends Component
             }
             session()->flash('error', 'Gagal membuat order: ' . $e->getMessage());
         }
+    }
+
+    public function updateOrder()
+    {
+        if (!$this->isEditing || !$this->editingOrderId) {
+            session()->flash('error', 'Order tidak ditemukan untuk diperbarui.');
+            return;
+        }
+
+        $this->validate([
+            'selectedKlienId' => 'required',
+            'tanggalOrder' => 'required|date',
+            'poNumber' => 'required|string|max:50',
+            'poStartDate' => 'required|date',
+            'poEndDate' => 'required|date|after_or_equal:poStartDate',
+            'poDocument' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            'priority' => 'required|in:rendah,normal,tinggi,mendesak',
+        ]);
+
+        if (count($this->selectedOrderItems) === 0) {
+            session()->flash('error', 'Tambahkan minimal satu item sebelum menyimpan.');
+            return;
+        }
+
+        $this->updatePriorityFromSchedule();
+
+        try {
+            DB::beginTransaction();
+
+            /** @var Order $order */
+            $order = Order::with(['orderDetails.orderSuppliers'])->findOrFail($this->editingOrderId);
+
+            $poDocumentPath = $order->po_document_path;
+            $poOriginalName = $order->po_document_original_name;
+
+            if ($this->poDocument) {
+                if ($poDocumentPath && Storage::disk('public')->exists($poDocumentPath)) {
+                    Storage::disk('public')->delete($poDocumentPath);
+                }
+
+                $poOriginalName = $this->poDocument->getClientOriginalName();
+                $extension = $this->poDocument->getClientOriginalExtension();
+                $baseName = pathinfo($poOriginalName, PATHINFO_FILENAME);
+                $safeBaseName = Str::slug($baseName) ?: 'po-document';
+                $fileName = $safeBaseName . '-' . now()->format('YmdHis') . '.' . strtolower($extension);
+
+                $poDocumentPath = $this->poDocument->storePubliclyAs(
+                    'po-documents',
+                    $fileName,
+                    'public'
+                );
+            }
+
+            $order->update([
+                'klien_id' => $this->selectedKlienId,
+                'tanggal_order' => $this->tanggalOrder,
+                'po_number' => $this->poNumber,
+                'po_start_date' => $this->poStartDate,
+                'po_end_date' => $this->poEndDate,
+                'po_document_path' => $poDocumentPath,
+                'po_document_original_name' => $poOriginalName,
+                'priority' => $this->priority,
+                'catatan' => $this->catatan,
+            ]);
+
+            foreach ($order->orderDetails as $detail) {
+                $detail->orderSuppliers()->delete();
+            }
+            $order->orderDetails()->delete();
+
+            foreach ($this->selectedOrderItems as $item) {
+                $orderDetail = OrderDetail::create([
+                    'order_id' => $order->id,
+                    'bahan_baku_klien_id' => $item['bahan_baku_klien_id'],
+                    'qty' => $item['qty'],
+                    'satuan' => $item['satuan'],
+                    'harga_jual' => $item['harga_jual'],
+                    'total_harga' => $item['total_harga'],
+                    'spesifikasi_khusus' => $item['spesifikasi_khusus'] ?? null,
+                    'catatan' => $item['catatan'] ?? null,
+                    'status' => 'menunggu',
+                ]);
+
+                $orderDetail->populateSupplierOptions();
+
+                $this->setRecommendedSupplier($orderDetail, $item);
+            }
+
+            $order->calculateTotals();
+
+            DB::commit();
+
+            $this->existingPoDocumentPath = $poDocumentPath;
+            $this->existingPoDocumentName = $poOriginalName;
+            $this->existingPoDocumentUrl = $order->po_document_url;
+
+            session()->flash('success', 'Order berhasil diperbarui.');
+
+            return redirect()->route('orders.show', $order->id);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            session()->flash('error', 'Gagal memperbarui order: ' . $e->getMessage());
+        }
+    }
+
+    protected function setRecommendedSupplier(OrderDetail $orderDetail, array $item): void
+    {
+        $autoSuppliers = collect($item['auto_suppliers'] ?? []);
+
+        $recommended = $autoSuppliers->firstWhere('is_recommended', true);
+
+        $bahanBakuSupplierId = $recommended['bahan_baku_supplier_id']
+            ?? $item['recommended_bahan_baku_supplier_id']
+            ?? null;
+        $supplierId = $recommended['supplier_id'] ?? null;
+
+        if (!$bahanBakuSupplierId && !$supplierId) {
+            $orderDetail->updateSupplierSummary();
+            return;
+        }
+
+        $selectedSupplier = $orderDetail->orderSuppliers()
+            ->when($bahanBakuSupplierId, fn($query) => $query->where('bahan_baku_supplier_id', $bahanBakuSupplierId))
+            ->when(!$bahanBakuSupplierId && $supplierId, fn($query) => $query->where('supplier_id', $supplierId))
+            ->first();
+
+        if ($selectedSupplier) {
+            $orderDetail->orderSuppliers()->update(['is_recommended' => false]);
+
+            $selectedSupplier->is_recommended = true;
+            $selectedSupplier->price_rank = 1;
+            $selectedSupplier->save();
+        }
+
+        $orderDetail->updateSupplierSummary();
+    }
+
+    protected function transformDetailToSelectedItem(OrderDetail $detail): array
+    {
+        $detail->loadMissing(['bahanBakuKlien', 'orderSuppliers.supplier.picPurchasing', 'orderSuppliers.bahanBakuSupplier']);
+
+        $qty = (float) ($detail->qty ?? 0);
+        $sellingPrice = (float) ($detail->harga_jual ?? 0);
+        $totalHarga = (float) ($detail->total_harga ?? ($qty * $sellingPrice));
+
+        $autoSuppliers = $detail->orderSuppliers->map(function ($orderSupplier) use ($detail, $sellingPrice) {
+            $supplier = $orderSupplier->supplier;
+            $bahanBakuSupplier = $orderSupplier->bahanBakuSupplier;
+            $unitPrice = (float) ($orderSupplier->unit_price ?? 0);
+            $margin = $orderSupplier->calculated_margin;
+
+            if ($margin === null && $sellingPrice > 0) {
+                $margin = (($sellingPrice - $unitPrice) / $sellingPrice) * 100;
+            }
+
+            return [
+                'supplier_id' => $orderSupplier->supplier_id,
+                'bahan_baku_supplier_id' => $orderSupplier->bahan_baku_supplier_id,
+                'supplier_name' => $supplier->nama ?? 'Supplier',
+                'supplier_location' => $supplier->alamat ?? 'Alamat tidak tersedia',
+                'pic_name' => optional($supplier->picPurchasing)->nama,
+                'material_name' => $bahanBakuSupplier->nama ?? optional($detail->bahanBakuKlien)->nama,
+                'harga_supplier' => $unitPrice,
+                'satuan' => $bahanBakuSupplier->satuan ?? $detail->satuan,
+                'stok' => $bahanBakuSupplier->stok ?? 0,
+                'suggested_price' => $unitPrice > 0 ? $unitPrice * 1.2 : $sellingPrice,
+                'margin_percentage' => $margin ?? 0,
+                'is_recommended' => (bool) $orderSupplier->is_recommended,
+            ];
+        })->sortBy('harga_supplier')->values()->toArray();
+
+        $bestSupplier = collect($autoSuppliers)->first();
+        $recommended = collect($autoSuppliers)->firstWhere('is_recommended', true) ?? $bestSupplier;
+
+        $bestPrice = (float) ($bestSupplier['harga_supplier'] ?? 0);
+        $bestHpp = $qty * $bestPrice;
+        $totalMargin = $totalHarga - $bestHpp;
+        $marginPercentage = $totalHarga > 0 ? ($totalMargin / $totalHarga) * 100 : 0;
+
+        return [
+            'id' => 'detail-' . $detail->id,
+            'order_detail_id' => $detail->id,
+            'bahan_baku_klien_id' => $detail->bahan_baku_klien_id,
+            'material_name' => optional($detail->bahanBakuKlien)->nama ?? 'Material',
+            'qty' => $qty,
+            'satuan' => $detail->satuan,
+            'harga_jual' => $sellingPrice,
+            'total_harga' => $totalHarga,
+            'best_supplier_price' => $bestPrice,
+            'best_hpp' => $bestHpp,
+            'total_margin' => $totalMargin,
+            'margin_percentage' => $marginPercentage,
+            'suppliers_count' => count($autoSuppliers),
+            'spesifikasi_khusus' => $detail->spesifikasi_khusus,
+            'catatan' => $detail->catatan,
+            'auto_suppliers' => $autoSuppliers,
+            'recommended_bahan_baku_supplier_id' => $recommended['bahan_baku_supplier_id'] ?? null,
+        ];
     }
 }

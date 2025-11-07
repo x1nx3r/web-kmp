@@ -299,9 +299,10 @@ class OrderController extends Controller
     public function edit(string $id)
     {
         $order = Order::with([
-            'orderDetails.bahanBakuKlien', 
-            'orderDetails.orderSuppliers.supplier',
-            'orderDetails.orderSuppliers.bahanBakuSupplier'
+            'klien',
+            'orderDetails.bahanBakuKlien',
+            'orderDetails.orderSuppliers.supplier.picPurchasing',
+            'orderDetails.orderSuppliers.bahanBakuSupplier',
         ])->findOrFail($id);
             
         if ($order->status !== 'draft') {
@@ -309,21 +310,7 @@ class OrderController extends Controller
                 ->with('error', 'Hanya order dengan status draft yang dapat diedit.');
         }
 
-        // Check if this order uses the new multi-supplier system
-        $hasMultiSupplierData = $order->orderDetails()
-            ->whereHas('orderSuppliers')
-            ->exists();
-            
-        if ($hasMultiSupplierData) {
-            return redirect()->route('orders.show', $order->id)
-                ->with('error', 'Order ini menggunakan sistem multi-supplier baru dan tidak dapat diedit dengan interface lama. Silakan gunakan interface order baru.');
-        }
-        
-        $kliens = Klien::orderBy('nama')->get();
-        $materials = BahanBakuKlien::with('klien')->orderBy('nama')->get();
-        $suppliers = Supplier::orderBy('nama')->get();
-        
-        return view('pages.marketing.orders.edit', compact('order', 'kliens', 'materials', 'suppliers'));
+        return view('pages.marketing.orders.edit-livewire', compact('order'));
     }
 
     /**

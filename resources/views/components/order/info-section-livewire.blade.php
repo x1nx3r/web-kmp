@@ -1,4 +1,15 @@
-@props(['tanggalOrder', 'priority', 'catatan', 'poNumber', 'poStartDate', 'poEndDate', 'poDocument' => null])
+@props([
+    'tanggalOrder',
+    'priority',
+    'catatan',
+    'poNumber',
+    'poStartDate',
+    'poEndDate',
+    'poDocument' => null,
+    'isEditing' => false,
+    'existingPoDocumentName' => null,
+    'existingPoDocumentUrl' => null,
+])
 
 {{-- Order Info --}}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -65,7 +76,7 @@
         {{-- PO Document Upload --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                Unggah Surat PO (JPG/PNG) <span class="text-red-500">*</span>
+                Unggah Surat PO (JPG/PNG) @unless($isEditing)<span class="text-red-500">*</span>@endunless
             </label>
             <input type="file" wire:model="poDocument" accept="image/png,image/jpeg"
                    class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-600 hover:file:bg-purple-100">
@@ -75,7 +86,22 @@
             @if($poDocument)
                 <p class="text-xs text-gray-600 mt-1">File terpilih: {{ $poDocument->getClientOriginalName() }}</p>
             @endif
-            <p class="text-xs text-gray-500 mt-2">Maksimal 5 MB. File akan disimpan di folder publik untuk akses purchasing.</p>
+            @if($isEditing && $existingPoDocumentName)
+                <p class="text-xs text-gray-600 mt-2">
+                    Dokumen saat ini: 
+                    @if($existingPoDocumentUrl)
+                        <a href="{{ $existingPoDocumentUrl }}" class="text-purple-600 hover:text-purple-700 underline" target="_blank" rel="noopener">
+                            {{ $existingPoDocumentName }}
+                        </a>
+                    @else
+                        {{ $existingPoDocumentName }}
+                    @endif
+                </p>
+                <p class="text-xs text-gray-500 mt-1">Biarkan kosong jika tidak ingin mengganti dokumen PO.</p>
+                <p class="text-xs text-gray-500 mt-1">File baru maksimal 5 MB dan akan disimpan di folder publik untuk akses purchasing.</p>
+            @else
+                <p class="text-xs text-gray-500 mt-2">Maksimal 5 MB. File akan disimpan di folder publik untuk akses purchasing.</p>
+            @endif
         </div>
 
         {{-- Catatan --}}

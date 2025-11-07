@@ -295,7 +295,7 @@
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Plant</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
-                            <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -355,37 +355,38 @@
                                 <td class="px-6 py-4 text-sm text-gray-500">
                                     {{ $latestUpdate ? \Carbon\Carbon::parse($latestUpdate)->format('d/m/Y H:i') : '-' }}
                                 </td>
-                                <td class="px-6 py-4 text-right">
-                                    <div class="flex items-center justify-end space-x-2">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-end space-x-1">
                                         <a
                                             href="{{ route('kontak-klien.index', ['klien' => $name]) }}"
-                                            class="text-green-600 hover:text-green-800 text-sm font-medium"
+                                            class="flex items-center justify-center w-8 h-8 bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-800 rounded-md transition-all duration-200 group"
                                             title="Kelola Kontak"
                                         >
-                                            <i class="fas fa-address-book"></i>
+                                            <i class="fas fa-address-book text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </a>
                                         <button
                                             type="button"
                                             wire:click.stop="editCompany('{{ $name }}')"
-                                            class="text-amber-600 hover:text-amber-800 text-sm font-medium"
+                                            class="flex items-center justify-center w-8 h-8 bg-amber-100 hover:bg-amber-200 text-amber-700 hover:text-amber-800 rounded-md transition-all duration-200 group"
                                             title="Edit Perusahaan"
                                         >
-                                            <i class="fas fa-edit"></i>
+                                            <i class="fas fa-edit text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
                                         <button
                                             type="button"
                                             wire:click.stop="deleteCompany('{{ $name }}')"
-                                            class="text-red-600 hover:text-red-800 text-sm font-medium"
+                                            class="flex items-center justify-center w-8 h-8 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800 rounded-md transition-all duration-200 group"
                                             title="Hapus Perusahaan"
                                         >
-                                            <i class="fas fa-trash-alt"></i>
+                                            <i class="fas fa-trash-alt text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
                                         <button
                                             type="button"
                                             wire:click.stop="toggleGroup('{{ $groupId }}')"
-                                            class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                            class="flex items-center justify-center w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 rounded-md transition-all duration-200 group"
+                                            title="{{ in_array($groupId, $openGroups) ? 'Tutup Detail' : 'Lihat Detail' }}"
                                         >
-                                            Detail
+                                            <i class="fas fa-{{ in_array($groupId, $openGroups) ? 'chevron-up' : 'chevron-down' }} text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -409,7 +410,7 @@
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Plant</th>
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
-                                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="bg-white divide-y divide-gray-200">
@@ -426,21 +427,21 @@
                                                                 <td class="px-4 py-3 text-sm text-gray-500">
                                                                     {{ $klien->updated_at->format('d/m/Y H:i') }}
                                                                 </td>
-                                                                <td class="px-4 py-3 text-right">
-                                                                    <div class="flex items-center justify-end space-x-2">
+                                                                <td class="px-4 py-3">
+                                                                    <div class="flex items-center justify-end space-x-1">
                                                                         <a
                                                                             href="{{ route('klien.edit', $klien) }}"
-                                                                            class="text-blue-600 hover:text-blue-800 text-sm"
+                                                                            class="flex items-center justify-center w-7 h-7 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 rounded-md transition-all duration-200 group"
                                                                             title="Edit Plant & Kelola Material"
                                                                         >
-                                                                            <i class="fas fa-edit"></i>
+                                                                            <i class="fas fa-edit text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                                                         </a>
                                                                         <button
                                                                             wire:click="deleteBranch({{ $klien->id }}, '{{ $klien->cabang }}')"
-                                                                            class="text-red-600 hover:text-red-800 text-sm"
+                                                                            class="flex items-center justify-center w-7 h-7 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800 rounded-md transition-all duration-200 group"
                                                                             title="Hapus Plant"
                                                                         >
-                                                                            <i class="fas fa-trash-alt"></i>
+                                                                            <i class="fas fa-trash-alt text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                                                         </button>
                                                                     </div>
                                                                 </td>

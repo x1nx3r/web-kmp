@@ -314,7 +314,7 @@ function submitBatalPengiriman(alasanBatal) {
     // Show immediate feedback
     showBatalToast('Memproses pembatalan forecast...', 'warning');
     
-    console.log('Starting fetch request to:', `/purchasing/forecast/${currentBatalForecastData?.id}/batal`);
+    console.log('Starting fetch request to:', `/procurement/forecast/${currentBatalForecastData?.id}/batal`);
     console.log('Request payload:', {
         alasan_batal: alasanBatal,
         _token: csrfToken,
@@ -329,7 +329,7 @@ function submitBatalPengiriman(alasanBatal) {
         setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
     });
     
-    const fetchPromise = fetch(`/purchasing/forecast/${currentBatalForecastData?.id}/batal`, {
+    const fetchPromise = fetch(`/procurement/forecasting/${currentBatalForecastData?.id}/batal`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -390,7 +390,7 @@ function submitBatalPengiriman(alasanBatal) {
             errorMessage: error.message,
             errorStack: error.stack,
             forecastId: currentBatalForecastData?.id,
-            url: `/purchasing/forecast/${currentBatalForecastData?.id}/batal`
+            url: `/procurement/forecasting/${currentBatalForecastData?.id}/batal`
         });
         
         // Reset UI elements

@@ -34,6 +34,8 @@ class DatabaseSeeder extends Seeder
             PenawaranSeeder::class, // Penawaran with multi-supplier support
             // OrderSeeder::class, // Removed - incompatible with new multi-supplier order system
             EnhancedOrderSeeder::class, // New multi-supplier order system with auto-population
+            CompanySettingSeeder::class,
+            // PengirimanAccountingSeeder::class,
         ]);
     }
 }

@@ -180,6 +180,14 @@
                             <span class="mx-1 text-gray-300">|</span>
                             <span class="text-xs font-bold text-blue-600">{{ number_format($supplier->bahanBakuSuppliers->sum('stok'), 0, ',', '.') }}</span>
                             <span class="text-xs text-blue-600">Stok</span>
+                            @php
+                                $avgRating = $supplier->getAverageRating();
+                            @endphp
+                            @if($avgRating)
+                                <span class="mx-1 text-gray-300">|</span>
+                                <i class="fas fa-star text-yellow-500 text-xs"></i>
+                                <span class="text-xs font-bold text-yellow-600">{{ $avgRating }}</span>
+                            @endif
                         </div>
                     </div>
                     
@@ -203,13 +211,26 @@
                 {{-- Mobile Actions --}}
                 <div class="p-3 bg-gray-50">
                     <div class="flex items-center justify-between">
-                        <button type="button" 
-                                onclick="toggleProductList({{ $supplier->id }})"
-                                class="flex items-center px-3 py-2 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-all duration-200">
-                            <i class="fas fa-box mr-1"></i>
-                            <span>Bahan Baku</span>
-                            <i class="fas fa-chevron-down transform transition-transform ml-2 text-xs" id="chevron-{{ $supplier->id }}"></i>
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button type="button" 
+                                    onclick="toggleProductList({{ $supplier->id }})"
+                                    class="flex items-center px-3 py-2 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-all duration-200">
+                                <i class="fas fa-box mr-1"></i>
+                                <span>Bahan Baku</span>
+                                <i class="fas fa-chevron-down transform transition-transform ml-2 text-xs" id="chevron-{{ $supplier->id }}"></i>
+                            </button>
+                            
+                            @php
+                                $totalReviews = $supplier->getTotalReviews();
+                            @endphp
+                            @if($totalReviews > 0)
+                                <a href="{{ route('supplier.reviews', $supplier->slug) }}" 
+                                   class="flex items-center px-3 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-star mr-1"></i>
+                                    <span>{{ $totalReviews }} Review{{ $totalReviews > 1 ? 's' : '' }}</span>
+                                </a>
+                            @endif
+                        </div>
                         
                         <div class="flex items-center space-x-2">
                             <span class="text-xs text-gray-500">{{ $supplier->updated_at->format('d/m/Y') }}</span>
@@ -226,99 +247,126 @@
 
             {{-- Desktop Card View --}}
             <div class="hidden sm:block">
-                <div class="p-6">
-                    <div class="flex items-start justify-between mb-4">
-                        {{-- Left Section: Supplier Info --}}
-                        <div class="flex-1">
-                            <div class="flex items-center mb-3">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-900 mb-1">{{ $supplier->nama }}</h3>
-                                    <div class="flex items-center text-sm text-green-600 font-medium">
-                                        <i class="fas fa-building mr-2"></i>
-                                        <span>Supplier #{{ $suppliers->firstItem() + $index }}</span>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="p-5">
+                    {{-- Header Section --}}
+                    <div class="flex items-center justify-between mb-4">
+                        {{-- Left: Title & Subtitle --}}
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">{{ $supplier->nama }}</h3>
+                            <p class="text-xs text-green-600 font-medium mt-0.5">
+                                <i class="fas fa-building mr-1"></i>
+                                Supplier #{{ $suppliers->firstItem() + $index }}
+                            </p>
                         </div>
 
-                        {{-- Right Section: Stats --}}
-                        <div class="flex items-center space-x-6">
-                            <div class="text-center bg-green-50 rounded-lg px-4 py-3 border border-green-200">
-                                <p class="text-2xl font-bold text-green-600">{{ $supplier->bahanBakuSuppliers->count() }}</p>
-                                <p class="text-xs text-green-700 font-medium">Total Bahan Baku</p>
-                            </div>
-                            <div class="text-center bg-blue-50 rounded-lg px-4 py-3 border border-blue-200">
-                                <p class="text-2xl font-bold text-blue-600">{{ number_format($supplier->bahanBakuSuppliers->sum('stok'), 0, ',', '.') }}</p>
-                                <p class="text-xs text-blue-700 font-medium">Total Stok</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Contact Information Grid --}}
-                    <div class="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {{-- Alamat --}}
-                            <div class="flex items-start bg-white rounded-lg p-3 border border-gray-200 hover:border-green-300 transition-colors">
-                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                    <i class="fas fa-map-marker-alt text-green-600 text-sm"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-xs text-green-600 uppercase tracking-wide font-bold mb-1">Alamat</p>
-                                    <p class="text-sm text-gray-900 font-medium truncate">{{ $supplier->alamat ?? 'Tidak tersedia' }}</p>
-                                </div>
+                        {{-- Right: Stats Cards --}}
+                        <div class="flex items-center gap-3">
+                            {{-- Total Bahan Baku --}}
+                            <div class="bg-green-50 rounded-lg px-3 py-2 min-w-[80px] text-center">
+                                <p class="text-xl font-bold text-green-600">{{ $supplier->bahanBakuSuppliers->count() }}</p>
+                                <p class="text-xs text-green-700">Total Bahan Baku</p>
                             </div>
                             
-                            {{-- No HP --}}
-                            <div class="flex items-start bg-white rounded-lg p-3 border border-gray-200 hover:border-green-300 transition-colors">
-                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                    <i class="fas fa-phone text-green-600 text-sm"></i>
+                            
+                            {{-- Rating --}}
+                            @php
+                                $avgRating = $supplier->getAverageRating();
+                                $totalReviews = $supplier->getTotalReviews();
+                            @endphp
+                            @if($avgRating)
+                                <div class="bg-yellow-50 rounded-lg px-3 py-2 min-w-[80px] text-center">
+                                    <div class="flex items-center justify-center gap-1 mb-1">
+                                        <i class="fas fa-star text-yellow-500 text-sm"></i>
+                                        <p class="text-xl font-bold text-yellow-600">{{ $avgRating }}</p>
+                                    </div>
+                                    <p class="text-xs text-yellow-700">{{ $totalReviews }} Review</p>
                                 </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-xs text-green-600 uppercase tracking-wide font-bold mb-1">No HP</p>
-                                    <p class="text-sm text-gray-900 font-medium">{{ $supplier->no_hp ?? 'Tidak tersedia' }}</p>
+                            @else
+                                <div class="bg-gray-50 rounded-lg px-3 py-2 min-w-[80px] text-center">
+                                    <div class="flex items-center justify-center gap-1 mb-1">
+                                        <i class="fas fa-star text-gray-400 text-sm"></i>
+                                        <p class="text-xl font-bold text-gray-400">-</p>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Belum ada review</p>
                                 </div>
-                            </div>
+                            @endif
+                        </div>
+                    </div>
 
-                            {{-- PIC Purchasing --}}
-                            <div class="flex items-start bg-white rounded-lg p-3 border border-gray-200 hover:border-green-300 transition-colors">
-                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                    <i class="fas fa-user-tie text-green-600 text-sm"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-xs text-green-600 uppercase tracking-wide font-bold mb-1">PIC Purchasing</p>
-                                    <p class="text-sm text-gray-900 font-medium truncate">{{ $supplier->picPurchasing->nama ?? 'Belum ditentukan' }}</p>
-                                </div>
+                    {{-- Contact Info - Simple Layout --}}
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        {{-- Alamat --}}
+                        <div class="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
+                            <i class="fas fa-map-marker-alt text-green-600 text-sm"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-green-600 font-semibold mb-0.5">ALAMAT</p>
+                                <p class="text-sm text-gray-900 truncate">{{ $supplier->alamat ?? 'Tidak tersedia' }}</p>
+                            </div>
+                        </div>
+                        
+                        {{-- No HP --}}
+                        <div class="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
+                            <i class="fas fa-phone text-green-600 text-sm"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-green-600 font-semibold mb-0.5">NO HP</p>
+                                <p class="text-sm text-gray-900">{{ $supplier->no_hp ?? 'Tidak tersedia' }}</p>
+                            </div>
+                        </div>
+
+                        {{-- PIC Purchasing --}}
+                        <div class="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
+                            <i class="fas fa-user-tie text-green-600 text-sm"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-green-600 font-semibold mb-0.5">PIC PURCHASING</p>
+                                <p class="text-sm text-gray-900 truncate">{{ $supplier->picPurchasing->nama ?? 'Belum ditentukan' }}</p>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Bottom Section --}}
-                    <div class="flex items-center justify-between pt-4 border-t-2 border-green-100">
-                        {{-- Product Dropdown Button --}}
-                        <button type="button" 
-                                onclick="toggleProductList({{ $supplier->id }})"
-                                class="flex items-center px-5 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                            <i class="fas fa-box mr-2"></i>
-                            Lihat Daftar Bahan Baku & Harga
-                            <i class="fas fa-chevron-down transform transition-transform ml-3" id="chevron-desktop-{{ $supplier->id }}"></i>
-                        </button>
+                    {{-- Action Section --}}
+                    <div class="flex items-center justify-between pt-3 border-t border-gray-200">
+                        {{-- Left: Action Buttons --}}
+                        <div class="flex items-center gap-2">
+                            {{-- Lihat Bahan Baku Button --}}
+                            <button type="button" 
+                                    onclick="toggleProductList({{ $supplier->id }})"
+                                    class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors">
+                                <i class="fas fa-box text-xs"></i>
+                                <span>Lihat Daftar Bahan Baku</span>
+                                <i class="fas fa-chevron-down transform transition-transform text-xs" id="chevron-desktop-{{ $supplier->id }}"></i>
+                            </button>
 
-                        {{-- Action Buttons --}}
-                        <div class="flex items-center space-x-4">
+                            {{-- Review Button --}}
+                            @if($totalReviews > 0)
+                                <a href="{{ route('supplier.reviews', $supplier->slug) }}" 
+                                   class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded-lg transition-colors">
+                                    <i class="fas fa-star text-xs"></i>
+                                    <span>{{ $totalReviews }} Review{{ $totalReviews > 1 ? 's' : '' }}</span>
+                                </a>
+                            @endif
+                        </div>
+
+                        {{-- Right: Date & Actions --}}
+                        <div class="flex items-center gap-3">
                             {{-- Last Updated --}}
-                            <div class="flex items-center text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded-full">
-                                <i class="far fa-clock mr-2 text-green-500"></i>
-                                <span class="font-medium">{{ $supplier->updated_at->format('d/m/Y') }}</span>
+                            <div class="flex items-center gap-1 text-xs text-gray-500">
+                                <i class="far fa-clock text-green-500"></i>
+                                <span>{{ $supplier->updated_at->format('d/m/Y') }}</span>
                             </div>
 
-                            {{-- Action Buttons --}}
-                            <div class="flex items-center space-x-2">
-                                <a href="{{ route('supplier.edit', $supplier->slug) }}" class="w-10 h-10 flex items-center justify-center text-yellow-600 hover:text-white bg-yellow-50 hover:bg-yellow-600 rounded-lg transition-all duration-200 transform hover:scale-105" title="Edit">
-                                    <i class="fas fa-edit text-sm"></i>
+                            {{-- Edit & Delete --}}
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('supplier.edit', $supplier->slug) }}" 
+                                   class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:text-white bg-yellow-50 hover:bg-yellow-600 rounded-lg transition-colors" 
+                                   title="Edit">
+                                    <i class="fas fa-edit text-xs"></i>
                                 </a>
                                 
-                                <button type="button" class="w-10 h-10 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-all duration-200 transform hover:scale-105" onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')">
-                                    <i class="fas fa-trash text-sm" title="Hapus"></i>
+                                <button type="button" 
+                                        class="w-8 h-8 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-colors" 
+                                        onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')"
+                                        title="Hapus">
+                                    <i class="fas fa-trash text-xs"></i>
                                 </button>
                             </div>
                         </div>
@@ -327,95 +375,95 @@
             </div>
 
                     {{-- Product List (Hidden by default) --}}
-                    <div id="product-list-{{ $supplier->id }}" class="hidden border-t-2 border-green-100 bg-green-50">
+                    <div id="product-list-{{ $supplier->id }}" class="hidden border-t-2 border-gray-100 bg-gray-50">
                         {{-- Mobile Product List --}}
                         <div class="block sm:hidden p-3">
-                            <h4 class="text-sm font-bold text-green-800 mb-2">Bahan Baku & Harga</h4>
-                            <div class="space-y-2 max-h-32 overflow-y-auto">
-                                @forelse($supplier->bahanBakuSuppliers as $index => $bahanBaku)
-                                    @php
-                                        $colors = ['green', 'blue', 'purple', 'orange', 'red'];
-                                        $color = $colors[$index % count($colors)];
-                                    @endphp
-                                    <div class="bg-white rounded p-2 border-l-2 border-{{ $color }}-400">
-                                        <div class="flex justify-between items-center">
-                                            <div class="flex items-center flex-1">
-                                                <i class="fas fa-cube text-{{ $color }}-600 text-xs mr-2"></i>
-                                                <div class="flex-1">
-                                                    <p class="text-xs font-bold text-gray-900">{{ $bahanBaku->nama }}</p>
-                                                    <p class="text-xs text-gray-600">Stok: {{ number_format($bahanBaku->stok, 0, ',', '.') }} {{ $bahanBaku->satuan }}</p>
-                                                </div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-box text-green-500 mr-2 text-xs"></i>
+                                Bahan Baku
+                            </h4>
+                            <div class="space-y-2">
+                                @forelse($supplier->bahanBakuSuppliers as $bahanBaku)
+                                    <div class="bg-white rounded-lg p-3 border border-gray-200">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div class="flex-1">
+                                                <p class="text-sm font-semibold text-gray-900">{{ $bahanBaku->nama }}</p>
+                                                
                                             </div>
-                                            <div class="text-right mr-2">
-                                                <p class="text-xs font-bold text-{{ $color }}-700">Rp {{ number_format($bahanBaku->harga_per_satuan, 0, ',', '.') }}</p>
-                                                <p class="text-xs text-{{ $color }}-600">per {{ $bahanBaku->satuan }}</p>
+                                            <div class="text-right">
+                                                <p class="text-sm font-bold text-green-600">Rp {{ number_format($bahanBaku->harga_per_satuan, 0, ',', '.') }}</p>
+                                                <p class="text-xs text-gray-500">/ {{ $bahanBaku->satuan }}</p>
                                             </div>
-                                            <button type="button" 
-                                                    onclick="redirectToRiwayatHarga('{{ $supplier->slug }}', '{{ $bahanBaku->slug }}')"
-                                                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-2 py-1 rounded transition-all duration-200 text-xs flex items-center" 
-                                                    title="Lihat Riwayat Harga">
-                                                <i class="fas fa-chart-line text-xs mr-1"></i>
-                                                <span>Detail Harga</span>
-                                            </button>
                                         </div>
+                                        <button type="button" 
+                                                onclick="redirectToRiwayatHarga('{{ $supplier->slug }}', '{{ $bahanBaku->slug }}')"
+                                                class="w-full text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center">
+                                            <i class="fas fa-chart-line mr-1.5"></i>
+                                            Lihat Riwayat Harga
+                                        </button>
                                     </div>
                                 @empty
-                                    <div class="bg-white rounded p-3 text-center">
-                                        <i class="fas fa-inbox text-gray-400 mb-2"></i>
-                                        <p class="text-xs text-gray-500">Belum ada bahan baku terdaftar</p>
+                                    <div class="bg-white rounded-lg p-4 text-center border border-gray-200">
+                                        <i class="fas fa-inbox text-gray-300 text-2xl mb-2"></i>
+                                        <p class="text-xs text-gray-500">Belum ada bahan baku</p>
                                     </div>
                                 @endforelse
                             </div>
                         </div>
 
                         {{-- Desktop Product List --}}
-                        <div class="hidden sm:block p-6">
-                            <h4 class="text-lg font-bold text-green-800 mb-4 flex items-center">
-                                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                                    <i class="fas fa-list-ul text-white text-sm"></i>
-                                </div>
-                                Daftar Bahan Baku & Harga
+                        <div class="hidden sm:block p-5">
+                            <h4 class="text-base font-semibold text-gray-700 mb-4 flex items-center">
+                                <i class="fas fa-box text-green-500 mr-2"></i>
+                                Daftar Bahan Baku
                             </h4>
-                            <div class="space-y-3 max-h-64 overflow-y-auto">
-                                @forelse($supplier->bahanBakuSuppliers as $index => $bahanBaku)
-                                    @php
-                                        $colors = ['green', 'blue', 'purple', 'orange', 'red'];
-                                        $color = $colors[$index % count($colors)];
-                                    @endphp
-                                    <div class="bg-white rounded-lg p-4 border-l-4 border-{{ $color }}-400 shadow-sm hover:shadow-md transition-shadow">
-                                        <div class="flex justify-between items-center">
-                                            <div class="flex-1 flex items-center">
-                                                <div class="w-10 h-10 bg-{{ $color }}-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                                                    <i class="fas fa-cube text-{{ $color }}-600 text-sm"></i>
-                                                </div>
-                                                <div class="min-w-0 flex-1">
-                                                    <p class="text-sm font-bold text-gray-900">{{ $bahanBaku->nama }}</p>
-                                                    <p class="text-xs text-gray-600 flex items-center">
-                                                        <i class="fas fa-boxes mr-1 text-{{ $color }}-500"></i>
-                                                        Stok: {{ number_format($bahanBaku->stok, 0, ',', '.') }} {{ $bahanBaku->satuan }}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div class="text-right bg-{{ $color }}-50 rounded-lg px-3 py-2 mr-3">
-                                                <p class="text-sm font-bold text-{{ $color }}-700">Rp {{ number_format($bahanBaku->harga_per_satuan, 0, ',', '.') }}</p>
-                                                <p class="text-xs text-{{ $color }}-600">per {{ $bahanBaku->satuan }}</p>
-                                            </div>
-                                            <button type="button" 
-                                                    onclick="redirectToRiwayatHarga('{{ $supplier->slug }}', '{{ $bahanBaku->slug }}')"
-                                                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 text-xs flex items-center" 
-                                                    title="Lihat Riwayat Harga">
-                                                <i class="fas fa-chart-line text-sm mr-2"></i>
-                                                <span>Detail Harga</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                @empty
-                                    <div class="bg-white rounded-lg p-6 text-center">
-                                        <i class="fas fa-inbox text-4xl text-gray-400 mb-3"></i>
-                                        <p class="text-sm text-gray-500 font-medium">Belum ada bahan baku terdaftar</p>
-                                        <p class="text-xs text-gray-400 mt-1">Silakan tambahkan bahan baku untuk supplier ini</p>
-                                    </div>
-                                @endforelse
+                            <div class="bg-white rounded-lg border border-gray-200">
+                                <table class="min-w-full divide-y dixvide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Bahan Baku</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Harga</th>
+                                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @forelse($supplier->bahanBakuSuppliers as $bahanBaku)
+                                            <tr class="hover:bg-gray-50 transition-colors">
+                                                <td class="px-4 py-3">
+                                                    <div class="flex items-center">
+                                                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                                            <span class="text-xs font-bold text-green-600">{{ $loop->iteration }}</span>
+                                                        </div>
+                                                        <span class="text-sm font-medium text-gray-900">{{ $bahanBaku->nama }}</span>
+                                                    </div>
+                                                </td>
+                                              
+                                                <td class="px-4 py-3">
+                                                    <div>
+                                                        <p class="text-sm font-semibold text-green-600">Rp {{ number_format($bahanBaku->harga_per_satuan, 0, ',', '.') }}</p>
+                                                        <p class="text-xs text-gray-500">per {{ $bahanBaku->satuan }}</p>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-3 text-center">
+                                                    <button type="button" 
+                                                            onclick="redirectToRiwayatHarga('{{ $supplier->slug }}', '{{ $bahanBaku->slug }}')"
+                                                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
+                                                        <i class="fas fa-chart-line mr-1.5"></i>
+                                                        Riwayat Harga
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="4" class="px-4 py-8 text-center">
+                                                    <i class="fas fa-inbox text-gray-300 text-3xl mb-2"></i>
+                                                    <p class="text-sm text-gray-500 font-medium">Belum ada bahan baku terdaftar</p>
+                                                    <p class="text-xs text-gray-400 mt-1">Silakan tambahkan bahan baku untuk supplier ini</p>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -685,7 +733,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Redirect to price history page
 function redirectToRiwayatHarga(supplierSlug, bahanBakuSlug) {
-    const url = `/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
+    const url = `/procurement/supplier/${supplierSlug}/bahan-baku/${bahanBakuSlug}/riwayat-harga`;
     window.location.href = url;
 }
 
@@ -716,7 +764,7 @@ function confirmDelete() {
         // Create and submit delete form
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/supplier/${supplierSlugToDelete}`;
+        form.action = `/procurement/supplier/${supplierSlugToDelete}`;
         form.style.display = 'none';
         
         // Add CSRF token

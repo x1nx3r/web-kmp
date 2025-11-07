@@ -325,8 +325,8 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
     
     try {
         // Load supplier options
-        console.log(`Fetching supplier data from: /forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
-        const response = await fetch(`/forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
+        console.log(`Fetching supplier data from: /procurement/forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
+        const response = await fetch(`/procurement/forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
         console.log('Supplier fetch response status:', response.status);
         
         if (!response.ok) {
@@ -667,7 +667,7 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 detik timeout
         
-        const response = await fetch('/forecasting/create', {
+        const response = await fetch('/procurement/forecasting/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

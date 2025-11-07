@@ -1,0 +1,310 @@
+name: Preview Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Deployment duration in minutes'
+        required: false
+        default: '30'
+        type: string
+
+jobs:
+  preview-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: laravel_preview
+          MYSQL_USER: laravel_user
+          MYSQL_PASSWORD: laravel_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # Setup PHP
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: ctype, dom, fileinfo, filter, hash, iconv, json, libxml, mbstring, openssl, pcre, phar, session, tokenizer, xml, xmlwriter, bcmath, pdo_mysql, gd
+        coverage: none
+
+    # Cache dependencies
+    - name: Cache Composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+
+    - name: Cache NPM dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: ${{ runner.os }}-node-
+
+    # Install dependencies
+    - name: Install Composer Dependencies
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Install Node Dependencies
+      run: npm install
+
+    # Setup Laravel
+    - name: Copy .env
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+    - name: Generate key
+      run: php artisan key:generate
+
+    - name: Set environment for preview
+      run: |
+        echo "APP_ENV=production" >> .env
+        echo "APP_DEBUG=false" >> .env
+        echo "APP_URL=http://127.0.0.1:8000" >> .env
+        echo "DB_CONNECTION=mysql" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=laravel_preview" >> .env
+        echo "DB_USERNAME=laravel_user" >> .env
+        echo "DB_PASSWORD=laravel_password" >> .env
+        echo "CACHE_DRIVER=file" >> .env
+        echo "SESSION_DRIVER=file" >> .env
+        echo "QUEUE_CONNECTION=sync" >> .env
+        echo "ASSET_URL=http://127.0.0.1:8000" >> .env
+        echo "LIVEWIRE_ASSET_URL=http://127.0.0.1:8000" >> .env
+
+    - name: Clear Config Cache
+      run: php artisan config:clear
+
+    - name: Directory Permissions
+      run: chmod -R 777 storage bootstrap/cache
+
+    # Wait for MySQL to be ready
+    - name: Wait for MySQL
+      run: |
+        echo "Waiting for MySQL to be ready..."
+        timeout=30
+        while [ $timeout -gt 0 ]; do
+          if mysql -h 127.0.0.1 -u laravel_user -plaravel_password -e "SELECT 1" laravel_preview &> /dev/null; then
+            echo "MySQL is ready!"
+            break
+          fi
+          sleep 2
+          timeout=$((timeout-2))
+        done
+        if [ $timeout -le 0 ]; then
+          echo "MySQL failed to become ready"
+          exit 1
+        fi
+
+    # Run migrations + seeders
+    - name: Run Migrations
+      run: php artisan migrate --force
+
+    - name: Run Seeders
+      run: php artisan db:seed --force
+
+    # Build frontend
+    - name: Build Frontend Assets
+      run: |
+        npm run build
+        # Ensure public/build directory exists and has assets
+        ls -la public/build/
+        echo "Assets built successfully"
+
+    # Optimize Laravel for production
+    - name: Optimize Laravel
+      run: |
+        php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+        
+    # Publish Livewire assets
+    - name: Publish Livewire Assets
+      run: |
+        php artisan livewire:publish --assets
+        echo "Livewire assets published successfully"
+
+    # Install cloudflared
+    - name: Install cloudflared
+      run: |
+        wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+        sudo dpkg -i cloudflared-linux-amd64.deb
+
+    # Start Laravel server in background
+    - name: Start Laravel Server
+      run: |
+        php artisan serve --host=127.0.0.1 --port=8000 &
+        echo $! > laravel.pid
+        sleep 5
+        # Check if server is running
+        curl -f http://127.0.0.1:8000 || (echo "Laravel server failed to start" && exit 1)
+
+    # Start cloudflared tunnel and capture URL
+    - name: Start Cloudflared Tunnel
+      run: |
+        # Update APP_URL in .env after we know the tunnel URL will be different
+        # Start cloudflared in background and capture the URL
+        cloudflared tunnel --url http://127.0.0.1:8000 > tunnel.log 2>&1 &
+        echo $! > tunnel.pid
+        
+        # Wait for tunnel to establish and capture URL
+        timeout=30
+        while [ $timeout -gt 0 ]; do
+          if grep -q "https://.*\.trycloudflare\.com" tunnel.log; then
+            TUNNEL_URL=$(grep -o "https://.*\.trycloudflare\.com" tunnel.log | head -1)
+            echo "TUNNEL_URL=$TUNNEL_URL" >> $GITHUB_ENV
+            
+            # Update Laravel config with the actual tunnel URL
+            sed -i "s|APP_URL=http://127.0.0.1:8000|APP_URL=$TUNNEL_URL|g" .env
+            sed -i "s|ASSET_URL=http://127.0.0.1:8000|ASSET_URL=$TUNNEL_URL|g" .env
+            sed -i "s|LIVEWIRE_ASSET_URL=http://127.0.0.1:8000|LIVEWIRE_ASSET_URL=$TUNNEL_URL|g" .env
+            
+            # Clear config cache to apply new URL
+            php artisan config:clear
+            php artisan config:cache
+            
+            echo "[SUCCESS] Preview deployment is live at: $TUNNEL_URL"
+            break
+          fi
+          sleep 2
+          timeout=$((timeout-2))
+        done
+        
+        if [ -z "$TUNNEL_URL" ]; then
+          echo "[ERROR] Failed to get tunnel URL"
+          cat tunnel.log
+          exit 1
+        fi
+
+    # Verify assets are loading
+    - name: Verify Assets Loading
+      run: |
+        sleep 3
+        echo "[INFO] Verifying CSS and JS assets..."
+        
+        # Check if main page loads
+        if curl -s "$TUNNEL_URL" | grep -q "<!DOCTYPE html"; then
+          echo "[SUCCESS] Main page loads successfully"
+        else
+          echo "[ERROR] Main page not loading properly"
+        fi
+        
+        # Check if CSS is accessible (look for build files)
+        if curl -s "$TUNNEL_URL" | grep -q "build/"; then
+          echo "[SUCCESS] Vite build assets detected in HTML"
+        else
+          echo "[WARNING] No Vite build assets found in HTML - assets might not be loading"
+        fi
+        
+        # Check if Livewire scripts are loaded
+        if curl -s "$TUNNEL_URL" | grep -q "livewire"; then
+          echo "[SUCCESS] Livewire scripts detected"
+        else
+          echo "[WARNING] Livewire scripts not found - Livewire may not work properly"
+        fi
+
+    # Display deployment info
+    - name: Display Deployment Info
+      run: |
+        echo "=================================="
+        echo "   PREVIEW DEPLOYMENT READY!"
+        echo "=================================="
+        echo ""
+        echo "URL: $TUNNEL_URL"
+        echo "Duration: ${{ github.event.inputs.duration || '30' }} minutes"
+        echo "Database: MySQL 8.0 with seeded data"
+        echo "Frontend: Built and optimized"
+        echo ""
+        echo "Test the following features:"
+        echo "   • User authentication"
+        echo "   • Supplier management"
+        echo "   • Client management"
+        echo "   • Penawaran (quotation) system"
+        echo "   • Forecasting functionality"
+        echo ""
+        echo "This deployment will auto-shutdown in ${{ github.event.inputs.duration || '30' }} minutes"
+        echo "=================================="
+
+    # Keep the deployment alive for specified duration
+    - name: Keep Deployment Alive
+      run: |
+        duration_minutes=${{ github.event.inputs.duration || '30' }}
+        duration_seconds=$((duration_minutes * 60))
+        
+        echo "🕐 Keeping deployment alive for $duration_minutes minutes..."
+        echo "   Preview URL: $TUNNEL_URL"
+        echo "   You can test your application now!"
+        
+        # Health check every 30 seconds
+        end_time=$((SECONDS + duration_seconds))
+        while [ $SECONDS -lt $end_time ]; do
+          remaining=$((end_time - SECONDS))
+          minutes=$((remaining / 60))
+          seconds=$((remaining % 60))
+          
+          printf "\r⏱️  Time remaining: %02d:%02d - Preview: %s" $minutes $seconds "$TUNNEL_URL"
+          
+          # Health check
+          if ! curl -f -s http://127.0.0.1:8000 > /dev/null; then
+            echo -e "\n❌ Laravel server stopped unexpectedly"
+            break
+          fi
+          
+          sleep 30
+        done
+        
+        echo -e "\n⏰ Deployment time expired. Shutting down..."
+
+    # Cleanup
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "🧹 Cleaning up..."
+        
+        # Stop Laravel server
+        if [ -f laravel.pid ]; then
+          kill $(cat laravel.pid) 2>/dev/null || true
+          rm laravel.pid
+        fi
+        
+        # Stop cloudflared tunnel
+        if [ -f tunnel.pid ]; then
+          kill $(cat tunnel.pid) 2>/dev/null || true
+          rm tunnel.pid
+        fi
+        
+        # Clean up temporary files
+        rm -f tunnel.log
+        
+        echo "[SUCCESS] Cleanup completed"
+
+    # Final status
+    - name: Deployment Complete
+      if: always()
+      run: |
+        echo "=================================="
+        echo "   PREVIEW DEPLOYMENT COMPLETED"
+        echo "=================================="
+        echo ""
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "[SUCCESS] Deployment was successful"
+          echo "   The preview ran for the full duration"
+        else
+          echo "[ERROR] Deployment encountered issues"
+          echo "   Check the logs above for details"
+        fi
+        echo "=================================="

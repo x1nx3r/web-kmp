@@ -9,11 +9,17 @@ use App\Models\BahanBakuSupplier;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Services\AuthFallbackService;
-use Livewire\Component;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class OrderCreate extends Component
 {
+    use WithFileUploads;
+
     public $selectedKlien = null;
     public $selectedKlienCabang = null;
     public $selectedKlienId = null;
@@ -21,6 +27,10 @@ class OrderCreate extends Component
     
     // Order info
     public $tanggalOrder;
+    public $poNumber = '';
+    public $poStartDate;
+    public $poEndDate;
+    public $poDocument;
     public $priority = 'normal';
     public $catatan = '';
     
@@ -50,7 +60,10 @@ class OrderCreate extends Component
     public function mount()
     {
         $this->tanggalOrder = now()->format('Y-m-d');
+        $this->poStartDate = $this->tanggalOrder;
+        $this->poEndDate = now()->addDays(14)->format('Y-m-d');
         $this->resetTotals();
+        $this->updatePriorityFromSchedule();
     }
     
     public function render()
@@ -127,6 +140,12 @@ class OrderCreate extends Component
         $this->selectedKlienId = $klien ? $klien->id : null;
         $this->selectedOrderItems = [];
         $this->resetTotals();
+
+        $this->poNumber = '';
+        $this->poDocument = null;
+        $this->poStartDate = $this->tanggalOrder;
+        $this->poEndDate = now()->addDays(14)->format('Y-m-d');
+        $this->updatePriorityFromSchedule();
     }
     
     public function clearKlienSearch()
@@ -271,6 +290,57 @@ class OrderCreate extends Component
         $this->totalAmount = 0;
         $this->totalMargin = 0;
     }
+
+    public function updatedPoStartDate()
+    {
+        $this->updatePriorityFromSchedule();
+    }
+
+    public function updatedPoEndDate()
+    {
+        $this->updatePriorityFromSchedule();
+    }
+
+    public function updatedPoDocument()
+    {
+        if ($this->poDocument) {
+            $this->validateOnly('poDocument', [
+                'poDocument' => 'file|mimes:jpg,jpeg,png|max:5120',
+            ]);
+        }
+    }
+
+    private function updatePriorityFromSchedule(): void
+    {
+        if (!$this->poEndDate) {
+            return;
+        }
+
+        $end = Carbon::parse($this->poEndDate);
+        $days = now()->diffInDays($end, false);
+
+        if ($days <= 3) {
+            $this->priority = 'mendesak';
+        } elseif ($days <= 7) {
+            $this->priority = 'tinggi';
+        } elseif ($days <= 14) {
+            $this->priority = 'normal';
+        } else {
+            $this->priority = 'rendah';
+        }
+    }
+
+    public function getCanSubmitProperty(): bool
+    {
+        return (bool) (
+            $this->selectedKlienId
+            && count($this->selectedOrderItems) > 0
+            && !empty($this->poNumber)
+            && !empty($this->poStartDate)
+            && !empty($this->poEndDate)
+            && $this->poDocument
+        );
+    }
     
     private function getBestSupplierForMaterial($materialName)
     {
@@ -394,21 +464,52 @@ class OrderCreate extends Component
         $this->validate([
             'selectedKlienId' => 'required',
             'tanggalOrder' => 'required|date',
+            'poNumber' => 'required|string|max:50',
+            'poStartDate' => 'required|date',
+            'poEndDate' => 'required|date|after_or_equal:poStartDate',
+            'poDocument' => 'required|file|mimes:jpg,jpeg,png|max:5120',
             'priority' => 'required|in:rendah,normal,tinggi,mendesak',
             'selectedOrderItems' => 'required|min:1',
         ]);
         
+        $this->updatePriorityFromSchedule();
+
         try {
             DB::beginTransaction();
             
             // Get user ID with fallback (hardcoded bypass for now)
             $userId = AuthFallbackService::id() ?? 1; // Fallback to user ID 1 if auth fails
+
+            $poDocumentPath = null;
+            $poOriginalName = null;
+
+            if ($this->poDocument) {
+                $poOriginalName = $this->poDocument->getClientOriginalName();
+                $extension = $this->poDocument->getClientOriginalExtension();
+                $baseName = pathinfo($poOriginalName, PATHINFO_FILENAME);
+                $safeBaseName = Str::slug($baseName);
+                if ($safeBaseName === '') {
+                    $safeBaseName = 'po-document';
+                }
+                $fileName = $safeBaseName . '-' . now()->format('YmdHis') . '.' . strtolower($extension);
+
+                $poDocumentPath = $this->poDocument->storePubliclyAs(
+                    'po-documents',
+                    $fileName,
+                    'public'
+                );
+            }
             
             // Create order
             $order = Order::create([
                 'klien_id' => $this->selectedKlienId,
                 'created_by' => $userId, // Use created_by instead of user_id
                 'tanggal_order' => $this->tanggalOrder,
+                'po_number' => $this->poNumber,
+                'po_start_date' => $this->poStartDate,
+                'po_end_date' => $this->poEndDate,
+                'po_document_path' => $poDocumentPath,
+                'po_document_original_name' => $poOriginalName,
                 'priority' => $this->priority,
                 'status' => 'draft',
                 'catatan' => $this->catatan,
@@ -436,12 +537,17 @@ class OrderCreate extends Component
             
             DB::commit();
             
+            // TODO: Integrate notification broadcast for purchasing based on priority.
             session()->flash('success', 'Order berhasil dibuat dengan ID: ' . $order->id);
             
             return redirect()->route('orders.show', $order);
             
         } catch (\Exception $e) {
             DB::rollback();
+
+            if (isset($poDocumentPath)) {
+                Storage::disk('public')->delete($poDocumentPath);
+            }
             session()->flash('error', 'Gagal membuat order: ' . $e->getMessage());
         }
     }

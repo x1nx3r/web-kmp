@@ -219,6 +219,28 @@
         {{-- Orders Grid --}}
         <div class="space-y-6">
             @forelse($orders as $order)
+                @php
+                    $outstandingSummary = [];
+                    $outstandingAmount = 0;
+                    $outstandingQtyTotal = 0;
+
+                    foreach ($order->orderDetails as $detail) {
+                        $remainingQty = $detail->remaining_quantity ?? max(0, ($detail->qty ?? 0) - ($detail->qty_shipped ?? 0));
+
+                        if ($remainingQty > 0) {
+                            $unitKey = $detail->satuan ?: 'unit';
+                            $outstandingSummary[$unitKey] = ($outstandingSummary[$unitKey] ?? 0) + $remainingQty;
+                            $outstandingQtyTotal += $remainingQty;
+                            $outstandingAmount += $remainingQty * ($detail->harga_jual ?? 0);
+                        }
+                    }
+
+                    $outstandingDisplay = collect($outstandingSummary)
+                        ->map(function ($qty, $unit) {
+                            return number_format($qty, 0, ',', '.') . ' ' . $unit;
+                        })
+                        ->implode(' | ');
+                @endphp
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     {{-- Order Header --}}
                     <div class="p-4 border-b border-gray-200">
@@ -229,7 +251,12 @@
                                     <x-order.priority-badge :priority="$order->priority" />
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-900">{{ $order->no_order }}</h3>
+                                    <h3 class="font-semibold text-gray-900">
+                                        {{ $order->po_number ?? $order->no_order }}
+                                    </h3>
+                                    @if($order->po_number && $order->no_order)
+                                        <div class="text-xs text-gray-500">ID Sistem: {{ $order->no_order }}</div>
+                                    @endif
                                     <div class="flex items-center space-x-4 mt-1 text-sm text-gray-600">
                                         <span>
                                             <i class="far fa-calendar mr-1"></i>
@@ -239,6 +266,12 @@
                                             <i class="fas fa-user mr-1"></i>
                                             {{ $order->creator->name }}
                                         </span>
+                                        @if($order->po_end_date)
+                                            <span>
+                                                <i class="far fa-calendar-check mr-1"></i>
+                                                Jatuh Tempo: {{ $order->po_end_date->format('d M Y') }}
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -251,6 +284,25 @@
                                     {{ $order->total_items }} item{{ $order->total_items > 1 ? 's' : '' }} | 
                                     {{ number_format($order->total_qty, 0) }} total qty
                                 </div>
+                                @if($outstandingQtyTotal > 0)
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Outstanding Qty: {{ $outstandingDisplay ?: '0' }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        Outstanding Amount: Rp {{ number_format($outstandingAmount, 0, ',', '.') }}
+                                    </div>
+                                @else
+                                    <div class="text-xs text-green-600 mt-1">Tidak ada outstanding</div>
+                                @endif
+                                @if($order->po_document_url)
+                                    <div class="mt-2">
+                                        <a href="{{ $order->po_document_url }}" target="_blank" rel="noopener"
+                                           class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800">
+                                            <i class="fas fa-download mr-1"></i>
+                                            Surat PO
+                                        </a>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,28 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $outstandingSummary = [];
+    $outstandingAmount = 0;
+    $outstandingQtyTotal = 0;
+
+    foreach ($order->orderDetails as $detail) {
+        $remainingQty = $detail->remaining_quantity ?? max(0, ($detail->qty ?? 0) - ($detail->qty_shipped ?? 0));
+
+        if ($remainingQty > 0) {
+            $unitKey = $detail->satuan ?: 'unit';
+            $outstandingSummary[$unitKey] = ($outstandingSummary[$unitKey] ?? 0) + $remainingQty;
+            $outstandingQtyTotal += $remainingQty;
+            $outstandingAmount += $remainingQty * ($detail->harga_jual ?? 0);
+        }
+    }
+
+    $outstandingDisplay = collect($outstandingSummary)
+        ->map(function ($qty, $unit) {
+            return number_format($qty, 0, ',', '.') . ' ' . $unit;
+        })
+        ->implode(' | ');
+@endphp
 <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
@@ -11,11 +33,11 @@
                         <i class="fas fa-eye text-blue-600 text-lg"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Detail Order #{{ $order->no_order }}</h1>
+                        <h1 class="text-2xl font-bold text-gray-900">Detail Order PO {{ $order->po_number ?? $order->no_order }}</h1>
                         <nav class="text-sm text-gray-600">
                             <a href="{{ route('orders.index') }}" class="hover:text-blue-600">Order</a>
                             <span class="mx-2">/</span>
-                            <span>{{ $order->no_order }}</span>
+                            <span>{{ $order->po_number ?? $order->no_order }}</span>
                         </nav>
                     </div>
                 </div>
@@ -94,7 +116,11 @@
                         <div class="flex flex-col md:flex-row gap-6">
                             <div class="flex-1 space-y-3">
                                 <div class="flex justify-between">
-                                    <span class="text-sm font-medium text-gray-500">Nomor Order:</span>
+                                    <span class="text-sm font-medium text-gray-500">Nomor PO:</span>
+                                    <span class="text-sm text-gray-900">{{ $order->po_number ?? '-' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">ID Sistem:</span>
                                     <span class="text-sm text-gray-900">{{ $order->no_order }}</span>
                                 </div>
                                 <div class="flex justify-between">
@@ -115,6 +141,18 @@
                                     <span class="text-sm font-medium text-gray-500">Tanggal Order:</span>
                                     <span class="text-sm text-gray-900">{{ $order->tanggal_order->format('d M Y') }}</span>
                                 </div>
+                                @if($order->po_start_date)
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-500">PO Mulai:</span>
+                                        <span class="text-sm text-gray-900">{{ $order->po_start_date->format('d M Y') }}</span>
+                                    </div>
+                                @endif
+                                @if($order->po_end_date)
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-500">PO Jatuh Tempo:</span>
+                                        <span class="text-sm text-gray-900">{{ $order->po_end_date->format('d M Y') }}</span>
+                                    </div>
+                                @endif
                                 <div class="flex justify-between">
                                     <span class="text-sm font-medium text-gray-500">Dibuat Oleh:</span>
                                     <span class="text-sm text-gray-900">{{ $order->creator->name }}</span>
@@ -127,6 +165,21 @@
                                     <span class="text-sm font-medium text-gray-500">Diupdate:</span>
                                     <span class="text-sm text-gray-900">{{ $order->updated_at->format('d M Y H:i') }}</span>
                                 </div>
+                                @if($outstandingQtyTotal > 0)
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-500">Outstanding Qty:</span>
+                                        <span class="text-sm text-gray-900">{{ $outstandingDisplay }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-500">Outstanding Amount:</span>
+                                        <span class="text-sm text-gray-900">Rp {{ number_format($outstandingAmount, 0, ',', '.') }}</span>
+                                    </div>
+                                @else
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-500">Outstanding:</span>
+                                        <span class="text-sm font-semibold text-green-600">Tidak ada outstanding</span>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                         
@@ -136,6 +189,18 @@
                                 <p class="text-sm text-gray-600">{{ $order->catatan }}</p>
                             </div>
                         @endif
+                                @if($order->po_document_url)
+                                    <div class="mt-4">
+                                        <a href="{{ $order->po_document_url }}" target="_blank" rel="noopener"
+                                           class="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                                            <i class="fas fa-download mr-2"></i>
+                                            Unduh Surat PO
+                                        </a>
+                                        @if($order->po_document_original_name)
+                                            <p class="text-xs text-gray-500 mt-1">{{ $order->po_document_original_name }}</p>
+                                        @endif
+                                    </div>
+                                @endif
                     </div>
                 </div>
 
@@ -311,6 +376,21 @@
                             <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($order->total_amount ?? 0, 0, ',', '.') }}</span>
                         </div>
                         <hr class="border-gray-200">
+                        @if($outstandingQtyTotal > 0)
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-700">Outstanding Qty:</span>
+                                <span class="text-sm font-semibold text-gray-900">{{ $outstandingDisplay }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-700">Outstanding Amount:</span>
+                                <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($outstandingAmount, 0, ',', '.') }}</span>
+                            </div>
+                        @else
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-700">Outstanding:</span>
+                                <span class="text-sm font-semibold text-green-600">Tidak ada outstanding</span>
+                            </div>
+                        @endif
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-700">Total Margin:</span>
                             <span class="text-sm font-bold {{ ($order->total_amount ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">

@@ -11,9 +11,9 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Models\RiwayatHargaKlien;
 use App\Models\RiwayatHargaBahanBaku;
+use App\Models\OrderDetail;
 use App\Services\AuthFallbackService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
@@ -76,16 +76,19 @@ class OrderController extends Controller
             'klien_id' => 'required|exists:kliens,id',
             'tanggal_order' => 'required|date',
             'priority' => 'required|in:rendah,normal,tinggi,mendesak',
+            'po_number' => 'nullable|string|max:50',
+            'po_start_date' => 'nullable|date',
+            'po_end_date' => 'nullable|date|after_or_equal:po_start_date',
             'catatan' => 'nullable|string',
             'order_details' => 'required|array|min:1',
             'order_details.*.bahan_baku_klien_id' => 'required|exists:bahan_baku_klien,id',
-            'order_details.*.supplier_id' => 'required|exists:suppliers,id',
             'order_details.*.qty' => 'required|numeric|min:0.01',
             'order_details.*.satuan' => 'required|string|max:20',
-            'order_details.*.harga_supplier' => 'required|numeric|min:0',
             'order_details.*.harga_jual' => 'required|numeric|min:0',
             'order_details.*.spesifikasi_khusus' => 'nullable|string',
             'order_details.*.catatan' => 'nullable|string',
+            'order_details.*.recommended_supplier_id' => 'nullable|exists:suppliers,id',
+            'order_details.*.recommended_bahan_baku_supplier_id' => 'nullable|exists:bahan_baku_supplier,id',
         ]);
 
         $order = Order::create([
@@ -93,17 +96,63 @@ class OrderController extends Controller
             'created_by' => AuthFallbackService::id(),
             'tanggal_order' => $request->tanggal_order,
             'priority' => $request->priority,
+            'po_number' => $request->po_number,
+            'po_start_date' => $request->po_start_date,
+            'po_end_date' => $request->po_end_date,
             'catatan' => $request->catatan,
         ]);
 
         foreach ($request->order_details as $detail) {
-            $order->orderDetails()->create($detail);
+            $detailModel = $order->orderDetails()->create([
+                'bahan_baku_klien_id' => $detail['bahan_baku_klien_id'],
+                'qty' => $detail['qty'],
+                'satuan' => $detail['satuan'],
+                'harga_jual' => $detail['harga_jual'],
+                'total_harga' => $detail['qty'] * $detail['harga_jual'],
+                'status' => 'menunggu',
+                'spesifikasi_khusus' => $detail['spesifikasi_khusus'] ?? null,
+                'catatan' => $detail['catatan'] ?? null,
+            ]);
+
+            $detailModel->populateSupplierOptions();
+
+            $this->applyRecommendedSupplierFromPayload($detailModel, $detail);
         }
 
         // Calculate totals
         $order->calculateTotals();
 
         return redirect()->route('orders.index')->with('success', 'Order berhasil dibuat.');
+    }
+
+    private function applyRecommendedSupplierFromPayload(OrderDetail $detail, array $payload): void
+    {
+        $bahanBakuSupplierId = $payload['recommended_bahan_baku_supplier_id'] ?? null;
+        $supplierId = $payload['recommended_supplier_id'] ?? null;
+
+        if (!$bahanBakuSupplierId && !$supplierId) {
+            $detail->updateSupplierSummary();
+            return;
+        }
+
+        $selectedSupplier = $detail->orderSuppliers()
+            ->when($bahanBakuSupplierId, function ($query) use ($bahanBakuSupplierId) {
+                return $query->where('bahan_baku_supplier_id', $bahanBakuSupplierId);
+            })
+            ->when(!$bahanBakuSupplierId && $supplierId, function ($query) use ($supplierId) {
+                return $query->where('supplier_id', $supplierId);
+            })
+            ->first();
+
+        if ($selectedSupplier) {
+            $detail->orderSuppliers()->update(['is_recommended' => false]);
+
+            $selectedSupplier->is_recommended = true;
+            $selectedSupplier->price_rank = 1;
+            $selectedSupplier->save();
+        }
+
+        $detail->updateSupplierSummary();
     }
 
     /**
@@ -293,22 +342,28 @@ class OrderController extends Controller
             'klien_id' => 'required|exists:kliens,id',
             'tanggal_order' => 'required|date',
             'priority' => 'required|in:rendah,normal,tinggi,mendesak',
+            'po_number' => 'nullable|string|max:50',
+            'po_start_date' => 'nullable|date',
+            'po_end_date' => 'nullable|date|after_or_equal:po_start_date',
             'catatan' => 'nullable|string',
             'order_details' => 'required|array|min:1',
             'order_details.*.bahan_baku_klien_id' => 'required|exists:bahan_baku_klien,id',
-            'order_details.*.supplier_id' => 'required|exists:suppliers,id',
             'order_details.*.qty' => 'required|numeric|min:0.01',
             'order_details.*.satuan' => 'required|string|max:20',
-            'order_details.*.harga_supplier' => 'required|numeric|min:0',
             'order_details.*.harga_jual' => 'required|numeric|min:0',
             'order_details.*.spesifikasi_khusus' => 'nullable|string',
             'order_details.*.catatan' => 'nullable|string',
+            'order_details.*.recommended_supplier_id' => 'nullable|exists:suppliers,id',
+            'order_details.*.recommended_bahan_baku_supplier_id' => 'nullable|exists:bahan_baku_supplier,id',
         ]);
 
         $order->update([
             'klien_id' => $request->klien_id,
             'tanggal_order' => $request->tanggal_order,
             'priority' => $request->priority,
+            'po_number' => $request->po_number,
+            'po_start_date' => $request->po_start_date,
+            'po_end_date' => $request->po_end_date,
             'catatan' => $request->catatan,
         ]);
 
@@ -316,7 +371,20 @@ class OrderController extends Controller
         $order->orderDetails()->delete();
         
         foreach ($request->order_details as $detail) {
-            $order->orderDetails()->create($detail);
+            $detailModel = $order->orderDetails()->create([
+                'bahan_baku_klien_id' => $detail['bahan_baku_klien_id'],
+                'qty' => $detail['qty'],
+                'satuan' => $detail['satuan'],
+                'harga_jual' => $detail['harga_jual'],
+                'total_harga' => $detail['qty'] * $detail['harga_jual'],
+                'status' => 'menunggu',
+                'spesifikasi_khusus' => $detail['spesifikasi_khusus'] ?? null,
+                'catatan' => $detail['catatan'] ?? null,
+            ]);
+
+            $detailModel->populateSupplierOptions();
+
+            $this->applyRecommendedSupplierFromPayload($detailModel, $detail);
         }
 
         // Recalculate totals

@@ -1,4 +1,4 @@
-@props(['tanggalOrder', 'priority', 'catatan'])
+@props(['tanggalOrder', 'priority', 'catatan', 'poNumber', 'poStartDate', 'poEndDate', 'poDocument' => null])
 
 {{-- Order Info --}}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -17,24 +17,65 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">
                 Tanggal Order <span class="text-red-500">*</span>
             </label>
-            <input type="date" wire:model="tanggalOrder" 
-                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+            <input type="date" wire:model="tanggalOrder"
+                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                    required>
+            @error('tanggalOrder')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+            @enderror
         </div>
 
-        {{-- Priority --}}
+        {{-- PO Number --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                Prioritas <span class="text-red-500">*</span>
+                Nomor PO <span class="text-red-500">*</span>
             </label>
-            <select wire:model="priority" 
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
-                    required>
-                <option value="rendah">🔽 Rendah</option>
-                <option value="normal">➖ Normal</option>
-                <option value="tinggi">🔼 Tinggi</option>
-                <option value="mendesak">🔥 Mendesak</option>
-            </select>
+            <input type="text" wire:model.lazy="poNumber"
+                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                   placeholder="Masukkan nomor PO">
+            @error('poNumber')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+
+        {{-- PO Date Range --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    PO Mulai <span class="text-red-500">*</span>
+                </label>
+                <input type="date" wire:model="poStartDate"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                @error('poStartDate')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    PO Berakhir / Jatuh Tempo <span class="text-red-500">*</span>
+                </label>
+                <input type="date" wire:model="poEndDate"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                @error('poEndDate')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+
+        {{-- PO Document Upload --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Unggah Surat PO (JPG/PNG) <span class="text-red-500">*</span>
+            </label>
+            <input type="file" wire:model="poDocument" accept="image/png,image/jpeg"
+                   class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-600 hover:file:bg-purple-100">
+            @error('poDocument')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+            @enderror
+            @if($poDocument)
+                <p class="text-xs text-gray-600 mt-1">File terpilih: {{ $poDocument->getClientOriginalName() }}</p>
+            @endif
+            <p class="text-xs text-gray-500 mt-2">Maksimal 5 MB. File akan disimpan di folder publik untuk akses purchasing.</p>
         </div>
 
         {{-- Catatan --}}
@@ -42,25 +83,20 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">
                 Catatan
             </label>
-            <textarea wire:model="catatan" rows="3" 
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+            <textarea wire:model="catatan" rows="3"
+                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       placeholder="Catatan tambahan untuk order ini..."></textarea>
         </div>
 
         {{-- Priority Info --}}
-        <div class="bg-gray-50 rounded-lg p-3">
-            <div class="flex items-start">
-                <i class="fas fa-info-circle text-gray-400 mt-0.5 mr-2"></i>
-                <div class="text-sm text-gray-600">
-                    <p class="font-medium mb-1">Panduan Prioritas:</p>
-                    <ul class="space-y-1 text-xs">
-                        <li><span class="font-medium">Rendah:</span> Pemesanan rutin, tidak urgent</li>
-                        <li><span class="font-medium">Normal:</span> Pemesanan standar</li>
-                        <li><span class="font-medium">Tinggi:</span> Dibutuhkan segera</li>
-                        <li><span class="font-medium">Mendesak:</span> Prioritas tertinggi</li>
-                    </ul>
-                </div>
+        <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-medium text-gray-700">Prioritas Otomatis</div>
+                <x-order.priority-badge :priority="$priority" />
             </div>
+            <p class="text-xs text-gray-500">
+                Prioritas dihitung otomatis dari jarak hari menuju tanggal berakhir PO: ≤3 hari = Mendesak, ≤7 hari = Tinggi, ≤14 hari = Normal, selebihnya Rendah.
+            </p>
         </div>
     </div>
 </div>

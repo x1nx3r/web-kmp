@@ -98,7 +98,9 @@ class OrderDetail extends Model
 
     public function scopeBySupplier($query, $supplierId)
     {
-        return $query->where('supplier_id', $supplierId);
+        return $query->whereHas('orderSuppliers', function ($subQuery) use ($supplierId) {
+            $subQuery->where('supplier_id', $supplierId);
+        });
     }
 
     public function scopeByMaterial($query, $materialId)
@@ -108,12 +110,20 @@ class OrderDetail extends Model
 
     public function scopeHighMargin($query, $threshold = 20)
     {
-        return $query->where('margin_percentage', '>=', $threshold);
+        return $query->where(function ($subQuery) use ($threshold) {
+            $subQuery
+                ->where('best_margin_percentage', '>=', $threshold)
+                ->orWhere('recommended_margin_percentage', '>=', $threshold);
+        });
     }
 
     public function scopeLowMargin($query, $threshold = 10)
     {
-        return $query->where('margin_percentage', '<', $threshold);
+        return $query->where(function ($subQuery) use ($threshold) {
+            $subQuery
+                ->whereNull('best_margin_percentage')
+                ->orWhere('best_margin_percentage', '<', $threshold);
+        });
     }
 
     public function scopePending($query)
@@ -176,17 +186,25 @@ class OrderDetail extends Model
 
     public function getProfitCategoryAttribute(): string
     {
-        if ($this->margin_percentage < 0) return 'rugi';
-        if ($this->margin_percentage < 10) return 'rendah';
-        if ($this->margin_percentage < 25) return 'sedang';
+        $margin = $this->recommended_margin_percentage ?? $this->best_margin_percentage ?? 0;
+
+        if ($margin < 0) return 'rugi';
+        if ($margin < 10) return 'rendah';
+        if ($margin < 25) return 'sedang';
         return 'tinggi';
     }
 
     public function updatePricing(float $supplierPrice, float $sellingPrice): void
     {
-        $this->harga_supplier = $supplierPrice;
         $this->harga_jual = $sellingPrice;
         $this->calculateTotals(true);
+
+        $this->recommended_price = $sellingPrice;
+        if ($sellingPrice > 0) {
+            $this->recommended_margin_percentage = (($sellingPrice - $supplierPrice) / $sellingPrice) * 100;
+        }
+
+        $this->updateSupplierSummary();
     }
 
     public function startProcessing(): bool
@@ -225,17 +243,40 @@ class OrderDetail extends Model
      */
     public static function createFromPenawaran(Order $order, $penawaranDetail): self
     {
-        return static::create([
+        $quantity = $penawaranDetail->quantity ?? $penawaranDetail->qty ?? 0;
+        $sellingPrice = $penawaranDetail->harga_klien ?? $penawaranDetail->harga_jual ?? 0;
+
+        $detail = static::create([
             'order_id' => $order->id,
             'bahan_baku_klien_id' => $penawaranDetail->bahan_baku_klien_id,
-            'supplier_id' => $penawaranDetail->supplier_id,
-            'qty' => $penawaranDetail->qty,
+            'qty' => $quantity,
             'satuan' => $penawaranDetail->satuan,
-            'harga_supplier' => $penawaranDetail->harga_supplier,
-            'harga_jual' => $penawaranDetail->harga_jual,
-            'spesifikasi_khusus' => $penawaranDetail->spesifikasi,
-            'catatan' => $penawaranDetail->catatan,
+            'harga_jual' => $sellingPrice,
+            'total_harga' => $quantity * $sellingPrice,
+            'status' => 'menunggu',
+            'spesifikasi_khusus' => $penawaranDetail->spesifikasi ?? null,
+            'catatan' => $penawaranDetail->catatan ?? $penawaranDetail->notes ?? null,
         ]);
+
+        $detail->populateSupplierOptions();
+
+        if ($penawaranDetail->bahan_baku_supplier_id ?? null) {
+            $detail->orderSuppliers()->update(['is_recommended' => false]);
+
+            $selectedSupplier = $detail->orderSuppliers()
+                ->where('bahan_baku_supplier_id', $penawaranDetail->bahan_baku_supplier_id)
+                ->first();
+
+            if ($selectedSupplier) {
+                $selectedSupplier->is_recommended = true;
+                $selectedSupplier->price_rank = 1;
+                $selectedSupplier->save();
+            }
+
+            $detail->updateSupplierSummary();
+        }
+
+        return $detail;
     }
 
     /**

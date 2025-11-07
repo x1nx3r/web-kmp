@@ -46,6 +46,10 @@
                     :tanggalOrder="$tanggalOrder"
                     :priority="$priority"
                     :catatan="$catatan"
+                    :poNumber="$poNumber"
+                    :poStartDate="$poStartDate"
+                    :poEndDate="$poEndDate"
+                    :poDocument="$poDocument"
                 />
 
                 {{-- Action Buttons --}}
@@ -69,7 +73,7 @@
                                 type="button"
                                 wire:click="createOrder"
                                 class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                {{ (!$selectedKlienId || count($selectedOrderItems) === 0) ? 'disabled' : '' }}
+                                {{ $this->canSubmit ? '' : 'disabled' }}
                             >
                                 <i class="fas fa-save mr-2"></i>
                                 Buat Order

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class Order extends Model
 {
@@ -27,6 +29,12 @@ class Order extends Model
         'selesai_at',
         'dibatalkan_at',
         'alasan_pembatalan',
+        'po_number',
+        'po_start_date',
+        'po_end_date',
+        'po_document_path',
+        'po_document_original_name',
+        'priority_calculated_at',
     ];
 
     protected $casts = [
@@ -36,6 +44,9 @@ class Order extends Model
         'dibatalkan_at' => 'datetime',
         'total_amount' => 'decimal:2',
         'total_qty' => 'decimal:2',
+        'po_start_date' => 'date',
+        'po_end_date' => 'date',
+        'priority_calculated_at' => 'datetime',
     ];
 
     /**
@@ -136,7 +147,11 @@ class Order extends Model
 
     public function scopeHighMargin($query, $threshold = 20)
     {
-        return $query->where('margin_percentage', '>=', $threshold);
+        return $query->whereHas('orderDetails', function ($detailQuery) use ($threshold) {
+            $detailQuery
+                ->where('best_margin_percentage', '>=', $threshold)
+                ->orWhere('recommended_margin_percentage', '>=', $threshold);
+        });
     }
 
     public function scopeUrgent($query)
@@ -158,6 +173,19 @@ class Order extends Model
         
         $totalShipped = $this->orderDetails->sum('qty_shipped');
         return round(($totalShipped / $this->total_qty) * 100, 2);
+    }
+
+    public function getPoDocumentUrlAttribute(): ?string
+    {
+        if (!$this->po_document_path) {
+            return null;
+        }
+
+        if (!Storage::disk('public')->exists($this->po_document_path)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->po_document_path);
     }
 
     public function getProgressStatusAttribute(): string
@@ -344,6 +372,40 @@ class Order extends Model
         return sprintf('%s-%s-%04d', $prefix, $date, $sequence);
     }
 
+    public function determinePriority(?Carbon $baseDate = null): ?string
+    {
+        if (!$this->po_end_date) {
+            return null;
+        }
+
+        $baseDate = $baseDate ?? now();
+        $daysUntilDue = $baseDate->diffInDays($this->po_end_date, false);
+
+        if ($daysUntilDue <= 3) {
+            return 'mendesak';
+        }
+
+        if ($daysUntilDue <= 7) {
+            return 'tinggi';
+        }
+
+        if ($daysUntilDue <= 14) {
+            return 'normal';
+        }
+
+        return 'rendah';
+    }
+
+    public function syncPriorityFromSchedule(): void
+    {
+        $calculated = $this->determinePriority();
+
+        if ($calculated) {
+            $this->priority = $calculated;
+            $this->priority_calculated_at = now();
+        }
+    }
+
     /**
      * Boot method
      */
@@ -355,6 +417,10 @@ class Order extends Model
             if (!$order->no_order) {
                 $order->no_order = static::generateOrderNumber();
             }
+        });
+
+        static::saving(function ($order) {
+            $order->syncPriorityFromSchedule();
         });
         
         // Remove the problematic updating event that causes recursion

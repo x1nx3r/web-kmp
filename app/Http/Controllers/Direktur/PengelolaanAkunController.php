@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Direktur;
 
-use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
 
 class PengelolaanAkunController extends Controller
 {
@@ -56,7 +57,7 @@ class PengelolaanAkunController extends Controller
         }
         
         // Pagination
-        $users = $query->paginate(5)->withQueryString();
+        $users = $query->paginate(10)->withQueryString();
 
         return view('pages.pengelolaan-akun', compact('users'));
     }
@@ -297,3 +298,4 @@ class PengelolaanAkunController extends Controller
         }
     }
 }
+

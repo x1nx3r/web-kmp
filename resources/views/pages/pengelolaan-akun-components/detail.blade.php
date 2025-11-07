@@ -32,8 +32,11 @@
                     {{-- User Profile Section --}}
                     <div class="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
                         <div class="flex-shrink-0">
-                            <div id="modalUserAvatar" class="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                                <span class="text-white font-bold text-sm sm:text-xl" id="modalUserInitials">JD</span>
+                            <div id="modalUserAvatar" class="h-12 w-12 sm:h-16 sm:w-16 rounded-full overflow-hidden border-2 border-gray-200">
+                                <img id="modalUserPhoto" src="" alt="Profile Photo" class="w-full h-full object-cover hidden">
+                                <div id="modalUserInitialsContainer" class="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm sm:text-xl" id="modalUserInitials">JD</span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex-1 min-w-0">
@@ -238,6 +241,20 @@ function populateModalWithUserData(user) {
     // Update user avatar and initials
     const initials = user.nama.split(' ').map(n => n[0]).join('').toUpperCase();
     document.getElementById('modalUserInitials').textContent = initials;
+    
+    // Handle profile photo
+    const photoImg = document.getElementById('modalUserPhoto');
+    const initialsContainer = document.getElementById('modalUserInitialsContainer');
+    
+    if (user.foto_profil) {
+        const photoUrl = `/storage/profile-photos/${user.foto_profil}`;
+        photoImg.src = photoUrl;
+        photoImg.classList.remove('hidden');
+        initialsContainer.classList.add('hidden');
+    } else {
+        photoImg.classList.add('hidden');
+        initialsContainer.classList.remove('hidden');
+    }
 
     // Update profile section
     document.getElementById('modalUserFullName').textContent = user.nama;

@@ -45,11 +45,14 @@
         
         <!-- Mobile Logo -->
         <div class="lg:hidden text-center mb-8">
-          <div class="w-16 h-16 mx-auto flex items-center justify-center rounded-full bg-green-500 text-white text-3xl shadow-lg mb-4">
-            <i class="fas fa-sword"></i>
+          <div class="w-32 h-32 mx-auto flex items-center justify-center rounded-full bg-white shadow-lg mb-4">
+            <img src="{{ asset('assets/image/logo/ptkmp-logo.png') }}" 
+                alt="Logo PT KMP" 
+                class="w-28 h-28 object-contain">
           </div>
           <h2 class="text-2xl font-bold text-gray-800">PT Kamil Maju Persada</h2>
         </div>
+
 
         <!-- Welcome Text -->
         <div class="mb-8">
@@ -63,7 +66,8 @@
         </div>
 
         <!-- Form -->
-        <form id="login-form" class="space-y-6">
+        <form id="login-form" class="space-y-6" action="{{ route('login.attempt') }}" method="POST">
+          @csrf
           
           <!-- Email/Username -->
           <div>
@@ -75,7 +79,7 @@
                 id="email"
                 name="email"
                 type="text"
-                requigreen
+                required
                 autofocus
                 placeholder="Masukkan email atau username"
                 class="w-full rounded-xl border border-gray-300 pl-12 pr-4 py-3 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
@@ -96,7 +100,7 @@
                 id="password"
                 name="password"
                 type="password"
-                requigreen
+                required
                 placeholder="Masukkan password"
                 class="w-full rounded-xl border border-gray-300 pl-12 pr-12 py-3 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
               >
@@ -173,7 +177,6 @@
     document.addEventListener('DOMContentLoaded', function() {
       const form = document.getElementById('login-form');
       const submitButton = document.getElementById('submit-btn');
-      const recaptchaCheck = document.getElementById('recaptcha-check');
       
       form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -187,33 +190,39 @@
           return;
         }
         
-        // Check reCAPTCHA
-        if (!recaptchaCheck.checked) {
-          showMessage('Mohon selesaikan verifikasi reCAPTCHA terlebih dahulu.');
-          return;
-        }
-        
-        // Simulate login process
+        // Submit login request
         submitButton.disabled = true;
         submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
         
-        setTimeout(() => {
-          // Mock successful login
-          if (email && password) {
-            showMessage('Login berhasil! Mengalihkan...', 'success');
-            
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            showMessage(data.message, 'success');
             setTimeout(() => {
-              // In a real app, this would greenirect to dashboard
-              alert('Login berhasil! (Ini hanya demo)');
+              window.location.href = data.redirect;
             }, 1500);
           } else {
-            showMessage('Email/Username atau password salah.');
+            showMessage(data.message);
           }
-          
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showMessage('Terjadi kesalahan. Silakan coba lagi.');
+        })
+        .finally(() => {
           // Reset button
           submitButton.disabled = false;
           submitButton.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Masuk';
-        }, 2000);
+        });
       });
 
       // Add interactive feedback for inputs

@@ -44,10 +44,10 @@ class PengirimanExport implements
         $data = [];
         
         // Baris 1: Judul
-        $data[] = ['LAPORAN PENGIRIMAN', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['LAPORAN PENGIRIMAN', '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 2: Periode
-        $data[] = ['Periode: ' . date('d/m/Y', strtotime($this->startDate)) . ' - ' . date('d/m/Y', strtotime($this->endDate)), '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['Periode: ' . date('d/m/Y', strtotime($this->startDate)) . ' - ' . date('d/m/Y', strtotime($this->endDate)), '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 3: Filter
         $filterInfo = [];
@@ -65,100 +65,67 @@ class PengirimanExport implements
         }
         
         if (!empty($filterInfo)) {
-            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', '', ''];
         } else {
-            $data[] = ['Filter: Semua Data', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: Semua Data', '', '', '', '', '', '', '', '', '', ''];
         }
         
         // Baris 4: Waktu ekspor
-        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 5: Kosong
-        $data[] = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', '', '', ''];
         
-        // Header tabel (dengan 2 kolom baru)
+        // Header tabel
         $data[] = [
-            'No PO',
-            'Nama Pabrik',
-            'Bahan Baku PO', 
+            'Tanggal Kirim',
+            'Hari Kirim',
             'Supplier',
-            'PIC Purchasing',
-            'Tanggal Forecasting',
-            'Hari Forecasting',
+            'Bahan Baku PO', 
+            'Nama Pabrik',
             'QTY Forecasting',
+            'Harga Jual',
             'Total Harga Forecasting',
-            'Tanggal Pengiriman',
-            'Hari Pengiriman', 
-            'No Pengiriman',
             'QTY Pengiriman',
             'Total Harga Pengiriman',
-            'Keterangan',
-            'Status Pengiriman'
+            'Keterangan'
         ];
 
         // Data pengiriman
         $pengirimanData = $this->getPengirimanData();
         
         foreach ($pengirimanData as $pengiriman) {
-            // Ambil data forecast details untuk mendapatkan bahan baku PO
-            $forecastDetails = collect();
-            if ($pengiriman->forecast && $pengiriman->forecast->forecastDetails) {
-                $forecastDetails = $pengiriman->forecast->forecastDetails;
-            }
+            // Ambil data pengiriman details
+            $pengirimanDetails = collect($pengiriman->pengirimanDetails ?? []);
             
-            // Gabungkan bahan baku dari forecast details
-            $bahanBakuPO = $forecastDetails->map(function($detail) {
-                $bahanBaku = optional($detail->bahanBakuSupplier)->nama ?? 'N/A';
-                return "{$bahanBaku}";
+            // Gabungkan bahan baku dari pengiriman details
+            $bahanBakuPO = $pengirimanDetails->map(function($detail) {
+                return optional($detail->bahanBakuSupplier)->nama ?? 'N/A';
             })->implode(', ');
 
-            // PIC Supplier dari forecast details
-            $picSuppliers = $forecastDetails->map(function($detail) {
+            // Supplier dari pengiriman details
+            $suppliers = $pengirimanDetails->map(function($detail) {
                 return optional(optional($detail->bahanBakuSupplier)->supplier)->nama ?? 'N/A';
             })->unique()->implode(', ');
 
-            // PIC Purchasing name
-            $picPurchasing = optional($pengiriman->purchasing)->nama ?? 'N/A';
-            
-            // Status label
-            $statusLabel = 'N/A';
-            switch($pengiriman->status) {
-                case 'pending':
-                    $statusLabel = 'Pending';
-                    break;
-                case 'menunggu_verifikasi':
-                    $statusLabel = 'Menunggu Verifikasi';
-                    break;
-                case 'berhasil':
-                    $statusLabel = 'Berhasil';
-                    break;
-                case 'gagal':
-                    $statusLabel = 'Gagal';
-                    break;
-                default:
-                    $statusLabel = ucfirst($pengiriman->status ?? 'N/A');
-            }
+            // Harga jual dari pengiriman details (harga_satuan)
+            $hargaJual = $pengirimanDetails->map(function($detail) {
+                return (float)($detail->harga_satuan ?? 0);
+            })->sum();
 
             $data[] = [
-                optional($pengiriman->purchaseOrder)->no_po ?? 'N/A',
-                (optional(optional($pengiriman->purchaseOrder)->klien)->nama ?? 'N/A') . ' - ' . (optional(optional($pengiriman->purchaseOrder)->klien)->cabang ?? 'N/A'),
-                $bahanBakuPO ?: 'Tidak ada detail',
-                $picSuppliers ?: 'N/A',
-                $picPurchasing,
-                ($pengiriman->forecast && $pengiriman->forecast->tanggal_forecast) ? 
-                    \Carbon\Carbon::parse($pengiriman->forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
-                ($pengiriman->forecast && $pengiriman->forecast->hari_kirim_forecast) ? 
-                    $pengiriman->forecast->hari_kirim_forecast : 'N/A',
-                number_format((float)(($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast) ? $pengiriman->forecast->total_qty_forecast : 0)),
-                (float)(($pengiriman->forecast && $pengiriman->forecast->total_harga_forecast) ? $pengiriman->forecast->total_harga_forecast : 0),
                 $pengiriman->tanggal_kirim ? 
                     \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d/m/Y') : 'N/A',
                 $pengiriman->hari_kirim ?? 'N/A',
-                $pengiriman->no_pengiriman ?? 'N/A',
+                $suppliers ?: 'N/A',
+                $bahanBakuPO ?: 'Tidak ada detail',
+                (optional(optional($pengiriman->purchaseOrder)->klien)->nama ?? 'N/A') . ' - ' . (optional(optional($pengiriman->purchaseOrder)->klien)->cabang ?? 'N/A'),
+                number_format((float)(($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast) ? $pengiriman->forecast->total_qty_forecast : 0), 2),
+                (float)$hargaJual,
+                (float)(($pengiriman->forecast && $pengiriman->forecast->total_harga_forecast) ? $pengiriman->forecast->total_harga_forecast : 0),
                 number_format((float)($pengiriman->total_qty_kirim ?? 0), 2),
                 (float)($pengiriman->total_harga_kirim ?? 0),
-                $pengiriman->catatan ?: '-',
-                $statusLabel
+                $pengiriman->catatan ?: '-'
             ];
         }
 
@@ -174,7 +141,7 @@ class PengirimanExport implements
         $lastRow = 6 + $pengirimanData->count(); // 6 adalah jumlah baris header + info
         
         // Style untuk judul (baris 1)
-        $sheet->mergeCells('A1:P1');
+        $sheet->mergeCells('A1:K1');
         $sheet->getStyle('A1')->applyFromArray([
             'font' => [
                 'bold' => true,
@@ -188,7 +155,7 @@ class PengirimanExport implements
 
         // Style untuk info periode, filter, dan waktu ekspor (baris 2-4)
         foreach ([2, 3, 4] as $row) {
-            $sheet->mergeCells("A{$row}:P{$row}");
+            $sheet->mergeCells("A{$row}:K{$row}");
             $sheet->getStyle("A{$row}")->applyFromArray([
                 'font' => [
                     'size' => 10,
@@ -201,7 +168,7 @@ class PengirimanExport implements
         }
 
         // Style untuk header tabel (baris 6)
-        $sheet->getStyle('A6:P6')->applyFromArray([
+        $sheet->getStyle('A6:K6')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'],
@@ -228,7 +195,7 @@ class PengirimanExport implements
 
         // Style untuk data (baris 7 dan seterusnya)
         if ($lastRow > 6) {
-            $sheet->getStyle("A7:P{$lastRow}")->applyFromArray([
+            $sheet->getStyle("A7:K{$lastRow}")->applyFromArray([
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_TOP,
                     'wrapText' => true,
@@ -242,38 +209,32 @@ class PengirimanExport implements
             ]);
 
             // Alignment khusus untuk kolom tertentu
-            // Kolom angka (H, I, M, N) - rata kanan
-            foreach (['H', 'I', 'M', 'N'] as $col) {
+            // Kolom tanggal (A) - rata tengah
+            $sheet->getStyle("A7:A{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            
+            // Kolom hari (B) - rata tengah
+            $sheet->getStyle("B7:B{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            // Kolom angka (F, G, H, I, J) - rata kanan
+            foreach (['F', 'G', 'H', 'I', 'J'] as $col) {
                 $sheet->getStyle("{$col}7:{$col}{$lastRow}")->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             }
 
-            // Format currency untuk kolom harga (I, N)
-            $sheet->getStyle("I7:I{$lastRow}")->getNumberFormat()
+            // Format currency untuk kolom harga (G, H, J)
+            $sheet->getStyle("G7:G{$lastRow}")->getNumberFormat()
                 ->setFormatCode('"Rp "#,##0');
-            $sheet->getStyle("N7:N{$lastRow}")->getNumberFormat()
+            $sheet->getStyle("H7:H{$lastRow}")->getNumberFormat()
                 ->setFormatCode('"Rp "#,##0');
-
-            // Kolom tanggal (F, J) - rata tengah
-            foreach (['F', 'J'] as $col) {
-                $sheet->getStyle("{$col}7:{$col}{$lastRow}")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            }
-
-            // Kolom hari (G, K) - rata tengah
-            foreach (['G', 'K'] as $col) {
-                $sheet->getStyle("{$col}7:{$col}{$lastRow}")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            }
-
-            // Kolom status (P) - rata tengah
-            $sheet->getStyle("P7:P{$lastRow}")->getAlignment()
-                ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("J7:J{$lastRow}")->getNumberFormat()
+                ->setFormatCode('"Rp "#,##0');
 
             // Zebra striping - baris bergantian
             for ($row = 7; $row <= $lastRow; $row++) {
                 if ($row % 2 == 0) {
-                    $sheet->getStyle("A{$row}:P{$row}")->applyFromArray([
+                    $sheet->getStyle("A{$row}:K{$row}")->applyFromArray([
                         'fill' => [
                             'fillType' => Fill::FILL_SOLID,
                             'startColor' => ['rgb' => 'F2F2F2'], // Abu-abu muda
@@ -325,22 +286,17 @@ class PengirimanExport implements
     public function columnWidths(): array
     {
         return [
-            'A' => 15,  // No PO
-            'B' => 35,  // Nama Pabrik
-            'C' => 40,  // Bahan Baku PO
-            'D' => 25,  // PIC Supplier
-            'E' => 20,  // PIC Purchasing
-            'F' => 18,  // Tanggal Forecasting
-            'G' => 18,  // Hari Forecasting
-            'H' => 15,  // QTY Forecasting
-            'I' => 20,  // Total Harga Forecasting
-            'J' => 18,  // Tanggal Pengiriman
-            'K' => 18,  // Hari Pengiriman
-            'L' => 20,  // No Pengiriman
-            'M' => 15,  // QTY Pengiriman
-            'N' => 20,  // Total Harga Pengiriman
-            'O' => 40,  // Keterangan
-            'P' => 20,  // Status Pengiriman
+            'A' => 18,  // Tanggal Kirim
+            'B' => 18,  // Hari Kirim
+            'C' => 25,  // Supplier
+            'D' => 40,  // Bahan Baku PO
+            'E' => 35,  // Nama Pabrik
+            'F' => 18,  // QTY Forecasting
+            'G' => 20,  // Harga Jual
+            'H' => 22,  // Total Harga Forecasting
+            'I' => 18,  // QTY Pengiriman
+            'J' => 22,  // Total Harga Pengiriman
+            'K' => 40,  // Keterangan
         ];
     }
 

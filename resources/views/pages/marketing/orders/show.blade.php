@@ -22,6 +22,63 @@
             return number_format($qty, 0, ',', '.') . ' ' . $unit;
         })
         ->implode(' | ');
+
+    if ($outstandingQtyTotal === 0) {
+        foreach ($order->orderDetails as $detail) {
+            $totalQty = $detail->qty ?? 0;
+
+            if ($totalQty > 0) {
+                $unitKey = $detail->satuan ?: 'unit';
+                $outstandingSummary[$unitKey] = ($outstandingSummary[$unitKey] ?? 0) + $totalQty;
+                $outstandingQtyTotal += $totalQty;
+            }
+        }
+
+        if ($outstandingQtyTotal > 0) {
+            $outstandingAmount = $order->total_amount ?? $order->orderDetails->sum(fn($detail) => ($detail->total_harga ?? 0));
+            $outstandingDisplay = collect($outstandingSummary)
+                ->map(function ($qty, $unit) {
+                    return number_format($qty, 0, ',', '.') . ' ' . $unit;
+                })
+                ->implode(' | ');
+        }
+    }
+
+    $totalSelling = $order->orderDetails->sum(function ($detail) {
+        $lineTotal = (float) ($detail->total_harga ?? 0);
+
+        if ($lineTotal > 0) {
+            return $lineTotal;
+        }
+
+        $qty = (float) ($detail->qty ?? 0);
+        $hargaJual = (float) ($detail->harga_jual ?? 0);
+
+        return $qty * $hargaJual;
+    });
+
+    $totalSupplierCost = $order->orderDetails->sum(function ($detail) {
+        $qty = (float) ($detail->qty ?? 0);
+
+        if ($qty <= 0) {
+            return 0;
+        }
+
+        $unitCost = $detail->recommended_price ?? $detail->cheapest_price;
+
+        if ($unitCost === null) {
+            $suppliers = $detail->orderSuppliers;
+
+            if ($suppliers->isNotEmpty()) {
+                $unitCost = optional($suppliers->sortBy('unit_price')->first())->unit_price;
+            }
+        }
+
+        return $qty * (float) ($unitCost ?? 0);
+    });
+
+    $totalMargin = $totalSelling - $totalSupplierCost;
+    $marginPercentage = $totalSelling > 0 ? round(($totalMargin / $totalSelling) * 100, 2) : 0;
 @endphp
 <div class="min-h-screen bg-gray-50">
     <!-- Header -->
@@ -165,21 +222,14 @@
                                     <span class="text-sm font-medium text-gray-500">Diupdate:</span>
                                     <span class="text-sm text-gray-900">{{ $order->updated_at->format('d M Y H:i') }}</span>
                                 </div>
-                                @if($outstandingQtyTotal > 0)
-                                    <div class="flex justify-between">
-                                        <span class="text-sm font-medium text-gray-500">Outstanding Qty:</span>
-                                        <span class="text-sm text-gray-900">{{ $outstandingDisplay }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm font-medium text-gray-500">Outstanding Amount:</span>
-                                        <span class="text-sm text-gray-900">Rp {{ number_format($outstandingAmount, 0, ',', '.') }}</span>
-                                    </div>
-                                @else
-                                    <div class="flex justify-between">
-                                        <span class="text-sm font-medium text-gray-500">Outstanding:</span>
-                                        <span class="text-sm font-semibold text-green-600">Tidak ada outstanding</span>
-                                    </div>
-                                @endif
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Outstanding Qty:</span>
+                                    <span class="text-sm text-gray-900">{{ $outstandingDisplay ?: '0' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-gray-500">Outstanding Amount:</span>
+                                    <span class="text-sm text-gray-900">Rp {{ number_format($outstandingAmount > 0 ? $outstandingAmount : ($order->total_amount ?? 0), 0, ',', '.') }}</span>
+                                </div>
                             </div>
                         </div>
                         
@@ -369,38 +419,31 @@
                     <div class="p-6 space-y-4">
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-600">Total Harga Supplier:</span>
-                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($order->total_amount ?? 0, 0, ',', '.') }}</span>
+                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-600">Total Harga Jual:</span>
-                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($order->total_amount ?? 0, 0, ',', '.') }}</span>
+                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</span>
                         </div>
                         <hr class="border-gray-200">
-                        @if($outstandingQtyTotal > 0)
-                            <div class="flex justify-between">
-                                <span class="text-sm font-medium text-gray-700">Outstanding Qty:</span>
-                                <span class="text-sm font-semibold text-gray-900">{{ $outstandingDisplay }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-sm font-medium text-gray-700">Outstanding Amount:</span>
-                                <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($outstandingAmount, 0, ',', '.') }}</span>
-                            </div>
-                        @else
-                            <div class="flex justify-between">
-                                <span class="text-sm font-medium text-gray-700">Outstanding:</span>
-                                <span class="text-sm font-semibold text-green-600">Tidak ada outstanding</span>
-                            </div>
-                        @endif
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700">Outstanding Qty:</span>
+                            <span class="text-sm font-semibold text-gray-900">{{ $outstandingDisplay ?: '0' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-700">Outstanding Amount:</span>
+                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($outstandingAmount > 0 ? $outstandingAmount : $totalSelling, 0, ',', '.') }}</span>
+                        </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-700">Total Margin:</span>
-                            <span class="text-sm font-bold {{ ($order->total_amount ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                Rp {{ number_format($order->total_amount ?? 0, 0, ',', '.') }}
+                            <span class="text-sm font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                Rp {{ number_format($totalMargin, 0, ',', '.') }}
                             </span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-700">Persentase Margin:</span>
-                            <span class="text-sm font-bold {{ ($order->total_amount ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                0%
+                            <span class="text-sm font-bold {{ $marginPercentage >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                {{ number_format($marginPercentage, 2, ',', '.') }}%
                             </span>
                         </div>
                     </div>

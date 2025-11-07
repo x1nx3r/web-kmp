@@ -240,6 +240,27 @@
                             return number_format($qty, 0, ',', '.') . ' ' . $unit;
                         })
                         ->implode(' | ');
+
+                    if ($outstandingQtyTotal === 0) {
+                        foreach ($order->orderDetails as $detail) {
+                            $totalQty = $detail->qty ?? 0;
+
+                            if ($totalQty > 0) {
+                                $unitKey = $detail->satuan ?: 'unit';
+                                $outstandingSummary[$unitKey] = ($outstandingSummary[$unitKey] ?? 0) + $totalQty;
+                                $outstandingQtyTotal += $totalQty;
+                            }
+                        }
+
+                        if ($outstandingQtyTotal > 0) {
+                            $outstandingAmount = $order->total_amount ?? $order->orderDetails->sum(fn($detail) => ($detail->total_harga ?? 0));
+                            $outstandingDisplay = collect($outstandingSummary)
+                                ->map(function ($qty, $unit) {
+                                    return number_format($qty, 0, ',', '.') . ' ' . $unit;
+                                })
+                                ->implode(' | ');
+                        }
+                    }
                 @endphp
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     {{-- Order Header --}}
@@ -284,16 +305,12 @@
                                     {{ $order->total_items }} item{{ $order->total_items > 1 ? 's' : '' }} | 
                                     {{ number_format($order->total_qty, 0) }} total qty
                                 </div>
-                                @if($outstandingQtyTotal > 0)
-                                    <div class="text-xs text-gray-500 mt-1">
-                                        Outstanding Qty: {{ $outstandingDisplay ?: '0' }}
-                                    </div>
-                                    <div class="text-xs text-gray-500">
-                                        Outstanding Amount: Rp {{ number_format($outstandingAmount, 0, ',', '.') }}
-                                    </div>
-                                @else
-                                    <div class="text-xs text-green-600 mt-1">Tidak ada outstanding</div>
-                                @endif
+                                <div class="text-xs text-gray-500 mt-1">
+                                    Outstanding Qty: {{ $outstandingDisplay ?: '0' }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Outstanding Amount: Rp {{ number_format($outstandingAmount > 0 ? $outstandingAmount : ($order->total_amount ?? 0), 0, ',', '.') }}
+                                </div>
                                 @if($order->po_document_url)
                                     <div class="mt-2">
                                         <a href="{{ $order->po_document_url }}" target="_blank" rel="noopener"

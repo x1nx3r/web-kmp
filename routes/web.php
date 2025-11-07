@@ -37,6 +37,11 @@ Route::get('/klien', function() {
     return view('pages.marketing.daftar-klien-livewire');
 })->name('klien.index');
 
+// Kontak Klien routes
+Route::get('/kontak-klien/{klien}', function($klien) {
+    return view('pages.marketing.daftar-kontak-livewire', compact('klien'));
+})->name('kontak-klien.index');
+
 // Spesifikasi routes
 Route::get('/spesifikasi', function() {
     return view('pages.marketing.spesifikasi');

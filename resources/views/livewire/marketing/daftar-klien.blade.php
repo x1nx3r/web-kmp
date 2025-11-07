@@ -357,6 +357,13 @@
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end space-x-2">
+                                        <a
+                                            href="{{ route('kontak-klien.index', ['klien' => $name]) }}"
+                                            class="text-green-600 hover:text-green-800 text-sm font-medium"
+                                            title="Kelola Kontak"
+                                        >
+                                            <i class="fas fa-address-book"></i>
+                                        </a>
                                         <button
                                             type="button"
                                             wire:click.stop="editCompany('{{ $name }}')"

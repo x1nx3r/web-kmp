@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Marketing;
 use App\Models\Klien;
 use App\Models\BahanBakuKlien;
 use App\Models\RiwayatHargaKlien;
+use App\Services\AuthFallbackService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -40,7 +41,7 @@ class KlienController extends Controller
                           ->exists();
 
             if ($exists) {
-                $message = 'Cabang ini sudah terdaftar untuk perusahaan tersebut';
+                $message = 'Plant ini sudah terdaftar untuk perusahaan tersebut';
                 if (request()->wantsJson() || request()->ajax()) {
                     return response()->json(['success' => false, 'message' => $message], 422);
                 }
@@ -57,9 +58,9 @@ class KlienController extends Controller
                     'cabang' => 'Kantor Pusat',
                     'no_hp' => null,
                 ]);
-                $message = 'Perusahaan dan cabang baru berhasil ditambahkan';
+                $message = 'Perusahaan dan plant baru berhasil ditambahkan';
             } else {
-                $message = 'Cabang berhasil ditambahkan';
+                $message = 'Plant berhasil ditambahkan';
             }
 
             // Create the actual branch
@@ -78,7 +79,7 @@ class KlienController extends Controller
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             if (request()->wantsJson() || request()->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Gagal menambahkan cabang'], 500);
+                return response()->json(['success' => false, 'message' => 'Gagal menambahkan plant'], 500);
             }
 
             return redirect()->route('klien.index')->with('error', 'Gagal menambahkan klien.');
@@ -117,7 +118,7 @@ class KlienController extends Controller
                           ->exists();
 
             if ($exists) {
-                $message = 'Cabang ini sudah terdaftar untuk perusahaan tersebut';
+                $message = 'Plant ini sudah terdaftar untuk perusahaan tersebut';
                 if (request()->wantsJson() || request()->ajax()) {
                     return response()->json(['success' => false, 'message' => $message], 422);
                 }
@@ -127,7 +128,7 @@ class KlienController extends Controller
             $klien->update($data);
 
             if (request()->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'Cabang berhasil diperbarui']);
+                return response()->json(['success' => true, 'message' => 'Plant berhasil diperbarui']);
             }
 
             return redirect()->route('klien.index')->with('success', 'Klien berhasil diperbarui.');
@@ -139,7 +140,7 @@ class KlienController extends Controller
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             if (request()->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Gagal memperbarui cabang'], 500);
+                return response()->json(['success' => false, 'message' => 'Gagal memperbarui plant'], 500);
             }
 
             return redirect()->route('klien.index')->with('error', 'Gagal memperbarui klien.');
@@ -168,9 +169,9 @@ class KlienController extends Controller
                      ->where('cabang', 'Kantor Pusat')
                      ->whereNull('no_hp')
                      ->delete();
-                $message = 'Cabang dan perusahaan berhasil dihapus';
+                $message = 'Plant dan perusahaan berhasil dihapus';
             } else {
-                $message = 'Cabang berhasil dihapus';
+                $message = 'Plant berhasil dihapus';
             }
 
             if (request()->wantsJson()) {
@@ -180,7 +181,7 @@ class KlienController extends Controller
             return redirect()->route('klien.index')->with('success', $message);
         } catch (\Exception $e) {
             if (request()->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Gagal menghapus cabang'], 500);
+                return response()->json(['success' => false, 'message' => 'Gagal menghapus plant'], 500);
             }
 
             return redirect()->route('klien.index')->with('error', 'Gagal menghapus klien.');
@@ -260,7 +261,7 @@ class KlienController extends Controller
             
             if ($validated['harga_approved']) {
                 $material->approved_at = now();
-                $material->approved_by_marketing = Auth::id();
+                $material->approved_by_marketing = AuthFallbackService::id();
             }
             
             $material->save();
@@ -270,7 +271,7 @@ class KlienController extends Controller
                 RiwayatHargaKlien::createPriceHistory(
                     $material->id,
                     $validated['harga_approved'],
-                    Auth::id(),
+                    AuthFallbackService::id(),
                     'Harga initial approval'
                 );
             }
@@ -311,13 +312,13 @@ class KlienController extends Controller
             // Handle price approval changes
             if ($newPrice && $newPrice != $oldPrice) {
                 $material->approved_at = now();
-                $material->approved_by_marketing = Auth::id();
+                $material->approved_by_marketing = AuthFallbackService::id();
 
                 // Create price history record using helper
                 RiwayatHargaKlien::createPriceHistory(
                     $material->id,
                     $newPrice,
-                    Auth::id(),
+                    AuthFallbackService::id(),
                     'Perubahan harga approved'
                 );
             }

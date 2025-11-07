@@ -171,7 +171,7 @@
                     </select>
                 </div>
 
-                {{-- Cabang/Location Filter --}}
+                {{-- Plant/Location Filter --}}
                 <div class="lg:col-span-1">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-map-marker-alt mr-1 text-gray-400"></i>
@@ -396,16 +396,6 @@
                             </button>
                         </th>
                         <th class="px-6 py-3 text-left">
-                            <button wire:click="sortBy('harga_approved')" class="flex items-center space-x-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700">
-                                <span>Harga</span>
-                                @if($sort === 'harga_approved')
-                                    <i class="fas fa-sort-{{ $direction === 'asc' ? 'up' : 'down' }} text-purple-500"></i>
-                                @else
-                                    <i class="fas fa-sort text-gray-400"></i>
-                                @endif
-                            </button>
-                        </th>
-                        <th class="px-6 py-3 text-left">
                             <button wire:click="sortBy('status')" class="flex items-center space-x-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700">
                                 <span>Status</span>
                                 @if($sort === 'status')
@@ -476,18 +466,6 @@
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-900">{{ $material->satuan }}</td>
                             <td class="px-6 py-4">
-                                @if($material->harga_approved)
-                                    <div class="text-sm font-medium text-green-600">
-                                        Rp {{ number_format($material->harga_approved, 0, ',', '.') }}
-                                    </div>
-                                    @if($material->approved_at)
-                                        <div class="text-xs text-gray-500">{{ $material->approved_at->format('d/m/Y') }}</div>
-                                    @endif
-                                @else
-                                    <span class="text-sm text-gray-400">Belum ada harga</span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4">
                                 @if($material->status === 'aktif')
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         <i class="fas fa-check-circle mr-1"></i>
@@ -529,7 +507,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-12 text-center">
+                            <td colspan="8" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center">
                                     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                         <i class="fas fa-clipboard-list text-gray-400 text-2xl"></i>

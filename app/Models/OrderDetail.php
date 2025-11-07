@@ -323,6 +323,7 @@ class OrderDetail extends Model
                 'unit_price' => $bahanBakuSupplier->harga_per_satuan, // Use correct field name
                 'price_rank' => $rank,
                 'is_recommended' => $rank === 1, // Best price is recommended
+                'is_available' => true,
                 'price_updated_at' => now(),
             ]);
 
@@ -345,37 +346,49 @@ class OrderDetail extends Model
         $this->save();
     }
 
-    public function updateSupplierSummary(?array $suppliers = null): void
+    public function updateSupplierSummary($suppliers = null): void
     {
-        if ($suppliers === null) {
-            $suppliers = $this->orderSuppliers()->get();
-        }
+        $supplierCollection = $suppliers === null
+            ? $this->orderSuppliers()->get()
+            : collect($suppliers);
 
-        if (empty($suppliers)) {
+        if ($supplierCollection->isEmpty()) {
+            $this->cheapest_price = null;
+            $this->most_expensive_price = null;
+            $this->best_margin_percentage = null;
+            $this->worst_margin_percentage = null;
+            $this->recommended_supplier_id = null;
+            $this->recommended_price = null;
+            $this->recommended_margin_percentage = null;
+            $this->available_suppliers_count = 0;
+            $this->save();
+
             return;
         }
 
         // Price analysis
-        $prices = collect($suppliers)->pluck('unit_price');
+        $prices = $supplierCollection->pluck('unit_price');
         $this->cheapest_price = $prices->min();
         $this->most_expensive_price = $prices->max();
         
         // Margin analysis
-        $margins = collect($suppliers)->whereNotNull('calculated_margin')->pluck('calculated_margin');
+        $margins = $supplierCollection->whereNotNull('calculated_margin')->pluck('calculated_margin');
         if ($margins->isNotEmpty()) {
             $this->best_margin_percentage = $margins->max();
             $this->worst_margin_percentage = $margins->min();
         }
 
         // Recommended supplier (best margin or cheapest if no margin calculated)
-        $recommended = collect($suppliers)->where('is_recommended', true)->first();
+        $recommended = $supplierCollection->firstWhere('is_recommended', true);
         if ($recommended) {
             $this->recommended_supplier_id = $recommended->supplier_id;
             $this->recommended_price = $recommended->unit_price;
             $this->recommended_margin_percentage = $recommended->calculated_margin;
         }
 
-        $this->available_suppliers_count = collect($suppliers)->where('is_available', true)->count();
+        $this->available_suppliers_count = $supplierCollection->where('is_available', true)->count();
+
+        $this->save();
     }
 
     public function updateFulfillmentTracking(): void

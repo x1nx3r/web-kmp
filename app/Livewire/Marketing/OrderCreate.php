@@ -709,6 +709,7 @@ class OrderCreate extends Component
         if ($selectedSupplier) {
             $orderDetail->orderSuppliers()->update(['is_recommended' => false]);
 
+            $selectedSupplier->refresh();
             $selectedSupplier->is_recommended = true;
             $selectedSupplier->price_rank = 1;
             $selectedSupplier->save();

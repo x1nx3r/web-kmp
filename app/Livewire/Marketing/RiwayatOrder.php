@@ -143,7 +143,7 @@ class RiwayatOrder extends Component
                     $query->with([
                         'bahanBakuKlien',
                         'orderSuppliers' => function($supplierQuery) {
-                            $supplierQuery->with('supplier')
+                            $supplierQuery->with('supplier.picPurchasing')
                                 ->orderBy('price_rank');
                         },
                         'recommendedSupplier'

@@ -404,8 +404,11 @@
                                                                         </span>
                                                                     </div>
                                                                     <div class="text-sm text-gray-600">
-                                                                        {{ $orderSupplier->supplier->lokasi }} | 
+                                                                        {{ $orderSupplier->supplier->alamat }} | 
                                                                         Material: {{ $orderSupplier->bahanBakuSupplier->nama ?? 'N/A' }}
+                                                                        @if($orderSupplier->supplier->picPurchasing)
+                                                                            | PIC: {{ $orderSupplier->supplier->picPurchasing->nama }}
+                                                                        @endif
                                                                     </div>
                                                                 </div>
                                                             </div>

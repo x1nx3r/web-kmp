@@ -158,7 +158,7 @@ class OrderController extends Controller
             'klien', 
             'creator', 
             'orderDetails.bahanBakuKlien', 
-            'orderDetails.orderSuppliers.supplier',
+            'orderDetails.orderSuppliers.supplier.picPurchasing',
             'orderDetails.orderSuppliers.bahanBakuSupplier'
         ])->findOrFail($id);
         

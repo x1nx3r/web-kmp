@@ -181,6 +181,9 @@
                                                     @php $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first(); @endphp
                                                     <div class="text-sm text-gray-500">
                                                         Best: {{ $bestSupplier->supplier->nama ?? 'N/A' }}
+                                                        @if($bestSupplier->supplier->picPurchasing)
+                                                            <br><span class="text-xs">PIC: {{ $bestSupplier->supplier->picPurchasing->nama }}</span>
+                                                        @endif
                                                     </div>
                                                 @endif
                                             </td>
@@ -239,7 +242,10 @@
                                                                             </div>
                                                                             <div class="text-xs text-gray-500">
                                                                                 Rank #{{ $orderSupplier->price_rank }} | 
-                                                                                {{ $orderSupplier->supplier->lokasi ?? 'No location' }}
+                                                                                {{ $orderSupplier->supplier->alamat ?? 'No address' }}
+                                                                                @if($orderSupplier->supplier->picPurchasing)
+                                                                                    | PIC: {{ $orderSupplier->supplier->picPurchasing->nama }}
+                                                                                @endif
                                                                             </div>
                                                                         </div>
                                                                     </div>

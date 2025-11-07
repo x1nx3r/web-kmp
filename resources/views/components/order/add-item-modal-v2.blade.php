@@ -64,7 +64,14 @@
                                     </div>
                                     <div class="text-xs text-gray-600">Rank #{{ $index + 1 }}</div>
                                 </div>
-                                <div class="text-xs text-gray-600 mb-1">{{ $supplier['supplier_location'] }}</div>
+                                <div class="text-xs text-gray-600 mb-1">
+                                    <i class="fas fa-map-marker-alt mr-1"></i>
+                                    {{ $supplier['supplier_location'] ?: 'Location not specified' }}
+                                </div>
+                                <div class="text-xs text-blue-600 mb-1">
+                                    <i class="fas fa-user mr-1"></i>
+                                    PIC: {{ $supplier['pic_name'] ?? 'Not assigned' }}
+                                </div>
                                 <div class="flex justify-between items-center">
                                     <div>
                                         <div class="text-sm font-semibold">Rp {{ number_format($supplier['harga_supplier'], 0, ',', '.') }}</div>
@@ -111,14 +118,19 @@
                         <i class="fas fa-dollar-sign mr-2"></i>
                         Step 3: Set Harga Jual & Detail
                     </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Harga Jual <span class="text-red-500">*</span>
                             </label>
-                            <input type="number" wire:model.live="currentHargaJual" step="0.01" min="0"
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                   placeholder="0">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 text-sm">Rp</span>
+                                </div>
+                                <input type="number" wire:model.live="currentHargaJual" step="0.01" min="0"
+                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                       placeholder="0">
+                            </div>
                             @if($recommendedPrice > 0)
                                 <div class="text-xs text-gray-500 mt-1">
                                     Rekomendasi: Rp {{ number_format($recommendedPrice, 0, ',', '.') }}
@@ -128,12 +140,6 @@
                                     </button>
                                 </div>
                             @endif
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Satuan</label>
-                            <input type="text" wire:model="currentSatuan" readonly
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                                   placeholder="Satuan akan terisi otomatis">
                         </div>
                     </div>
 

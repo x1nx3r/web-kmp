@@ -27,6 +27,10 @@ class EditKlien extends Component
         'spesifikasi' => '',
         'harga_approved' => '',
         'status' => 'pending',
+        'post' => false,
+        'present' => 'NotUsed',
+        'cause' => '',
+        'jenis' => [],
     ];
 
     // UI state
@@ -121,6 +125,10 @@ class EditKlien extends Component
             'spesifikasi' => '',
             'harga_approved' => '',
             'status' => 'pending',
+            'post' => false,
+            'present' => 'NotUsed',
+            'cause' => '',
+            'jenis' => [],
         ];
     }
 
@@ -134,6 +142,10 @@ class EditKlien extends Component
             'spesifikasi' => $material->spesifikasi ?? '',
             'harga_approved' => $material->harga_approved ?? '',
             'status' => $material->status,
+            'post' => $material->post ?? false,
+            'present' => $material->present ?? 'NotUsed',
+            'cause' => $material->cause ?? '',
+            'jenis' => $material->jenis ?? [],
         ];
         $this->showMaterialModal = true;
     }
@@ -146,11 +158,17 @@ class EditKlien extends Component
             'materialForm.spesifikasi' => 'nullable|string',
             'materialForm.harga_approved' => 'nullable|numeric|min:0',
             'materialForm.status' => 'required|in:aktif,non_aktif,pending',
+            'materialForm.post' => 'boolean',
+            'materialForm.present' => 'required|in:NotUsed,Ready,Not Reasonable Price,Pos Closed,Not Qualified Raw,Not Updated Yet,Didnt Have Supplier,Factory No Need Yet,Confirmed,Sample Sent,Hold,Negotiate',
+            'materialForm.cause' => 'nullable|string',
+            'materialForm.jenis' => 'nullable|array',
+            'materialForm.jenis.*' => 'in:Aqua,Poultry,Ruminansia',
         ], [
             'materialForm.nama.required' => 'Nama material wajib diisi',
             'materialForm.satuan.required' => 'Satuan material wajib diisi',
             'materialForm.harga_approved.numeric' => 'Harga harus berupa angka',
             'materialForm.harga_approved.min' => 'Harga tidak boleh negatif',
+            'materialForm.present.required' => 'Status Present wajib dipilih',
         ]);
 
         try {

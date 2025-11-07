@@ -152,6 +152,9 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Approved</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Post</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                     </tr>
@@ -196,6 +199,51 @@
                                                         <i class="fas fa-times-circle mr-1"></i>
                                                         Non-aktif
                                                     </span>
+                                                @endif
+                                            </td>
+                                            {{-- Post Column --}}
+                                            <td class="px-6 py-4 text-center">
+                                                @if($material->post)
+                                                    <i class="fas fa-check-circle text-green-500 text-lg"></i>
+                                                @else
+                                                    <i class="fas fa-times-circle text-gray-300 text-lg"></i>
+                                                @endif
+                                            </td>
+                                            {{-- Present Column --}}
+                                            <td class="px-6 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                                    @if($material->present === 'Ready') bg-green-100 text-green-800
+                                                    @elseif($material->present === 'Confirmed') bg-blue-100 text-blue-800
+                                                    @elseif($material->present === 'Hold') bg-red-100 text-red-800
+                                                    @elseif($material->present === 'Negotiate') bg-yellow-100 text-yellow-800
+                                                    @elseif($material->present === 'Sample Sent') bg-purple-100 text-purple-800
+                                                    @else bg-gray-100 text-gray-800
+                                                    @endif">
+                                                    {{ $material->present }}
+                                                </span>
+                                                @if($material->cause)
+                                                    <div class="text-xs text-gray-500 mt-1" title="{{ $material->cause }}">
+                                                        {{ \Illuminate\Support\Str::limit($material->cause, 30) }}
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            {{-- Jenis Column --}}
+                                            <td class="px-6 py-4">
+                                                @if($material->jenis && count($material->jenis) > 0)
+                                                    <div class="flex flex-wrap gap-1">
+                                                        @foreach($material->jenis as $jenis)
+                                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                                                @if($jenis === 'Aqua') bg-blue-100 text-blue-800
+                                                                @elseif($jenis === 'Poultry') bg-yellow-100 text-yellow-800
+                                                                @elseif($jenis === 'Ruminansia') bg-green-100 text-green-800
+                                                                @else bg-gray-100 text-gray-800
+                                                                @endif">
+                                                                {{ $jenis }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <span class="text-sm text-gray-400">-</span>
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 text-sm text-gray-500">{{ $material->updated_at->format('d/m/Y H:i') }}</td>
@@ -400,6 +448,91 @@
                                     <option value="aktif">Aktif</option>
                                     <option value="non_aktif">Non-aktif</option>
                                 </select>
+                            </div>
+
+                            {{-- Post Checkbox --}}
+                            <div>
+                                <label class="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        wire:model="materialForm.post"
+                                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                                    >
+                                    <span class="ml-2 text-sm font-medium text-gray-700">Post (Checkmark)</span>
+                                </label>
+                            </div>
+
+                            {{-- Present Dropdown --}}
+                            <div>
+                                <label for="material_present" class="block text-sm font-medium text-gray-700 mb-2">Present Status</label>
+                                <select
+                                    wire:model="materialForm.present"
+                                    id="material_present"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('materialForm.present') border-red-500 @enderror"
+                                    required
+                                >
+                                    <option value="NotUsed">Not Used</option>
+                                    <option value="Ready">Ready</option>
+                                    <option value="Not Reasonable Price">Not Reasonable Price</option>
+                                    <option value="Pos Closed">PO's Closed</option>
+                                    <option value="Not Qualified Raw">Not Qualified Raw</option>
+                                    <option value="Not Updated Yet">Not Updated Yet</option>
+                                    <option value="Didnt Have Supplier">Didn't Have Supplier</option>
+                                    <option value="Factory No Need Yet">Factory No Need Yet</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Sample Sent">Sample Sent</option>
+                                    <option value="Hold">Hold</option>
+                                    <option value="Negotiate">Negotiate</option>
+                                </select>
+                                @error('materialForm.present')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            {{-- Cause Text Area --}}
+                            <div>
+                                <label for="material_cause" class="block text-sm font-medium text-gray-700 mb-2">Cause (Explanation)</label>
+                                <textarea
+                                    wire:model="materialForm.cause"
+                                    id="material_cause"
+                                    rows="3"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Explain the Present status (optional)"
+                                ></textarea>
+                            </div>
+
+                            {{-- Jenis Tags --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Jenis (Category Tags)</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            wire:model="materialForm.jenis"
+                                            value="Aqua"
+                                            class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                                        >
+                                        <span class="ml-2 text-sm text-gray-700">Aqua</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            wire:model="materialForm.jenis"
+                                            value="Poultry"
+                                            class="rounded border-gray-300 text-yellow-600 shadow-sm focus:ring-yellow-500"
+                                        >
+                                        <span class="ml-2 text-sm text-gray-700">Poultry</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            wire:model="materialForm.jenis"
+                                            value="Ruminansia"
+                                            class="rounded border-gray-300 text-green-600 shadow-sm focus:ring-green-500"
+                                        >
+                                        <span class="ml-2 text-sm text-gray-700">Ruminansia</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 

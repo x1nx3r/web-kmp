@@ -21,11 +21,17 @@ class BahanBakuKlien extends Model
         'approved_at',
         'approved_by_marketing',
         'status',
+        'post',
+        'present',
+        'cause',
+        'jenis',
     ];
 
     protected $casts = [
         'harga_approved' => 'decimal:2',
         'approved_at' => 'datetime',
+        'post' => 'boolean',
+        'jenis' => 'array',
     ];
 
     protected $dates = ['deleted_at'];

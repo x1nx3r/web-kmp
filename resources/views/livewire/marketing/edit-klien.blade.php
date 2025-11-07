@@ -145,132 +145,143 @@
 
                     <div class="overflow-x-auto">
                         @if($klien->bahanBakuKliens->count() > 0)
-                            <table class="min-w-full divide-y divide-gray-200">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Approved</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Post</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Material</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Satuan</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Harga</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Status</th>
+                                        <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Post</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Present</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Jenis</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Updated</th>
+                                        <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @foreach($klien->bahanBakuKliens as $material)
                                         <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4">
+                                            <td class="px-3 py-3">
                                                 <div>
                                                     <div class="text-sm font-medium text-gray-900">{{ $material->nama }}</div>
                                                     @if($material->spesifikasi)
-                                                        <div class="text-sm text-gray-500 mt-1">{{ \Illuminate\Support\Str::limit($material->spesifikasi, 60) }}</div>
+                                                        <div class="text-xs text-gray-500 mt-1">{{ \Illuminate\Support\Str::limit($material->spesifikasi, 40) }}</div>
                                                     @endif
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 text-sm text-gray-900">{{ $material->satuan }}</td>
-                                            <td class="px-6 py-4">
+                                            <td class="px-2 py-3 text-sm text-gray-900">{{ $material->satuan }}</td>
+                                            <td class="px-2 py-3">
                                                 @if($material->harga_approved)
                                                     <div class="text-sm font-medium text-green-600">
-                                                        Rp {{ number_format($material->harga_approved, 0, ',', '.') }}
+                                                        {{ number_format($material->harga_approved / 1000, 0) }}k
                                                     </div>
                                                     @if($material->approved_at)
-                                                        <div class="text-xs text-gray-500">{{ $material->approved_at->format('d/m/Y') }}</div>
+                                                        <div class="text-xs text-gray-500">{{ $material->approved_at->format('d/m') }}</div>
                                                     @endif
                                                 @else
-                                                    <span class="text-sm text-gray-400">Belum ada harga</span>
+                                                    <span class="text-xs text-gray-400">-</span>
                                                 @endif
                                             </td>
-                                            <td class="px-6 py-4">
+                                            <td class="px-2 py-3">
                                                 @if($material->status === 'aktif')
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                        <i class="fas fa-check text-xs mr-1"></i>
                                                         Aktif
                                                     </span>
                                                 @elseif($material->status === 'pending')
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                        <i class="fas fa-clock mr-1"></i>
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                        <i class="fas fa-clock text-xs mr-1"></i>
                                                         Pending
                                                     </span>
                                                 @else
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                        <i class="fas fa-times-circle mr-1"></i>
-                                                        Non-aktif
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                        <i class="fas fa-times text-xs mr-1"></i>
+                                                        Off
                                                     </span>
                                                 @endif
                                             </td>
                                             {{-- Post Column --}}
-                                            <td class="px-6 py-4 text-center">
+                                            <td class="px-2 py-3 text-center">
                                                 @if($material->post)
-                                                    <i class="fas fa-check-circle text-green-500 text-lg"></i>
+                                                    <i class="fas fa-check-circle text-green-500 text-sm"></i>
                                                 @else
-                                                    <i class="fas fa-times-circle text-gray-300 text-lg"></i>
+                                                    <i class="fas fa-times-circle text-gray-300 text-sm"></i>
                                                 @endif
                                             </td>
                                             {{-- Present Column --}}
-                                            <td class="px-6 py-4">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                            <td class="px-2 py-3">
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
                                                     @if($material->present === 'Ready') bg-green-100 text-green-800
                                                     @elseif($material->present === 'Confirmed') bg-blue-100 text-blue-800
                                                     @elseif($material->present === 'Hold') bg-red-100 text-red-800
                                                     @elseif($material->present === 'Negotiate') bg-yellow-100 text-yellow-800
                                                     @elseif($material->present === 'Sample Sent') bg-purple-100 text-purple-800
                                                     @else bg-gray-100 text-gray-800
-                                                    @endif">
-                                                    {{ $material->present }}
+                                                    @endif" title="{{ $material->cause }}">
+                                                    @if($material->present === 'Ready') Ready
+                                                    @elseif($material->present === 'Confirmed') Conf
+                                                    @elseif($material->present === 'Hold') Hold
+                                                    @elseif($material->present === 'Negotiate') Nego
+                                                    @elseif($material->present === 'Sample Sent') Sample
+                                                    @elseif($material->present === 'Not Reasonable Price') Price
+                                                    @elseif($material->present === 'Pos Closed') Closed
+                                                    @elseif($material->present === 'Not Qualified Raw') Quality
+                                                    @elseif($material->present === 'Not Updated Yet') Update
+                                                    @elseif($material->present === 'Didnt Have Supplier') Supply
+                                                    @elseif($material->present === 'Factory No Need Yet') Need
+                                                    @else {{ \Illuminate\Support\Str::limit($material->present, 8) }}
+                                                    @endif
                                                 </span>
-                                                @if($material->cause)
-                                                    <div class="text-xs text-gray-500 mt-1" title="{{ $material->cause }}">
-                                                        {{ \Illuminate\Support\Str::limit($material->cause, 30) }}
-                                                    </div>
-                                                @endif
                                             </td>
                                             {{-- Jenis Column --}}
-                                            <td class="px-6 py-4">
+                                            <td class="px-2 py-3">
                                                 @if($material->jenis && count($material->jenis) > 0)
-                                                    <div class="flex flex-wrap gap-1">
+                                                    <div class="flex flex-col gap-1">
                                                         @foreach($material->jenis as $jenis)
-                                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                                            <span class="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium
                                                                 @if($jenis === 'Aqua') bg-blue-100 text-blue-800
                                                                 @elseif($jenis === 'Poultry') bg-yellow-100 text-yellow-800
                                                                 @elseif($jenis === 'Ruminansia') bg-green-100 text-green-800
                                                                 @else bg-gray-100 text-gray-800
                                                                 @endif">
-                                                                {{ $jenis }}
+                                                                @if($jenis === 'Aqua') A
+                                                                @elseif($jenis === 'Poultry') P
+                                                                @elseif($jenis === 'Ruminansia') R
+                                                                @else {{ substr($jenis, 0, 1) }}
+                                                                @endif
                                                             </span>
                                                         @endforeach
                                                     </div>
                                                 @else
-                                                    <span class="text-sm text-gray-400">-</span>
+                                                    <span class="text-xs text-gray-400">-</span>
                                                 @endif
                                             </td>
-                                            <td class="px-6 py-4 text-sm text-gray-500">{{ $material->updated_at->format('d/m/Y H:i') }}</td>
-                                            <td class="px-6 py-4 text-right text-sm font-medium">
-                                                <div class="flex items-center justify-end space-x-3">
+                                            <td class="px-2 py-3 text-xs text-gray-500">{{ $material->updated_at->format('d/m') }}</td>
+                                            <td class="px-2 py-3 text-right text-sm font-medium">
+                                                <div class="flex items-center justify-end space-x-1">
                                                     @if($material->harga_approved)
                                                         <a
                                                             href="{{ route('klien.riwayat-harga', [$klien, $material]) }}"
-                                                            class="text-blue-600 hover:text-blue-800"
-                                                            title="Lihat Riwayat Harga"
+                                                            class="text-blue-600 hover:text-blue-800 p-1"
+                                                            title="Riwayat Harga"
                                                         >
-                                                            <i class="fas fa-chart-line"></i>
+                                                            <i class="fas fa-chart-line text-xs"></i>
                                                         </a>
                                                     @endif
                                                     <button
                                                         wire:click="editMaterial({{ $material->id }})"
-                                                        class="text-amber-600 hover:text-amber-800"
-                                                        title="Edit Material"
+                                                        class="text-amber-600 hover:text-amber-800 p-1"
+                                                        title="Edit"
                                                     >
-                                                        <i class="fas fa-edit"></i>
+                                                        <i class="fas fa-edit text-xs"></i>
                                                     </button>
                                                     <button
                                                         wire:click="deleteMaterial({{ $material->id }}, '{{ $material->nama }}')"
-                                                        class="text-red-600 hover:text-red-800"
-                                                        title="Hapus Material"
+                                                        class="text-red-600 hover:text-red-800 p-1"
+                                                        title="Hapus"
                                                     >
-                                                        <i class="fas fa-trash-alt"></i>
+                                                        <i class="fas fa-trash-alt text-xs"></i>
                                                     </button>
                                                 </div>
                                             </td>
@@ -284,7 +295,7 @@
                                     <i class="fas fa-boxes text-3xl text-gray-400"></i>
                                 </div>
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Material</h3>
-                                <p class="text-gray-500 mb-6">Cabang ini belum memiliki material yang terdaftar.</p>
+                                <p class="text-gray-500 mb-6">Plant ini belum memiliki material yang terdaftar.</p>
                                 <button
                                     wire:click="openMaterialModal"
                                     class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"

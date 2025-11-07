@@ -290,7 +290,7 @@ function submitPengiriman() {
     // Show immediate feedback
     showPengirimanToast('Memproses pengiriman forecast...', 'warning');
     
-    console.log('Starting fetch request to:', `/purchasing/forecast/${currentPengirimanForecastData?.id}/kirim`);
+    console.log('Starting fetch request to:', `/procurement/forecasting/${currentPengirimanForecastData?.id}/kirim`);
     console.log('Request payload:', {
         _token: csrfToken,
         forecast_id: currentPengirimanForecastData?.id
@@ -304,7 +304,7 @@ function submitPengiriman() {
         setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
     });
     
-    const fetchPromise = fetch(`/purchasing/forecast/${currentPengirimanForecastData?.id}/kirim`, {
+    const fetchPromise = fetch(`/procurement/forecasting/${currentPengirimanForecastData?.id}/kirim`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -365,7 +365,7 @@ function submitPengiriman() {
             errorMessage: error.message,
             errorStack: error.stack,
             forecastId: currentPengirimanForecastData?.id,
-            url: `/purchasing/forecast/${currentPengirimanForecastData?.id}/kirim`
+            url: `/procurement/forecasting/${currentPengirimanForecastData?.id}/kirim`
         });
         
         // Reset UI elements

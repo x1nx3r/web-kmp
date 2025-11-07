@@ -8,7 +8,8 @@
 <div id="dynamicBreadcrumb">
     {{-- Default breadcrumb, akan diupdate via JavaScript --}}
     <x-breadcrumb :items="[
-        ['title' => 'Forecasting', 'url' => '#']
+    ['title' => 'Purchasing', 'url' => '#'],
+    'Forecasting'
     ]" />
 </div>
 
@@ -16,7 +17,7 @@
 <div class="mb-6">
     <div class="border-b-2">
         {{-- Desktop Navigation --}}
-        <nav class="-mb-px hidden sm:flex space-x-8" aria-label="Tabs">
+        <nav class="-mb-px hidden sm:flex justify-between px-16" aria-label="Tabs">
             <button onclick="switchTab('buat-forecasting')" 
                     id="tab-buat-forecasting" 
                     class="tab-button active border-transparent text-green-600 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
@@ -27,7 +28,7 @@
                     id="tab-pending" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
                 <i class="fas fa-clock mr-2"></i>
-                Pending
+                Forecasting Pending
                 @if(isset($pendingForecasts) && $pendingForecasts->total() > 0)
                     <span class="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{{ $pendingForecasts->total() }}</span>
                 @endif
@@ -36,7 +37,7 @@
                     id="tab-sukses" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
                 <i class="fas fa-check-circle mr-2"></i>
-                Sukses
+               Forecasting Sukses
                 @if(isset($suksesForecasts) && $suksesForecasts->total() > 0)
                     <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{{ $suksesForecasts->total() }}</span>
                 @endif
@@ -45,7 +46,7 @@
                     id="tab-gagal" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
                 <i class="fas fa-times-circle mr-2"></i>
-                Gagal
+                Forecasting Gagal
                 @if(isset($gagalForecasts) && $gagalForecasts->total() > 0)
                     <span class="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{{ $gagalForecasts->total() }}</span>
                 @endif
@@ -53,7 +54,7 @@
         </nav>
 
         {{-- Mobile Navigation --}}
-        <nav class="-mb-px flex sm:hidden overflow-x-auto scrollbar-hide" aria-label="Tabs">
+        <nav class="-mb-px flex sm:hidden overflow-x-auto justify-between scrollbar-hide px-8" aria-label="Tabs">
             <button onclick="switchTab('buat-forecasting')" 
                     id="tab-buat-forecasting-mobile" 
                     class="tab-button active border-transparent text-green-600 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max">
@@ -391,7 +392,7 @@ function refreshWithPreservedParams() {
     if (currentParams.get('sort_order_gagal')) params.append('sort_order_gagal', currentParams.get('sort_order_gagal'));
     
     // Reload with preserved parameters
-    window.location.href = '/forecasting?' + params.toString();
+    window.location.href = '/procurement/forecasting?' + params.toString();
 }
 
 // Global function to close success modal and refresh

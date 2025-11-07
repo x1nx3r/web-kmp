@@ -32,8 +32,10 @@ class DatabaseSeeder extends Seeder
             PurchaseOrderSeeder::class,
             PurchaseOrderBahanBakuSeeder::class,
             PenawaranSeeder::class, // Penawaran with multi-supplier support
-            // OrderSeeder::class, // Removed - incompatible with new multi-supplier order system
             EnhancedOrderSeeder::class, // New multi-supplier order system with auto-population
+            CompanySettingSeeder::class,
+            // OrderSeeder::class, // Removed - incompatible with new multi-supplier order system
+            // PengirimanAccountingSeeder::class,
         ]);
     }
 }

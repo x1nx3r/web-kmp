@@ -39,7 +39,7 @@
                     </div>
                     Filter & Urutan
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                     {{-- Date Range Filter --}}
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
@@ -47,6 +47,23 @@
                             Tanggal Forecast
                         </label>
                         <input type="date" id="dateRangeFilterGagal" name="date_range_gagal" value="{{ request('date_range_gagal') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersGagal()">
+                    </div>
+
+                    {{-- Filter by PIC Purchasing --}}
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
+                            <i class="fas fa-user-tie mr-1 sm:mr-2 text-red-500 text-xs"></i>
+                            PIC Purchasing
+                        </label>
+                        <select id="filterPurchasingGagal" name="filter_purchasing_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersGagal()">
+                            <option value="">Semua PIC</option>
+                            @php
+                                $purchasingOptions = collect($gagalForecasts->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
+                            @endphp
+                            @foreach($purchasingOptions as $id => $nama)
+                                <option value="{{ $id }}" {{ request('filter_purchasing_gagal') == $id ? 'selected' : '' }}>{{ $nama }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     {{-- Sort Order --}}
@@ -60,6 +77,14 @@
                             <option value="oldest" {{ request('sort_order_gagal') == 'oldest' ? 'selected' : '' }}>Terlama</option>
                         </select>
                     </div>
+                </div>
+                
+                {{-- Clear Filter Button (Below Grid) --}}
+                <div class="flex justify-end mt-3">
+                    <button onclick="clearAllFiltersGagal()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+                        <i class="fas fa-times mr-1"></i>
+                        Hapus Semua Filter
+                    </button>
                 </div>
             </div>
         </div>
@@ -256,6 +281,7 @@ function debounceSearchGagal() {
 function submitSearchGagal() {
     const searchInput = document.getElementById('searchInputGagal');
     const dateFilter = document.getElementById('dateRangeFilterGagal');
+    const filterPurchasing = document.getElementById('filterPurchasingGagal');
     const sortOrder = document.getElementById('sortOrderGagal');
     
     // Build query parameters
@@ -269,6 +295,10 @@ function submitSearchGagal() {
         params.append('date_range_gagal', dateFilter.value);
     }
     
+    if (filterPurchasing.value) {
+        params.append('filter_purchasing_gagal', filterPurchasing.value);
+    }
+    
     if (sortOrder.value) {
         params.append('sort_order_gagal', sortOrder.value);
     }
@@ -280,7 +310,7 @@ function submitSearchGagal() {
     params.append('page_gagal', '1');
     
     // Redirect with new parameters
-    const url = '/forecasting' + (params.toString() ? '?' + params.toString() : '');
+    const url = '/procurement/forecasting' + (params.toString() ? '?' + params.toString() : '');
     window.location.href = url;
 }
 
@@ -288,4 +318,45 @@ function submitSearchGagal() {
 function applyFiltersGagal() {
     submitSearchGagal();
 }
+
+// Function to clear all filters
+function clearAllFiltersGagal() {
+    const currentParams = new URLSearchParams(window.location.search);
+    
+    // Keep only the tab parameter
+    const newParams = new URLSearchParams();
+    newParams.set('tab', 'gagal');
+    
+    window.location.href = '/procurement/forecasting?' + newParams.toString();
+}
+
+// Initialize filters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set filter values from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Set search value
+    const searchValue = urlParams.get('search_gagal');
+    if (searchValue) {
+        document.getElementById('searchInputGagal').value = searchValue;
+    }
+    
+    // Set date range filter
+    const dateRange = urlParams.get('date_range_gagal');
+    if (dateRange) {
+        document.getElementById('dateRangeFilterGagal').value = dateRange;
+    }
+    
+    // Set purchasing filter
+    const filterPurchasing = urlParams.get('filter_purchasing_gagal');
+    if (filterPurchasing) {
+        document.getElementById('filterPurchasingGagal').value = filterPurchasing;
+    }
+    
+    // Set sort order filter
+    const sortOrder = urlParams.get('sort_order_gagal');
+    if (sortOrder) {
+        document.getElementById('sortOrderGagal').value = sortOrder;
+    }
+});
 </script>

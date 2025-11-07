@@ -31,20 +31,20 @@
 
     <!-- Search and Actions -->
     <div class="mb-6 bg-white p-4 rounded-lg shadow">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div class="flex flex-col md:flex-row gap-4 md:items-end">
             <!-- Search -->
-            <div class="md:col-span-2">
+            <div class="flex-1">
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Pencarian Kontak</label>
                 <input type="text" 
                        wire:model.live.debounce.300ms="search" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                        placeholder="Cari nama, HP, atau jabatan...">
             </div>
 
             <!-- Actions -->
-            <div class="flex space-x-2">
+            <div class="flex space-x-2 md:flex-shrink-0">
                 <button wire:click="openKontakModal" 
-                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap">
+                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
                     <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
@@ -53,7 +53,7 @@
                 
                 @if($search)
                     <button wire:click="clearSearch" 
-                            class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap">
+                            class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
                         Reset
                     </button>
                 @endif

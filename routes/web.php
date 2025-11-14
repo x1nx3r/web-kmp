@@ -136,6 +136,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/company-settings', function() {
             return view('pages.accounting.company-settings');
         })->name('company-settings');
+
+        // Catatan Piutang
+        Route::get('/catatan-piutang', function() {
+            return view('pages.accounting.catatan-piutang');
+        })->name('catatan-piutang');
     });
 
 

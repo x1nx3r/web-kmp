@@ -84,18 +84,18 @@ class ApprovalPembayaran extends Model
     }
 
     /**
-     * Check if staff can approve
+     * Check if any accounting member can approve
      */
     public function canStaffApprove()
     {
-        return $this->status === 'pending' && !$this->staff_approved_at;
+        return $this->status === 'pending';
     }
 
     /**
-     * Check if manager can approve (final approval)
+     * Check if any accounting member can approve
      */
     public function canManagerApprove()
     {
-        return $this->status === 'staff_approved' && $this->staff_approved_at && !$this->manager_approved_at;
+        return $this->status === 'pending';
     }
 }

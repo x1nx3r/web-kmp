@@ -70,22 +70,26 @@ class ApprovePenagihan extends Component
                 throw new \Exception('Anda tidak memiliki akses untuk melakukan approval');
             }
 
-            // Check permission based on role
-            if ($role === 'staff' && $this->approval->canStaffApprove()) {
-                $this->approval->update([
-                    'staff_id' => $user->id,
-                    'staff_approved_at' => now(),
-                    'status' => 'staff_approved',
-                ]);
-            } elseif ($role === 'manager_keuangan' && $this->approval->canManagerApprove()) {
-                $this->approval->update([
-                    'manager_id' => $user->id,
-                    'manager_approved_at' => now(),
-                    'status' => 'completed', // Manager is final approval
-                ]);
-            } else {
-                throw new \Exception('Anda tidak dapat melakukan approval pada tahap ini');
+            // Check if approval can be processed
+            if ($this->approval->status !== 'pending') {
+                throw new \Exception('Approval ini sudah diproses atau tidak dapat diapprove');
             }
+
+            // Langsung complete untuk semua anggota keuangan
+            $updateData = [
+                'status' => 'completed',
+            ];
+
+            // Set approver based on role
+            if ($role === 'manager_keuangan') {
+                $updateData['manager_id'] = $user->id;
+                $updateData['manager_approved_at'] = now();
+            } else {
+                $updateData['staff_id'] = $user->id;
+                $updateData['staff_approved_at'] = now();
+            }
+
+            $this->approval->update($updateData);
 
             // Save history
             ApprovalHistory::create([

@@ -195,8 +195,6 @@
                         <option value="all">Semua Status</option>
                         @if($activeTab === 'pending')
                             <option value="pending">Pending</option>
-                            <option value="staff_approved">Staff Approved</option>
-                            <option value="manager_approved">Manager Approved</option>
                         @else
                             <option value="completed">Completed</option>
                         @endif
@@ -259,19 +257,15 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
                                     <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                        <i class="fas fa-clock mr-1"></i> Pending
+                                        <i class="fas fa-clock mr-1"></i> Menunggu Approval
                                     </span>
-                                @elseif($approval->status === 'staff_approved')
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                        <i class="fas fa-user-check mr-1"></i> Staff Approved
-                                    </span>
-                                @elseif($approval->status === 'manager_approved')
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                                        <i class="fas fa-user-tie mr-1"></i> Manager Approved
+                                @elseif($approval->status === 'completed')
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i> Selesai
                                     </span>
                                 @else
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        <i class="fas fa-check-circle mr-1"></i> Completed
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        <i class="fas fa-circle mr-1"></i> {{ ucfirst($approval->status) }}
                                     </span>
                                 @endif
                             </td>
@@ -670,49 +664,44 @@
                             Status Approval
                         </h4>
                         <div class="space-y-3">
-                            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full {{ $selectedData->staff_approved_at ? 'bg-green-100' : 'bg-gray-100' }} flex items-center justify-center mr-3">
-                                        <i class="fas {{ $selectedData->staff_approved_at ? 'fa-check text-green-600' : 'fa-user text-gray-400' }}"></i>
+                            @if($selectedData->status === 'completed')
+                                <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                                            <i class="fas fa-check text-green-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Disetujui Oleh</p>
+                                            <p class="text-xs text-gray-500">
+                                                @if($selectedData->staff)
+                                                    {{ $selectedData->staff->nama }} (Staff Accounting)
+                                                @elseif($selectedData->manager)
+                                                    {{ $selectedData->manager->nama }} (Manager Accounting)
+                                                @else
+                                                    -
+                                                @endif
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">Staff</p>
+                                    <div class="text-right">
+                                        <p class="text-xs text-green-600 font-medium">Approved</p>
                                         <p class="text-xs text-gray-500">
-                                            {{ $selectedData->staff ? $selectedData->staff->nama : '-' }}
+                                            @if($selectedData->staff_approved_at)
+                                                {{ $selectedData->staff_approved_at->format('d M Y H:i') }}
+                                            @elseif($selectedData->manager_approved_at)
+                                                {{ $selectedData->manager_approved_at->format('d M Y H:i') }}
+                                            @endif
                                         </p>
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    @if($selectedData->staff_approved_at)
-                                        <p class="text-xs text-green-600 font-medium">Approved</p>
-                                        <p class="text-xs text-gray-500">{{ $selectedData->staff_approved_at->format('d M Y H:i') }}</p>
-                                    @else
-                                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Pending</span>
-                                    @endif
+                            @else
+                                <div class="p-3 bg-white rounded-lg text-center">
+                                    <p class="text-sm text-yellow-600 font-medium">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Menunggu Approval
+                                    </p>
                                 </div>
-                            </div>
-
-                            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full {{ $selectedData->manager_approved_at ? 'bg-green-100' : 'bg-gray-100' }} flex items-center justify-center mr-3">
-                                        <i class="fas {{ $selectedData->manager_approved_at ? 'fa-check text-green-600' : 'fa-user-tie text-gray-400' }}"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">Manager Keuangan</p>
-                                        <p class="text-xs text-gray-500">
-                                            {{ $selectedData->manager ? $selectedData->manager->nama : '-' }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    @if($selectedData->manager_approved_at)
-                                        <p class="text-xs text-green-600 font-medium">Approved</p>
-                                        <p class="text-xs text-gray-500">{{ $selectedData->manager_approved_at->format('d M Y H:i') }}</p>
-                                    @else
-                                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Pending</span>
-                                    @endif
-                                </div>
-                            </div>
+                            @endif
 
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                                 <div class="flex items-center">

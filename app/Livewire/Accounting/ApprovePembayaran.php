@@ -81,55 +81,48 @@ class ApprovePembayaran extends Component
                 throw new \Exception('Anda tidak memiliki akses untuk melakukan approval');
             }
 
-            // Check permission based on role
-            if ($role === 'staff' && $this->approval->canStaffApprove()) {
-                $this->approval->update([
-                    'staff_id' => $user->id,
-                    'staff_approved_at' => now(),
-                    'status' => 'staff_approved',
-                ]);
-            } elseif ($role === 'manager_keuangan' && $this->approval->canManagerApprove()) {
-                // Validasi bukti pembayaran wajib untuk manager
-                if (!$this->buktiPembayaran) {
-                    throw new \Exception('Bukti pembayaran wajib diupload untuk approval manager');
-                }
-
-                // Validate file type and size
-                $this->validate([
-                    'buktiPembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // max 5MB
-                ]);
-
-                // Upload bukti pembayaran
-                $buktiPath = $this->buktiPembayaran->store('bukti-pembayaran', 'public');
-
-                $this->approval->update([
-                    'manager_id' => $user->id,
-                    'manager_approved_at' => now(),
-                    'status' => 'completed',
-                    'bukti_pembayaran' => $buktiPath,
-                ]);
-
-                // Update status pengiriman ke 'berhasil' ketika manager approve (final approval)
-                $this->approval->pengiriman->update([
-                    'status' => 'berhasil',
-                ]);
-
-                // Create Invoice Penagihan and Approval Penagihan automatically
-                $this->createInvoiceAndApprovalPenagihan();
-            } else {
-                // Detailed error message for debugging
-                $currentStatus = $this->approval->status;
-                $errorMsg = "Anda tidak dapat melakukan approval pada tahap ini. ";
-                $errorMsg .= "Role Anda: {$role}, Status approval saat ini: {$currentStatus}. ";
-
-                if ($role === 'staff') {
-                    $errorMsg .= "Staff hanya bisa approve jika status = 'pending'.";
-                } elseif ($role === 'manager_keuangan') {
-                    $errorMsg .= "Manager hanya bisa approve jika status = 'staff_approved'.";
-                }
-
-                throw new \Exception($errorMsg);
+            // Check if approval can be processed
+            if ($this->approval->status !== 'pending') {
+                throw new \Exception('Approval ini sudah diproses atau tidak dapat diapprove');
             }
+
+            // Validasi bukti pembayaran wajib untuk semua anggota keuangan
+            if (!$this->buktiPembayaran) {
+                throw new \Exception('Bukti pembayaran wajib diupload untuk approval');
+            }
+
+            // Validate file type and size
+            $this->validate([
+                'buktiPembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // max 5MB
+            ]);
+
+            // Upload bukti pembayaran
+            $buktiPath = $this->buktiPembayaran->store('bukti-pembayaran', 'public');
+
+            // Langsung complete untuk semua anggota keuangan
+            $updateData = [
+                'status' => 'completed',
+                'bukti_pembayaran' => $buktiPath,
+            ];
+
+            // Set approver based on role
+            if ($role === 'manager_keuangan') {
+                $updateData['manager_id'] = $user->id;
+                $updateData['manager_approved_at'] = now();
+            } else {
+                $updateData['staff_id'] = $user->id;
+                $updateData['staff_approved_at'] = now();
+            }
+
+            $this->approval->update($updateData);
+
+            // Update status pengiriman ke 'berhasil' ketika approved (final approval)
+            $this->approval->pengiriman->update([
+                'status' => 'berhasil',
+            ]);
+
+            // Create Invoice Penagihan and Approval Penagihan automatically
+            $this->createInvoiceAndApprovalPenagihan();
 
             // Save history
             ApprovalHistory::create([

@@ -129,6 +129,12 @@
                             <span class="font-medium">Approval Penagihan</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('accounting.catatan-piutang') }}" class="flex items-center space-x-3 {{ request()->routeIs('accounting.catatan-piutang') ? 'text-green-800 bg-green-100' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-file-invoice w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.catatan-piutang') ? 'text-green-600' : '' }}"></i>
+                            <span class="font-medium">Catatan Piutang</span>
+                        </a>
+                    </li>
                 </ul>
             </li>
 

@@ -42,23 +42,15 @@
                     <div class="text-right">
                         @if($approval->status === 'pending')
                             <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                <i class="fas fa-clock mr-2"></i> Pending
-                            </span>
-                        @elseif($approval->status === 'staff_approved')
-                            <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                <i class="fas fa-user-check mr-2"></i> Staff Approved
-                            </span>
-                        @elseif($approval->status === 'manager_approved')
-                            <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                                <i class="fas fa-user-tie mr-2"></i> Manager Approved
+                                <i class="fas fa-clock mr-2"></i> Menunggu Approval
                             </span>
                         @elseif($approval->status === 'completed')
                             <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                <i class="fas fa-check-circle mr-2"></i> Completed
+                                <i class="fas fa-check-circle mr-2"></i> Selesai
                             </span>
                         @else
                             <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                <i class="fas fa-times-circle mr-2"></i> Rejected
+                                <i class="fas fa-times-circle mr-2"></i> Ditolak
                             </span>
                         @endif
                     </div>
@@ -224,43 +216,38 @@
                         <div class="bg-white rounded-lg border border-gray-200 p-6">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <i class="fas fa-tasks text-purple-600 mr-2"></i>
-                                Progress Approval
+                                Status Approval
                             </h3>
                             <div class="space-y-4">
-                                {{-- Current Approver --}}
                                 <div>
-                                    <label class="text-xs font-medium text-gray-500">Current Approver</label>
+                                    <label class="text-xs font-medium text-gray-500">Status</label>
                                     <p class="mt-1 text-sm font-semibold text-gray-900">
                                         @if($approval->status === 'pending')
-                                            <i class="fas fa-user text-blue-600 mr-1"></i>Staff Accounting
-                                        @elseif($approval->status === 'staff_approved')
-                                            <i class="fas fa-user-tie text-purple-600 mr-1"></i>Manager Keuangan
+                                            <i class="fas fa-clock text-blue-600 mr-1"></i>Menunggu Approval
                                         @elseif($approval->status === 'completed')
                                             <i class="fas fa-check-circle text-green-600 mr-1"></i>Selesai
+                                        @elseif($approval->status === 'rejected')
+                                            <i class="fas fa-times-circle text-red-600 mr-1"></i>Ditolak
                                         @else
                                             -
                                         @endif
                                     </p>
                                 </div>
 
-                                {{-- Staff --}}
-                                @if($approval->staff)
+                                {{-- Approver Info --}}
+                                @if($approval->status === 'completed')
                                     <div>
-                                        <label class="text-xs font-medium text-gray-500">Staff</label>
+                                        <label class="text-xs font-medium text-gray-500">Disetujui Oleh</label>
                                         <p class="mt-1 text-sm text-gray-900">
-                                            <i class="fas fa-check text-green-500 mr-1"></i>
-                                            {{ $approval->staff->nama }}
-                                        </p>
-                                    </div>
-                                @endif
-
-                                {{-- Manager --}}
-                                @if($approval->manager)
-                                    <div>
-                                        <label class="text-xs font-medium text-gray-500">Manager (Final Approval)</label>
-                                        <p class="mt-1 text-sm text-gray-900">
-                                            <i class="fas fa-check text-green-500 mr-1"></i>
-                                            {{ $approval->manager->nama }}
+                                            @if($approval->staff)
+                                                <i class="fas fa-check text-green-500 mr-1"></i>
+                                                {{ $approval->staff->nama }} (Staff Accounting)
+                                            @elseif($approval->manager)
+                                                <i class="fas fa-check text-green-500 mr-1"></i>
+                                                {{ $approval->manager->nama }} (Manager Accounting)
+                                            @else
+                                                -
+                                            @endif
                                         </p>
                                     </div>
                                 @endif

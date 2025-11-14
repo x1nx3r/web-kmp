@@ -72,14 +72,20 @@
             @if($approval)
                 <span class="px-4 py-2 text-sm font-semibold rounded-full
                     @if($approval->status === 'pending') bg-yellow-100 text-yellow-800
-                    @elseif($approval->status === 'staff_approved') bg-blue-100 text-blue-800
-                    @elseif($approval->status === 'manager_approved') bg-purple-100 text-purple-800
                     @elseif($approval->status === 'completed') bg-green-100 text-green-800
                     @elseif($approval->status === 'rejected') bg-red-100 text-red-800
                     @else bg-gray-100 text-gray-800
                     @endif">
                     <i class="fas fa-circle text-xs mr-1"></i>
-                    {{ ucfirst($approval->status) }}
+                    @if($approval->status === 'pending')
+                        Menunggu Approval
+                    @elseif($approval->status === 'completed')
+                        Selesai
+                    @elseif($approval->status === 'rejected')
+                        Ditolak
+                    @else
+                        {{ ucfirst($approval->status) }}
+                    @endif
                 </span>
             @endif
         </div>
@@ -297,14 +303,14 @@
                                 {{-- Approval Info --}}
                                 <div class="mb-6 space-y-3">
                                     <div>
-                                        <label class="text-xs font-medium text-gray-500">Current Approver</label>
+                                        <label class="text-xs font-medium text-gray-500">Status Approval</label>
                                         <p class="mt-1 text-sm font-semibold text-gray-900">
                                             @if($approval->status === 'pending')
-                                                <i class="fas fa-user text-blue-600 mr-1"></i>Staff Accounting
-                                            @elseif($approval->status === 'staff_approved')
-                                                <i class="fas fa-user-tie text-purple-600 mr-1"></i>Manager Keuangan
+                                                <i class="fas fa-clock text-blue-600 mr-1"></i>Menunggu Approval
                                             @elseif($approval->status === 'completed')
                                                 <i class="fas fa-check-circle text-green-600 mr-1"></i>Selesai
+                                            @elseif($approval->status === 'rejected')
+                                                <i class="fas fa-times-circle text-red-600 mr-1"></i>Ditolak
                                             @else
                                                 -
                                             @endif
@@ -313,20 +319,20 @@
 
                                     @if($approval->staff)
                                         <div>
-                                            <label class="text-xs font-medium text-gray-500">Staff</label>
+                                            <label class="text-xs font-medium text-gray-500">Disetujui Oleh</label>
                                             <p class="mt-1 text-sm text-gray-900">
                                                 <i class="fas fa-check text-green-500 mr-1"></i>
-                                                {{ $approval->staff->nama }}
+                                                {{ $approval->staff->nama }} (Staff Accounting)
                                             </p>
                                         </div>
                                     @endif
 
                                     @if($approval->manager)
                                         <div>
-                                            <label class="text-xs font-medium text-gray-500">Manager (Final Approval)</label>
+                                            <label class="text-xs font-medium text-gray-500">Disetujui Oleh</label>
                                             <p class="mt-1 text-sm text-gray-900">
                                                 <i class="fas fa-check text-green-500 mr-1"></i>
-                                                {{ $approval->manager->nama }}
+                                                {{ $approval->manager->nama }} (Manager Accounting)
                                             </p>
                                         </div>
                                     @endif
@@ -343,13 +349,8 @@
                                     ></textarea>
                                 </div>
 
-                                {{-- Upload Bukti Pembayaran (Only for Manager) --}}
-                                @php
-                                    $user = Auth::user();
-                                    $isManager = $user->role === 'manager_accounting' && $approval->status === 'staff_approved';
-                                @endphp
-
-                                @if($isManager)
+                                {{-- Upload Bukti Pembayaran (Wajib untuk semua anggota keuangan) --}}
+                                @if($approval->status === 'pending')
                                     <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                         <label class="flex items-center text-sm font-semibold text-gray-900 mb-2">
                                             <i class="fas fa-file-upload text-blue-600 mr-2"></i>
@@ -393,7 +394,7 @@
                                         <div class="mt-2 flex items-start">
                                             <i class="fas fa-info-circle text-blue-500 text-xs mt-0.5 mr-1"></i>
                                             <p class="text-xs text-blue-700">
-                                                Bukti pembayaran wajib diupload untuk menyelesaikan approval sebagai Manager.
+                                                Bukti pembayaran wajib diupload untuk menyelesaikan approval.
                                             </p>
                                         </div>
                                     </div>

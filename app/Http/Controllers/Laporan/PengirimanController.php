@@ -38,6 +38,7 @@ class PengirimanController extends Controller
         
         $weeklyStats = $this->getWeeklyStats($weekStart, $weekEnd);
         $totalStats = $this->getTotalStats();
+        $yearlyHargaStats = $this->getYearlyHargaStats(now()->year);
         
         // Get year range from tanggal_kirim
         $yearRange = $this->getYearRange();
@@ -72,14 +73,15 @@ class PengirimanController extends Controller
         
         $pengirimanData = $pengirimanQuery->orderBy('tanggal_kirim', 'desc')->paginate(15);
         
-        // Get purchasing users for filter dropdown
-        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])->get();
+        // Get purchasing users for filter dropdown (including direktur)
+        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
         
         return view('pages.laporan.pengiriman', compact(
             'title', 
             'activeTab',
             'weeklyStats',
             'totalStats',
+            'yearlyHargaStats',
             'chartData',
             'yearRange',
             'pengirimanData',
@@ -124,13 +126,15 @@ class PengirimanController extends Controller
         $weeklyData = Pengiriman::whereBetween($dateField, [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')])
             ->selectRaw('
                 COUNT(*) as total_pengiriman,
-                COALESCE(SUM(total_qty_kirim), 0) as total_tonase
+                COALESCE(SUM(total_qty_kirim), 0) as total_tonase,
+                COALESCE(SUM(total_harga_kirim), 0) as total_harga
             ')
             ->first();
             
         return [
             'total_pengiriman' => $weeklyData->total_pengiriman ?? 0,
             'total_tonase' => $weeklyData->total_tonase ?? 0,
+            'total_harga' => $weeklyData->total_harga ?? 0,
             'week_start' => $weekStart->format('d M Y') . ' (Selasa)',
             'week_end' => $weekEnd->format('d M Y') . ' (Senin)'
         ];
@@ -147,6 +151,26 @@ class PengirimanController extends Controller
         return [
             'total_pengiriman' => $totalData->total_pengiriman ?? 0,
             'total_tonase' => $totalData->total_tonase ?? 0
+        ];
+    }
+    
+    private function getYearlyHargaStats($year)
+    {
+        $dateField = 'tanggal_kirim';
+        $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
+        if (!$testQuery) {
+            $dateField = 'created_at';
+        }
+        
+        $yearlyData = Pengiriman::whereYear($dateField, $year)
+            ->selectRaw('
+                COALESCE(SUM(total_harga_kirim), 0) as total_harga_tahun
+            ')
+            ->first();
+            
+        return [
+            'total_harga_tahun' => $yearlyData->total_harga_tahun ?? 0,
+            'year' => $year
         ];
     }
     
@@ -174,16 +198,10 @@ class PengirimanController extends Controller
             ->with('purchasing')
             ->get();
             
-        // Get all purchasing users (both manager and staff)
-        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])->get();
+        // Get all purchasing users (both manager and staff) + direktur
+        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
         
-        // If no purchasing users, create sample data for demonstration
-        if ($purchasingUsers->isEmpty()) {
-            $purchasingUsers = collect([
-                (object)['id' => 1, 'nama' => 'Sample Manager Purchasing'],
-                (object)['id' => 2, 'nama' => 'Sample Staff Purchasing']
-            ]);
-        }
+      
         
         // Initialize chart data structure
         $chartData = [];

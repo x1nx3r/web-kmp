@@ -56,6 +56,35 @@
     </div>
 </div>
 
+<!-- Additional Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
+    <div class="bg-white rounded-xl shadow-lg border border-emerald-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-xl bg-emerald-500 text-white shadow-lg">
+                <i class="fas fa-money-bill-wave text-lg sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-emerald-700 truncate">Harga Beli Minggu Ini</p>
+                <p class="text-xl sm:text-2xl font-bold text-emerald-900">Rp {{ number_format($weeklyStats['total_harga'], 0, ',', '.') }}</p>
+                <p class="text-xs text-emerald-600 truncate">{{ $weeklyStats['week_start'] }} - {{ $weeklyStats['week_end'] }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-lg border border-teal-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-xl bg-teal-500 text-white shadow-lg">
+                <i class="fas fa-chart-line text-lg sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-teal-700 truncate">Harga Beli Tahun {{ $yearlyHargaStats['year'] }}</p>
+                <p class="text-xl sm:text-2xl font-bold text-teal-900">Rp {{ number_format($yearlyHargaStats['total_harga_tahun'], 0, ',', '.') }}</p>
+                <p class="text-xs text-teal-600">Total keseluruhan tahun</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Combined Chart Section -->
 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-6">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4 space-y-4 lg:space-y-0">

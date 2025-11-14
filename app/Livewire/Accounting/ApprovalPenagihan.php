@@ -412,6 +412,10 @@ class ApprovalPenagihan extends Component
             return 'manager_keuangan';
         } elseif ($user->role === 'staff_accounting') {
             return 'staff';
+        } elseif ($user->role === 'direktur') {
+            return 'direktur';
+        } elseif ($user->role === 'superadmin') {
+            return 'superadmin';
         }
 
         return null;

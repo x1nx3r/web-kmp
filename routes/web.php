@@ -102,8 +102,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
     });
 
-    // Accounting routes - for accounting staff, manager, and superadmin
-    Route::prefix('accounting')->name('accounting.')->group(function () {
+    // Accounting routes - for accounting staff, manager, direktur, and superadmin
+    Route::middleware(['role:staff_accounting,manager_accounting,direktur,superadmin'])->prefix('accounting')->name('accounting.')->group(function () {
         // Approval Pembayaran
         Route::get('/approval-pembayaran', function() {
             return view('pages.accounting.approval-pembayaran');

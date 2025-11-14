@@ -25,6 +25,13 @@ class ApprovePembayaran extends Component
     public $notes = '';
     public $buktiPembayaran;
 
+    // Piutang form
+    public $piutangForm = [
+        'catatan_piutang_id' => null,
+        'amount' => 0,
+        'notes' => '',
+    ];
+
     // Refraksi form
     public $refraksiForm = [
         'type' => 'qty',
@@ -58,6 +65,11 @@ class ApprovePembayaran extends Component
         $this->invoicePenagihan = InvoicePenagihan::where('pengiriman_id', $this->pengiriman->id)->first();
 
         $this->approvalHistory = $this->approval->histories;
+
+        // Load piutang values from approval pembayaran
+        $this->piutangForm['catatan_piutang_id'] = $this->approval->catatan_piutang_id;
+        $this->piutangForm['amount'] = $this->approval->piutang_amount ?? 0;
+        $this->piutangForm['notes'] = $this->approval->piutang_notes ?? '';
 
         // Load refraksi values from approval pembayaran
         $this->refraksiForm['type'] = $this->approval->refraksi_type ?? 'qty';
@@ -109,6 +121,10 @@ class ApprovePembayaran extends Component
             if ($role === 'manager_keuangan') {
                 $updateData['manager_id'] = $user->id;
                 $updateData['manager_approved_at'] = now();
+            } elseif ($role === 'direktur' || $role === 'superadmin') {
+                // Direktur dan superadmin menggunakan manager_id field
+                $updateData['manager_id'] = $user->id;
+                $updateData['manager_approved_at'] = now();
             } else {
                 $updateData['staff_id'] = $user->id;
                 $updateData['staff_approved_at'] = now();
@@ -121,8 +137,29 @@ class ApprovePembayaran extends Component
                 'status' => 'berhasil',
             ]);
 
+            // Process piutang as pembayaran if exists
+            if ($this->approval->catatan_piutang_id && $this->approval->piutang_amount > 0) {
+                $catatanPiutang = \App\Models\CatatanPiutang::find($this->approval->catatan_piutang_id);
+
+                if ($catatanPiutang) {
+                    // Create pembayaran piutang record
+                    \App\Models\PembayaranPiutang::create([
+                        'catatan_piutang_id' => $catatanPiutang->id,
+                        'no_pembayaran' => \App\Models\PembayaranPiutang::generateNoPembayaran(),
+                        'tanggal_bayar' => now(),
+                        'jumlah_bayar' => $this->approval->piutang_amount,
+                        'metode_pembayaran' => 'potong_pembayaran',
+                        'catatan' => 'Pemotongan dari pembayaran pengiriman ' . $this->approval->pengiriman->no_pengiriman . ($this->approval->piutang_notes ? ' - ' . $this->approval->piutang_notes : ''),
+                        'created_by' => $user->id,
+                    ]);
+
+                    // Update sisa piutang
+                    $catatanPiutang->updateSisaPiutang();
+                }
+            }
+
             // Create Invoice Penagihan and Approval Penagihan automatically
-            $this->createInvoiceAndApprovalPenagihan();
+            $this->createInvoiceAndApprovalPenagihan($user->id);
 
             // Save history
             ApprovalHistory::create([
@@ -192,6 +229,49 @@ class ApprovePembayaran extends Component
         }
     }
 
+    public function updatePiutang()
+    {
+        if (!$this->approval) {
+            session()->flash('error', 'Data approval tidak ditemukan');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            // Validate amount if piutang is selected
+            if ($this->piutangForm['catatan_piutang_id'] && $this->piutangForm['amount'] <= 0) {
+                throw new \Exception('Jumlah pengurangan hutang harus lebih dari 0');
+            }
+
+            // Get catatan piutang if selected
+            if ($this->piutangForm['catatan_piutang_id']) {
+                $catatanPiutang = \App\Models\CatatanPiutang::find($this->piutangForm['catatan_piutang_id']);
+
+                if (!$catatanPiutang) {
+                    throw new \Exception('Data piutang tidak ditemukan');
+                }
+
+                // Validate amount tidak melebihi sisa piutang
+                if ($this->piutangForm['amount'] > $catatanPiutang->sisa_piutang) {
+                    throw new \Exception('Jumlah pengurangan tidak boleh melebihi sisa piutang Rp ' . number_format($catatanPiutang->sisa_piutang, 0, ',', '.'));
+                }
+            }
+
+            $this->approval->update([
+                'catatan_piutang_id' => $this->piutangForm['catatan_piutang_id'],
+                'piutang_amount' => $this->piutangForm['amount'],
+                'piutang_notes' => $this->piutangForm['notes'],
+            ]);
+
+            DB::commit();
+            session()->flash('message', 'Data piutang berhasil disimpan');
+            $this->loadApproval();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', $e->getMessage());
+        }
+    }
+
     public function updateRefraksi()
     {
         if (!$this->approval) {
@@ -250,7 +330,7 @@ class ApprovePembayaran extends Component
         }
     }
 
-    private function createInvoiceAndApprovalPenagihan()
+    private function createInvoiceAndApprovalPenagihan($userId)
     {
         // Check if invoice already exists
         $existingInvoice = InvoicePenagihan::where('pengiriman_id', $this->approval->pengiriman_id)->first();
@@ -299,6 +379,19 @@ class ApprovePembayaran extends Component
         $taxAmount = $subtotal * ($taxPercentage / 100);
         $totalAmount = $subtotal + $taxAmount;
 
+        // Prepare items array from pengiriman details
+        $items = [];
+        if ($pengiriman->details && count($pengiriman->details) > 0) {
+            foreach ($pengiriman->details as $detail) {
+                $items[] = [
+                    'description' => $detail->bahanBakuKlien->nama_bahan_baku ?? 'Item',
+                    'quantity' => $detail->qty_kirim,
+                    'unit_price' => $detail->harga_kirim,
+                    'total' => $detail->total_harga,
+                ];
+            }
+        }
+
         // Create Invoice
         $invoice = InvoicePenagihan::create([
             'pengiriman_id' => $pengiriman->id,
@@ -309,6 +402,7 @@ class ApprovePembayaran extends Component
             'customer_address' => $klien->cabang ?? '-',
             'customer_phone' => $klien->no_hp ?? null,
             'customer_email' => null,
+            'items' => $items,
             'subtotal' => $subtotal,
             'tax_percentage' => $taxPercentage,
             'tax_amount' => $taxAmount,
@@ -323,6 +417,7 @@ class ApprovePembayaran extends Component
             'amount_after_refraksi' => $subtotal,
             'status' => 'pending',
             'notes' => 'Invoice dibuat otomatis dari approval pembayaran',
+            'created_by' => $userId,
         ]);
 
         // Create Approval Penagihan
@@ -339,6 +434,10 @@ class ApprovePembayaran extends Component
             return 'manager_keuangan';
         } elseif ($user->role === 'staff_accounting') {
             return 'staff';
+        } elseif ($user->role === 'direktur') {
+            return 'direktur';
+        } elseif ($user->role === 'superadmin') {
+            return 'superadmin';
         }
         return null;
     }

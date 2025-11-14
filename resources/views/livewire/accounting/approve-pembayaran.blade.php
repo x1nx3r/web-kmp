@@ -189,6 +189,180 @@
                         </div>
                     @endif
 
+                    {{-- Piutang Supplier --}}
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm border border-blue-200">
+                        <div class="border-b border-blue-200 bg-blue-100 px-6 py-4">
+                            <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-file-invoice text-blue-600 mr-3"></i>
+                                Potong Piutang Supplier (Opsional)
+                            </h2>
+                            <p class="text-sm text-blue-700 mt-1">Kurangi pembayaran dengan piutang yang dimiliki supplier</p>
+                        </div>
+                        <div class="p-6">
+                            @php
+                                $supplier = $pengiriman->pengirimanDetails->first()?->bahanBakuSupplier?->supplier;
+                                $totalPiutang = $supplier ? \App\Models\CatatanPiutang::where('supplier_id', $supplier->id)
+                                    ->where('status', '!=', 'lunas')
+                                    ->sum('sisa_piutang') : 0;
+                            @endphp
+
+                            {{-- Info Total Piutang Supplier --}}
+                            <div class="bg-white border-2 border-blue-300 rounded-lg p-4 mb-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <label class="text-xs font-medium text-blue-700">Total Piutang Supplier</label>
+                                        @if($supplier)
+                                            <p class="text-xs text-gray-600 mt-0.5">{{ $supplier->nama }}</p>
+                                        @endif
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-bold {{ $totalPiutang > 0 ? 'text-orange-600' : 'text-gray-600' }}">
+                                            Rp {{ number_format($totalPiutang, 0, ',', '.') }}
+                                        </p>
+                                        @if($totalPiutang > 0)
+                                            <p class="text-xs text-orange-600 mt-0.5">
+                                                <i class="fas fa-exclamation-circle mr-1"></i>Ada piutang
+                                            </p>
+                                        @else
+                                            <p class="text-xs text-gray-500 mt-0.5">
+                                                <i class="fas fa-check-circle mr-1"></i>Tidak ada piutang
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if($approval->catatan_piutang_id)
+                                <div class="bg-white border border-blue-200 rounded-lg p-4 mb-4">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs font-medium text-blue-700">Piutang Dipilih</label>
+                                            <p class="mt-1 text-sm font-semibold">{{ $approval->catatanPiutang->no_piutang ?? '-' }}</p>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-blue-700">Jumlah Pemotongan</label>
+                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($approval->piutang_amount, 0, ',', '.') }}</p>
+                                        </div>
+                                        @if($approval->piutang_notes)
+                                        <div class="col-span-2">
+                                            <label class="text-xs font-medium text-blue-700">Catatan</label>
+                                            <p class="mt-1 text-sm text-gray-700">{{ $approval->piutang_notes }}</p>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Edit Piutang Form --}}
+                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                                    <i class="fas fa-edit text-indigo-600 mr-2"></i>
+                                    {{ $approval->catatan_piutang_id ? 'Edit' : 'Tambah' }} Pemotongan Piutang (Opsional)
+                                </h3>
+
+                                @php
+                                    $piutangList = $supplier ? \App\Models\CatatanPiutang::where('supplier_id', $supplier->id)
+                                        ->where('status', '!=', 'lunas')
+                                        ->where('sisa_piutang', '>', 0)
+                                        ->with('supplier')
+                                        ->get() : collect();
+                                @endphp
+
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">
+                                            Pilih Piutang Supplier
+                                            @if($supplier)
+                                                <span class="text-blue-600">({{ $supplier->nama }})</span>
+                                            @endif
+                                        </label>
+                                        <select wire:model="piutangForm.catatan_piutang_id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">-- Tidak ada pemotongan piutang --</option>
+                                            @foreach($piutangList as $piutang)
+                                                <option value="{{ $piutang->id }}">
+                                                    {{ $piutang->no_piutang }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @if($piutangList->isEmpty() && $supplier)
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Supplier ini tidak memiliki piutang aktif
+                                            </p>
+                                        @endif
+                                    </div>
+
+                                    @if($piutangForm['catatan_piutang_id'])
+                                        @php
+                                            $selectedPiutang = $piutangList->firstWhere('id', $piutangForm['catatan_piutang_id']);
+                                        @endphp
+                                        <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                            <p class="text-xs font-medium text-blue-800 mb-2">Informasi Piutang Terpilih</p>
+                                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                                <div>
+                                                    <span class="text-gray-600">Total Piutang:</span>
+                                                    <span class="font-semibold ml-2">Rp {{ number_format($selectedPiutang->jumlah_piutang ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-600">Sisa Piutang:</span>
+                                                    <span class="font-semibold ml-2 text-orange-600">Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-2">
+                                                Jumlah Pemotongan <span class="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                wire:model="piutangForm.amount"
+                                                max="{{ $selectedPiutang->sisa_piutang ?? 0 }}"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Masukkan jumlah pemotongan"
+                                            >
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Maksimal: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
+                                            <textarea
+                                                wire:model="piutangForm.notes"
+                                                rows="2"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Tambahkan catatan untuk pemotongan ini..."
+                                            ></textarea>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                    <p class="text-xs text-yellow-800 flex items-start">
+                                        <i class="fas fa-exclamation-triangle mr-2 mt-0.5"></i>
+                                        <span>
+                                            <strong>Perhatian:</strong> Jumlah pemotongan akan otomatis dikurangkan dari pembayaran dan dicatat sebagai pembayaran piutang ketika approval disetujui.
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div class="flex justify-end mt-4">
+                                    <button
+                                        type="button"
+                                        wire:click="updatePiutang"
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center"
+                                    >
+                                        <i class="fas fa-save mr-2"></i>
+                                        Simpan Pemotongan Piutang
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Refraksi Pembayaran --}}
                     <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200">
                         <div class="border-b border-green-200 bg-green-100 px-6 py-4">

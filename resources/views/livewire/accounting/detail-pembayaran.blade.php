@@ -358,7 +358,7 @@
                                         <p class="text-gray-700 font-medium mb-2">Dokumen PDF</p>
                                         <p class="text-sm text-gray-500 mb-4">Bukti pembayaran dalam format PDF</p>
                                         <a
-                                            href="{{ asset('storage/' . $approval->bukti_pembayaran) }}"
+                                            href="{{ Storage::url($approval->bukti_pembayaran) }}"
                                             target="_blank"
                                             class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
                                         >
@@ -366,7 +366,7 @@
                                             Buka PDF
                                         </a>
                                         <a
-                                            href="{{ asset('storage/' . $approval->bukti_pembayaran) }}"
+                                            href="{{ Storage::url($approval->bukti_pembayaran) }}"
                                             download
                                             class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors ml-2"
                                         >
@@ -377,18 +377,15 @@
                                 </div>
                             @else
                                 {{-- Image Preview --}}
-                                <div class="relative group w-full max-w-2xl">
+                                <div class="relative w-full max-w-2xl bg-white p-4 rounded-lg">
                                     <img
-                                        src="{{ asset('storage/' . $approval->bukti_pembayaran) }}"
+                                        src="{{ Storage::url($approval->bukti_pembayaran) }}"
                                         alt="Bukti Pembayaran"
                                         class="w-full h-auto rounded-lg shadow-md border-2 border-gray-200 hover:border-green-400 transition-all cursor-pointer"
-                                        onclick="openPaymentModal('{{ asset('storage/' . $approval->bukti_pembayaran) }}')"
+                                        onclick="openPaymentModal('{{ Storage::url($approval->bukti_pembayaran) }}')"
                                     >
-                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
-                                        <i class="fas fa-search-plus text-white text-3xl opacity-0 group-hover:opacity-100 transition-all"></i>
-                                    </div>
                                 </div>
-                                <p class="mt-3 text-sm text-gray-500 flex items-center">
+                                <p class="mt-3 text-sm text-gray-500 flex items-center justify-center">
                                     <i class="fas fa-info-circle mr-2"></i>
                                     Klik gambar untuk memperbesar
                                 </p>
@@ -409,12 +406,12 @@
                 </div>
 
                 {{-- Payment Image Modal --}}
-                <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4" onclick="closePaymentModal()">
+                <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4" onclick="if(event.target === this) closePaymentModal()">
                     <div class="relative max-w-6xl max-h-full">
-                        <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center">
+                        <button onclick="closePaymentModal(); event.stopPropagation();" class="absolute -top-12 right-0 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center z-10">
                             <i class="fas fa-times text-xl"></i>
                         </button>
-                        <img id="paymentModalImage" src="" alt="Bukti Pembayaran" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl">
+                        <img id="paymentModalImage" src="" alt="Bukti Pembayaran" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl bg-white">
                     </div>
                 </div>
 

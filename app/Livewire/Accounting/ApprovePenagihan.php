@@ -84,6 +84,10 @@ class ApprovePenagihan extends Component
             if ($role === 'manager_keuangan') {
                 $updateData['manager_id'] = $user->id;
                 $updateData['manager_approved_at'] = now();
+            } elseif ($role === 'direktur' || $role === 'superadmin') {
+                // Direktur dan superadmin menggunakan manager_id field
+                $updateData['manager_id'] = $user->id;
+                $updateData['manager_approved_at'] = now();
             } else {
                 $updateData['staff_id'] = $user->id;
                 $updateData['staff_approved_at'] = now();
@@ -224,6 +228,10 @@ class ApprovePenagihan extends Component
             return 'manager_keuangan';
         } elseif ($user->role === 'staff_accounting') {
             return 'staff';
+        } elseif ($user->role === 'direktur') {
+            return 'direktur';
+        } elseif ($user->role === 'superadmin') {
+            return 'superadmin';
         }
 
         return null;

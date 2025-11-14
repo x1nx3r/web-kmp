@@ -4,10 +4,6 @@
     <meta charset="utf-8">
     <title>Invoice {{ $invoice->invoice_number }}</title>
     <style>
-        @page {
-            margin: 20mm 15mm;
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -15,151 +11,109 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            font-size: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
             color: #000;
-            line-height: 1.4;
+            padding: 20px;
         }
 
-        table {
+        .header-section {
             width: 100%;
+            margin-bottom: 20px;
             border-collapse: collapse;
         }
 
-        /* Header Section */
-        .header-section {
-            width: 100%;
-            margin-bottom: 15px;
+        .header-section td {
+            vertical-align: middle;
+            padding: 10px 0;
         }
 
         .logo-cell {
-            width: 150px;
-            vertical-align: top;
-        }
-
-        .logo-kmp {
-            font-size: 45px;
-            font-weight: bold;
-            line-height: 0.9;
-            letter-spacing: -2px;
-            margin-bottom: 2px;
-        }
-
-        .logo-kmp .k { color: #4169E1; }
-        .logo-kmp .m { color: #00CED1; }
-        .logo-kmp .p { color: #32CD32; }
-
-        .logo-subtitle {
-            font-size: 7px;
-            color: #DC143C;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .invoice-title {
-            text-align: right;
-            vertical-align: top;
-        }
-
-        .invoice-title h1 {
-            font-size: 45px;
-            color: #4169E1;
-            font-weight: bold;
-            letter-spacing: 8px;
-            margin: 0;
-        }
-
-        /* Company Info */
-        .company-info {
-            font-size: 9px;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .company-info strong {
-            font-weight: bold;
-        }
-
-        /* Info Table */
-        .info-table {
-            margin: 15px 0;
-        }
-
-        .info-table th {
-            background-color: #5DBAAF;
-            color: white;
-            padding: 8px;
-            font-size: 9px;
-            font-weight: bold;
-            text-transform: uppercase;
-            border-right: 2px solid white;
+            width: 50%;
             text-align: left;
         }
 
-        .info-table th:last-child {
-            border-right: none;
+        .invoice-title {
+            width: 50%;
+            text-align: right;
         }
 
-        .info-table td {
-            padding: 8px;
-            font-size: 9px;
-            border: 1px solid #5DBAAF;
-            border-top: none;
+        .invoice-title h1 {
+            color: #4A90E2;
+            font-size: 36pt;
+            font-weight: bold;
+            margin: 0;
+            letter-spacing: 3px;
         }
 
-        /* Customer Section */
+        .company-info {
+            font-size: 9pt;
+            line-height: 1.6;
+            color: #333;
+        }
+
         .customer-section {
-            margin: 15px 0;
+            text-align: right;
+            font-size: 10pt;
         }
 
         .customer-label {
-            font-size: 9px;
-            font-weight: bold;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
+            font-weight: normal;
         }
 
         .customer-name {
-            font-size: 10px;
             font-weight: bold;
-            margin-bottom: 2px;
+            font-size: 11pt;
+            margin-bottom: 3px;
         }
 
         .customer-phone {
-            font-size: 9px;
+            font-size: 9pt;
         }
 
-        /* Items Table */
-        .items-table {
-            margin: 15px 0;
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
         }
 
-        .items-table thead th {
-            background-color: #5DBAAF;
+        .info-table th {
+            background-color: #5CB85C;
             color: white;
-            padding: 8px 6px;
-            font-size: 9px;
+            padding: 10px;
+            text-align: left;
+            font-size: 9pt;
             font-weight: bold;
-            text-transform: uppercase;
-            border: 1px solid white;
+            border: 1px solid #5CB85C;
         }
 
-        .items-table tbody td {
-            padding: 6px;
-            font-size: 9px;
+        .info-table td {
+            background-color: white;
+            padding: 10px;
             border: 1px solid #ddd;
+            font-size: 9pt;
         }
 
-        .items-table tbody tr:last-child td {
-            border-bottom: 1px solid #5DBAAF;
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
         }
 
-        .items-table tbody td:first-child {
-            border-left: 1px solid #5DBAAF;
+        .items-table th {
+            background-color: #5CB85C;
+            color: white;
+            padding: 10px 8px;
+            font-size: 9pt;
+            font-weight: bold;
+            border: 1px solid #5CB85C;
         }
 
-        .items-table tbody td:last-child {
-            border-right: 1px solid #5DBAAF;
+        .items-table td {
+            padding: 10px 8px;
+            border: 1px solid #ddd;
+            font-size: 9pt;
         }
 
         .text-center {
@@ -170,101 +124,99 @@
             text-align: right;
         }
 
-        /* Summary Section */
         .summary-section {
             width: 100%;
             margin-top: 20px;
+            border-collapse: collapse;
         }
 
         .summary-spacer {
-            width: 60%;
+            width: 50%;
         }
 
         .summary-content {
-            width: 40%;
+            width: 50%;
             vertical-align: top;
         }
 
         .summary-row {
             width: 100%;
-            margin-bottom: 8px;
+            border-collapse: collapse;
+            margin-bottom: 5px;
         }
 
         .summary-row td {
-            padding: 5px 8px;
-            font-size: 9px;
-            font-weight: 600;
+            padding: 8px 10px;
+            font-size: 10pt;
         }
 
         .summary-label {
-            text-transform: uppercase;
-            width: 60%;
+            text-align: right;
+            font-weight: bold;
+            width: 50%;
         }
 
         .summary-value {
             text-align: right;
-            width: 40%;
+            width: 50%;
+        }
+
+        .total-row {
+            background-color: #5CB85C;
+            color: white;
+            font-weight: bold;
+            margin-top: 5px;
         }
 
         .total-row td {
-            background-color: #5DBAAF;
-            color: white;
-            font-weight: bold;
-            font-size: 10px;
-            padding: 10px 8px;
+            padding: 10px;
+            font-size: 11pt;
         }
 
-        /* Signature Section */
         .signature-section {
             width: 100%;
-            margin-top: 50px;
+            margin-top: 30px;
+            border-collapse: collapse;
         }
 
         .signature-spacer {
-            width: 60%;
+            width: 50%;
         }
 
         .signature-content {
-            width: 40%;
+            width: 50%;
             text-align: center;
             vertical-align: top;
         }
 
         .company-box {
-            display: inline-block;
-            background-color: #4169E1;
+            background-color: #4A90E2;
             color: white;
-            padding: 10px 40px;
-            font-size: 10px;
+            padding: 10px 15px;
             font-weight: bold;
-            margin-bottom: 70px;
+            font-size: 10pt;
+            margin-bottom: 60px;
+            text-align: center;
         }
 
         .signature-line {
-            border-top: 1.5px solid #000;
-            padding-top: 5px;
-            margin: 0 auto;
-            width: 80%;
+            text-align: center;
         }
 
         .signature-name {
-            font-size: 10px;
             font-weight: bold;
-            text-transform: uppercase;
+            font-size: 10pt;
+            margin-bottom: 3px;
         }
 
         .signature-title {
-            font-size: 9px;
+            font-size: 9pt;
             text-transform: uppercase;
-            margin-top: 2px;
         }
 
-        /* Payment Info */
         .payment-section {
             margin-top: 40px;
-            padding-top: 15px;
-            border-top: 1px solid #ccc;
-            font-size: 9px;
+            font-size: 9pt;
             line-height: 1.6;
         }
 
@@ -273,8 +225,15 @@
         }
 
         .bank-account {
-            color: #4169E1;
+            color: #4A90E2;
+        }
+
+        .footer-thankyou {
+            text-align: center;
+            margin-top: 50px;
+            font-size: 10pt;
             font-weight: bold;
+            color: #333;
         }
     </style>
 </head>
@@ -283,10 +242,7 @@
     <table class="header-section">
         <tr>
             <td class="logo-cell">
-                <div class="logo-kmp">
-                    <span class="k">K</span><span class="m">M</span><span class="p">P</span>
-                </div>
-                <div class="logo-subtitle">PT. KAMIL MAJU PERSADA</div>
+                <img src="{{ public_path('assets/image/logo/ptkmp-logo.png') }}" alt="KMP Logo" style="width: 150px; height: auto;">
             </td>
             <td class="invoice-title">
                 <h1>INVOICE</h1>
@@ -294,26 +250,41 @@
         </tr>
     </table>
 
-    {{-- Company Information --}}
-    <div class="company-info">
-        <strong>PT KAMIL MAJU PERSADA</strong><br>
-        @if($company && $company->address)
-            {{ $company->address }}<br>
-        @else
-            Pengadangan Bumi Makmur Sukses Sejahtera B-20<br>
-            Ronto Kalisari, Ds. Prambongan, Kec. Katonas, Gresik<br>
-        @endif
-        @if($company && $company->email)
-            Email : {{ $company->email }}<br>
-        @else
-            Email : kamilmajupersada@gmail.com<br>
-        @endif
-        @if($company && $company->phone)
-            Telp : {{ $company->phone }}
-        @else
-            Telp : 085606614300
-        @endif
-    </div>
+    {{-- Company Information and Customer Section --}}
+    <table style="width: 100%; margin-bottom: 20px;">
+        <tr>
+            <td style="width: 50%; vertical-align: top;">
+                <div class="company-info">
+                    <strong>PT KAMIL MAJU PERSADA</strong><br>
+                    @if($company && $company->address)
+                        {{ $company->address }}<br>
+                    @else
+                        Pengadangan Bumi Makmur Sukses Sejahtera B-20<br>
+                        Ronto Kalisari, Ds. Prambongan, Kec. Katonas, Gresik<br>
+                    @endif
+                    @if($company && $company->email)
+                        Email : {{ $company->email }}<br>
+                    @else
+                        Email : kamilmajupersada@gmail.com<br>
+                    @endif
+                    @if($company && $company->phone)
+                        Telp : {{ $company->phone }}
+                    @else
+                        Telp : 085606614300
+                    @endif
+                </div>
+            </td>
+            <td style="width: 50%; vertical-align: top;">
+                <div class="customer-section" style="margin: 0;">
+                    <div class="customer-label">Kepada Yth:</div>
+                    <div class="customer-name">{{ $invoice->customer_name }}</div>
+                    @if($invoice->customer_phone)
+                        <div class="customer-phone">Telp : {{ $invoice->customer_phone }}</div>
+                    @endif
+                </div>
+            </td>
+        </tr>
+    </table>
 
     {{-- Invoice Information Table --}}
     <table class="info-table">
@@ -334,15 +305,6 @@
             </tr>
         </tbody>
     </table>
-
-    {{-- Customer Information --}}
-    <div class="customer-section">
-        <div class="customer-label">Kepada Yth:</div>
-        <div class="customer-name">{{ $invoice->customer_name }}</div>
-        @if($invoice->customer_phone)
-            <div class="customer-phone">Telp : {{ $invoice->customer_phone }}</div>
-        @endif
-    </div>
 
     {{-- Items Table --}}
     <table class="items-table">
@@ -417,13 +379,7 @@
             <td class="signature-content">
                 <div class="company-box">PT KAMIL MAJU PERSADA</div>
                 <div class="signature-line">
-                    <div class="signature-name">
-                        @if($approval->manager)
-                            {{ strtoupper($approval->manager->nama) }}
-                        @else
-                            MAHENDA ABDILLAH KAMIL
-                        @endif
-                    </div>
+                    <div class="signature-name">MAHENDA ABDILLAH KAMIL</div>
                     <div class="signature-title">Direktur</div>
                 </div>
             </td>
@@ -450,6 +406,11 @@
                 @endif
             </strong>
         </div>
+    </div>
+
+    {{-- Footer Thank You --}}
+    <div class="footer-thankyou">
+        Thank You For Your Business!
     </div>
 </body>
 </html>

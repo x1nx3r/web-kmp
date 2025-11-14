@@ -21,6 +21,9 @@ class ApprovalPembayaran extends Model
         'superadmin_approved_at',
         'status',
         'bukti_pembayaran',
+        'catatan_piutang_id',
+        'piutang_amount',
+        'piutang_notes',
         'refraksi_type',
         'refraksi_value',
         'refraksi_amount',
@@ -34,6 +37,7 @@ class ApprovalPembayaran extends Model
         'staff_approved_at' => 'datetime',
         'manager_approved_at' => 'datetime',
         'superadmin_approved_at' => 'datetime',
+        'piutang_amount' => 'decimal:2',
         'refraksi_value' => 'decimal:2',
         'refraksi_amount' => 'decimal:2',
         'qty_before_refraksi' => 'decimal:2',
@@ -81,6 +85,14 @@ class ApprovalPembayaran extends Model
     {
         return $this->hasMany(ApprovalHistory::class, 'approval_id')
             ->where('approval_type', 'pembayaran');
+    }
+
+    /**
+     * Relasi ke Catatan Piutang
+     */
+    public function catatanPiutang()
+    {
+        return $this->belongsTo(CatatanPiutang::class, 'catatan_piutang_id');
     }
 
     /**

@@ -284,7 +284,7 @@
         </div>
 
         {{-- Card 4: Catatan Pengiriman --}}
-        <div class="bg-amber-200 border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <div class="flex items-center mb-4">
                 <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
                     <i class="fas fa-sticky-note text-purple-600"></i>
@@ -292,15 +292,54 @@
                 <h3 class="text-lg font-semibold text-gray-900">Catatan Pengiriman</h3>
             </div>
             
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                @if($pengiriman->catatan)
-                    <p class="text-sm text-gray-700 whitespace-pre-wrap ">{{ $pengiriman->catatan }}</p>
-                @else
-                    <p class="text-sm text-gray-500 italic">Tidak ada catatan untuk pengiriman ini.</p>
-                @endif
+            {{-- Catatan Sebelumnya --}}
+            <div class="mb-6">
+                <h4 class="text-md font-semibold text-gray-800 mb-3">Catatan Sebelumnya</h4>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    @if($pengiriman->catatan)
+                        <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ $pengiriman->catatan }}</p>
+                    @else
+                        <p class="text-sm text-gray-500 italic">Tidak ada catatan sebelumnya untuk pengiriman ini.</p>
+                    @endif
+                </div>
             </div>
-            {{-- Hidden input for catatan --}}
-            <input type="hidden" name="catatan" value="{{ $pengiriman->catatan ?? '' }}">
+            
+            {{-- Input Catatan Baru --}}
+            <div>
+                <h4 class="text-md font-semibold text-gray-800 mb-3">Tambah/Update Catatan</h4>
+                <div class="space-y-3">
+                    <textarea name="catatan" 
+                              id="catatan_pengiriman"
+                              rows="4"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none transition-colors"
+                              placeholder="Tambahkan catatan baru atau update catatan pengiriman..."
+                              maxlength="500">{{ old('catatan', $pengiriman->catatan ?? '') }}</textarea>
+                    
+                    <div class="flex justify-between items-center text-xs text-gray-500">
+                        <span>
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Catatan akan menggantikan catatan sebelumnya jika diisi
+                        </span>
+                        <span id="catatanCounter">0/500 karakter</span>
+                    </div>
+                    
+                    {{-- Quick Actions --}}
+                    <div class="flex space-x-2">
+                        <button type="button" 
+                                onclick="clearCatatan()" 
+                                class="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-eraser mr-1"></i>
+                            Kosongkan
+                        </button>
+                        <button type="button" 
+                                onclick="resetToOriginal()" 
+                                class="px-3 py-1.5 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors">
+                            <i class="fas fa-undo mr-1"></i>
+                            Reset ke Asli
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </form>
@@ -466,6 +505,122 @@ function updateTotals() {
     if (totalHargaDisplay) totalHargaDisplay.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHarga);
 }
 
+// Functions untuk catatan
+function updateCatatanCounter() {
+    const textarea = document.getElementById('catatan_pengiriman');
+    const counter = document.getElementById('catatanCounter');
+    if (textarea && counter) {
+        const currentLength = textarea.value.length;
+        const maxLength = textarea.getAttribute('maxlength') || 500;
+        counter.textContent = `${currentLength}/${maxLength} karakter`;
+        
+        // Change color based on usage
+        if (currentLength > maxLength * 0.8) {
+            counter.classList.add('text-red-500');
+            counter.classList.remove('text-gray-500');
+        } else {
+            counter.classList.add('text-gray-500');
+            counter.classList.remove('text-red-500');
+        }
+    }
+}
+
+function clearCatatan() {
+    const textarea = document.getElementById('catatan_pengiriman');
+    if (textarea) {
+        textarea.value = '';
+        updateCatatanCounter();
+        textarea.focus();
+    }
+}
+
+function resetToOriginal() {
+    const textarea = document.getElementById('catatan_pengiriman');
+    if (textarea) {
+        // Reset to original value from server
+        textarea.value = '{{ addslashes($pengiriman->catatan ?? '') }}';
+        updateCatatanCounter();
+    }
+}
+
+// Submit pengiriman - menggunakan fungsi global dari pengiriman-masuk blade
+function submitPengiriman() {
+    const form = document.getElementById('pengirimanForm');
+    
+    // Validasi form
+    if (!form.checkValidity()) {
+        // Trigger HTML5 validation
+        form.reportValidity();
+        return;
+    }
+    
+    // Validasi khusus untuk no pengiriman
+    const noPengiriman = document.getElementById('no_pengiriman').value.trim();
+    if (!noPengiriman) {
+        Swal.fire({
+            title: 'Validation Error!',
+            text: 'Nomor pengiriman harus diisi',
+            icon: 'warning',
+            confirmButtonColor: '#EF4444'
+        });
+        return;
+    }
+    
+    // Validasi tanggal kirim
+    const tanggalKirim = document.getElementById('tanggal_kirim').value;
+    if (!tanggalKirim) {
+        Swal.fire({
+            title: 'Validation Error!',
+            text: 'Tanggal kirim harus diisi',
+            icon: 'warning',
+            confirmButtonColor: '#EF4444'
+        });
+        return;
+    }
+    
+    // Validasi minimal 1 detail dengan qty > 0
+    const qtyInputs = document.querySelectorAll('.qty-input');
+    let hasValidQty = false;
+    
+    qtyInputs.forEach(input => {
+        if (parseFloat(input.value) > 0) {
+            hasValidQty = true;
+        }
+    });
+    
+    if (!hasValidQty) {
+        Swal.fire({
+            title: 'Validation Error!',
+            text: 'Minimal harus ada 1 item dengan quantity > 0',
+            icon: 'warning',
+            confirmButtonColor: '#EF4444'
+        });
+        return;
+    }
+    
+    // Konfirmasi submit
+    Swal.fire({
+        title: 'Konfirmasi Pengajuan',
+        text: 'Apakah Anda yakin ingin mengajukan verifikasi pengiriman ini?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#EF4444',
+        confirmButtonText: 'Ya, Ajukan!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Submit form menggunakan fungsi global
+            if (typeof submitForm === 'function') {
+                submitForm('pengirimanForm', 'Mengajukan pengiriman...');
+            } else {
+                // Fallback jika fungsi global tidak ada
+                form.submit();
+            }
+        }
+    });
+}
+
 // Initialize pengiriman modal (mirip seperti di modal forecasting)
 document.addEventListener('DOMContentLoaded', function() {
     // Calculate initial subtotals
@@ -481,5 +636,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update overall totals
     updateTotals();
+    
+    // Initialize catatan counter
+    const catatanTextarea = document.getElementById('catatan_pengiriman');
+    if (catatanTextarea) {
+        // Set up event listener untuk real-time counter update
+        catatanTextarea.addEventListener('input', updateCatatanCounter);
+        catatanTextarea.addEventListener('keyup', updateCatatanCounter);
+        
+        // Initialize counter
+        updateCatatanCounter();
+        
+        // Auto-resize textarea based on content
+        catatanTextarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
 });
 </script>

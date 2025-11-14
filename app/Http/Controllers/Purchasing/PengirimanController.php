@@ -873,10 +873,10 @@ class PengirimanController extends Controller
                 'total_qty_kirim' => $pengiriman->total_qty_kirim
             ]);
 
-            // Update status pengiriman menjadi berhasil
+            // Update status pengiriman menjadi berhasil (tanpa mengubah catatan)
             $pengiriman->update([
-                'status' => 'berhasil',
-                'catatan' => 'berhasil'
+                'status' => 'berhasil'
+                // Catatan tetap sama seperti sebelumnya
             ]);
 
             Log::info("Updated pengiriman status to berhasil");
@@ -943,7 +943,7 @@ class PengirimanController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pengiriman berhasil diverifikasi dan catatan diperbarui menjadi "berhasil"'
+                'message' => 'Pengiriman berhasil diverifikasi'
             ]);
 
         } catch (\Exception $e) {

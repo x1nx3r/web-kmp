@@ -24,6 +24,10 @@ class ApprovePenagihan extends Component
         'value' => 0,
     ];
 
+    // Invoice date form
+    public $invoiceDate;
+    public $dueDate;
+
     public function mount($approvalId)
     {
         $this->approvalId = $approvalId;
@@ -34,7 +38,8 @@ class ApprovePenagihan extends Component
     {
         $this->approval = ApprovalPenagihanModel::with([
             'invoice',
-            'pengiriman.pengirimanDetails.bahanBakuKlien.bahanBaku',
+            'pengiriman.pengirimanDetails.bahanBakuSupplier',
+            'pengiriman.pengirimanDetails.purchaseOrderBahanBaku.bahanBakuKlien',
             'pengiriman.purchaseOrder.klien',
             'histories' => function($query) {
                 $query->orderBy('created_at', 'desc');
@@ -51,6 +56,10 @@ class ApprovePenagihan extends Component
         // Load refraksi values from invoice
         $this->refraksiForm['type'] = $this->invoice->refraksi_type ?? 'qty';
         $this->refraksiForm['value'] = $this->invoice->refraksi_value ?? 0;
+
+        // Load invoice dates
+        $this->invoiceDate = $this->invoice->invoice_date?->format('Y-m-d');
+        $this->dueDate = $this->invoice->due_date?->format('Y-m-d');
     }
 
     public function approve()
@@ -174,39 +183,51 @@ class ApprovePenagihan extends Component
 
         DB::beginTransaction();
         try {
-            // Update refraksi values
-            $this->invoice->refraksi_type = $this->refraksiForm['type'];
-            $this->invoice->refraksi_value = floatval($this->refraksiForm['value']);
+            // Update refraksi values - bisa null/0 untuk tidak ada refraksi
+            $refraksiValue = floatval($this->refraksiForm['value'] ?? 0);
 
-            // Recalculate refraksi
-            $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
-            $amountBeforeRefraksi = $this->pengiriman->total_harga_kirim;
-            $qtyAfterRefraksi = $qtyBeforeRefraksi;
-            $refraksiAmount = 0;
-            $subtotal = $amountBeforeRefraksi;
+            // Jika value 0 atau kosong, set refraksi menjadi null
+            if ($refraksiValue <= 0) {
+                $this->invoice->refraksi_type = null;
+                $this->invoice->refraksi_value = null;
+                $this->invoice->refraksi_amount = 0;
+                $this->invoice->qty_before_refraksi = $this->pengiriman->total_qty_kirim;
+                $this->invoice->qty_after_refraksi = $this->pengiriman->total_qty_kirim;
+                $this->invoice->subtotal = $this->pengiriman->total_harga_kirim;
+            } else {
+                $this->invoice->refraksi_type = $this->refraksiForm['type'];
+                $this->invoice->refraksi_value = $refraksiValue;
 
-            if ($this->invoice->refraksi_type === 'qty') {
-                // Refraksi Qty
-                $refraksiQty = $qtyBeforeRefraksi * ($this->invoice->refraksi_value / 100);
-                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+                // Recalculate refraksi
+                $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
+                $amountBeforeRefraksi = $this->pengiriman->total_harga_kirim;
+                $qtyAfterRefraksi = $qtyBeforeRefraksi;
+                $refraksiAmount = 0;
+                $subtotal = $amountBeforeRefraksi;
 
-                $hargaPerKg = $subtotal / $qtyBeforeRefraksi;
-                $refraksiAmount = $refraksiQty * $hargaPerKg;
-                $subtotal = $subtotal - $refraksiAmount;
-            } elseif ($this->invoice->refraksi_type === 'rupiah') {
-                // Refraksi Rupiah
-                $refraksiAmount = $this->invoice->refraksi_value * $qtyBeforeRefraksi;
-                $subtotal = $subtotal - $refraksiAmount;
-            } elseif ($this->invoice->refraksi_type === 'lainnya') {
-                // Refraksi Lainnya
-                $refraksiAmount = $this->invoice->refraksi_value;
-                $subtotal = $subtotal - $refraksiAmount;
+                if ($this->invoice->refraksi_type === 'qty') {
+                    // Refraksi Qty
+                    $refraksiQty = $qtyBeforeRefraksi * ($this->invoice->refraksi_value / 100);
+                    $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+
+                    $hargaPerKg = $subtotal / $qtyBeforeRefraksi;
+                    $refraksiAmount = $refraksiQty * $hargaPerKg;
+                    $subtotal = $subtotal - $refraksiAmount;
+                } elseif ($this->invoice->refraksi_type === 'rupiah') {
+                    // Refraksi Rupiah
+                    $refraksiAmount = $this->invoice->refraksi_value * $qtyBeforeRefraksi;
+                    $subtotal = $subtotal - $refraksiAmount;
+                } elseif ($this->invoice->refraksi_type === 'lainnya') {
+                    // Refraksi Lainnya
+                    $refraksiAmount = $this->invoice->refraksi_value;
+                    $subtotal = $subtotal - $refraksiAmount;
+                }
+
+                $this->invoice->refraksi_amount = $refraksiAmount;
+                $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
+                $this->invoice->qty_after_refraksi = $qtyAfterRefraksi;
+                $this->invoice->subtotal = $subtotal;
             }
-
-            $this->invoice->refraksi_amount = $refraksiAmount;
-            $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
-            $this->invoice->qty_after_refraksi = $qtyAfterRefraksi;
-            $this->invoice->subtotal = $subtotal;
 
             // Recalculate total using the model method
             $this->invoice->recalculateTotal();
@@ -219,6 +240,38 @@ class ApprovePenagihan extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal mengupdate refraksi: ' . $e->getMessage());
+        }
+    }
+
+    public function updateInvoiceDates()
+    {
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        $this->validate([
+            'invoiceDate' => 'required|date',
+            'dueDate' => 'required|date|after_or_equal:invoiceDate',
+        ], [
+            'invoiceDate.required' => 'Tanggal invoice harus diisi',
+            'invoiceDate.date' => 'Format tanggal invoice tidak valid',
+            'dueDate.required' => 'Tanggal jatuh tempo harus diisi',
+            'dueDate.date' => 'Format tanggal jatuh tempo tidak valid',
+            'dueDate.after_or_equal' => 'Tanggal jatuh tempo harus sama atau setelah tanggal invoice',
+        ]);
+
+        try {
+            $this->invoice->update([
+                'invoice_date' => $this->invoiceDate,
+                'due_date' => $this->dueDate,
+            ]);
+
+            session()->flash('message', 'Tanggal invoice berhasil diupdate');
+            $this->loadApproval();
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengupdate tanggal: ' . $e->getMessage());
         }
     }
 

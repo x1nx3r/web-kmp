@@ -139,7 +139,7 @@
                                                     </div>
                                                     <div>
                                                         <span class="text-gray-500">Bahan Baku:</span>
-                                                        <span class="font-medium text-gray-900">{{ $detail->bahanBakuSupplier->bahanBaku->nama ?? '-' }}</span>
+                                                        <span class="font-medium text-gray-900">{{ $detail->bahanBakuSupplier->nama ?? '-' }}</span>
                                                     </div>
                                                     <div>
                                                         <span class="text-gray-500">Qty:</span>
@@ -159,32 +159,39 @@
                     </div>
 
                     {{-- Refraksi Penagihan (dari Invoice) --}}
-                    @if($invoicePenagihan && $invoicePenagihan->refraksi_type)
+                    @if($invoicePenagihan)
                         <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm border border-purple-200">
                             <div class="border-b border-purple-200 bg-purple-100 px-6 py-4">
                                 <h2 class="text-lg font-semibold text-gray-900 flex items-center">
                                     <i class="fas fa-file-invoice text-purple-600 mr-3"></i>
                                     Refraksi Penagihan (Customer)
                                 </h2>
-                                <p class="text-sm text-purple-700 mt-1">Refraksi yang dikenakan kepada customer</p>
+                                <p class="text-sm text-purple-700 mt-1">Refraksi yang dikenakan kepada customer (opsional)</p>
                             </div>
                             <div class="p-6">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-xs font-medium text-purple-700">Jenis</label>
-                                        <p class="mt-1 text-sm font-semibold">
-                                            @if($invoicePenagihan->refraksi_type === 'qty')
-                                                <i class="fas fa-percentage text-purple-600 mr-1"></i>Qty ({{ number_format($invoicePenagihan->refraksi_value, 2) }}%)
-                                            @else
-                                                <i class="fas fa-money-bill text-purple-600 mr-1"></i>Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
-                                            @endif
-                                        </p>
+                                @if($invoicePenagihan->refraksi_type && $invoicePenagihan->refraksi_value > 0)
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs font-medium text-purple-700">Jenis</label>
+                                            <p class="mt-1 text-sm font-semibold">
+                                                @if($invoicePenagihan->refraksi_type === 'qty')
+                                                    <i class="fas fa-percentage text-purple-600 mr-1"></i>Qty ({{ number_format($invoicePenagihan->refraksi_value, 2) }}%)
+                                                @else
+                                                    <i class="fas fa-money-bill text-purple-600 mr-1"></i>Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-purple-700">Potongan</label>
+                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="text-xs font-medium text-purple-700">Potongan</label>
-                                        <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
-                                    </div>
-                                </div>
+                                @else
+                                    <p class="text-sm text-gray-500 text-center py-3">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Tidak ada refraksi penagihan diterapkan
+                                    </p>
+                                @endif
                             </div>
                         </div>
                     @endif
@@ -402,7 +409,7 @@
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                 <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                                     <i class="fas fa-edit text-yellow-600 mr-2"></i>
-                                    Edit Refraksi Pembayaran
+                                    Edit Refraksi Pembayaran (Opsional - Isi 0 untuk tanpa refraksi)
                                 </h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -415,7 +422,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-700 mb-2">
-                                            Nilai Refraksi
+                                            Nilai Refraksi (0 = tanpa refraksi)
                                             @if($refraksiForm['type'] === 'qty')
                                                 <span class="text-gray-500">(dalam %)</span>
                                             @elseif($refraksiForm['type'] === 'rupiah')
@@ -427,9 +434,10 @@
                                         <input
                                             type="number"
                                             step="0.01"
+                                            min="0"
                                             wire:model="refraksiForm.value"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
-                                            placeholder="{{ $refraksiForm['type'] === 'qty' ? 'Contoh: 2.5' : ($refraksiForm['type'] === 'rupiah' ? 'Contoh: 1000' : 'Contoh: 50000') }}"
+                                            placeholder="{{ $refraksiForm['type'] === 'qty' ? 'Contoh: 2.5 atau 0' : ($refraksiForm['type'] === 'rupiah' ? 'Contoh: 1000 atau 0' : 'Contoh: 50000 atau 0') }}"
                                         >
                                     </div>
                                 </div>

@@ -122,8 +122,49 @@
                         <div class="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg p-6 border border-yellow-200">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <i class="fas fa-percent text-yellow-600 mr-2"></i>
-                                Perhitungan & Refraksi
+                                Perhitungan & Refraksi (Opsional)
                             </h3>
+
+                            {{-- Invoice Date Section --}}
+                            @if($approval->status !== 'completed' && $approval->status !== 'rejected')
+                                <div class="mb-4 p-4 bg-white rounded-lg border border-blue-300">
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        Tanggal Invoice
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-3 mb-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal Invoice</label>
+                                            <input type="date" wire:model="invoiceDate"
+                                                   class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                            @error('invoiceDate') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal Jatuh Tempo</label>
+                                            <input type="date" wire:model="dueDate"
+                                                   class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                            @error('dueDate') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                    <button wire:click="updateInvoiceDates"
+                                            class="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
+                                        <i class="fas fa-save mr-1"></i> Update Tanggal
+                                    </button>
+                                </div>
+                            @else
+                                <div class="mb-4 p-4 bg-white rounded-lg border border-gray-300">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <p class="text-xs text-gray-600">Tanggal Invoice</p>
+                                            <p class="text-sm font-semibold">{{ $invoice->invoice_date?->format('d M Y') }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-600">Tanggal Jatuh Tempo</p>
+                                            <p class="text-sm font-semibold">{{ $invoice->due_date?->format('d M Y') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
 
                             {{-- Display Current Refraksi --}}
                             @if($invoice->refraksi_value > 0)
@@ -155,6 +196,13 @@
                                         Potongan: Rp {{ number_format($invoice->refraksi_amount, 0, ',', '.') }}
                                     </p>
                                 </div>
+                            @else
+                                <div class="mb-4 p-4 bg-white rounded-lg border border-gray-300">
+                                    <p class="text-sm text-gray-500 text-center">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Tidak ada refraksi diterapkan
+                                    </p>
+                                </div>
                             @endif
 
                             {{-- Edit Refraksi Form - Only if not completed --}}
@@ -162,7 +210,7 @@
                                 <div class="mb-4 p-4 bg-white rounded-lg border border-yellow-300">
                                     <h4 class="text-sm font-semibold text-gray-700 mb-3">
                                         <i class="fas fa-edit mr-1"></i>
-                                        Edit Refraksi
+                                        Edit Refraksi (Opsional - Kosongkan untuk tanpa refraksi)
                                     </h4>
                                     <div class="grid grid-cols-2 gap-3 mb-3">
                                         <div>
@@ -175,8 +223,9 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-medium text-gray-700 mb-1">Nilai</label>
-                                            <input type="number" wire:model="refraksiForm.value" step="0.01"
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Nilai (0 = tanpa refraksi)</label>
+                                            <input type="number" wire:model="refraksiForm.value" step="0.01" min="0"
+                                                   placeholder="0"
                                                    class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500">
                                         </div>
                                     </div>
@@ -197,10 +246,6 @@
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Subtotal:</span>
                                     <span class="font-semibold">Rp {{ number_format($invoice->subtotal, 0, ',', '.') }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">PPN ({{ $invoice->tax_percentage }}%):</span>
-                                    <span class="font-semibold">Rp {{ number_format($invoice->tax_amount, 0, ',', '.') }}</span>
                                 </div>
                                 <div class="border-t pt-2 flex justify-between">
                                     <span class="font-bold text-gray-900">Total:</span>

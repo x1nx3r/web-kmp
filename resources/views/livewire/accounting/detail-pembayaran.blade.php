@@ -109,7 +109,7 @@
                                             </div>
                                             <div>
                                                 <label class="text-xs font-medium text-gray-500">Bahan Baku</label>
-                                                <p class="mt-1 text-sm text-gray-900">{{ $detail->bahanBakuSupplier->bahanBaku->nama ?? '-' }}</p>
+                                                <p class="mt-1 text-sm text-gray-900">{{ $detail->bahanBakuSupplier->nama ?? '-' }}</p>
                                             </div>
                                             <div>
                                                 <label class="text-xs font-medium text-gray-500">Qty Kirim</label>

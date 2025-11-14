@@ -39,7 +39,7 @@
         }
 
         .invoice-title h1 {
-            color: #4A90E2;
+            color: #1C46F4;
             font-size: 36pt;
             font-weight: bold;
             margin: 0;
@@ -79,13 +79,13 @@
         }
 
         .info-table th {
-            background-color: #5CB85C;
+            background-color: #2AB672;
             color: white;
             padding: 10px;
             text-align: left;
             font-size: 9pt;
             font-weight: bold;
-            border: 1px solid #5CB85C;
+            border: 1px solid #2AB672;
         }
 
         .info-table td {
@@ -102,12 +102,12 @@
         }
 
         .items-table th {
-            background-color: #5CB85C;
+            background-color: #2AB672;
             color: white;
             padding: 10px 8px;
             font-size: 9pt;
             font-weight: bold;
-            border: 1px solid #5CB85C;
+            border: 1px solid #2AB672;
         }
 
         .items-table td {
@@ -162,7 +162,7 @@
         }
 
         .total-row {
-            background-color: #5CB85C;
+            background-color: #2AB672;
             color: white;
             font-weight: bold;
             margin-top: 5px;
@@ -190,7 +190,7 @@
         }
 
         .company-box {
-            background-color: #4A90E2;
+            background-color: #1C46F4;
             color: white;
             padding: 10px 15px;
             font-weight: bold;
@@ -225,7 +225,7 @@
         }
 
         .bank-account {
-            color: #4A90E2;
+            color: #1C46F4;
         }
 
         .footer-thankyou {
@@ -321,7 +321,7 @@
             @forelse($pengiriman->details as $index => $detail)
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ $detail->bahanBakuKlien->nama_bahan_baku }}</td>
+                    <td>{{ $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
                     <td class="text-center">{{ number_format($detail->qty_kirim, 2, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($detail->harga_kirim, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($detail->total_harga, 0, ',', '.') }}</td>
@@ -378,6 +378,9 @@
             <td class="signature-spacer"></td>
             <td class="signature-content">
                 <div class="company-box">PT KAMIL MAJU PERSADA</div>
+                <div style="margin-bottom: 10px;">
+                    <img src="{{ public_path('assets/image/signature/vitol.jpg') }}" alt="Signature" style="width: 150px; height: auto;">
+                </div>
                 <div class="signature-line">
                     <div class="signature-name">MAHENDA ABDILLAH KAMIL</div>
                     <div class="signature-title">Direktur</div>
@@ -391,20 +394,8 @@
         <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong>MSF</strong></div>
         <div>
             Transfer <strong>Via Mandiri</strong><br>
-            a/n <strong class="bank-account">
-                @if($company && $company->bank_account_name)
-                    {{ strtoupper($company->bank_account_name) }}
-                @else
-                    PT KAMIL MAJU PERSADA
-                @endif
-            </strong><br>
-            No. Rek : <strong class="bank-account">
-                @if($company && $company->bank_account_number)
-                    {{ $company->bank_account_number }}
-                @else
-                    141-00809998883
-                @endif
-            </strong>
+            a/n <strong class="bank-account">PT KAMIL MAJU PERSADA</strong><br>
+            No. Rek : <strong class="bank-account">141-00809998883</strong>
         </div>
     </div>
 

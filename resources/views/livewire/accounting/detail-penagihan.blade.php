@@ -142,7 +142,7 @@
                                         @foreach($pengiriman->details as $detail)
                                             <tr>
                                                 <td class="px-4 py-3 text-sm text-gray-900">
-                                                    {{ $detail->bahanBakuKlien->nama_bahan_baku }}
+                                                    {{ $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 text-sm text-gray-900 text-right">
                                                     {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg
@@ -204,10 +204,6 @@
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Subtotal:</span>
                                     <span class="font-semibold">Rp {{ number_format($invoice->subtotal, 0, ',', '.') }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">PPN ({{ $invoice->tax_percentage }}%):</span>
-                                    <span class="font-semibold">Rp {{ number_format($invoice->tax_amount, 0, ',', '.') }}</span>
                                 </div>
                                 <div class="border-t pt-2 flex justify-between">
                                     <span class="font-bold text-gray-900">Total:</span>

@@ -30,7 +30,8 @@ class DetailPenagihan extends Component
             'staff',
             'manager',
             'invoice',
-            'pengiriman.details.bahanBakuKlien',
+            'pengiriman.details.bahanBakuSupplier',
+            'pengiriman.details.purchaseOrderBahanBaku.bahanBakuKlien',
             'histories.user'
         ])->findOrFail($this->approvalId);
 
@@ -45,7 +46,8 @@ class DetailPenagihan extends Component
         try {
             $approval = ApprovalPenagihan::with([
                 'invoice',
-                'pengiriman.details.bahanBakuKlien',
+                'pengiriman.details.bahanBakuSupplier',
+                'pengiriman.details.purchaseOrderBahanBaku.bahanBakuKlien',
                 'pengiriman.purchaseOrder.klien'
             ])->findOrFail($this->approvalId);
 

@@ -32,7 +32,8 @@ class DatabaseSeeder extends Seeder
             PurchaseOrderSeeder::class,
             PurchaseOrderBahanBakuSeeder::class,
             CompanySettingSeeder::class,
-            PengirimanAccountingSeeder::class,
+            // PengirimanAccountingSeeder::class, // Old seeder
+            ApprovalAccountingSeeder::class, // New comprehensive seeder with items
         ]);
     }
 }

@@ -47,7 +47,6 @@ class ApprovePembayaran extends Component
     public function loadApproval()
     {
         $this->approval = ApprovalPembayaranModel::with([
-            'pengiriman.pengirimanDetails.bahanBakuSupplier.bahanBaku',
             'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
             'pengiriman.purchaseOrder',
             'histories' => function($query) {
@@ -281,9 +280,8 @@ class ApprovePembayaran extends Component
 
         DB::beginTransaction();
         try {
-            // Update refraksi values untuk approval pembayaran
-            $this->approval->refraksi_type = $this->refraksiForm['type'];
-            $this->approval->refraksi_value = floatval($this->refraksiForm['value']);
+            // Update refraksi values untuk approval pembayaran - bisa null/0 untuk tidak ada refraksi
+            $refraksiValue = floatval($this->refraksiForm['value'] ?? 0);
 
             // Calculate refraksi untuk pembayaran
             $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
@@ -292,30 +290,43 @@ class ApprovePembayaran extends Component
             $amountAfterRefraksi = $amountBeforeRefraksi;
             $refraksiAmount = 0;
 
-            if ($this->approval->refraksi_type === 'qty') {
-                // Refraksi Qty: potong berdasarkan persentase qty
-                $refraksiQty = $qtyBeforeRefraksi * ($this->approval->refraksi_value / 100);
-                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+            // Jika value 0 atau kosong, set refraksi menjadi null
+            if ($refraksiValue <= 0) {
+                $this->approval->refraksi_type = null;
+                $this->approval->refraksi_value = null;
+                $this->approval->refraksi_amount = 0;
+                $this->approval->qty_after_refraksi = $qtyBeforeRefraksi;
+                $this->approval->amount_after_refraksi = $amountBeforeRefraksi;
+            } else {
+                $this->approval->refraksi_type = $this->refraksiForm['type'];
+                $this->approval->refraksi_value = $refraksiValue;
 
-                // Hitung potongan amount berdasarkan qty refraksi
-                $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
-                $refraksiAmount = $refraksiQty * $hargaPerKg;
-                $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
-            } elseif ($this->approval->refraksi_type === 'rupiah') {
-                // Refraksi Rupiah: potongan harga per kg
-                $refraksiAmount = $this->approval->refraksi_value * $qtyBeforeRefraksi;
-                $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
-            } elseif ($this->approval->refraksi_type === 'lainnya') {
-                // Refraksi Lainnya: input manual langsung nominal total potongan
-                $refraksiAmount = $this->approval->refraksi_value;
-                $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                if ($this->approval->refraksi_type === 'qty') {
+                    // Refraksi Qty: potong berdasarkan persentase qty
+                    $refraksiQty = $qtyBeforeRefraksi * ($this->approval->refraksi_value / 100);
+                    $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+
+                    // Hitung potongan amount berdasarkan qty refraksi
+                    $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
+                    $refraksiAmount = $refraksiQty * $hargaPerKg;
+                    $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                } elseif ($this->approval->refraksi_type === 'rupiah') {
+                    // Refraksi Rupiah: potongan harga per kg
+                    $refraksiAmount = $this->approval->refraksi_value * $qtyBeforeRefraksi;
+                    $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                } elseif ($this->approval->refraksi_type === 'lainnya') {
+                    // Refraksi Lainnya: input manual langsung nominal total potongan
+                    $refraksiAmount = $this->approval->refraksi_value;
+                    $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                }
+
+                $this->approval->qty_after_refraksi = $qtyAfterRefraksi;
+                $this->approval->amount_after_refraksi = $amountAfterRefraksi;
+                $this->approval->refraksi_amount = $refraksiAmount;
             }
 
             $this->approval->qty_before_refraksi = $qtyBeforeRefraksi;
-            $this->approval->qty_after_refraksi = $qtyAfterRefraksi;
             $this->approval->amount_before_refraksi = $amountBeforeRefraksi;
-            $this->approval->amount_after_refraksi = $amountAfterRefraksi;
-            $this->approval->refraksi_amount = $refraksiAmount;
 
             $this->approval->save();
 
@@ -353,31 +364,31 @@ class ApprovePembayaran extends Component
         $sequence = $lastInvoice ? (intval(substr($lastInvoice->invoice_number, -4)) + 1) : 1;
         $invoiceNumber = 'INV-' . now()->format('Ym') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
 
-        // Get refraksi from approval pembayaran
+        // Get refraksi from approval pembayaran (opsional)
         $refraksiType = $this->approval->refraksi_type;
         $refraksiValue = $this->approval->refraksi_value ?? 0;
 
-        // Calculate amounts based on refraksi
+        // Calculate amounts based on refraksi (bisa tanpa refraksi)
         $qtyBeforeRefraksi = $pengiriman->total_qty_kirim;
         $amountBeforeRefraksi = $pengiriman->total_harga_kirim;
         $qtyAfterRefraksi = $qtyBeforeRefraksi;
         $refraksiAmount = 0;
 
-        if ($refraksiType === 'qty' && $refraksiValue > 0) {
-            $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
-            $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
-            $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
-            $refraksiAmount = $refraksiQty * $hargaPerKg;
-        } elseif ($refraksiType === 'rupiah' && $refraksiValue > 0) {
-            $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
-        } elseif ($refraksiType === 'lainnya' && $refraksiValue > 0) {
-            $refraksiAmount = $refraksiValue;
+        // Hanya hitung refraksi jika ada type dan value > 0
+        if ($refraksiType && $refraksiValue > 0) {
+            if ($refraksiType === 'qty') {
+                $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
+                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+                $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
+                $refraksiAmount = $refraksiQty * $hargaPerKg;
+            } elseif ($refraksiType === 'rupiah') {
+                $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
+            } elseif ($refraksiType === 'lainnya') {
+                $refraksiAmount = $refraksiValue;
+            }
         }
 
         $subtotal = $amountBeforeRefraksi - $refraksiAmount;
-        $taxPercentage = 11; // PPN 11%
-        $taxAmount = $subtotal * ($taxPercentage / 100);
-        $totalAmount = $subtotal + $taxAmount;
 
         // Prepare items array from pengiriman details
         $items = [];
@@ -404,10 +415,10 @@ class ApprovePembayaran extends Component
             'customer_email' => null,
             'items' => $items,
             'subtotal' => $subtotal,
-            'tax_percentage' => $taxPercentage,
-            'tax_amount' => $taxAmount,
+            'tax_percentage' => 0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total_amount' => $totalAmount,
+            'total_amount' => $subtotal,
             'refraksi_type' => $refraksiType,
             'refraksi_value' => $refraksiValue,
             'refraksi_amount' => $refraksiAmount,

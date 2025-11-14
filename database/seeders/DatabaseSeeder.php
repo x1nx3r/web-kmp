@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             SupplierSeeder::class,
             KlienSeeder::class,
+            KontakKlienSeeder::class, // Contact persons for clients
             BahanBakuKlienSeeder::class, // Now creates client-specific materials with pricing
             BahanBakuSupplierSeeder::class,
             RiwayatHargaBahanBakuSeeder::class,

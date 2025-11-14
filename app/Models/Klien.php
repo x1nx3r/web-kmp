@@ -13,10 +13,16 @@ class Klien extends Model
     protected $fillable = [
         'nama',
         'cabang',
-        'no_hp'
+        'contact_person_id'
     ];
 
     protected $dates = ['deleted_at'];
+
+    // Relationship dengan Contact Person
+    public function contactPerson()
+    {
+        return $this->belongsTo(KontakKlien::class, 'contact_person_id');
+    }
 
     // Scope untuk search
     public function scopeSearch($query, $search)
@@ -25,7 +31,10 @@ class Klien extends Model
         return $query->where(function ($q) use ($search) {
             $q->where('nama', 'like', '%' . $search . '%')
               ->orWhere('cabang', 'like', '%' . $search . '%')
-              ->orWhere('no_hp', 'like', '%' . $search . '%');
+              ->orWhereHas('contactPerson', function ($contactQuery) use ($search) {
+                  $contactQuery->where('nama', 'like', '%' . $search . '%')
+                              ->orWhere('nomor_hp', 'like', '%' . $search . '%');
+              });
         });
     }
 

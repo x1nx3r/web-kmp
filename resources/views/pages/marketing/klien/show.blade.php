@@ -15,8 +15,16 @@
             </div>
 
             <div>
-                <p class="text-xs text-green-600 uppercase font-bold">No HP</p>
-                <p class="text-sm text-gray-900">{{ $klien->no_hp ?? '-' }}</p>
+                <p class="text-xs text-green-600 uppercase font-bold">Contact Person</p>
+                @if($klien->contactPerson)
+                    <p class="text-sm text-gray-900">{{ $klien->contactPerson->nama }}</p>
+                    <p class="text-xs text-gray-500">{{ $klien->contactPerson->nomor_hp ?? 'No HP tidak tersedia' }}</p>
+                    @if($klien->contactPerson->jabatan)
+                        <p class="text-xs text-gray-500">{{ $klien->contactPerson->jabatan }}</p>
+                    @endif
+                @else
+                    <p class="text-sm text-gray-900">-</p>
+                @endif
             </div>
 
             <div>

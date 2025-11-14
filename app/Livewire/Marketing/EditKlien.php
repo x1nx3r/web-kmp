@@ -3,6 +3,7 @@
 namespace App\Livewire\Marketing;
 
 use App\Models\Klien;
+use App\Models\KontakKlien;
 use App\Models\BahanBakuKlien;
 use App\Models\RiwayatHargaKlien;
 use App\Services\AuthFallbackService;
@@ -13,12 +14,13 @@ class EditKlien extends Component
 {
     public Klien $klien;
     public $uniqueCompanies;
+    public $kontakOptions;
 
     // Form data
     public $klienForm = [
         'nama' => '',
         'cabang' => '',
-        'no_hp' => '',
+        'contact_person_id' => '',
     ];
 
     public $materialForm = [
@@ -50,6 +52,7 @@ class EditKlien extends Component
     {
         $this->klien = $klien;
         $this->klien->load([
+            'contactPerson',
             'bahanBakuKliens' => function($query) {
                 $query->with(['riwayatHarga' => function($q) {
                     $q->latest('tanggal_perubahan')->take(5);
@@ -60,10 +63,29 @@ class EditKlien extends Component
         $this->klienForm = [
             'nama' => $klien->nama,
             'cabang' => $klien->cabang,
-            'no_hp' => $klien->no_hp ?? '',
+            'contact_person_id' => $klien->contact_person_id ?? '',
         ];
 
         $this->uniqueCompanies = Klien::distinct('nama')->orderBy('nama')->pluck('nama')->toArray();
+        $this->updateKontakOptions();
+    }
+
+    public function updatedKlienFormNama()
+    {
+        // Reset contact person when company changes
+        $this->klienForm['contact_person_id'] = '';
+        $this->updateKontakOptions();
+    }
+
+    public function updateKontakOptions()
+    {
+        if (!empty($this->klienForm['nama'])) {
+            $this->kontakOptions = KontakKlien::where('klien_nama', $this->klienForm['nama'])
+                ->orderBy('nama')
+                ->get();
+        } else {
+            $this->kontakOptions = collect();
+        }
     }
 
     public function render()
@@ -77,7 +99,7 @@ class EditKlien extends Component
         $this->validate([
             'klienForm.nama' => 'required|string|max:255',
             'klienForm.cabang' => 'required|string|max:255',
-            'klienForm.no_hp' => 'nullable|string|max:30',
+            'klienForm.contact_person_id' => 'nullable|exists:kontak_klien,id',
         ], [
             'klienForm.nama.required' => 'Nama perusahaan wajib diisi',
             'klienForm.cabang.required' => 'Lokasi plant wajib diisi',
@@ -300,7 +322,7 @@ class EditKlien extends Component
                 // Delete placeholder too
                 Klien::where('nama', $companyName)
                     ->where('cabang', 'Kantor Pusat')
-                    ->whereNull('no_hp')
+                    ->whereNull('contact_person_id')
                     ->delete();
                 $message = 'Plant dan perusahaan berhasil dihapus';
             } else {

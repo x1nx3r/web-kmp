@@ -87,16 +87,35 @@
                             </div>
 
                             <div>
-                                <label for="no_hp" class="block text-sm font-medium text-gray-700 mb-2">
-                                    No. HP
+                                <label for="contact_person_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Contact Person
                                 </label>
-                                <input
-                                    type="text"
-                                    wire:model="klienForm.no_hp"
-                                    id="no_hp"
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Masukkan nomor HP"
+                                <select 
+                                    wire:model="klienForm.contact_person_id" 
+                                    id="contact_person_id" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klienForm.contact_person_id') border-red-500 @enderror"
+                                    @if($kontakOptions->isEmpty()) disabled @endif
                                 >
+                                    @if($kontakOptions->isEmpty())
+                                        <option value="">{{ empty($klienForm['nama']) ? 'Pilih perusahaan terlebih dahulu' : 'Tidak ada kontak untuk perusahaan ini' }}</option>
+                                    @else
+                                        <option value="">Pilih Contact Person</option>
+                                        @foreach($kontakOptions as $kontak)
+                                            <option value="{{ $kontak->id }}">
+                                                {{ $kontak->nama }}
+                                                @if($kontak->jabatan)
+                                                    - {{ $kontak->jabatan }}
+                                                @endif
+                                                @if($kontak->nomor_hp)
+                                                    ({{ $kontak->nomor_hp }})
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                @error('klienForm.contact_person_id')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 

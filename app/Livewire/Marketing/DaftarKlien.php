@@ -3,6 +3,7 @@
 namespace App\Livewire\Marketing;
 
 use App\Models\Klien;
+use App\Models\KontakKlien;
 use App\Models\BahanBakuKlien;
 use App\Models\RiwayatHargaKlien;
 use Illuminate\Support\Facades\Auth;
@@ -40,8 +41,10 @@ class DaftarKlien extends Component
         'company_type' => 'existing',
         'company_nama' => '',
         'cabang' => '',
-        'no_hp' => '',
+        'contact_person_id' => '',
     ];
+
+    public $availableContacts;
 
     // Confirmation modal
     public $confirmModal = [
@@ -139,6 +142,7 @@ class DaftarKlien extends Component
         if (!empty($uniqueNames)) {
             $query = Klien::query()
                 ->with([
+                    'contactPerson',
                     'purchaseOrders.purchaseOrderBahanBakus.bahanBakuKlien',
                     'bahanBakuKliens' => function($query) {
                         $query->with(['riwayatHarga' => function($q) {
@@ -365,8 +369,27 @@ class DaftarKlien extends Component
             'company_type' => 'existing',
             'company_nama' => '',
             'cabang' => '',
-            'no_hp' => '',
+            'contact_person_id' => '',
         ];
+        $this->availableContacts = collect();
+    }
+
+    public function updatedBranchFormCompanyNama()
+    {
+        // Reset contact person when company changes
+        $this->branchForm['contact_person_id'] = '';
+        $this->updateAvailableContacts();
+    }
+
+    public function updateAvailableContacts()
+    {
+        if (!empty($this->branchForm['company_nama'])) {
+            $this->availableContacts = KontakKlien::where('klien_nama', $this->branchForm['company_nama'])
+                ->orderBy('nama')
+                ->get();
+        } else {
+            $this->availableContacts = collect();
+        }
     }
 
     public function editBranch($id, $nama, $cabang, $no_hp)
@@ -387,7 +410,7 @@ class DaftarKlien extends Component
         $rules = [
             'branchForm.company_nama' => 'required|string|max:255',
             'branchForm.cabang' => 'required|string|max:255',
-            'branchForm.no_hp' => 'nullable|string|max:30',
+            'branchForm.contact_person_id' => 'nullable|exists:kontak_klien,id',
         ];
 
         if (!$this->editingBranch) {
@@ -403,7 +426,7 @@ class DaftarKlien extends Component
             $data = [
                 'nama' => $this->branchForm['company_nama'],
                 'cabang' => $this->branchForm['cabang'],
-                'no_hp' => $this->branchForm['no_hp'],
+                'contact_person_id' => $this->branchForm['contact_person_id'],
             ];
 
             if ($this->editingBranch) {
@@ -440,7 +463,7 @@ class DaftarKlien extends Component
                     Klien::create([
                         'nama' => $data['nama'],
                         'cabang' => 'Kantor Pusat',
-                        'no_hp' => null,
+                        'contact_person_id' => null,
                     ]);
                 }
 
@@ -484,7 +507,7 @@ class DaftarKlien extends Component
                 // Delete placeholder too
                 Klien::where('nama', $companyName)
                     ->where('cabang', 'Kantor Pusat')
-                    ->whereNull('no_hp')
+                    ->whereNull('contact_person_id')
                     ->delete();
                 $message = 'Cabang dan perusahaan berhasil dihapus';
             } else {

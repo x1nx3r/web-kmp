@@ -84,7 +84,7 @@ class Supplier extends Model
             $query->where('supplier_id', $this->id);
         })
         ->whereNotNull('rating')
-        ->with(['purchaseOrder.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier'])
+        ->with(['order.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier'])
         ->orderBy('created_at', 'desc')
         ->get();
     }
@@ -148,7 +148,7 @@ class Supplier extends Model
             $query->where('supplier_id', $this->id);
         })
         ->whereIn('status', ['berhasil', 'gagal'])
-        ->with(['purchaseOrder.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier'])
+        ->with(['order.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier'])
         ->orderBy('created_at', 'desc')
         ->get();
     }

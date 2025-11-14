@@ -452,7 +452,7 @@ class SupplierController extends Controller
             $q->where('supplier_id', $supplier->id);
         })
         ->whereIn('status', ['berhasil', 'gagal'])
-        ->with(['purchaseOrder.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier']);
+        ->with(['order.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier']);
 
         // Filter by status if requested
         if ($request->filled('status') && in_array($request->status, ['berhasil', 'gagal'])) {
@@ -466,7 +466,7 @@ class SupplierController extends Controller
 
         // Filter by klien if requested
         if ($request->filled('klien')) {
-            $query->whereHas('purchaseOrder.klien', function($klienQuery) use ($request) {
+            $query->whereHas('order.klien', function($klienQuery) use ($request) {
                 $klienQuery->where('id', $request->klien);
             });
         }
@@ -477,10 +477,10 @@ class SupplierController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('no_pengiriman', 'LIKE', "%{$search}%")
                   ->orWhere('ulasan', 'LIKE', "%{$search}%")
-                  ->orWhereHas('purchaseOrder', function($poQuery) use ($search) {
-                      $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                  ->orWhereHas('order', function($orderQuery) use ($search) {
+                      $orderQuery->where('no_order', 'LIKE', "%{$search}%");
                   })
-                  ->orWhereHas('purchaseOrder.klien', function($klienQuery) use ($search) {
+                  ->orWhereHas('order.klien', function($klienQuery) use ($search) {
                       $klienQuery->where('nama', 'LIKE', "%{$search}%")
                                  ->orWhere('cabang', 'LIKE', "%{$search}%");
                   })

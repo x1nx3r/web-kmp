@@ -75,293 +75,134 @@ class BahanBakuKlienSeeder extends Seeder
             'purchasing' => ['material' => 'Purchasing', 'matched_name' => '', 'pabrik' => '', 'spec' => ''],
         ];
 
-        // Material templates with different specifications per client type
-        $materialTemplates = [
-            // Bakery materials
-            'bakery' => [
-                'Tepung Terigu' => ['satuan' => 'kg', 'price_range' => [25000, 35000]],
-                'Gula Pasir' => ['satuan' => 'kg', 'price_range' => [12000, 18000]],
-                'Mentega' => ['satuan' => 'kg', 'price_range' => [45000, 60000]],
-                'Telur Ayam' => ['satuan' => 'kg', 'price_range' => [28000, 35000]],
-                'Susu Bubuk' => ['satuan' => 'kg', 'price_range' => [80000, 120000]],
-                'Baking Powder' => ['satuan' => 'kg', 'price_range' => [15000, 25000]],
-                'Vanilla Extract' => ['satuan' => 'ml', 'price_range' => [150, 250]],
-            ],
-            
-            // Food manufacturing materials  
-            'food' => [
-                'Tepung Terigu' => ['satuan' => 'kg', 'price_range' => [22000, 32000]],
-                'Minyak Goreng' => ['satuan' => 'liter', 'price_range' => [18000, 25000]],
-                'Gula Pasir' => ['satuan' => 'kg', 'price_range' => [11000, 16000]],
-                'Garam Halus' => ['satuan' => 'kg', 'price_range' => [8000, 12000]],
-                'Telur Ayam' => ['satuan' => 'kg', 'price_range' => [26000, 33000]],
-                'Cokelat Chips' => ['satuan' => 'kg', 'price_range' => [65000, 85000]],
-            ],
-            
-            // Feed/Animal nutrition materials
-            'feed' => [
-                'Tepung Terigu' => ['satuan' => 'kg', 'price_range' => [20000, 28000]],
-                'Susu Bubuk' => ['satuan' => 'kg', 'price_range' => [70000, 100000]],
-                'Keju Parut' => ['satuan' => 'kg', 'price_range' => [85000, 110000]],
-                'Minyak Goreng' => ['satuan' => 'liter', 'price_range' => [16000, 22000]],
-            ]
+        // Complete list of all bahan baku materials that every client should have
+        $allMaterials = [
+            'Mie Kuning' => ['satuan' => 'kg', 'price_range' => [2500, 4500]],
+            'Mie Merah' => ['satuan' => 'kg', 'price_range' => [3000, 5000]],
+            'Tepung Biskuit' => ['satuan' => 'kg', 'price_range' => [3000, 6000]],
+            'Katul' => ['satuan' => 'kg', 'price_range' => [3000, 5000]],
+            'Bone Meal' => ['satuan' => 'kg', 'price_range' => [8000, 15000]],
+            'CFM/FTM' => ['satuan' => 'kg', 'price_range' => [12000, 20000]],
+            'Garam' => ['satuan' => 'kg', 'price_range' => [3000, 8000]],
+            'Molases' => ['satuan' => 'kg', 'price_range' => [2000, 4000]],
+            'SHM' => ['satuan' => 'kg', 'price_range' => [15000, 25000]],
+            'DSS' => ['satuan' => 'kg', 'price_range' => [8000, 15000]],
+            'Menir' => ['satuan' => 'kg', 'price_range' => [4000, 8000]],
+            'Copra' => ['satuan' => 'kg', 'price_range' => [4000, 8000]],
+            'PKD (Palm Kernel Dehulized)' => ['satuan' => 'kg', 'price_range' => [6000, 12000]],
+            'Biji Batu' => ['satuan' => 'kg', 'price_range' => [1000, 3000]],
+            'Tepung Batu' => ['satuan' => 'kg', 'price_range' => [2000, 4000]],
+            'PKM' => ['satuan' => 'kg', 'price_range' => [5000, 10000]],
+            'Corn Gem' => ['satuan' => 'kg', 'price_range' => [8000, 15000]],
+            'Cangkang Kemiri' => ['satuan' => 'kg', 'price_range' => [1500, 3500]],
+            'Tepung Gaplek' => ['satuan' => 'kg', 'price_range' => [3000, 6000]],
+            'Kebi' => ['satuan' => 'kg', 'price_range' => [4000, 8000]],
+            'Fish Meal' => ['satuan' => 'kg', 'price_range' => [15000, 30000]],
+            'MBM (Meat Bone Meal)' => ['satuan' => 'kg', 'price_range' => [12000, 22000]],
+            'Poultry Meal' => ['satuan' => 'kg', 'price_range' => [10000, 20000]],
+            'Gaplek Chip' => ['satuan' => 'kg', 'price_range' => [2500, 5000]],
+            'Kepala Udang Utuh' => ['satuan' => 'kg', 'price_range' => [8000, 18000]],
+            'Tepung Roti/Bread Waste' => ['satuan' => 'kg', 'price_range' => [2000, 4000]],
+            'SG (Sekam Giling)' => ['satuan' => 'kg', 'price_range' => [800, 2000]],
+            'Bran Gluten Feed (BGF)' => ['satuan' => 'kg', 'price_range' => [4000, 8000]],
+            'CGM' => ['satuan' => 'kg', 'price_range' => [6000, 12000]],
+            'CGF' => ['satuan' => 'kg', 'price_range' => [5000, 10000]],
+            'Tepung Industri' => ['satuan' => 'kg', 'price_range' => [15000, 25000]],
+            'CPO' => ['satuan' => 'liter', 'price_range' => [12000, 18000]],
+            'Ampok' => ['satuan' => 'kg', 'price_range' => [2000, 4000]]
         ];
 
-        $clientTypes = ['bakery', 'food', 'feed'];
         $materialCount = 0;
 
-        // Build Klien lookup by normalized name for matching mapping pabrik -> klien id
-        $klienLookup = [];
-        foreach ($kliens as $k) {
-            $key = $this->normalizeForMatch($k->nama);
-            if (!isset($klienLookup[$key])) $klienLookup[$key] = [];
-            $klienLookup[$key][] = $k->id;
-        }
-
         foreach ($kliens as $klien) {
-            // Assign client type based on name patterns
-            $clientType = 'food'; // default
-            if (str_contains(strtolower($klien->nama), 'feed')) {
-                $clientType = 'feed';
-            } elseif (str_contains(strtolower($klien->nama), 'bakery') || str_contains(strtolower($klien->nama), 'roti')) {
-                $clientType = 'bakery';
-            }
+            echo "Creating ALL materials for {$klien->nama} ({$klien->cabang})\n";
             
-            // Build factual materials list from mapping filtered by current Klien's pabrik (when possible)
-            // Skip rows that are not actual materials (empty matched_name or non-material rows)
-            $available = [];
-            $klienNorm = $this->normalizeForMatch($klien->nama);
-            foreach ($mapping as $key => $m) {
-                $name = $m['matched_name'] ?: $m['material'];
-                if (!$name) continue;
-                $low = mb_strtolower(trim($name));
-                if (in_array($low, ['marketing','purchasing'])) continue;
+            $materialIndex = 0;
 
-                // If mapping provides a pabrik, only include it if it matches this klien (or is empty)
-                $pabrik = trim($m['pabrik'] ?? '');
-                if ($pabrik !== '') {
-                    $pabrikNorm = $this->normalizeForMatch($pabrik);
-                    // match if names are equal or one contains the other
-                    if ($pabrikNorm === $klienNorm || strpos($pabrikNorm, $klienNorm) !== false || strpos($klienNorm, $pabrikNorm) !== false) {
-                        $available[$key] = $m;
-                    } else {
-                        // not matching this client, skip
-                        continue;
+            // Create ALL materials for this client
+            foreach ($allMaterials as $materialName => $config) {
+                // Check if mapping exists for additional specifications
+                $norm = $this->normalizeForMatch($materialName);
+                $mapped = $mapping[$norm] ?? null;
+
+                // Use material name as display name, but check mapping for better specs
+                $displayName = $materialName;
+                $specification = $this->generateSpecification($materialName, $klien->nama);
+                $satuan = $config['satuan'] ?? 'kg';
+                $priceRange = $config['price_range'] ?? [1000, 10000];
+
+                // If mapping exists, use the detailed specification
+                if ($mapped && !empty($mapped['spec'])) {
+                    $specification = trim($mapped['spec']);
+                    
+                    // If pabrik present, append it to the specification for traceability
+                    if (!empty($mapped['pabrik'])) {
+                        $specification .= "\nPabrik: " . $mapped['pabrik'];
                     }
-                } else {
-                    // no pabrik provided — include as general material
-                    $available[$key] = $m;
                 }
-            }
 
-            // If after filtering there are no available mapped materials for this client, fall back to templates
-            $useTemplates = empty($available);
+                // Create client-specific material with deterministic price (midpoint)
+                $approvedPrice = intval(($priceRange[0] + $priceRange[1]) / 2);
 
-            echo "Creating materials for {$klien->nama} ({$klien->cabang}) - Type: {$clientType}\n";
+                // Spread dates deterministically so data covers a wider time range
+                $historyStep = 2; // days between history points
+                $extraPoints = 5; // number of history updates
+                $baseStartDays = 45 + ($klien->id % 20); // base days in the past per client
+                $startDays = $baseStartDays + ($materialIndex * 1); // add spacing per material index
 
-            // Choose how many materials to create per client deterministically (up to 8)
-            $numMaterials = $useTemplates ? min(8, count($materialTemplates[$clientType])) : min(8, count($available));
+                // Initial approved_at placed earlier than the first history point
+                $initialDays = $startDays + ($extraPoints * $historyStep);
+                $approvedAt = now()->subDays($initialDays);
 
-            if ($useTemplates) {
-                $chosenMaterials = array_keys($materialTemplates[$clientType]);
-            } else {
-                // pick random keys from available
-                $keys = array_keys($available);
-                // deterministic: take the first N keys rather than shuffling
-                $chosenKeys = array_slice($keys, 0, min($numMaterials, count($keys)));
-            }
+                $bahanBakuKlien = BahanBakuKlien::create([
+                    'klien_id' => $klien->id,
+                    'nama' => $displayName,
+                    'satuan' => $satuan,
+                    'spesifikasi' => $specification,
+                    'harga_approved' => $approvedPrice,
+                    'approved_at' => $approvedAt,
+                    'approved_by_marketing' => $marketingUser->id,
+                    'status' => 'aktif',
+                ]);
 
-            if ($useTemplates) {
-                // limit chosen templates deterministically
-                $chosenMaterials = array_slice(array_keys($materialTemplates[$clientType]), 0, $numMaterials);
-                foreach ($chosenMaterials as $idx => $materialName) {
-                    $config = $materialTemplates[$clientType][$materialName];
-                    // If a mapping exists for this material name, prefer the mapped spec/pabrik
-                    $norm = $this->normalizeForMatch($materialName);
-                    $mapped = $mapping[$norm] ?? null;
+                // Create deterministic initial price history and several updates
+                RiwayatHargaKlien::createPriceHistory(
+                    $bahanBakuKlien->id,
+                    $approvedPrice,
+                    $marketingUser->id,
+                    "Harga awal untuk klien {$klien->nama}",
+                    $approvedAt
+                );
 
-                    // Determine display name and specification
-                    $displayName = $materialName;
-                    $specification = $this->generateSpecification($materialName, $klien->nama, $clientType);
-                    $satuan = $config['satuan'] ?? 'kg';
-                    $priceRange = $config['price_range'] ?? [1000, 10000];
+                $currentPrice = $approvedPrice;
+                $patterns = [-0.02, 0.015, 0.01, 0.03, -0.015]; // Varied price changes
+                for ($p = 0; $p < $extraPoints; $p++) {
+                    // Use deterministic pattern for varied price changes
+                    $pct = $patterns[$p % count($patterns)];
+                    $newPrice = max(100, round($currentPrice * (1 + $pct), 0));
 
-                    if ($mapped) {
-                        if (!empty($mapped['matched_name'])) {
-                            $displayName = $mapped['matched_name'];
-                        }
-                        if (!empty($mapped['spec'])) {
-                            $specification = trim($mapped['spec']);
-                        }
-                        // If pabrik present, append it to the specification for traceability
-                        if (!empty($mapped['pabrik'])) {
-                            $specification .= "\nPabrik: " . $mapped['pabrik'];
-                        }
+                    // Calculate history timestamp: progress forward from older to newer
+                    $days = $startDays + ($extraPoints - $p - 1) * $historyStep;
+                    $historyAt = now()->subDays($days);
 
-                        // Try to supply sensible price ranges for common feed materials
-                        $lower = 2000; $upper = 20000;
-                        $commonRanges = [
-                            'mie' => [2000, 7000],
-                            'tepung' => [20000, 40000],
-                            'bone' => [8000, 20000],
-                            'cfm' => [8000, 22000],
-                            'garam' => [3000, 8000],
-                            'molases' => [2000, 8000],
-                            'copra' => [4000, 12000],
-                            'pkd' => [6000, 14000],
-                            'mbm' => [8000, 18000],
-                            'fish' => [15000, 45000],
-                        ];
-                        foreach ($commonRanges as $k => $rng) {
-                            if (strpos(mb_strtolower($displayName), $k) !== false) { $lower = $rng[0]; $upper = $rng[1]; break; }
-                        }
-                        $priceRange = [$lower, $upper];
-                    }
-
-                    // Create client-specific material with deterministic price (midpoint)
-                    $approvedPrice = intval(($priceRange[0] + $priceRange[1]) / 2);
-
-                    // Spread dates deterministically so data covers a wider time range.
-                    // Base offset varies per client and per material index to avoid clustering.
-                    $historyStep = 3; // days between history points
-                    $extraPoints = 7; // number of history updates
-                    $baseStartDays = 60 + ($klien->id % 30); // base days in the past per client
-                    $startDays = $baseStartDays + ($idx * 3); // add spacing per material index
-
-                    // Initial approved_at placed earlier than the first history point
-                    $initialDays = $startDays + ($extraPoints * $historyStep);
-                    $approvedAt = now()->subDays($initialDays);
-
-                    $bahanBakuKlien = BahanBakuKlien::create([
-                        'klien_id' => $klien->id,
-                        'nama' => $displayName,
-                        'satuan' => $satuan,
-                        'spesifikasi' => $specification,
-                        'harga_approved' => $approvedPrice,
-                        'approved_at' => $approvedAt,
-                        'approved_by_marketing' => $marketingUser->id,
-                        'status' => 'aktif',
-                    ]);
-
-                    // Create deterministic initial price history and several updates spaced by $historyStep
-                    RiwayatHargaKlien::createPriceHistory(
-                        $bahanBakuKlien->id,
-                        $approvedPrice,
-                        $marketingUser->id,
-                        "Harga awal untuk klien {$klien->nama}",
-                        $approvedAt
-                    );
-
-                    $currentPrice = $approvedPrice;
-                    $patterns = [-0.03, 0.02, 0.01, 0.04, -0.02, 0.03, -0.01]; // Varied price changes
-                    for ($p = 0; $p < $extraPoints; $p++) {
-                        // Use deterministic pattern for varied price changes
-                        $pct = $patterns[$p % count($patterns)];
-                        $newPrice = max(100, round($currentPrice * (1 + $pct), 0));
-
-                        // Calculate history timestamp: progress forward from older to newer
-                        $days = $startDays + ($extraPoints - $p - 1) * $historyStep;
-                        $historyAt = now()->subDays($days);
-
-                        $bahanBakuKlien->update([
-                            'harga_approved' => $newPrice,
-                            'approved_at' => $historyAt
-                        ]);
-
-                        RiwayatHargaKlien::createPriceHistory(
-                            $bahanBakuKlien->id,
-                            $newPrice,
-                            $marketingUser->id,
-                            "Auto-generated update for seeding",
-                            $historyAt
-                        );
-
-                        $currentPrice = $newPrice;
-                    }
-
-                    $materialCount++;
-                }
-            } else {
-                // Create from mapping selection
-                foreach ($chosenKeys as $ck) {
-                    $m = $available[$ck];
-                    $displayName = $m['matched_name'] ?: $m['material'];
-                    $specification = trim($m['spec'] ?? '') ?: $this->generateSpecification($displayName, $klien->nama, $clientType);
-                    if (!empty($m['pabrik'])) {
-                        $specification .= "\nPabrik: " . $m['pabrik'];
-                    }
-
-                    // pick satuan heuristically
-                    $satuan = 'kg';
-                    $ln = mb_strtolower($displayName);
-                    if (str_contains($ln, 'liter') || str_contains($ln, 'minyak') || str_contains($ln, 'oil')) $satuan = 'liter';
-                    if (str_contains($ln, 'ml') || str_contains($ln, 'extract')) $satuan = 'ml';
-
-                    // price ranges heuristics
-                    $lower = 2000; $upper = 20000;
-                    if (str_contains($ln, 'mie') || str_contains($ln, 'biskuit')) { $lower = 2000; $upper = 7000; }
-                    if (str_contains($ln, 'tepung') || str_contains($ln, 'terigu')) { $lower = 20000; $upper = 40000; }
-                    if (str_contains($ln, 'bone') || str_contains($ln, 'mbm') || str_contains($ln, 'meal')) { $lower = 8000; $upper = 20000; }
-                    if (str_contains($ln, 'garam')) { $lower = 3000; $upper = 8000; }
-
-                    // deterministic approved price = midpoint
-                    $approvedPrice = intval(($lower + $upper) / 2);
-
-                    // Use same deterministic spread logic as template branch
-                    $historyStep = 3;
-                    $extraPoints = 7;
-                    $baseStartDays = 60 + ($klien->id % 30);
-                    $startDays = $baseStartDays + ($materialCount % 5) * 2; // vary per materialCount for mapping branch
-
-                    $initialDays = $startDays + ($extraPoints * $historyStep);
-                    $approvedAt = now()->subDays($initialDays);
-
-                    $bahanBakuKlien = BahanBakuKlien::create([
-                        'klien_id' => $klien->id,
-                        'nama' => $displayName,
-                        'satuan' => $satuan,
-                        'spesifikasi' => $specification,
-                        'harga_approved' => $approvedPrice,
-                        'approved_at' => $approvedAt,
-                        'approved_by_marketing' => $marketingUser->id,
-                        'status' => 'aktif',
+                    $bahanBakuKlien->update([
+                        'harga_approved' => $newPrice,
+                        'approved_at' => $historyAt
                     ]);
 
                     RiwayatHargaKlien::createPriceHistory(
                         $bahanBakuKlien->id,
-                        $approvedPrice,
+                        $newPrice,
                         $marketingUser->id,
-                        "Harga awal untuk klien {$klien->nama}",
-                        $approvedAt
+                        "Price update for {$klien->nama}",
+                        $historyAt
                     );
 
-                    $currentPrice = $approvedPrice;
-                    $patterns = [-0.03, 0.02, 0.01, 0.04, -0.02, 0.03, -0.01];
-                    for ($p = 0; $p < $extraPoints; $p++) {
-                        $pct = $patterns[$p % count($patterns)];
-                        $newPrice = max(100, round($currentPrice * (1 + $pct), 0));
-
-                        $days = $startDays + ($extraPoints - $p - 1) * $historyStep;
-                        $historyAt = now()->subDays($days);
-
-                        $bahanBakuKlien->update([
-                            'harga_approved' => $newPrice,
-                            'approved_at' => $historyAt
-                        ]);
-
-                        RiwayatHargaKlien::createPriceHistory(
-                            $bahanBakuKlien->id,
-                            $newPrice,
-                            $marketingUser->id,
-                            "Auto-generated update for seeding",
-                            $historyAt
-                        );
-
-                        $currentPrice = $newPrice;
-                    }
-
-                    $materialCount++;
+                    $currentPrice = $newPrice;
                 }
+
+                $materialCount++;
+                $materialIndex++;
             }
         }
 
@@ -370,29 +211,47 @@ class BahanBakuKlienSeeder extends Seeder
         echo "Price history records created for all materials.\n";
     }
 
-    private function generateSpecification($materialName, $clientName, $clientType)
+    private function generateSpecification($materialName, $clientName)
     {
-        $specifications = [
-            'Tepung Terigu' => [
-                'bakery' => 'Tepung terigu protein tinggi (>12%) untuk produksi roti dan kue',
-                'food' => 'Tepung terigu protein sedang untuk produksi makanan olahan',
-                'feed' => 'Tepung terigu grade feed untuk nutrisi pakan ternak'
-            ],
-            'Gula Pasir' => [
-                'bakery' => 'Gula pasir kristal halus, warna putih bersih untuk bakery',
-                'food' => 'Gula pasir SNI, tidak beranti untuk industri makanan',
-                'feed' => 'Gula pasir grade industri untuk pakan'
-            ],
-            'Minyak Goreng' => [
-                'bakery' => 'Minyak goreng kelapa sawit, refined untuk deep frying',
-                'food' => 'Minyak goreng fortifikasi vitamin A untuk produk makanan',
-                'feed' => 'Minyak sawit crude untuk nutrisi lemak pakan'
-            ],
-            // Add more as needed...
+        // Default specifications for materials that don't have detailed mapping
+        $defaultSpecs = [
+            'Mie Kuning' => 'Moisture <12%, Protein >8%, Fat >12%, Ash <7%, Fiber <2%',
+            'Mie Merah' => 'Moisture <5%, Protein >7%, Fat >23%, Ash <3%, warna sesuai bahan',
+            'Tepung Biskuit' => 'Moisture (sesuai standar), Protein sesuai kebutuhan, Fiber <25%, Fat <5%, Ash <2%',
+            'Katul' => 'Moisture <11%, Protein >12%, Fiber <10%, Fat >12%',
+            'Bone Meal' => 'Protein >20%, Calcium <26%, Phosphor >9%, Moisture <12%, Ash <6%',
+            'CFM/FTM' => 'Moisture <10%, Protein >80%, Pepsin Digestibility >75%, Ash <5%, Fat <12%',
+            'Garam' => 'NaCl >95%, Moisture <1%, tidak menggumpal, partikel halus',
+            'Molases' => 'Kadar air <20%, Brix >75, warna coklat kehitaman',
+            'SHM' => 'Moisture <12%, Protein >45%, Fat <5%, TvBN <100',
+            'DSS' => 'Moisture <12%, Protein >33%, TvBN <100',
+            'Menir' => 'Moisture <12%, Protein >6%, warna putih susu/kuning muda, tidak apek',
+            'Copra' => 'Protein >18%, Moisture <13%, Fat 8-20%, Fiber <16%',
+            'PKD (Palm Kernel Dehulized)' => 'Moisture <12%, Protein >25%, bebas jamur dan serangga',
+            'Biji Batu' => 'Spesifikasi sesuai kebutuhan industri pakan ternak',
+            'Tepung Batu' => 'Moisture sesuai standar, Protein sesuai kebutuhan, Ash <2%',
+            'PKM' => 'Moisture <12%, Protein >13%, Fat >7%, Fiber <20%, Ash <5%',
+            'Corn Gem' => 'Moisture 0-10%, Protein 10-100%, Fat 40-100%, bebas jamur dan hama',
+            'Cangkang Kemiri' => 'Bahan organik untuk campuran pakan, bebas kontaminasi',
+            'Tepung Gaplek' => 'Kadar air max 12%, Protein min 3.3%',
+            'Kebi' => 'Moisture <14%, Protein >12%, Ash <7%, Fiber <2%, tidak menggumpal',
+            'Fish Meal' => 'Protein >20%, Calcium <26%, Phosphor >9%, Moisture <12%',
+            'MBM (Meat Bone Meal)' => 'Moisture <10%, Protein >50%, Fat <12%, Ash <35%',
+            'Poultry Meal' => 'Protein >20%, Calcium <26%, Phosphor >9%, Moisture <12%',
+            'Gaplek Chip' => 'Kadar air max 12%, Protein min 3.3%, bentuk chip',
+            'Kepala Udang Utuh' => 'Segar, bebas pembusukan, kadar air sesuai standar',
+            'Tepung Roti/Bread Waste' => 'Moisture sesuai standar, Protein sesuai kebutuhan, Ash <2%',
+            'SG (Sekam Giling)' => 'Kadar air <12%, bebas jamur, ukuran seragam',
+            'Bran Gluten Feed (BGF)' => 'Moisture <12%, Protein >8%, Fat >4%, Fiber <6%',
+            'CGM' => 'Moisture <10%, Protein >10%, Fat >38%, Fiber <10%, Aflatoxin <50%',
+            'CGF' => 'Moisture 0-12%, Protein 18-100%, bebas jamur dan kontaminan',
+            'Tepung Industri' => 'Grade industri, sesuai spesifikasi aplikasi',
+            'CPO' => 'Crude Palm Oil, sesuai standar industri',
+            'Ampok' => 'Kadar air sesuai standar, bebas kontaminasi'
         ];
 
-        $baseSpec = $specifications[$materialName][$clientType] ?? "Spesifikasi khusus untuk {$materialName}";
-        return $baseSpec . " - Sesuai kebutuhan {$clientName}";
+        $baseSpec = $defaultSpecs[$materialName] ?? "Spesifikasi khusus untuk {$materialName} sesuai kebutuhan industri";
+        return $baseSpec . " - Untuk {$clientName}";
     }
 
     private function normalizeForMatch($s)

@@ -87,16 +87,35 @@
                             </div>
 
                             <div>
-                                <label for="no_hp" class="block text-sm font-medium text-gray-700 mb-2">
-                                    No. HP
+                                <label for="contact_person_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Contact Person
                                 </label>
-                                <input
-                                    type="text"
-                                    wire:model="klienForm.no_hp"
-                                    id="no_hp"
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Masukkan nomor HP"
+                                <select 
+                                    wire:model="klienForm.contact_person_id" 
+                                    id="contact_person_id" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klienForm.contact_person_id') border-red-500 @enderror"
+                                    @if($kontakOptions->isEmpty()) disabled @endif
                                 >
+                                    @if($kontakOptions->isEmpty())
+                                        <option value="">{{ empty($klienForm['nama']) ? 'Pilih perusahaan terlebih dahulu' : 'Tidak ada kontak untuk perusahaan ini' }}</option>
+                                    @else
+                                        <option value="">Pilih Contact Person</option>
+                                        @foreach($kontakOptions as $kontak)
+                                            <option value="{{ $kontak->id }}">
+                                                {{ $kontak->nama }}
+                                                @if($kontak->jabatan)
+                                                    - {{ $kontak->jabatan }}
+                                                @endif
+                                                @if($kontak->nomor_hp)
+                                                    ({{ $kontak->nomor_hp }})
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                @error('klienForm.contact_person_id')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 
@@ -153,8 +172,9 @@
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Harga</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Status</th>
                                         <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Post</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Present</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Jenis</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Status Present</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Kategori</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Keterangan</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Updated</th>
                                         <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Aksi</th>
                                     </tr>
@@ -211,50 +231,88 @@
                                             </td>
                                             {{-- Present Column --}}
                                             <td class="px-2 py-3">
-                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
                                                     @if($material->present === 'Ready') bg-green-100 text-green-800
                                                     @elseif($material->present === 'Confirmed') bg-blue-100 text-blue-800
                                                     @elseif($material->present === 'Hold') bg-red-100 text-red-800
                                                     @elseif($material->present === 'Negotiate') bg-yellow-100 text-yellow-800
                                                     @elseif($material->present === 'Sample Sent') bg-purple-100 text-purple-800
+                                                    @elseif($material->present === 'Not Reasonable Price') bg-orange-100 text-orange-800
+                                                    @elseif($material->present === 'Pos Closed') bg-gray-100 text-gray-800
+                                                    @elseif($material->present === 'Not Qualified Raw') bg-red-100 text-red-800
+                                                    @elseif($material->present === 'Not Updated Yet') bg-yellow-100 text-yellow-800
+                                                    @elseif($material->present === 'Didnt Have Supplier') bg-red-100 text-red-800
+                                                    @elseif($material->present === 'Factory No Need Yet') bg-gray-100 text-gray-800
                                                     @else bg-gray-100 text-gray-800
-                                                    @endif" title="{{ $material->cause }}">
-                                                    @if($material->present === 'Ready') Ready
-                                                    @elseif($material->present === 'Confirmed') Conf
-                                                    @elseif($material->present === 'Hold') Hold
-                                                    @elseif($material->present === 'Negotiate') Nego
-                                                    @elseif($material->present === 'Sample Sent') Sample
-                                                    @elseif($material->present === 'Not Reasonable Price') Price
-                                                    @elseif($material->present === 'Pos Closed') Closed
-                                                    @elseif($material->present === 'Not Qualified Raw') Quality
-                                                    @elseif($material->present === 'Not Updated Yet') Update
-                                                    @elseif($material->present === 'Didnt Have Supplier') Supply
-                                                    @elseif($material->present === 'Factory No Need Yet') Need
-                                                    @else {{ \Illuminate\Support\Str::limit($material->present, 8) }}
+                                                    @endif">
+                                                    @if($material->present === 'Ready')
+                                                        <i class="fas fa-check-circle mr-1"></i>Ready
+                                                    @elseif($material->present === 'Confirmed')
+                                                        <i class="fas fa-handshake mr-1"></i>Confirmed
+                                                    @elseif($material->present === 'Hold')
+                                                        <i class="fas fa-pause-circle mr-1"></i>Hold
+                                                    @elseif($material->present === 'Negotiate')
+                                                        <i class="fas fa-comments mr-1"></i>Negotiate
+                                                    @elseif($material->present === 'Sample Sent')
+                                                        <i class="fas fa-shipping-fast mr-1"></i>Sample Sent
+                                                    @elseif($material->present === 'Not Reasonable Price')
+                                                        <i class="fas fa-dollar-sign mr-1"></i>Price Issue
+                                                    @elseif($material->present === 'Pos Closed')
+                                                        <i class="fas fa-times-circle mr-1"></i>PO Closed
+                                                    @elseif($material->present === 'Not Qualified Raw')
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>Quality
+                                                    @elseif($material->present === 'Not Updated Yet')
+                                                        <i class="fas fa-clock mr-1"></i>Pending Update
+                                                    @elseif($material->present === 'Didnt Have Supplier')
+                                                        <i class="fas fa-user-times mr-1"></i>No Supplier
+                                                    @elseif($material->present === 'Factory No Need Yet')
+                                                        <i class="fas fa-factory mr-1"></i>Not Needed
+                                                    @else
+                                                        <i class="fas fa-question-circle mr-1"></i>{{ \Illuminate\Support\Str::limit($material->present, 10) }}
                                                     @endif
                                                 </span>
                                             </td>
                                             {{-- Jenis Column --}}
                                             <td class="px-2 py-3">
                                                 @if($material->jenis && count($material->jenis) > 0)
-                                                    <div class="flex flex-col gap-1">
+                                                    <div class="flex flex-wrap gap-1">
                                                         @foreach($material->jenis as $jenis)
-                                                            <span class="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium
+                                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
                                                                 @if($jenis === 'Aqua') bg-blue-100 text-blue-800
                                                                 @elseif($jenis === 'Poultry') bg-yellow-100 text-yellow-800
                                                                 @elseif($jenis === 'Ruminansia') bg-green-100 text-green-800
                                                                 @else bg-gray-100 text-gray-800
                                                                 @endif">
-                                                                @if($jenis === 'Aqua') A
-                                                                @elseif($jenis === 'Poultry') P
-                                                                @elseif($jenis === 'Ruminansia') R
-                                                                @else {{ substr($jenis, 0, 1) }}
+                                                                @if($jenis === 'Aqua')
+                                                                    <i class="fas fa-fish mr-1"></i>Aqua
+                                                                @elseif($jenis === 'Poultry')
+                                                                    <i class="fas fa-feather-alt mr-1"></i>Poultry
+                                                                @elseif($jenis === 'Ruminansia')
+                                                                    <i class="fas fa-cow mr-1"></i>Ruminansia
+                                                                @else
+                                                                    <i class="fas fa-tag mr-1"></i>{{ $jenis }}
                                                                 @endif
                                                             </span>
                                                         @endforeach
                                                     </div>
                                                 @else
-                                                    <span class="text-xs text-gray-400">-</span>
+                                                    <span class="text-xs text-gray-400 italic">Tidak ada kategori</span>
+                                                @endif
+                                            </td>
+                                            {{-- Cause/Keterangan Column --}}
+                                            <td class="px-2 py-3">
+                                                @if($material->cause)
+                                                    <div class="text-xs text-gray-700 leading-relaxed">
+                                                        {{ \Illuminate\Support\Str::limit($material->cause, 60) }}
+                                                        @if(strlen($material->cause) > 60)
+                                                            <span class="text-blue-600 cursor-pointer hover:text-blue-800" 
+                                                                  title="{{ $material->cause }}">
+                                                                ...selengkapnya
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    <span class="text-xs text-gray-400 italic">Tidak ada keterangan</span>
                                                 @endif
                                             </td>
                                             <td class="px-2 py-3 text-xs text-gray-500">{{ $material->updated_at->format('d/m') }}</td>

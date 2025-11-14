@@ -422,7 +422,12 @@
                                                                     <div class="text-sm font-medium text-gray-900">{{ $klien->cabang }}</div>
                                                                 </td>
                                                                 <td class="px-4 py-3 text-sm text-gray-500">
-                                                                    {{ $klien->no_hp ?: '-' }}
+                                                                    @if($klien->contactPerson)
+                                                                        <div>{{ $klien->contactPerson->nama }}</div>
+                                                                        <div class="text-xs text-gray-400">{{ $klien->contactPerson->nomor_hp ?? 'No HP' }}</div>
+                                                                    @else
+                                                                        -
+                                                                    @endif
                                                                 </td>
                                                                 <td class="px-4 py-3 text-sm text-gray-500">
                                                                     {{ $klien->updated_at->format('d/m/Y H:i') }}
@@ -649,13 +654,34 @@
                             </div>
 
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">No. HP (Opsional)</label>
-                                <input
-                                    type="text"
-                                    wire:model="branchForm.no_hp"
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Masukkan nomor HP"
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Contact Person (Opsional)</label>
+                                <select
+                                    wire:model="branchForm.contact_person_id"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('branchForm.contact_person_id') border-red-500 @enderror"
+                                    @if(!$branchForm['company_nama'] || $availableContacts->isEmpty()) disabled @endif
                                 >
+                                    @if(!$branchForm['company_nama'])
+                                        <option value="">Pilih perusahaan terlebih dahulu</option>
+                                    @elseif($availableContacts->isEmpty())
+                                        <option value="">Tidak ada kontak untuk perusahaan ini</option>
+                                    @else
+                                        <option value="">Pilih Contact Person</option>
+                                        @foreach($availableContacts as $kontak)
+                                            <option value="{{ $kontak->id }}">
+                                                {{ $kontak->nama }}
+                                                @if($kontak->jabatan)
+                                                    - {{ $kontak->jabatan }}
+                                                @endif
+                                                @if($kontak->nomor_hp)
+                                                    ({{ $kontak->nomor_hp }})
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                @error('branchForm.contact_person_id')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
                     </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Marketing;
 
 use App\Models\Klien;
+use App\Models\KontakKlien;
 use App\Models\BahanBakuKlien;
 use App\Models\RiwayatHargaKlien;
 use App\Services\AuthFallbackService;
@@ -19,7 +20,8 @@ class KlienController extends Controller
     public function create()
     {
         $klien = new Klien();
-        return view('pages.marketing.klien.create', compact('klien'));
+        $kontakOptions = KontakKlien::orderBy('nama')->get();
+        return view('pages.marketing.klien.create', compact('klien', 'kontakOptions'));
     }
 
     /**
@@ -32,7 +34,7 @@ class KlienController extends Controller
             $data = $request->validate([
                 'nama' => 'required|string|max:255',
                 'cabang' => 'required|string|max:255',
-                'no_hp' => 'nullable|string|max:30',
+                'contact_person_id' => 'nullable|exists:kontak_klien,id',
             ]);
 
             // Check if this exact branch already exists
@@ -56,7 +58,7 @@ class KlienController extends Controller
                 Klien::create([
                     'nama' => $data['nama'],
                     'cabang' => 'Kantor Pusat',
-                    'no_hp' => null,
+                    'contact_person_id' => null,
                 ]);
                 $message = 'Perusahaan dan plant baru berhasil ditambahkan';
             } else {
@@ -91,6 +93,7 @@ class KlienController extends Controller
      */
     public function show(Klien $klien)
     {
+        $klien->load('contactPerson');
         return view('pages.marketing.klien.show', compact('klien'));
     }
 
@@ -108,7 +111,7 @@ class KlienController extends Controller
             $data = $request->validate([
                 'nama' => 'required|string|max:255',
                 'cabang' => 'required|string|max:255',
-                'no_hp' => 'nullable|string|max:30',
+                'contact_person_id' => 'nullable|exists:kontak_klien,id',
             ]);
 
             // Check if this combination already exists (excluding current record)
@@ -167,7 +170,7 @@ class KlienController extends Controller
                 // Also delete the placeholder if no real branches remain
                 Klien::where('nama', $companyName)
                      ->where('cabang', 'Kantor Pusat')
-                     ->whereNull('no_hp')
+                     ->whereNull('contact_person_id')
                      ->delete();
                 $message = 'Plant dan perusahaan berhasil dihapus';
             } else {

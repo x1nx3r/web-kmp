@@ -42,4 +42,12 @@ class KontakKlien extends Model
             ->orderBy('nama')
             ->get();
     }
+
+    /**
+     * Relationship - clients that use this contact as their contact person
+     */
+    public function kliens()
+    {
+        return $this->hasMany(Klien::class, 'contact_person_id');
+    }
 }

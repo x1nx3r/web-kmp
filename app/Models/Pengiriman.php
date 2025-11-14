@@ -71,11 +71,19 @@ class Pengiriman extends Model
     }
 
     /**
-     * Relasi ke Purchase Order
+     * Relasi ke Purchase Order (Legacy)
      */
     public function purchaseOrder()
     {
-        return $this->belongsTo(PurchaseOrder::class);
+        return $this->belongsTo(Order::class, 'purchase_order_id');
+    }
+
+    /**
+     * Relasi ke Order (New)
+     */
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'purchase_order_id');
     }
 
     /**

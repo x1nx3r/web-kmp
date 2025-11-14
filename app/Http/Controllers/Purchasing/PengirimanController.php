@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Purchasing;
 use App\Http\Controllers\Controller;
 use App\Models\Pengiriman;
 use App\Models\PengirimanDetail;
-use App\Models\PurchaseOrder;
+use App\Models\Order;
 use App\Models\Klien;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -23,8 +23,8 @@ class PengirimanController extends Controller
         // Base query dengan eager loading
         $baseQuery = function($status) use ($request) {
             $query = Pengiriman::with([
-                'purchaseOrder:id,no_po,klien_id', 
-                'purchaseOrder.klien:id,nama,cabang', 
+                'order:id,po_number,klien_id', 
+                'order.klien:id,nama,cabang', 
                 'purchasing:id,nama', 
                 'pengirimanDetails'
             ])
@@ -36,8 +36,8 @@ class PengirimanController extends Controller
             if ($status === 'pending' && $request->filled('search_masuk')) {
                 $search = $request->get('search_masuk');
                 $query->where(function($q) use ($search) {
-                    $q->whereHas('purchaseOrder', function($poQuery) use ($search) {
-                        $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                    $q->whereHas('order', function($orderQuery) use ($search) {
+                        $orderQuery->where('po_number', 'LIKE', "%{$search}%");
                     })
                     ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
                         $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
@@ -50,8 +50,8 @@ class PengirimanController extends Controller
             if ($status === 'berhasil' && $request->filled('search_berhasil')) {
                 $search = $request->get('search_berhasil');
                 $query->where(function($q) use ($search) {
-                    $q->whereHas('purchaseOrder', function($poQuery) use ($search) {
-                        $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                    $q->whereHas('order', function($orderQuery) use ($search) {
+                        $orderQuery->where('po_number', 'LIKE', "%{$search}%");
                     })
                     ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
                         $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
@@ -64,8 +64,8 @@ class PengirimanController extends Controller
             if ($status === 'gagal' && $request->filled('search_gagal')) {
                 $search = $request->get('search_gagal');
                 $query->where(function($q) use ($search) {
-                    $q->whereHas('purchaseOrder', function($poQuery) use ($search) {
-                        $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                    $q->whereHas('order', function($orderQuery) use ($search) {
+                        $orderQuery->where('po_number', 'LIKE', "%{$search}%");
                     })
                     ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
                         $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
@@ -78,8 +78,8 @@ class PengirimanController extends Controller
             if ($status === 'menunggu_verifikasi' && $request->filled('search_verifikasi')) {
                 $search = $request->get('search_verifikasi');
                 $query->where(function($q) use ($search) {
-                    $q->whereHas('purchaseOrder', function($poQuery) use ($search) {
-                        $poQuery->where('no_po', 'LIKE', "%{$search}%");
+                    $q->whereHas('order', function($orderQuery) use ($search) {
+                        $orderQuery->where('po_number', 'LIKE', "%{$search}%");
                     })
                     ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
                         $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
@@ -164,9 +164,9 @@ class PengirimanController extends Controller
     public function create(): View
     {
         $klien = Klien::all();
-        $purchaseOrders = PurchaseOrder::where('status', 'approved')->get();
+        $orders = Order::where('status', ['dikonfirmasi','diproses'])->get();
 
-        return view('pages.purchasing.pengiriman-create', compact('klien', 'purchaseOrders'));
+        return view('pages.purchasing.pengiriman-create', compact('klien', 'orders'));
     }
 
     /**
@@ -175,7 +175,7 @@ class PengirimanController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'purchase_order_id' => 'required|exists:purchase_orders,id',
+            'purchase_order_id' => 'required|exists:orders,id',
             'klien_id' => 'required|exists:klien,id',
             'tanggal_pengiriman' => 'required|date',
             'status' => 'required|in:pending,in_transit,delivered,cancelled',
@@ -221,7 +221,7 @@ class PengirimanController extends Controller
      */
     public function show(Pengiriman $pengiriman): View
     {
-        $pengiriman->load(['klien', 'purchaseOrder', 'details.bahanBaku']);
+        $pengiriman->load(['klien', 'order', 'details.bahanBaku']);
 
         return view('pages.purchasing.pengiriman-show', compact('pengiriman'));
     }
@@ -233,9 +233,9 @@ class PengirimanController extends Controller
     {
         $pengiriman->load(['details']);
         $klien = Klien::all();
-        $purchaseOrders = PurchaseOrder::where('status', 'approved')->get();
+        $orders = Order::where('status', 'approved')->get();
 
-        return view('pages.purchasing.pengiriman-edit', compact('pengiriman', 'klien', 'purchaseOrders'));
+        return view('pages.purchasing.pengiriman-edit', compact('pengiriman', 'klien', 'orders'));
     }
 
     /**
@@ -244,7 +244,7 @@ class PengirimanController extends Controller
     public function update(Request $request, Pengiriman $pengiriman): RedirectResponse
     {
         $validated = $request->validate([
-            'purchase_order_id' => 'required|exists:purchase_orders,id',
+            'purchase_order_id' => 'required|exists:orders,id',
             'klien_id' => 'required|exists:klien,id',
             'tanggal_pengiriman' => 'required|date',
             'status' => 'required|in:pending,in_transit,delivered,cancelled',
@@ -338,8 +338,8 @@ class PengirimanController extends Controller
     {
         try {
             $pengiriman = Pengiriman::with([
-                'purchaseOrder', 
-                'purchaseOrder.klien', 
+                'order', 
+                'order.klien', 
                 'purchasing', 
                 'pengirimanDetails'
             ])->findOrFail($id);
@@ -367,8 +367,8 @@ class PengirimanController extends Controller
             
             // Load step by step to debug relationship issues
             $pengiriman = Pengiriman::with([
-                'purchaseOrder', 
-                'purchaseOrder.klien', 
+                'order', 
+                'order.klien', 
                 'purchasing', 
                 'forecast',
                 'pengirimanDetails.bahanBakuSupplier',
@@ -424,8 +424,8 @@ class PengirimanController extends Controller
     {
         try {
             $pengiriman = Pengiriman::with([
-                'purchaseOrder', 
-                'purchaseOrder.klien', 
+                'order', 
+                'order.klien', 
                 'purchasing', 
                 'forecast'
             ])->findOrFail($request->get('pengiriman_id', 1)); // Default to 1 for testing
@@ -544,14 +544,14 @@ class PengirimanController extends Controller
                     
                     $poDetail = null;
                     if ($bahanBakuSupplier) {
-                        $poDetail = \App\Models\PurchaseOrderBahanBaku::where('purchase_order_id', $pengiriman->purchase_order_id)
+                        $poDetail = \App\Models\OrderDetail::where('order_id', $pengiriman->purchase_order_id)
                             ->whereHas('bahanBakuKlien', function($query) use ($bahanBakuSupplier) {
                                 $query->where('nama', $bahanBakuSupplier->nama);
                             })
                             ->first();
                         
                         if (!$poDetail) {
-                            $poDetail = \App\Models\PurchaseOrderBahanBaku::where('purchase_order_id', $pengiriman->purchase_order_id)
+                            $poDetail = \App\Models\OrderDetail::where('order_id', $pengiriman->purchase_order_id)
                                 ->first();
                         }
                     }
@@ -628,8 +628,8 @@ class PengirimanController extends Controller
     {
         try {
             $pengiriman = Pengiriman::with([
-                'purchaseOrder', 
-                'purchaseOrder.klien', 
+                'order', 
+                'order.klien', 
                 'purchasing', 
                 'forecast'
             ])->findOrFail($request->get('pengiriman_id'));
@@ -709,8 +709,8 @@ class PengirimanController extends Controller
     {
         try {
             $pengiriman = Pengiriman::with([
-                'purchaseOrder',
-                'purchaseOrder.klien',
+                'order',
+                'order.klien',
                 'purchasing',
                 'pengirimanDetails.bahanBakuSupplier',
                 'pengirimanDetails.bahanBakuSupplier.supplier'
@@ -721,7 +721,7 @@ class PengirimanController extends Controller
                 'id' => $pengiriman->id,
                 'no_pengiriman' => $pengiriman->no_pengiriman,
                 'status' => ucfirst($pengiriman->status),
-                'no_po' => $pengiriman->purchaseOrder->no_po ?? '-',
+                'no_po' => $pengiriman->order->po_number ?? '-',
                 'pic_purchasing' => $pengiriman->purchasing->nama ?? '-',
                 'tanggal_kirim' => $pengiriman->tanggal_kirim ? Carbon::parse($pengiriman->tanggal_kirim)->format('d F Y') : '-',
                 'hari_kirim' => $pengiriman->hari_kirim ?? '-',
@@ -764,8 +764,8 @@ class PengirimanController extends Controller
     {
         try {
             $pengiriman = Pengiriman::with([
-                'purchaseOrder',
-                'purchaseOrder.klien',
+                'order',
+                'order.klien',
                 'purchasing',
                 'pengirimanDetails.bahanBakuSupplier',
                 'pengirimanDetails.bahanBakuSupplier.supplier'
@@ -776,7 +776,7 @@ class PengirimanController extends Controller
                 'id' => $pengiriman->id,
                 'no_pengiriman' => $pengiriman->no_pengiriman,
                 'status' => ucfirst($pengiriman->status),
-                'no_po' => $pengiriman->purchaseOrder->no_po ?? '-',
+                'no_po' => $pengiriman->order->po_number ?? '-',
                 'pic_purchasing' => $pengiriman->purchasing->nama ?? '-',
                 'tanggal_kirim' => $pengiriman->tanggal_kirim ? Carbon::parse($pengiriman->tanggal_kirim)->format('d F Y') : '-',
                 'hari_kirim' => $pengiriman->hari_kirim ?? '-',
@@ -820,16 +820,16 @@ class PengirimanController extends Controller
             // Load relasi satu per satu untuk menghindari timeout
             $pengiriman->load('purchasing');
             $pengiriman->load('forecast');  
-            $pengiriman->load('purchaseOrder.klien');
+            $pengiriman->load('order.klien');
             $pengiriman->load('pengirimanDetails');
             
             // Debug logging untuk troubleshoot
             Log::info('Debug Pengiriman Detail:', [
                 'pengiriman_id' => $pengiriman->id,
                 'purchase_order_id' => $pengiriman->purchase_order_id,
-                'has_purchase_order' => $pengiriman->purchaseOrder ? 'YES' : 'NO',
-                'qty_total' => $pengiriman->purchaseOrder?->qty_total,
-                'total_amount' => $pengiriman->purchaseOrder?->total_amount,
+                'has_order' => $pengiriman->order ? 'YES' : 'NO',
+                'qty_total' => $pengiriman->order?->qty_total,
+                'total_amount' => $pengiriman->order?->total_amount,
             ]);
 
             return view('pages.purchasing.pengiriman.menunggu-verifikasi.detail', compact('pengiriman'));
@@ -852,17 +852,26 @@ class PengirimanController extends Controller
     }
 
     /**
-     * Verifikasi pengiriman - ubah status menjadi berhasil dan kurangi qty PO
+     * Verifikasi pengiriman - ubah status menjadi berhasil dan kurangi qty Order
      */
     public function verifikasiPengiriman($id)
     {
         try {
+            Log::info("Starting verifikasi pengiriman for ID: {$id}");
+            
             DB::beginTransaction();
 
             $pengiriman = Pengiriman::with([
-                'purchaseOrder',
-                'pengirimanDetails.purchaseOrderBahanBaku'
+                'order',
+                'pengirimanDetails.orderDetail'
             ])->where('status', 'menunggu_verifikasi')->findOrFail($id);
+
+            Log::info("Found pengiriman", [
+                'pengiriman_id' => $pengiriman->id,
+                'order_id' => $pengiriman->purchase_order_id,
+                'details_count' => $pengiriman->pengirimanDetails->count(),
+                'total_qty_kirim' => $pengiriman->total_qty_kirim
+            ]);
 
             // Update status pengiriman menjadi berhasil
             $pengiriman->update([
@@ -870,26 +879,67 @@ class PengirimanController extends Controller
                 'catatan' => 'berhasil'
             ]);
 
-            // Kurangi qty di purchase_order_bahan_baku untuk setiap detail
+            Log::info("Updated pengiriman status to berhasil");
+
+            // Kurangi qty di order_details untuk setiap detail
             foreach ($pengiriman->pengirimanDetails as $detail) {
-                $purchaseOrderBahanBaku = $detail->purchaseOrderBahanBaku;
-                if ($purchaseOrderBahanBaku) {
-                    $newQty = $purchaseOrderBahanBaku->jumlah - $detail->qty_kirim;
-                    $purchaseOrderBahanBaku->update([
-                        'jumlah' => max(0, $newQty) // Pastikan tidak negatif
+                $orderDetail = $detail->orderDetail;
+                if ($orderDetail) {
+                    $oldQty = $orderDetail->qty;
+                    $newQty = $orderDetail->qty - $detail->qty_kirim;
+                    $orderDetail->update([
+                        'qty' => max(0, $newQty) // Pastikan tidak negatif
+                    ]);
+                    
+                    Log::info("Updated order detail qty", [
+                        'order_detail_id' => $orderDetail->id,
+                        'old_qty' => $oldQty,
+                        'qty_kirim' => $detail->qty_kirim,
+                        'new_qty' => max(0, $newQty)
+                    ]);
+                } else {
+                    Log::warning("OrderDetail not found for pengiriman detail", [
+                        'pengiriman_detail_id' => $detail->id,
+                        'purchase_order_bahan_baku_id' => $detail->purchase_order_bahan_baku_id
                     ]);
                 }
             }
 
-            // Update qty_total di purchase_order
-            if ($pengiriman->purchaseOrder) {
-                $newQtyTotal = $pengiriman->purchaseOrder->qty_total - $pengiriman->total_qty_kirim;
-                $pengiriman->purchaseOrder->update([
-                    'qty_total' => max(0, $newQtyTotal) // Pastikan tidak negatif
+            // Update qty_total di order dan ubah status jika diperlukan
+            if ($pengiriman->order) {
+                $oldQtyTotal = $pengiriman->order->total_qty;
+                $oldStatus = $pengiriman->order->status;
+                $newQtyTotal = $pengiriman->order->total_qty - $pengiriman->total_qty_kirim;
+                
+                $updateData = [
+                    'total_qty' => max(0, $newQtyTotal) // Pastikan tidak negatif
+                ];
+                
+                // Jika status order adalah 'dikonfirmasi', ubah menjadi 'diproses'
+                if ($pengiriman->order->status === 'dikonfirmasi') {
+                    $updateData['status'] = 'diproses';
+                }
+                
+                $pengiriman->order->update($updateData);
+                
+                Log::info("Updated order total_qty and status", [
+                    'order_id' => $pengiriman->order->id,
+                    'old_total_qty' => $oldQtyTotal,
+                    'old_status' => $oldStatus,
+                    'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                    'new_total_qty' => max(0, $newQtyTotal),
+                    'new_status' => $updateData['status'] ?? $oldStatus,
+                    'status_changed' => isset($updateData['status'])
+                ]);
+            } else {
+                Log::warning("Order not found for pengiriman", [
+                    'pengiriman_id' => $pengiriman->id,
+                    'purchase_order_id' => $pengiriman->purchase_order_id
                 ]);
             }
 
             DB::commit();
+            Log::info("Verifikasi pengiriman completed successfully");
 
             return response()->json([
                 'success' => true,
@@ -898,6 +948,9 @@ class PengirimanController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error in verifikasiPengiriman: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memverifikasi pengiriman: ' . $e->getMessage()
@@ -973,12 +1026,12 @@ class PengirimanController extends Controller
 
             try {
                 $pengiriman->load([
-                    'purchaseOrder' => function($query) {
+                    'order' => function($query) {
                         $query->with('klien');
                     }
                 ]);
             } catch (\Exception $e) {
-                Log::error('Error loading purchaseOrder relation in revisi modal: ' . $e->getMessage());
+                Log::error('Error loading order relation in revisi modal: ' . $e->getMessage());
             }
 
             return view('pages.purchasing.pengiriman.menunggu-verifikasi.revisi', compact('pengiriman'));
@@ -1018,12 +1071,12 @@ class PengirimanController extends Controller
 
             try {
                 $pengiriman->load([
-                    'purchaseOrder' => function($query) {
+                    'order' => function($query) {
                         $query->with('klien');
                     }
                 ]);
             } catch (\Exception $e) {
-                Log::error('Error loading purchaseOrder relation in verifikasi modal: ' . $e->getMessage());
+                Log::error('Error loading order relation in verifikasi modal: ' . $e->getMessage());
             }
             
             // Load pengiriman details with safer approach
@@ -1031,7 +1084,7 @@ class PengirimanController extends Controller
                 $pengiriman->load([
                     'pengirimanDetails' => function($query) {
                         $query->with([
-                            'purchaseOrderBahanBaku',
+                            'orderDetail',
                             'bahanBakuSupplier' => function($q) {
                                 $q->with('supplier');
                             }

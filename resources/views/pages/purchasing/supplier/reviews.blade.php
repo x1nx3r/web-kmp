@@ -178,8 +178,8 @@
                             <div>
                                 <h3 class="text-lg font-semibold text-gray-900">{{ $item->no_pengiriman }}</h3>
                                 <p class="text-sm text-gray-600">
-                                    PO: {{ $item->purchaseOrder->no_po ?? 'N/A' }} | 
-                                    Klien: {{ $item->purchaseOrder->klien->nama ?? 'N/A' }}
+                                    Order: {{ $item->order->po_number ?? 'N/A' }} | 
+                                    Klien: {{ $item->order->klien->nama ?? 'N/A' }}
                                 </p>
                             </div>
                         </div>

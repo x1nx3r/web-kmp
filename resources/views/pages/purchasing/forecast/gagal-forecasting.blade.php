@@ -138,8 +138,8 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm text-gray-900">
-                                        <div class="font-medium">{{ $forecast->purchaseOrder->no_po ?? 'N/A' }}</div>
-                                        <div class="text-gray-500">{{ $forecast->purchaseOrder->klien->nama ?? 'N/A' }}</div>
+                                        <div class="font-medium">{{ optional($forecast->order)->po_number ?? 'N/A' }}</div>
+                                        <div class="text-gray-500">{{ optional(optional($forecast->order)->klien)->nama ?? 'N/A' }}</div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">

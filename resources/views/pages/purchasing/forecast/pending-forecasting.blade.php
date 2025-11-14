@@ -153,7 +153,7 @@
         <div class="flex items-center space-x-4 text-sm">
             @php
                 $totalForecasts = $pendingForecasts->total();
-                $totalPOs = collect($pendingForecasts->items())->groupBy('purchase_order_id')->count();
+                $totalPOs = collect($pendingForecasts->items())->groupBy('order_id')->count();
                 $totalAmount = collect($pendingForecasts->items())->sum('total_harga_forecast');
             @endphp
             <div class="text-center">
@@ -174,17 +174,17 @@
     {{-- Simplified PO Cards with Forecasts --}}
     <div class="space-y-2">
         @php
-            // Group forecasts by purchase_order_id
-            $groupedForecasts = collect($pendingForecasts->items())->groupBy('purchase_order_id');
+            // Group forecasts by order_id
+            $groupedForecasts = collect($pendingForecasts->items())->groupBy('order_id');
         @endphp
 
         @forelse($groupedForecasts as $poId => $forecasts)
             @php
-                $po = $forecasts->first()->purchaseOrder;
+                $po = $forecasts->first()->order;
             @endphp
             {{-- Simplified PO Card --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 pending-forecast-card po-card" 
-                 data-no-po="{{ strtolower($po->no_po ?? '') }}" 
+                 data-no-po="{{ strtolower($po->po_number ?? '') }}" 
                  data-klien="{{ strtolower((optional($po->klien)->nama ?? '') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : '')) }}" 
                  data-forecasts="{{ $forecasts->count() }}">
                 
@@ -196,8 +196,8 @@
                                 <i class="fas fa-file-alt text-white text-xs"></i>
                             </div>
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900">{{ $po->no_po ?? 'N/A' }}</h3>
-                                <p class="text-xs text-gray-500">{{ ($po->klien->nama ?? 'N/A') . ($po->klien->cabang ? ' - ' . $po->klien->cabang : '') }}</p>
+                                <h3 class="text-sm font-semibold text-gray-900">{{ $po->po_number ?? 'N/A' }}</h3>
+                                <p class="text-xs text-gray-500">{{ (optional($po->klien)->nama ?? 'N/A') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : '') }}</p>
                             </div>
                         </div>
                         
@@ -257,7 +257,7 @@
                                                     onclick="openForecastDetailModal({{ json_encode([
                                                         'id' => $forecast->id,
                                                         'no_forecast' => $forecast->no_forecast,
-                                                        'no_po' => $po->no_po ?? 'N/A',
+                                                        'po_number' => $po->po_number ?? 'N/A',
                                                         'klien' => (optional($po->klien)->nama ?? 'N/A') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : ''),
                                                         'pic_purchasing' => optional($forecast->purchasing)->nama ?? 'Tidak ada PIC',
                                                         'tanggal_forecast' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A',

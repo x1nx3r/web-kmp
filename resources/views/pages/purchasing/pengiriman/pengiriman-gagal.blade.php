@@ -146,7 +146,7 @@
                                     <div class="text-sm text-gray-500">{{ $pengiriman->created_at->format('d/m/Y H:i') }}</div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-sm font-medium text-gray-900">{{ $pengiriman->purchaseOrder->no_po ?? '-' }}</div>
+                                    <div class="text-sm font-medium text-gray-900">{{ $pengiriman->order->po_number ?? '-' }}</div>
                                     <div class="text-sm text-gray-500">{{ $pengiriman->purchasing->nama ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4">

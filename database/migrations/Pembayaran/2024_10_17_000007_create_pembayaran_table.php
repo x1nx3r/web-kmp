@@ -11,16 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('purchase_orders', function (Blueprint $table) {
+        Schema::create('pembayaran', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('klien_id')->constrained('kliens')->onDelete('cascade');
-            $table->string('no_po');
-            $table->decimal('qty_total', 15, 2);
-            $table->decimal('total_amount', 15, 2);
-            $table->string('spesifikasi');
+            $table->foreignId('pengiriman_id')->constrained('pengiriman')->onDelete('cascade');
+            $table->decimal('jumlah_pembayaran', 15, 2);
+            $table->date('tanggal_pembayaran');
+            $table->string('metode_pembayaran');
+            $table->enum('status', ['pending', 'lunas', 'gagal'])->default('pending');
             $table->text('catatan')->nullable();
-
-            $table->enum('status', ['siap', 'proses','selesai', 'gagal'])->default('siap');
             $table->timestamps();
             $table->softDeletes();
         });
@@ -31,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('purchase_orders');
+        Schema::dropIfExists('pembayaran');
     }
 };

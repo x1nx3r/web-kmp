@@ -59,7 +59,7 @@
                                     <i class="fas fa-file-alt text-gray-500 mr-2"></i>
                                     No. Purchase Order
                                 </label>
-                                <input type="text" id="noPO" name="no_po" readonly 
+                                <input type="text" id="noPO" name="po_number" readonly 
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium">
                             </div>
 
@@ -313,7 +313,7 @@ function populateForecastModal(data) {
         // Populate form fields with real data
         document.getElementById('forecastId').value = data.id || '';
         document.getElementById('noForecast').value = data.no_forecast || '';
-        document.getElementById('noPO').value = data.no_po || '';
+        document.getElementById('noPO').value = data.po_number || '';
         document.getElementById('klienName').value = data.klien || '';
         document.getElementById('forecastStatus').value = data.status || 'Pending';
         document.getElementById('picPurchasing').value = data.pic_purchasing || 'Tidak ada PIC';

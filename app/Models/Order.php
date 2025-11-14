@@ -118,6 +118,14 @@ class Order extends Model
     }
 
     /**
+     * Relasi ke Forecasts (One-to-Many) - menggunakan purchase_order_id sebagai foreign key
+     */
+    public function forecasts(): HasMany
+    {
+        return $this->hasMany(Forecast::class, 'purchase_order_id');
+    }
+
+    /**
      * Scopes
      */
     public function scopeActive($query)

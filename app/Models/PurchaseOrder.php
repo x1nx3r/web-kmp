@@ -53,11 +53,19 @@ class PurchaseOrder extends Model
     }
 
     /**
-     * Relasi ke Purchase Order Bahan Baku (One-to-Many)
+     * Relasi ke Order Details (One-to-Many) - menggunakan purchase_order_id sebagai foreign key
      */
     public function purchaseOrderBahanBakus()
     {
-        return $this->hasMany(PurchaseOrderBahanBaku::class, 'purchase_order_id');
+        return $this->hasMany(OrderDetail::class, 'order_id', 'id');
+    }
+
+    /**
+     * Alias untuk kemudahan akses ke order details
+     */
+    public function orderDetails()
+    {
+        return $this->hasMany(OrderDetail::class, 'order_id', 'id');
     }
 
     /**

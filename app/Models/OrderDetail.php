@@ -89,6 +89,14 @@ class OrderDetail extends Model
     }
 
     /**
+     * Relasi ke Forecast Details (One-to-Many) - menggunakan purchase_order_bahan_baku_id sebagai foreign key
+     */
+    public function forecastDetails(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ForecastDetail::class, 'purchase_order_bahan_baku_id');
+    }
+
+    /**
      * Scopes
      */
     public function scopeByStatus($query, $status)

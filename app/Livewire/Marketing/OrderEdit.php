@@ -41,10 +41,21 @@ class OrderEdit extends OrderCreate
         $this->existingPoDocumentName = $order->po_document_original_name;
         $this->existingPoDocumentUrl = $order->po_document_url;
 
-        $this->selectedOrderItems = $order->orderDetails
-            ->map(fn ($detail) => $this->transformDetailToSelectedItem($detail))
-            ->values()
-            ->toArray();
+        // Load single material data from first order detail
+        $firstDetail = $order->orderDetails->first();
+        if ($firstDetail) {
+            $this->selectedMaterial = $firstDetail->bahan_baku_klien_id;
+            $this->quantity = (float) $firstDetail->qty;
+            $this->satuan = $firstDetail->satuan;
+            $this->hargaJual = (float) $firstDetail->harga_jual;
+            $this->spesifikasiKhusus = $firstDetail->spesifikasi_khusus;
+            $this->catatanMaterial = $firstDetail->catatan;
+            
+            // Load auto suppliers for this material
+            if ($firstDetail->bahanBakuKlien) {
+                $this->autoPopulateSuppliers($firstDetail->bahanBakuKlien);
+            }
+        }
 
         $this->updateTotals();
 

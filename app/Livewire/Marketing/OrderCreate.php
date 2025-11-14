@@ -23,7 +23,6 @@ class OrderCreate extends Component
     public $selectedKlien = null;
     public $selectedKlienCabang = null;
     public $selectedKlienId = null;
-    public $selectedOrderItems = [];
 
     // Mode state
     public bool $isEditing = false;
@@ -50,21 +49,20 @@ class OrderCreate extends Component
     public $klienSort = "nama_asc";
     public $selectedKota = "";
     
-    // Modal state
-    public $showAddItemModal = false;
-    public $currentMaterial = null;
-    public $currentQuantity = 1;
-    public $currentSatuan = '';
-    public $currentHargaJual = 0;
-    public $currentSpesifikasi = '';
-    public $currentCatatan = '';
+    // Single Material Selection (no modal needed)
+    public $selectedMaterial = null;
+    public $quantity = 1;
+    public $satuan = '';
+    public $hargaJual = 0;
+    public $spesifikasiKhusus = '';
+    public $catatanMaterial = '';
     
     // Auto-populated supplier data (read-only)
     public $autoSuppliers = [];
     public $bestMargin = 0;
     public $recommendedPrice = 0;
     
-    // Totals
+    // Single item totals
     public $totalAmount = 0;
     public $totalMargin = 0;
     
@@ -149,7 +147,13 @@ class OrderCreate extends Component
             ->first();
 
         $this->selectedKlienId = $klien ? $klien->id : null;
-        $this->selectedOrderItems = [];
+        
+        // Reset material selection when client changes
+        $this->selectedMaterial = null;
+        $this->quantity = 1;
+        $this->hargaJual = 0;
+        $this->autoSuppliers = [];
+        $this->resetTotals();
         $this->resetTotals();
 
         $this->poNumber = '';
@@ -194,46 +198,29 @@ class OrderCreate extends Component
             });
     }
     
-    public function openAddItemModal()
-    {
-        if (!$this->selectedKlien || !$this->selectedKlienCabang) {
-            session()->flash("error", "Pilih klien terlebih dahulu");
-            return;
-        }
-
-        $this->showAddItemModal = true;
-        $this->resetCurrentItem();
-    }
-    
-    public function closeAddItemModal()
-    {
-        $this->showAddItemModal = false;
-        $this->resetCurrentItem();
-    }
-    
-    private function resetCurrentItem()
-    {
-        $this->currentMaterial = null;
-        $this->currentQuantity = 1;
-        $this->currentSatuan = '';
-        $this->currentHargaJual = 0;
-        $this->currentSpesifikasi = '';
-        $this->currentCatatan = '';
-        $this->autoSuppliers = [];
-        $this->bestMargin = 0;
-        $this->recommendedPrice = 0;
-    }
-    
     public function selectMaterial($materialId)
     {
         $material = BahanBakuKlien::find($materialId);
         if ($material) {
-            $this->currentMaterial = $materialId;
-            $this->currentSatuan = $material->satuan;
+            $this->selectedMaterial = $materialId;
+            $this->satuan = $material->satuan;
             
             // Auto-populate all suppliers for this material
             $this->autoPopulateSuppliers($material);
+            
+            // Update totals when material changes
+            $this->updateTotals();
         }
+    }
+    
+    public function updatedQuantity()
+    {
+        $this->updateTotals();
+    }
+    
+    public function updatedHargaJual()
+    {
+        $this->updateTotals();
     }
     
     private function autoPopulateSuppliers($material)
@@ -291,14 +278,27 @@ class OrderCreate extends Component
             $this->bestMargin = $this->autoSuppliers[0]['margin_percentage'];
             
             // Set current selling price to recommended price
-            $this->currentHargaJual = $this->recommendedPrice;
+            $this->hargaJual = $this->recommendedPrice;
         }
     }
     
     protected function updateTotals()
     {
-        $this->totalAmount = collect($this->selectedOrderItems)->sum('total_harga');
-        $this->totalMargin = collect($this->selectedOrderItems)->sum('total_margin');
+        if ($this->selectedMaterial && $this->quantity > 0 && $this->hargaJual > 0) {
+            $this->totalAmount = $this->quantity * $this->hargaJual;
+            
+            // Calculate margin based on best supplier price
+            if (!empty($this->autoSuppliers)) {
+                $bestSupplier = collect($this->autoSuppliers)->sortBy('harga_supplier')->first();
+                $bestHpp = $this->quantity * $bestSupplier['harga_supplier'];
+                $this->totalMargin = $this->totalAmount - $bestHpp;
+            } else {
+                $this->totalMargin = 0;
+            }
+        } else {
+            $this->totalAmount = 0;
+            $this->totalMargin = 0;
+        }
     }
     
     protected function resetTotals()
@@ -351,7 +351,9 @@ class OrderCreate extends Component
         if ($this->isEditing) {
             return (bool) (
                 $this->selectedKlienId
-                && count($this->selectedOrderItems) > 0
+                && $this->selectedMaterial
+                && $this->quantity > 0
+                && $this->hargaJual > 0
                 && !empty($this->poNumber)
                 && !empty($this->poStartDate)
                 && !empty($this->poEndDate)
@@ -360,7 +362,9 @@ class OrderCreate extends Component
 
         return (bool) (
             $this->selectedKlienId
-            && count($this->selectedOrderItems) > 0
+            && $this->selectedMaterial
+            && $this->quantity > 0
+            && $this->hargaJual > 0
             && !empty($this->poNumber)
             && !empty($this->poStartDate)
             && !empty($this->poEndDate)
@@ -368,135 +372,21 @@ class OrderCreate extends Component
         );
     }
     
-    private function getBestSupplierForMaterial($materialName)
-    {
-        // Find the best supplier price for materials with matching names - following penawaran pattern
-        $suppliers = Supplier::with([
-            'bahanBakuSuppliers' => function ($q) use ($materialName) {
-                $q->where('nama', 'like', '%' . $materialName . '%')
-                    ->whereNotNull('harga_per_satuan')
-                    ->orderBy('harga_per_satuan', 'asc');
-            },
-            'picPurchasing'
-        ])->get();
-
-        $bestPrice = PHP_INT_MAX;
-        $bestSupplierName = 'N/A';
-        $bestSupplierId = null;
-        $bestPicName = null;
-
-        foreach ($suppliers as $supplier) {
-            foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
-                if ($bahanBaku->harga_per_satuan < $bestPrice) {
-                    $bestPrice = $bahanBaku->harga_per_satuan;
-                    $bestSupplierName = $supplier->nama;
-                    $bestSupplierId = $bahanBaku->id;
-                    $bestPicName = $supplier->picPurchasing ? $supplier->picPurchasing->nama : null;
-                }
-            }
-        }
-
-        return [
-            'supplier' => $bestSupplierName,
-            'supplier_id' => $bestSupplierId,
-            'pic_name' => $bestPicName,
-            'price' => $bestPrice === PHP_INT_MAX ? 0 : $bestPrice,
-        ];
-    }
-    
-    public function selectSupplier($supplierId)
-    {
-        $this->currentSupplier = $supplierId;
-        
-        // Auto-fill supplier price
-        $suppliers = $this->getSuppliers();
-        $selectedSupplier = $suppliers->firstWhere('supplier_id', $supplierId);
-        
-        if ($selectedSupplier) {
-            $this->currentHargaSupplier = $selectedSupplier['harga_per_unit'];
-            
-            // Auto-calculate selling price with default margin
-            $this->currentHargaJual = $this->currentHargaSupplier * 1.2; // 20% markup
-        }
-    }
-    
-    public function addOrderItem()
-    {
-        $this->validate([
-            'currentMaterial' => 'required',
-            'currentQuantity' => 'required|numeric|min:0.01',
-            'currentSatuan' => 'required|string',
-            'currentHargaJual' => 'required|numeric|min:0',
-        ]);
-        
-        $material = BahanBakuKlien::find($this->currentMaterial);
-        
-        if (!$material) {
-            session()->flash('error', 'Material tidak ditemukan');
-            return;
-        }
-
-        if (empty($this->autoSuppliers)) {
-            session()->flash('error', 'Tidak ada supplier tersedia untuk material ini');
-            return;
-        }
-        
-        $totalHarga = $this->currentQuantity * $this->currentHargaJual;
-        
-        // Calculate best margin from available suppliers
-        $bestSupplier = collect($this->autoSuppliers)->sortBy('harga_supplier')->first();
-        $bestHpp = $this->currentQuantity * $bestSupplier['harga_supplier'];
-        $totalMargin = $totalHarga - $bestHpp;
-        $marginPercentage = $totalHarga > 0 ? ($totalMargin / $totalHarga) * 100 : 0;
-        
-        $this->selectedOrderItems[] = [
-            'id' => uniqid(),
-            'bahan_baku_klien_id' => $this->currentMaterial,
-            'material_name' => $material->nama,
-            'qty' => $this->currentQuantity,
-            'satuan' => $this->currentSatuan,
-            'harga_jual' => $this->currentHargaJual,
-            'total_harga' => $totalHarga,
-            'best_supplier_price' => $bestSupplier['harga_supplier'],
-            'best_hpp' => $bestHpp,
-            'total_margin' => $totalMargin,
-            'margin_percentage' => $marginPercentage,
-            'suppliers_count' => count($this->autoSuppliers),
-            'spesifikasi_khusus' => $this->currentSpesifikasi,
-            'catatan' => $this->currentCatatan,
-            'auto_suppliers' => $this->autoSuppliers, // Store all supplier options
-            'recommended_bahan_baku_supplier_id' => $bestSupplier['bahan_baku_supplier_id'] ?? null,
-        ];
-        
-        $this->updateTotals();
-        $this->closeAddItemModal();
-        
-        session()->flash('success', 'Item berhasil ditambahkan');
-    }
-    
-    public function removeOrderItem($itemId)
-    {
-        $this->selectedOrderItems = array_filter($this->selectedOrderItems, function($item) use ($itemId) {
-            return $item['id'] !== $itemId;
-        });
-        
-        $this->selectedOrderItems = array_values($this->selectedOrderItems); // Re-index array
-        $this->updateTotals();
-        
-        session()->flash('success', 'Item berhasil dihapus');
-    }
+    // Removed unused multi-item methods - now focusing on single material orders
 
     public function createOrder()
     {
         $this->validate([
             'selectedKlienId' => 'required',
+            'selectedMaterial' => 'required',
+            'quantity' => 'required|numeric|min:0.01',
+            'hargaJual' => 'required|numeric|min:0',
             'tanggalOrder' => 'required|date',
             'poNumber' => 'required|string|max:50',
             'poStartDate' => 'required|date',
             'poEndDate' => 'required|date|after_or_equal:poStartDate',
             'poDocument' => 'required|file|mimes:jpg,jpeg,png|max:5120',
             'priority' => 'required|in:rendah,normal,tinggi,mendesak',
-            'selectedOrderItems' => 'required|min:1',
         ]);
         
         $this->updatePriorityFromSchedule();
@@ -544,25 +434,24 @@ class OrderCreate extends Component
                 'total_margin' => 0, // Will be calculated by model
             ]);
             
-            // Create order details with auto-supplier population
-            foreach ($this->selectedOrderItems as $item) {
-                $orderDetail = OrderDetail::create([
-                    'order_id' => $order->id,
-                    'bahan_baku_klien_id' => $item['bahan_baku_klien_id'],
-                    'qty' => $item['qty'],
-                    'satuan' => $item['satuan'],
-                    'harga_jual' => $item['harga_jual'],
-                    'total_harga' => $item['total_harga'],
-                    'spesifikasi_khusus' => $item['spesifikasi_khusus'] ?? null,
-                    'catatan' => $item['catatan'] ?? null,
-                    'status' => 'menunggu',
-                ]);
+            // Create single order detail with auto-supplier population
+            $orderDetail = OrderDetail::create([
+                'order_id' => $order->id,
+                'bahan_baku_klien_id' => $this->selectedMaterial,
+                'qty' => $this->quantity,
+                'satuan' => $this->satuan,
+                'harga_jual' => $this->hargaJual,
+                'total_harga' => $this->totalAmount,
+                'spesifikasi_khusus' => $this->spesifikasiKhusus ?: null,
+                'catatan' => $this->catatanMaterial ?: null,
+                'status' => 'menunggu',
+            ]);
 
-                // Automatically populate all suppliers for this material
-                $orderDetail->populateSupplierOptions();
+            // Automatically populate all suppliers for this material
+            $orderDetail->populateSupplierOptions();
 
-                $this->setRecommendedSupplier($orderDetail, $item);
-            }
+            // Set recommended supplier based on auto-populated data
+            $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
             
             DB::commit();
             
@@ -598,8 +487,8 @@ class OrderCreate extends Component
             'priority' => 'required|in:rendah,normal,tinggi,mendesak',
         ]);
 
-        if (count($this->selectedOrderItems) === 0) {
-            session()->flash('error', 'Tambahkan minimal satu item sebelum menyimpan.');
+        if (!$this->selectedMaterial || $this->quantity <= 0 || $this->hargaJual <= 0) {
+            session()->flash('error', 'Lengkapi data material, quantity, dan harga jual sebelum menyimpan.');
             return;
         }
 
@@ -644,28 +533,27 @@ class OrderCreate extends Component
                 'catatan' => $this->catatan,
             ]);
 
+            // Clear existing order details and suppliers
             foreach ($order->orderDetails as $detail) {
                 $detail->orderSuppliers()->delete();
             }
             $order->orderDetails()->delete();
 
-            foreach ($this->selectedOrderItems as $item) {
-                $orderDetail = OrderDetail::create([
-                    'order_id' => $order->id,
-                    'bahan_baku_klien_id' => $item['bahan_baku_klien_id'],
-                    'qty' => $item['qty'],
-                    'satuan' => $item['satuan'],
-                    'harga_jual' => $item['harga_jual'],
-                    'total_harga' => $item['total_harga'],
-                    'spesifikasi_khusus' => $item['spesifikasi_khusus'] ?? null,
-                    'catatan' => $item['catatan'] ?? null,
-                    'status' => 'menunggu',
-                ]);
+            // Create single updated order detail
+            $orderDetail = OrderDetail::create([
+                'order_id' => $order->id,
+                'bahan_baku_klien_id' => $this->selectedMaterial,
+                'qty' => $this->quantity,
+                'satuan' => $this->satuan,
+                'harga_jual' => $this->hargaJual,
+                'total_harga' => $this->totalAmount,
+                'spesifikasi_khusus' => $this->spesifikasiKhusus ?: null,
+                'catatan' => $this->catatanMaterial ?: null,
+                'status' => 'menunggu',
+            ]);
 
-                $orderDetail->populateSupplierOptions();
-
-                $this->setRecommendedSupplier($orderDetail, $item);
-            }
+            $orderDetail->populateSupplierOptions();
+            $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
 
             $order->calculateTotals();
 
@@ -685,25 +573,22 @@ class OrderCreate extends Component
         }
     }
 
-    protected function setRecommendedSupplier(OrderDetail $orderDetail, array $item): void
+    protected function setRecommendedSupplierFromAutoSuppliers(OrderDetail $orderDetail): void
     {
-        $autoSuppliers = collect($item['auto_suppliers'] ?? []);
+        if (empty($this->autoSuppliers)) {
+            $orderDetail->updateSupplierSummary();
+            return;
+        }
 
-        $recommended = $autoSuppliers->firstWhere('is_recommended', true);
-
-        $bahanBakuSupplierId = $recommended['bahan_baku_supplier_id']
-            ?? $item['recommended_bahan_baku_supplier_id']
-            ?? null;
-        $supplierId = $recommended['supplier_id'] ?? null;
-
-        if (!$bahanBakuSupplierId && !$supplierId) {
+        $recommended = collect($this->autoSuppliers)->firstWhere('is_recommended', true);
+        
+        if (!$recommended) {
             $orderDetail->updateSupplierSummary();
             return;
         }
 
         $selectedSupplier = $orderDetail->orderSuppliers()
-            ->when($bahanBakuSupplierId, fn($query) => $query->where('bahan_baku_supplier_id', $bahanBakuSupplierId))
-            ->when(!$bahanBakuSupplierId && $supplierId, fn($query) => $query->where('supplier_id', $supplierId))
+            ->where('bahan_baku_supplier_id', $recommended['bahan_baku_supplier_id'])
             ->first();
 
         if ($selectedSupplier) {
@@ -718,66 +603,5 @@ class OrderCreate extends Component
         $orderDetail->updateSupplierSummary();
     }
 
-    protected function transformDetailToSelectedItem(OrderDetail $detail): array
-    {
-        $detail->loadMissing(['bahanBakuKlien', 'orderSuppliers.supplier.picPurchasing', 'orderSuppliers.bahanBakuSupplier']);
-
-        $qty = (float) ($detail->qty ?? 0);
-        $sellingPrice = (float) ($detail->harga_jual ?? 0);
-        $totalHarga = (float) ($detail->total_harga ?? ($qty * $sellingPrice));
-
-        $autoSuppliers = $detail->orderSuppliers->map(function ($orderSupplier) use ($detail, $sellingPrice) {
-            $supplier = $orderSupplier->supplier;
-            $bahanBakuSupplier = $orderSupplier->bahanBakuSupplier;
-            $unitPrice = (float) ($orderSupplier->unit_price ?? 0);
-            $margin = $orderSupplier->calculated_margin;
-
-            if ($margin === null && $sellingPrice > 0) {
-                $margin = (($sellingPrice - $unitPrice) / $sellingPrice) * 100;
-            }
-
-            return [
-                'supplier_id' => $orderSupplier->supplier_id,
-                'bahan_baku_supplier_id' => $orderSupplier->bahan_baku_supplier_id,
-                'supplier_name' => $supplier->nama ?? 'Supplier',
-                'supplier_location' => $supplier->alamat ?? 'Alamat tidak tersedia',
-                'pic_name' => optional($supplier->picPurchasing)->nama,
-                'material_name' => $bahanBakuSupplier->nama ?? optional($detail->bahanBakuKlien)->nama,
-                'harga_supplier' => $unitPrice,
-                'satuan' => $bahanBakuSupplier->satuan ?? $detail->satuan,
-                'stok' => $bahanBakuSupplier->stok ?? 0,
-                'suggested_price' => $unitPrice > 0 ? $unitPrice * 1.2 : $sellingPrice,
-                'margin_percentage' => $margin ?? 0,
-                'is_recommended' => (bool) $orderSupplier->is_recommended,
-            ];
-        })->sortBy('harga_supplier')->values()->toArray();
-
-        $bestSupplier = collect($autoSuppliers)->first();
-        $recommended = collect($autoSuppliers)->firstWhere('is_recommended', true) ?? $bestSupplier;
-
-        $bestPrice = (float) ($bestSupplier['harga_supplier'] ?? 0);
-        $bestHpp = $qty * $bestPrice;
-        $totalMargin = $totalHarga - $bestHpp;
-        $marginPercentage = $totalHarga > 0 ? ($totalMargin / $totalHarga) * 100 : 0;
-
-        return [
-            'id' => 'detail-' . $detail->id,
-            'order_detail_id' => $detail->id,
-            'bahan_baku_klien_id' => $detail->bahan_baku_klien_id,
-            'material_name' => optional($detail->bahanBakuKlien)->nama ?? 'Material',
-            'qty' => $qty,
-            'satuan' => $detail->satuan,
-            'harga_jual' => $sellingPrice,
-            'total_harga' => $totalHarga,
-            'best_supplier_price' => $bestPrice,
-            'best_hpp' => $bestHpp,
-            'total_margin' => $totalMargin,
-            'margin_percentage' => $marginPercentage,
-            'suppliers_count' => count($autoSuppliers),
-            'spesifikasi_khusus' => $detail->spesifikasi_khusus,
-            'catatan' => $detail->catatan,
-            'auto_suppliers' => $autoSuppliers,
-            'recommended_bahan_baku_supplier_id' => $recommended['bahan_baku_supplier_id'] ?? null,
-        ];
-    }
+    // Removed transformDetailToSelectedItem - no longer needed for single material orders
 }

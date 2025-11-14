@@ -72,11 +72,14 @@
                             <p class="text-sm text-gray-600">Pastikan semua informasi sudah benar sebelum membuat order</p>
                         </div>
                         
-                        @if(count($selectedOrderItems) > 0)
+                        @if($selectedMaterial && $quantity > 0 && $hargaJual > 0)
                             <div class="bg-gray-50 rounded-lg p-4 text-center">
                                 <div class="text-sm text-gray-500 mb-1">Total Estimasi Order</div>
                                 <div class="text-2xl font-bold text-green-600">Rp {{ number_format($totalAmount, 0, ',', '.') }}</div>
-                                <div class="text-sm text-gray-500 mt-1">{{ count($selectedOrderItems) }} item dipilih</div>
+                                <div class="text-sm text-gray-500 mt-1">{{ number_format($quantity, 2) }} {{ $satuan }}</div>
+                                @if($totalMargin > 0)
+                                    <div class="text-sm text-green-600 mt-1">Margin: Rp {{ number_format($totalMargin, 0, ',', '.') }}</div>
+                                @endif
                             </div>
                         @endif
                         
@@ -95,40 +98,129 @@
                 </div>
             </div>
 
-            {{-- Right Section - Items Management & Summary --}}
+            {{-- Right Section - Material Selection & Summary --}}
             <div class="space-y-6 order-1 lg:order-2">
-                {{-- Selected Items List --}}
-                <x-order.items-list 
-                    :selectedOrderItems="$selectedOrderItems"
-                    :selectedKlien="$selectedKlien"
-                    :selectedKlienCabang="$selectedKlienCabang"
-                />
+                {{-- Material Selection --}}
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="border-b border-gray-200 p-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-cube text-purple-600 text-sm"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-900">Pilih Material</h3>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        {{-- Material Dropdown --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Material <span class="text-red-500">*</span>
+                            </label>
+                            <select wire:model.live="selectedMaterial" wire:change="selectMaterial($event.target.value)"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    {{ (!$selectedKlien || !$selectedKlienCabang) ? 'disabled' : '' }}>
+                                <option value="">{{ (!$selectedKlien || !$selectedKlienCabang) ? 'Pilih klien terlebih dahulu' : 'Pilih Material' }}</option>
+                                @if($selectedKlien && $selectedKlienCabang)
+                                    @foreach($availableMaterials as $material)
+                                        <option value="{{ $material['id'] }}">{{ $material['nama'] }} ({{ $material['satuan'] }})</option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
 
-                {{-- Order Summary Table --}}
-                <x-order.summary-table 
-                    :selectedOrderItems="$selectedOrderItems"
-                    :totalAmount="$totalAmount"
-                    :totalMargin="$totalMargin"
-                />
+                        {{-- Quantity and Price --}}
+                        @if($selectedMaterial)
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Quantity <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" wire:model.live="quantity" step="0.01" min="0.01"
+                                           class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                           placeholder="0">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Harga Jual <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" wire:model.live="hargaJual" step="0.01" min="0"
+                                           class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                           placeholder="0">
+                                </div>
+                            </div>
+
+                            {{-- Specifications and Notes --}}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Spesifikasi Khusus</label>
+                                    <textarea wire:model="spesifikasiKhusus" rows="2"
+                                              class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                              placeholder="Spesifikasi tambahan (opsional)"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
+                                    <textarea wire:model="catatanMaterial" rows="2"
+                                              class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                              placeholder="Catatan tambahan (opsional)"></textarea>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Supplier Information --}}
+                @if($selectedMaterial && !empty($autoSuppliers))
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="border-b border-gray-200 p-4">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-truck text-green-600 text-sm"></i>
+                                </div>
+                                <h3 class="font-semibold text-gray-900">Supplier Tersedia ({{ count($autoSuppliers) }})</h3>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                                @foreach($autoSuppliers as $index => $supplier)
+                                    <div class="border rounded-lg p-3 {{ $supplier['is_recommended'] ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white' }}">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="font-medium text-sm {{ $supplier['is_recommended'] ? 'text-green-900' : 'text-gray-900' }}">
+                                                {{ $supplier['supplier_name'] }}
+                                                @if($supplier['is_recommended'])
+                                                    <span class="ml-1 px-2 py-0.5 bg-green-200 text-green-800 text-xs rounded-full">Best</span>
+                                                @endif
+                                            </div>
+                                            <div class="text-xs text-gray-600">#{{{ $index + 1 }}}</div>
+                                        </div>
+                                        <div class="text-xs text-gray-600 mb-1">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>
+                                            {{ $supplier['supplier_location'] ?: 'Location not specified' }}
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <div class="text-sm font-semibold">Rp {{ number_format($supplier['harga_supplier'], 0, ',', '.') }}</div>
+                                                <div class="text-xs text-gray-500">per {{ $supplier['satuan'] }}</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-xs {{ $supplier['margin_percentage'] >= 20 ? 'text-green-600' : ($supplier['margin_percentage'] >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                    {{ number_format($supplier['margin_percentage'], 1) }}%
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    Stock: {{ number_format($supplier['stok'], 0) }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
 
-    {{-- Add Item Modal V2 - Multi-Supplier --}}
-    @if($showAddItemModal)
-        <x-order.add-item-modal-v2 
-            :availableMaterials="$availableMaterials"
-            :currentMaterial="$currentMaterial"
-            :currentQuantity="$currentQuantity"
-            :currentSatuan="$currentSatuan"
-            :currentHargaJual="$currentHargaJual"
-            :currentSpesifikasi="$currentSpesifikasi"
-            :currentCatatan="$currentCatatan"
-            :autoSuppliers="$autoSuppliers"
-            :bestMargin="$bestMargin"
-            :recommendedPrice="$recommendedPrice"
-        />
-    @endif
+    {{-- No modal needed for single material selection --}}
 
     {{-- Flash Messages --}}
     @if (session()->has('success'))

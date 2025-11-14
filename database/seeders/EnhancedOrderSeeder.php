@@ -74,16 +74,6 @@ class EnhancedOrderSeeder extends Seeder
                     'qty_shipped' => 2200,
                     'remaining_quantity' => 2800,
                     'status' => 'sebagian_dikirim',
-                ],
-                [
-                    'bahan_baku_klien_id' => 8, // DSS - PT Central Proteina
-                    'primary_supplier_id' => 16,
-                    'qty' => 2000,
-                    'satuan' => 'kg',
-                    'harga_jual' => 16500,
-                    'catatan' => 'Jaga moisture < 12%, gunakan gudang tertutup',
-                    'qty_shipped' => 0,
-                    'remaining_quantity' => 2000,
                 ]
             ]
         ];
@@ -164,25 +154,6 @@ class EnhancedOrderSeeder extends Seeder
                     'qty_shipped' => 300,
                     'remaining_quantity' => 0,
                     'status' => 'selesai',
-                ],
-                [
-                    'bahan_baku_klien_id' => 10, // Cangkang Kemiri - PT Central Proteina
-                    'primary_supplier_id' => 4,
-                    'qty' => 1200,
-                    'satuan' => 'kg',
-                    'harga_jual' => 14500,
-                    'qty_shipped' => 500,
-                    'remaining_quantity' => 700,
-                    'status' => 'sebagian_dikirim',
-                ],
-                [
-                    'bahan_baku_klien_id' => 13, // CPO - PT Central Proteina
-                    'primary_supplier_id' => 9,
-                    'qty' => 600,
-                    'satuan' => 'kg',
-                    'harga_jual' => 13500,
-                    'qty_shipped' => 0,
-                    'remaining_quantity' => 600,
                 ]
             ]
         ];

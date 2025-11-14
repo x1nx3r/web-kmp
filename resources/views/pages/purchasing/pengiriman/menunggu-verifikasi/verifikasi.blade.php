@@ -43,7 +43,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">No. PO:</span>
-                        <span class="font-medium">{{ optional($pengiriman->purchaseOrder)->no_po ?? '-' }}</span>
+                        <span class="font-medium">{{ optional($pengiriman->order)->po_number ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">PIC Purchasing:</span>
@@ -51,7 +51,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Klien:</span>
-                        <span class="font-medium">{{ optional(optional($pengiriman->purchaseOrder)->klien)->nama ?? '-' }}</span>
+                        <span class="font-medium">{{ optional(optional($pengiriman->order)->klien)->nama ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Tanggal Kirim:</span>
@@ -92,8 +92,8 @@
                                             <div class="font-medium text-gray-900">
                                                 @if(optional($detail->bahanBakuSupplier)->nama)
                                                     {{ $detail->bahanBakuSupplier->nama }}
-                                                @elseif(optional(optional($detail->purchaseOrderBahanBaku)->bahanBakuSupplier)->nama)
-                                                    {{ $detail->purchaseOrderBahanBaku->bahanBakuSupplier->nama }}
+                                                @elseif(optional(optional($detail->orderDetail)->bahanBakuSupplier)->nama)
+                                                    {{ $detail->orderDetail->bahanBakuSupplier->nama }}
                                                 @else
                                                     -
                                                 @endif
@@ -101,8 +101,8 @@
                                             <div class="text-xs text-gray-500">
                                                 @if(optional(optional($detail->bahanBakuSupplier)->supplier)->nama)
                                                     {{ $detail->bahanBakuSupplier->supplier->nama }}
-                                                @elseif(optional(optional(optional($detail->purchaseOrderBahanBaku)->bahanBakuSupplier)->supplier)->nama)
-                                                    {{ $detail->purchaseOrderBahanBaku->bahanBakuSupplier->supplier->nama }}
+                                                @elseif(optional(optional(optional($detail->orderDetail)->bahanBakuSupplier)->supplier)->nama)
+                                                    {{ $detail->orderDetail->bahanBakuSupplier->supplier->nama }}
                                                 @else
                                                     -
                                                 @endif
@@ -181,8 +181,11 @@
                         <h5 class="text-sm font-semibold text-yellow-800 mb-1">Dampak Verifikasi</h5>
                         <ul class="text-sm text-yellow-700 space-y-1">
                             <li>• Status pengiriman akan berubah menjadi <strong>"Berhasil"</strong></li>
-                            <li>• Kuantitas di Purchase Order akan dikurangi sesuai qty pengiriman</li>
-                            <li>• Qty Total PO akan diupdate: <strong>{{ number_format((optional($pengiriman->purchaseOrder)->qty_total ?? 0) - ($pengiriman->total_qty_kirim ?? 0), 0, ',', '.') }} kg</strong></li>
+                            <li>• Kuantitas di Order Detail akan dikurangi sesuai qty pengiriman</li>
+                            <li>• Total Qty Order akan diupdate: <strong>{{ number_format((optional($pengiriman->order)->total_qty ?? 0) - ($pengiriman->total_qty_kirim ?? 0), 0, ',', '.') }} kg</strong></li>
+                            @if(optional($pengiriman->order)->status === 'dikonfirmasi')
+                                <li>• Status Order akan berubah dari <strong>"Dikonfirmasi"</strong> menjadi <strong>"Diproses"</strong></li>
+                            @endif
                             <li>• Data akan masuk ke riwayat pengiriman berhasil</li>
                             <li>• Proses ini tidak dapat dibatalkan</li>
                         </ul>

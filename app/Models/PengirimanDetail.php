@@ -46,11 +46,19 @@ class PengirimanDetail extends Model
     }
 
     /**
-     * Relasi ke Purchase Order Bahan Baku
+     * Relasi ke Purchase Order Bahan Baku (Legacy)
      */
     public function purchaseOrderBahanBaku()
     {
-        return $this->belongsTo(PurchaseOrderBahanBaku::class);
+        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id');
+    }
+
+    /**
+     * Relasi ke Order Detail (New)
+     */
+    public function orderDetail()
+    {
+        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id');
     }
 
     /**

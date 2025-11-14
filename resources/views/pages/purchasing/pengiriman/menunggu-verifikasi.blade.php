@@ -109,19 +109,19 @@
 
     {{-- Content --}}
     @php
-        // Group pengiriman by purchase_order_id
+        // Group pengiriman by order_id (purchase_order_id field)
         $groupedPengiriman = $menungguVerifikasi->items() ? collect($menungguVerifikasi->items())->groupBy('purchase_order_id') : collect();
     @endphp
 
     <div class="space-y-2">
         @forelse($groupedPengiriman as $poId => $pengirimanList)
             @php
-                $po = $pengirimanList->first()->purchaseOrder;
+                $po = $pengirimanList->first()->order;
                 $purchasing = $pengirimanList->first()->purchasing;
             @endphp
             {{-- Simplified PO Card --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 verifikasi-pengiriman-card po-card" 
-                 data-no-po="{{ strtolower($po->no_po ?? '') }}" 
+                 data-no-po="{{ strtolower($po->po_number ?? '') }}" 
                  data-purchasing="{{ strtolower($purchasing->nama ?? '') }}" 
                  data-pengiriman="{{ $pengirimanList->count() }}">
                 
@@ -133,8 +133,8 @@
                                 <i class="fas fa-file-alt text-white text-xs"></i>
                             </div>
                             <div>
-                                @if($po && $po->no_po)
-                                    <h3 class="text-sm font-semibold text-gray-900">{{ $po->no_po }}</h3>
+                                @if($po && $po->po_number)
+                                    <h3 class="text-sm font-semibold text-gray-900">{{ $po->po_number }}</h3>
                                 @endif
                                 @if($po && $po->klien && $po->klien->nama)
                                     <p class="text-xs text-gray-500">{{ $po->klien->nama }}{{ $po->klien->cabang ? ' - ' . $po->klien->cabang : '' }}</p>

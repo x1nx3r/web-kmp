@@ -30,7 +30,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">No. PO</label>
                 <input type="text" 
-                       value="{{ optional($pengiriman->purchaseOrder)->no_po ?? '-' }}" 
+                       value="{{ optional($pengiriman->order)->po_number ?? '-' }}" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
                        readonly>
             </div>
@@ -44,14 +44,14 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Kuantitas PO</label>
                 <input type="text" 
-                       value="{{ optional($pengiriman->purchaseOrder)->qty_total ? number_format($pengiriman->purchaseOrder->qty_total, 0, ',', '.') . ' KG' : 'Data PO tidak ditemukan (ID: ' . ($pengiriman->purchase_order_id ?? 'null') . ')' }}" 
+                       value="{{ optional($pengiriman->order)->total_qty ? number_format($pengiriman->order->total_qty, 0, ',', '.') . ' KG' : 'Data Order tidak ditemukan (ID: ' . ($pengiriman->purchase_order_id ?? 'null') . ')' }}" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
                        readonly>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Total PO</label>
                 <input type="text" 
-                       value="{{ optional($pengiriman->purchaseOrder)->total_amount ? 'Rp ' . number_format($pengiriman->purchaseOrder->total_amount, 0, ',', '.') : '-' }}" 
+                       value="{{ optional($pengiriman->order)->total_amount ? 'Rp ' . number_format($pengiriman->order->total_amount, 0, ',', '.') : '-' }}" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
                        readonly>
             </div>
@@ -117,14 +117,14 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Nama Klien</label>
                 <input type="text" 
-                       value="{{ optional(optional($pengiriman->purchaseOrder)->klien)->nama ?? '-' }}" 
+                       value="{{ optional(optional($pengiriman->order)->klien)->nama ?? '-' }}" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
                        readonly>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Cabang</label>
                 <input type="text" 
-                       value="{{ optional(optional($pengiriman->purchaseOrder)->klien)->cabang ?? '-' }}" 
+                       value="{{ optional(optional($pengiriman->order)->klien)->cabang ?? '-' }}" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
                        readonly>
             </div>
@@ -214,8 +214,8 @@
                                     <div class="text-sm font-medium text-gray-900">
                                         @if(optional($detail->bahanBakuSupplier)->nama)
                                             {{ $detail->bahanBakuSupplier->nama }}
-                                        @elseif(optional(optional($detail->purchaseOrderBahanBaku)->bahanBakuSupplier)->nama)
-                                            {{ $detail->purchaseOrderBahanBaku->bahanBakuSupplier->nama }}
+                                        @elseif(optional(optional($detail->orderDetail)->bahanBakuSupplier)->nama)
+                                            {{ $detail->orderDetail->bahanBakuSupplier->nama }}
                                         @else
                                             -
                                         @endif
@@ -223,8 +223,8 @@
                                     <div class="text-sm text-gray-500">
                                         @if(optional(optional($detail->bahanBakuSupplier)->supplier)->nama)
                                             {{ $detail->bahanBakuSupplier->supplier->nama }}
-                                        @elseif(optional(optional(optional($detail->purchaseOrderBahanBaku)->bahanBakuSupplier)->supplier)->nama)
-                                            {{ $detail->PurchaseOrderBahanBaku->bahanBakuSupplier->supplier->nama }}
+                                        @elseif(optional(optional(optional($detail->orderDetail)->bahanBakuSupplier)->supplier)->nama)
+                                            {{ $detail->orderDetail->bahanBakuSupplier->supplier->nama }}
                                         @else
                                             -
                                         @endif

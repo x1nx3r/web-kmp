@@ -43,7 +43,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">No. PO:</span>
-                        <span class="font-medium">{{ $pengiriman->purchaseOrder->no_po ?? '-' }}</span>
+                        <span class="font-medium">{{ $pengiriman->order->po_number ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">PIC Purchasing:</span>

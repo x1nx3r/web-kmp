@@ -32,12 +32,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
             Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
-            
+
             Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
             Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
-            
+
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
-            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');            
+            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
             Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
             Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
     });
@@ -147,8 +147,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
     });
 
-    // Accounting routes - for accounting staff, manager, and superadmin
-    Route::prefix('accounting')->name('accounting.')->group(function () {
+    // Accounting routes - for accounting staff, manager, direktur, and superadmin
+    Route::middleware(['role:staff_accounting,manager_accounting,direktur,superadmin'])->prefix('accounting')->name('accounting.')->group(function () {
         // Approval Pembayaran
         Route::get('/approval-pembayaran', function() {
             return view('pages.accounting.approval-pembayaran');
@@ -169,10 +169,23 @@ Route::middleware(['auth'])->group(function () {
             return view('pages.accounting.approval-penagihan');
         })->name('approval-penagihan');
 
+        Route::get('/approval-penagihan/{approvalId}/approve', function($approvalId) {
+            return view('pages.accounting.approve-penagihan', ['approvalId' => $approvalId]);
+        })->name('approval-penagihan.detail');
+
+        Route::get('/approval-penagihan/{approvalId}/detail', function($approvalId) {
+            return view('pages.accounting.detail-penagihan', ['approvalId' => $approvalId]);
+        })->name('approval-penagihan.view');
+
         // Company Settings
         Route::get('/company-settings', function() {
             return view('pages.accounting.company-settings');
         })->name('company-settings');
+
+        // Catatan Piutang
+        Route::get('/catatan-piutang', function() {
+            return view('pages.accounting.catatan-piutang');
+        })->name('catatan-piutang');
     });
 
 
@@ -203,3 +216,17 @@ Route::middleware(['auth'])->group(function () {
     });
 
 });
+        // Company-level CRUD routes
+        Route::post('/klien/company/store', [KlienController::class, 'storeCompany'])->name('klien.company.store');
+        Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
+        Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
+
+
+
+        // Client Materials API routes
+        Route::prefix('api/klien-materials')->group(function () {
+            Route::post('/', [KlienController::class, 'storeMaterial'])->name('api.klien-materials.store');
+            Route::put('/{material}', [KlienController::class, 'updateMaterial'])->name('api.klien-materials.update');
+            Route::delete('/{material}', [KlienController::class, 'destroyMaterial'])->name('api.klien-materials.destroy');
+            Route::get('/{material}/price-history', [KlienController::class, 'getMaterialPriceHistory'])->name('api.klien-materials.price-history');
+        });

@@ -27,11 +27,14 @@ class InvoicePenagihan extends Model
         'refraksi_amount',
         'qty_before_refraksi',
         'qty_after_refraksi',
+        'amount_before_refraksi',
+        'amount_after_refraksi',
         'subtotal',
         'tax_percentage',
         'tax_amount',
         'discount_amount',
         'total_amount',
+        'status',
         'notes',
         'payment_status',
         'paid_at',
@@ -46,6 +49,8 @@ class InvoicePenagihan extends Model
         'refraksi_amount' => 'decimal:2',
         'qty_before_refraksi' => 'decimal:2',
         'qty_after_refraksi' => 'decimal:2',
+        'amount_before_refraksi' => 'decimal:2',
+        'amount_after_refraksi' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'tax_percentage' => 'decimal:2',
         'tax_amount' => 'decimal:2',
@@ -108,8 +113,9 @@ class InvoicePenagihan extends Model
      */
     public function recalculateTotal()
     {
-        $this->tax_amount = $this->subtotal * ($this->tax_percentage / 100);
-        $this->total_amount = $this->subtotal + $this->tax_amount - $this->discount_amount;
+        $this->tax_amount = 0;
+        $this->tax_percentage = 0;
+        $this->total_amount = $this->subtotal - $this->discount_amount;
         $this->save();
     }
 

@@ -65,8 +65,30 @@
         icon="fas fa-file-invoice-dollar"
     />
 
-    {{-- Pengiriman Without Invoice Section --}}
-    @if(isset($pengirimansWithoutInvoice) && $pengirimansWithoutInvoice->count() > 0)
+    {{-- Tab Navigation --}}
+    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="border-b border-gray-200">
+            <nav class="flex -mb-px" aria-label="Tabs">
+                <button
+                    wire:click="setActiveTab('pending')"
+                    class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors {{ $activeTab === 'pending' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+                >
+                    <i class="fas fa-clock mr-2"></i>
+                    Menunggu Approval Penagihan
+                </button>
+                <button
+                    wire:click="setActiveTab('approved')"
+                    class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors {{ $activeTab === 'approved' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+                >
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Approved Penagihan
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    {{-- Pengiriman Without Invoice Section - Only show in 'pending' tab --}}
+    @if($activeTab === 'pending' && isset($pengirimansWithoutInvoice) && $pengirimansWithoutInvoice->count() > 0)
         <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="bg-gradient-to-r from-yellow-50 to-amber-50 px-6 py-4 border-b border-gray-100">
                 <div class="flex items-center justify-between">
@@ -171,10 +193,11 @@
                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                         <option value="all">Semua Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="staff_approved">Staff Approved</option>
-                        <option value="manager_approved">Manager Approved</option>
-                        <option value="completed">Completed</option>
+                        @if($activeTab === 'pending')
+                            <option value="pending">Pending</option>
+                        @else
+                            <option value="completed">Completed</option>
+                        @endif
                     </select>
                 </div>
             </div>
@@ -189,7 +212,13 @@
                     <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                         <i class="fas fa-file-invoice text-purple-600 text-sm"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-900">Daftar Invoice & Approval</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        @if($activeTab === 'approved')
+                            Invoice Selesai (Approved)
+                        @else
+                            Invoice Menunggu Approval
+                        @endif
+                    </h3>
                 </div>
                 <span class="text-sm text-gray-600">Total: {{ $approvals->total() }} invoice</span>
             </div>
@@ -224,37 +253,36 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 0, ',', '.') }}</div>
-                                @if($approval->invoice->discount_amount > 0)
-                                    <div class="text-xs text-red-600">Diskon: Rp {{ number_format($approval->invoice->discount_amount, 0, ',', '.') }}</div>
-                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
                                     <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                        <i class="fas fa-clock mr-1"></i> Pending
+                                        <i class="fas fa-clock mr-1"></i> Menunggu Approval
                                     </span>
-                                @elseif($approval->status === 'staff_approved')
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                        <i class="fas fa-user-check mr-1"></i> Staff Approved
-                                    </span>
-                                @elseif($approval->status === 'manager_approved')
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                                        <i class="fas fa-user-tie mr-1"></i> Manager Approved
+                                @elseif($approval->status === 'completed')
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i> Selesai
                                     </span>
                                 @else
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        <i class="fas fa-check-circle mr-1"></i> Completed
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        <i class="fas fa-circle mr-1"></i> {{ ucfirst($approval->status) }}
                                     </span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <button
-                                    wire:click="showDetail({{ $approval->id }})"
-                                    class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    <i class="fas fa-eye mr-1"></i>
-                                    Detail
-                                </button>
+                                @if($activeTab === 'pending')
+                                    <a href="{{ route('accounting.approval-penagihan.detail', $approval->id) }}"
+                                       class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                        <i class="fas fa-eye mr-1"></i>
+                                        Detail & Approve
+                                    </a>
+                                @else
+                                    <a href="{{ route('accounting.approval-penagihan.view', $approval->id) }}"
+                                       class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+                                        <i class="fas fa-file-alt mr-1"></i>
+                                        Lihat Detail
+                                    </a>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -355,10 +383,50 @@
 
                         {{-- Refraksi Section --}}
                         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <h5 class="font-semibold text-gray-900 mb-3 flex items-center">
-                                <i class="fas fa-percent mr-2 text-yellow-600"></i>
-                                Refraksi
+                            <h5 class="font-semibold text-gray-900 mb-3 flex items-center justify-between">
+                                <span>
+                                    <i class="fas fa-percent mr-2 text-yellow-600"></i>
+                                    Refraksi
+                                </span>
+                                @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->refraksi_value > 0)
+                                    <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Dari Pembayaran
+                                    </span>
+                                @endif
                             </h5>
+
+                            @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->refraksi_value > 0)
+                                <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                                    <p class="text-blue-900 font-medium mb-1">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Refraksi diambil dari Approval Pembayaran
+                                    </p>
+                                    <p class="text-blue-700 text-xs">
+                                        Tipe: <strong>{{ $selectedData->approvalPembayaran->refraksi_type === 'qty' ? 'Qty (%)' : ($selectedData->approvalPembayaran->refraksi_type === 'rupiah' ? 'Rupiah (Rp/kg)' : 'Lainnya') }}</strong>,
+                                        Nilai: <strong>{{ number_format($selectedData->approvalPembayaran->refraksi_value, 2, ',', '.') }}</strong>
+                                    </p>
+
+                                    @if($selectedData->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
+                                        <div class="mt-2 pt-2 border-t border-blue-300">
+                                            <p class="text-blue-900 font-medium text-xs mb-1">
+                                                <i class="fas fa-comments mr-1"></i>
+                                                Catatan dari Pembayaran:
+                                            </p>
+                                            @foreach($selectedData->approvalPembayaran->histories->where('notes', '!=', null) as $history)
+                                                <div class="bg-white rounded p-2 mb-1 text-xs">
+                                                    <p class="text-gray-600">
+                                                        <span class="font-medium text-gray-800">{{ $history->user->nama ?? 'Unknown' }}</span>
+                                                        <span class="text-gray-400">({{ ucfirst($history->role) }})</span>
+                                                        - {{ $history->created_at->format('d M Y H:i') }}
+                                                    </p>
+                                                    <p class="text-gray-700 mt-1">{{ $history->notes }}</p>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
 
                             <div class="grid grid-cols-2 gap-4 mb-3">
                                 <div>
@@ -371,6 +439,7 @@
                                     >
                                         <option value="qty">Refraksi Qty (%)</option>
                                         <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
+                                        <option value="lainnya">Lainnya (Manual)</option>
                                     </select>
                                     @error('invoiceForm.refraksi_type') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
@@ -383,7 +452,7 @@
                                         step="0.01"
                                         wire:model="invoiceForm.refraksi_value"
                                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                        placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? 'Contoh: 1 untuk 1%' : 'Contoh: 40 untuk Rp 40/kg' }}"
+                                        placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? 'Contoh: 1 untuk 1%' : (($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah' ? 'Contoh: 40 untuk Rp 40/kg' : 'Nominal total potongan') }}"
                                     />
                                     @error('invoiceForm.refraksi_value') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
@@ -394,29 +463,29 @@
                                 @if(($invoiceForm['refraksi_type'] ?? 'qty') === 'qty')
                                     <p>• <strong>Refraksi Qty:</strong> Potongan berdasarkan persentase quantity</p>
                                     <p>• Contoh: 1% dari 5000 kg = 50 kg refraksi → menjadi 4950 kg</p>
-                                @else
+                                @elseif(($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah')
                                     <p>• <strong>Refraksi Rupiah:</strong> Potongan harga per kilogram</p>
                                     <p>• Contoh: Rp 40/kg dari 5000 kg = Rp 200.000 potongan</p>
+                                @else
+                                    <p>• <strong>Refraksi Lainnya:</strong> Input manual nominal total potongan</p>
+                                    <p>• Contoh: Rp 500.000 untuk potongan langsung</p>
                                 @endif
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Diskon Tambahan (Rp)</label>
-                            <input
-                                type="number"
-                                wire:model="invoiceForm.discount_amount"
-                                min="0"
-                                step="0.01"
-                                class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
+                            <label class="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                                <span>Catatan</span>
+                                @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
+                                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                        <i class="fas fa-comment-dots mr-1"></i>
+                                        Ada catatan dari pembayaran
+                                    </span>
+                                @endif
+                            </label>
                             <textarea
                                 wire:model="invoiceForm.notes"
-                                rows="2"
+                                rows="3"
                                 class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                 placeholder="Catatan tambahan untuk invoice..."
                             ></textarea>
@@ -535,20 +604,14 @@
                                 <span class="text-gray-600">PPN ({{ $selectedData->invoice->tax_percentage }}%):</span>
                                 <span class="font-medium">Rp {{ number_format($selectedData->invoice->tax_amount, 0, ',', '.') }}</span>
                             </div>
-                            @if($selectedData->invoice->discount_amount > 0)
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Diskon Tambahan:</span>
-                                    <span class="font-medium text-red-600">- Rp {{ number_format($selectedData->invoice->discount_amount, 0, ',', '.') }}</span>
-                                </div>
-                            @endif
                             <div class="border-t pt-2 flex justify-between">
                                 <span class="font-semibold text-gray-900">Total:</span>
                                 <span class="font-bold text-lg text-green-600">Rp {{ number_format($selectedData->invoice->total_amount, 0, ',', '.') }}</span>
                             </div>
                         </div>
 
-                        {{-- Edit Refraksi Section --}}
-                        @if($selectedData->status !== 'completed')
+                        {{-- Edit Refraksi Section - Only in pending tab and not completed --}}
+                        @if($activeTab === 'pending' && $selectedData->status !== 'completed')
                             <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                                 <h5 class="text-sm font-semibold text-gray-700 mb-3">
                                     <i class="fas fa-edit mr-1"></i>
@@ -601,49 +664,44 @@
                             Status Approval
                         </h4>
                         <div class="space-y-3">
-                            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full {{ $selectedData->staff_approved_at ? 'bg-green-100' : 'bg-gray-100' }} flex items-center justify-center mr-3">
-                                        <i class="fas {{ $selectedData->staff_approved_at ? 'fa-check text-green-600' : 'fa-user text-gray-400' }}"></i>
+                            @if($selectedData->status === 'completed')
+                                <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                                            <i class="fas fa-check text-green-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Disetujui Oleh</p>
+                                            <p class="text-xs text-gray-500">
+                                                @if($selectedData->staff)
+                                                    {{ $selectedData->staff->nama }} (Staff Accounting)
+                                                @elseif($selectedData->manager)
+                                                    {{ $selectedData->manager->nama }} (Manager Accounting)
+                                                @else
+                                                    -
+                                                @endif
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">Staff</p>
+                                    <div class="text-right">
+                                        <p class="text-xs text-green-600 font-medium">Approved</p>
                                         <p class="text-xs text-gray-500">
-                                            {{ $selectedData->staff ? $selectedData->staff->nama : '-' }}
+                                            @if($selectedData->staff_approved_at)
+                                                {{ $selectedData->staff_approved_at->format('d M Y H:i') }}
+                                            @elseif($selectedData->manager_approved_at)
+                                                {{ $selectedData->manager_approved_at->format('d M Y H:i') }}
+                                            @endif
                                         </p>
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    @if($selectedData->staff_approved_at)
-                                        <p class="text-xs text-green-600 font-medium">Approved</p>
-                                        <p class="text-xs text-gray-500">{{ $selectedData->staff_approved_at->format('d M Y H:i') }}</p>
-                                    @else
-                                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Pending</span>
-                                    @endif
+                            @else
+                                <div class="p-3 bg-white rounded-lg text-center">
+                                    <p class="text-sm text-yellow-600 font-medium">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Menunggu Approval
+                                    </p>
                                 </div>
-                            </div>
-
-                            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full {{ $selectedData->manager_approved_at ? 'bg-green-100' : 'bg-gray-100' }} flex items-center justify-center mr-3">
-                                        <i class="fas {{ $selectedData->manager_approved_at ? 'fa-check text-green-600' : 'fa-user-tie text-gray-400' }}"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">Manager Keuangan</p>
-                                        <p class="text-xs text-gray-500">
-                                            {{ $selectedData->manager ? $selectedData->manager->nama : '-' }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    @if($selectedData->manager_approved_at)
-                                        <p class="text-xs text-green-600 font-medium">Approved</p>
-                                        <p class="text-xs text-gray-500">{{ $selectedData->manager_approved_at->format('d M Y H:i') }}</p>
-                                    @else
-                                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Pending</span>
-                                    @endif
-                                </div>
-                            </div>
+                            @endif
 
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                                 <div class="flex items-center">
@@ -669,8 +727,8 @@
                         </div>
                     </div>
 
-                    {{-- Notes Input --}}
-                    @if($selectedData->status !== 'completed')
+                    {{-- Notes Input - Only in pending tab and not completed --}}
+                    @if($activeTab === 'pending' && $selectedData->status !== 'completed')
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Catatan (Opsional)
@@ -692,7 +750,7 @@
                     >
                         Tutup
                     </button>
-                    @if($selectedData->status !== 'completed')
+                    @if($activeTab === 'pending' && $selectedData->status !== 'completed')
                         <button
                             wire:click="approve"
                             wire:loading.attr="disabled"

@@ -5,11 +5,13 @@ namespace App\Livewire\Accounting;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\ApprovalPembayaran as ApprovalPembayaranModel;
+use App\Models\ApprovalPenagihan;
 use App\Models\ApprovalHistory;
 use App\Models\InvoicePenagihan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class ApprovePembayaran extends Component
 {
@@ -22,6 +24,13 @@ class ApprovePembayaran extends Component
     public $approvalHistory;
     public $notes = '';
     public $buktiPembayaran;
+
+    // Piutang form
+    public $piutangForm = [
+        'catatan_piutang_id' => null,
+        'amount' => 0,
+        'notes' => '',
+    ];
 
     // Refraksi form
     public $refraksiForm = [
@@ -38,7 +47,6 @@ class ApprovePembayaran extends Component
     public function loadApproval()
     {
         $this->approval = ApprovalPembayaranModel::with([
-            'pengiriman.pengirimanDetails.bahanBakuSupplier.bahanBaku',
             'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
             'pengiriman.purchaseOrder',
             'histories' => function($query) {
@@ -56,6 +64,11 @@ class ApprovePembayaran extends Component
         $this->invoicePenagihan = InvoicePenagihan::where('pengiriman_id', $this->pengiriman->id)->first();
 
         $this->approvalHistory = $this->approval->histories;
+
+        // Load piutang values from approval pembayaran
+        $this->piutangForm['catatan_piutang_id'] = $this->approval->catatan_piutang_id;
+        $this->piutangForm['amount'] = $this->approval->piutang_amount ?? 0;
+        $this->piutangForm['notes'] = $this->approval->piutang_notes ?? '';
 
         // Load refraksi values from approval pembayaran
         $this->refraksiForm['type'] = $this->approval->refraksi_type ?? 'qty';
@@ -79,52 +92,73 @@ class ApprovePembayaran extends Component
                 throw new \Exception('Anda tidak memiliki akses untuk melakukan approval');
             }
 
-            // Check permission based on role
-            if ($role === 'staff' && $this->approval->canStaffApprove()) {
-                $this->approval->update([
-                    'staff_id' => $user->id,
-                    'staff_approved_at' => now(),
-                    'status' => 'staff_approved',
-                ]);
-            } elseif ($role === 'manager_keuangan' && $this->approval->canManagerApprove()) {
-                // Validasi bukti pembayaran wajib untuk manager
-                if (!$this->buktiPembayaran) {
-                    throw new \Exception('Bukti pembayaran wajib diupload untuk approval manager');
-                }
-
-                // Validate file type and size
-                $this->validate([
-                    'buktiPembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // max 5MB
-                ]);
-
-                // Upload bukti pembayaran
-                $buktiPath = $this->buktiPembayaran->store('bukti-pembayaran', 'public');
-
-                $this->approval->update([
-                    'manager_id' => $user->id,
-                    'manager_approved_at' => now(),
-                    'status' => 'completed',
-                    'bukti_pembayaran' => $buktiPath,
-                ]);
-
-                // Update status pengiriman ke 'berhasil' ketika manager approve (final approval)
-                $this->approval->pengiriman->update([
-                    'status' => 'berhasil',
-                ]);
-            } else {
-                // Detailed error message for debugging
-                $currentStatus = $this->approval->status;
-                $errorMsg = "Anda tidak dapat melakukan approval pada tahap ini. ";
-                $errorMsg .= "Role Anda: {$role}, Status approval saat ini: {$currentStatus}. ";
-
-                if ($role === 'staff') {
-                    $errorMsg .= "Staff hanya bisa approve jika status = 'pending'.";
-                } elseif ($role === 'manager_keuangan') {
-                    $errorMsg .= "Manager hanya bisa approve jika status = 'staff_approved'.";
-                }
-
-                throw new \Exception($errorMsg);
+            // Check if approval can be processed
+            if ($this->approval->status !== 'pending') {
+                throw new \Exception('Approval ini sudah diproses atau tidak dapat diapprove');
             }
+
+            // Validasi bukti pembayaran wajib untuk semua anggota keuangan
+            if (!$this->buktiPembayaran) {
+                throw new \Exception('Bukti pembayaran wajib diupload untuk approval');
+            }
+
+            // Validate file type and size
+            $this->validate([
+                'buktiPembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // max 5MB
+            ]);
+
+            // Upload bukti pembayaran
+            $buktiPath = $this->buktiPembayaran->store('bukti-pembayaran', 'public');
+
+            // Langsung complete untuk semua anggota keuangan
+            $updateData = [
+                'status' => 'completed',
+                'bukti_pembayaran' => $buktiPath,
+            ];
+
+            // Set approver based on role
+            if ($role === 'manager_keuangan') {
+                $updateData['manager_id'] = $user->id;
+                $updateData['manager_approved_at'] = now();
+            } elseif ($role === 'direktur' || $role === 'superadmin') {
+                // Direktur dan superadmin menggunakan manager_id field
+                $updateData['manager_id'] = $user->id;
+                $updateData['manager_approved_at'] = now();
+            } else {
+                $updateData['staff_id'] = $user->id;
+                $updateData['staff_approved_at'] = now();
+            }
+
+            $this->approval->update($updateData);
+
+            // Update status pengiriman ke 'berhasil' ketika approved (final approval)
+            $this->approval->pengiriman->update([
+                'status' => 'berhasil',
+            ]);
+
+            // Process piutang as pembayaran if exists
+            if ($this->approval->catatan_piutang_id && $this->approval->piutang_amount > 0) {
+                $catatanPiutang = \App\Models\CatatanPiutang::find($this->approval->catatan_piutang_id);
+
+                if ($catatanPiutang) {
+                    // Create pembayaran piutang record
+                    \App\Models\PembayaranPiutang::create([
+                        'catatan_piutang_id' => $catatanPiutang->id,
+                        'no_pembayaran' => \App\Models\PembayaranPiutang::generateNoPembayaran(),
+                        'tanggal_bayar' => now(),
+                        'jumlah_bayar' => $this->approval->piutang_amount,
+                        'metode_pembayaran' => 'potong_pembayaran',
+                        'catatan' => 'Pemotongan dari pembayaran pengiriman ' . $this->approval->pengiriman->no_pengiriman . ($this->approval->piutang_notes ? ' - ' . $this->approval->piutang_notes : ''),
+                        'created_by' => $user->id,
+                    ]);
+
+                    // Update sisa piutang
+                    $catatanPiutang->updateSisaPiutang();
+                }
+            }
+
+            // Create Invoice Penagihan and Approval Penagihan automatically
+            $this->createInvoiceAndApprovalPenagihan($user->id);
 
             // Save history
             ApprovalHistory::create([
@@ -194,6 +228,49 @@ class ApprovePembayaran extends Component
         }
     }
 
+    public function updatePiutang()
+    {
+        if (!$this->approval) {
+            session()->flash('error', 'Data approval tidak ditemukan');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            // Validate amount if piutang is selected
+            if ($this->piutangForm['catatan_piutang_id'] && $this->piutangForm['amount'] <= 0) {
+                throw new \Exception('Jumlah pengurangan hutang harus lebih dari 0');
+            }
+
+            // Get catatan piutang if selected
+            if ($this->piutangForm['catatan_piutang_id']) {
+                $catatanPiutang = \App\Models\CatatanPiutang::find($this->piutangForm['catatan_piutang_id']);
+
+                if (!$catatanPiutang) {
+                    throw new \Exception('Data piutang tidak ditemukan');
+                }
+
+                // Validate amount tidak melebihi sisa piutang
+                if ($this->piutangForm['amount'] > $catatanPiutang->sisa_piutang) {
+                    throw new \Exception('Jumlah pengurangan tidak boleh melebihi sisa piutang Rp ' . number_format($catatanPiutang->sisa_piutang, 0, ',', '.'));
+                }
+            }
+
+            $this->approval->update([
+                'catatan_piutang_id' => $this->piutangForm['catatan_piutang_id'],
+                'piutang_amount' => $this->piutangForm['amount'],
+                'piutang_notes' => $this->piutangForm['notes'],
+            ]);
+
+            DB::commit();
+            session()->flash('message', 'Data piutang berhasil disimpan');
+            $this->loadApproval();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', $e->getMessage());
+        }
+    }
+
     public function updateRefraksi()
     {
         if (!$this->approval) {
@@ -203,9 +280,8 @@ class ApprovePembayaran extends Component
 
         DB::beginTransaction();
         try {
-            // Update refraksi values untuk approval pembayaran
-            $this->approval->refraksi_type = $this->refraksiForm['type'];
-            $this->approval->refraksi_value = floatval($this->refraksiForm['value']);
+            // Update refraksi values untuk approval pembayaran - bisa null/0 untuk tidak ada refraksi
+            $refraksiValue = floatval($this->refraksiForm['value'] ?? 0);
 
             // Calculate refraksi untuk pembayaran
             $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
@@ -214,30 +290,43 @@ class ApprovePembayaran extends Component
             $amountAfterRefraksi = $amountBeforeRefraksi;
             $refraksiAmount = 0;
 
-            if ($this->approval->refraksi_type === 'qty') {
-                // Refraksi Qty: potong berdasarkan persentase qty
-                $refraksiQty = $qtyBeforeRefraksi * ($this->approval->refraksi_value / 100);
-                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+            // Jika value 0 atau kosong, set refraksi menjadi null
+            if ($refraksiValue <= 0) {
+                $this->approval->refraksi_type = null;
+                $this->approval->refraksi_value = null;
+                $this->approval->refraksi_amount = 0;
+                $this->approval->qty_after_refraksi = $qtyBeforeRefraksi;
+                $this->approval->amount_after_refraksi = $amountBeforeRefraksi;
+            } else {
+                $this->approval->refraksi_type = $this->refraksiForm['type'];
+                $this->approval->refraksi_value = $refraksiValue;
 
-                // Hitung potongan amount berdasarkan qty refraksi
-                $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
-                $refraksiAmount = $refraksiQty * $hargaPerKg;
-                $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
-            } elseif ($this->approval->refraksi_type === 'rupiah') {
-                // Refraksi Rupiah: potongan harga per kg
-                $refraksiAmount = $this->approval->refraksi_value * $qtyBeforeRefraksi;
-                $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
-            } elseif ($this->approval->refraksi_type === 'lainnya') {
-                // Refraksi Lainnya: input manual langsung nominal total potongan
-                $refraksiAmount = $this->approval->refraksi_value;
-                $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                if ($this->approval->refraksi_type === 'qty') {
+                    // Refraksi Qty: potong berdasarkan persentase qty
+                    $refraksiQty = $qtyBeforeRefraksi * ($this->approval->refraksi_value / 100);
+                    $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+
+                    // Hitung potongan amount berdasarkan qty refraksi
+                    $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
+                    $refraksiAmount = $refraksiQty * $hargaPerKg;
+                    $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                } elseif ($this->approval->refraksi_type === 'rupiah') {
+                    // Refraksi Rupiah: potongan harga per kg
+                    $refraksiAmount = $this->approval->refraksi_value * $qtyBeforeRefraksi;
+                    $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                } elseif ($this->approval->refraksi_type === 'lainnya') {
+                    // Refraksi Lainnya: input manual langsung nominal total potongan
+                    $refraksiAmount = $this->approval->refraksi_value;
+                    $amountAfterRefraksi = $amountBeforeRefraksi - $refraksiAmount;
+                }
+
+                $this->approval->qty_after_refraksi = $qtyAfterRefraksi;
+                $this->approval->amount_after_refraksi = $amountAfterRefraksi;
+                $this->approval->refraksi_amount = $refraksiAmount;
             }
 
             $this->approval->qty_before_refraksi = $qtyBeforeRefraksi;
-            $this->approval->qty_after_refraksi = $qtyAfterRefraksi;
             $this->approval->amount_before_refraksi = $amountBeforeRefraksi;
-            $this->approval->amount_after_refraksi = $amountAfterRefraksi;
-            $this->approval->refraksi_amount = $refraksiAmount;
 
             $this->approval->save();
 
@@ -252,12 +341,114 @@ class ApprovePembayaran extends Component
         }
     }
 
+    private function createInvoiceAndApprovalPenagihan($userId)
+    {
+        // Check if invoice already exists
+        $existingInvoice = InvoicePenagihan::where('pengiriman_id', $this->approval->pengiriman_id)->first();
+
+        if ($existingInvoice) {
+            // If invoice already exists, just return
+            return;
+        }
+
+        $pengiriman = $this->approval->pengiriman;
+        $purchaseOrder = $pengiriman->purchaseOrder;
+        $klien = $purchaseOrder->klien ?? null;
+
+        // Generate invoice number
+        $lastInvoice = InvoicePenagihan::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $sequence = $lastInvoice ? (intval(substr($lastInvoice->invoice_number, -4)) + 1) : 1;
+        $invoiceNumber = 'INV-' . now()->format('Ym') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+
+        // Get refraksi from approval pembayaran (opsional)
+        $refraksiType = $this->approval->refraksi_type;
+        $refraksiValue = $this->approval->refraksi_value ?? 0;
+
+        // Calculate amounts based on refraksi (bisa tanpa refraksi)
+        $qtyBeforeRefraksi = $pengiriman->total_qty_kirim;
+        $amountBeforeRefraksi = $pengiriman->total_harga_kirim;
+        $qtyAfterRefraksi = $qtyBeforeRefraksi;
+        $refraksiAmount = 0;
+
+        // Hanya hitung refraksi jika ada type dan value > 0
+        if ($refraksiType && $refraksiValue > 0) {
+            if ($refraksiType === 'qty') {
+                $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
+                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+                $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
+                $refraksiAmount = $refraksiQty * $hargaPerKg;
+            } elseif ($refraksiType === 'rupiah') {
+                $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
+            } elseif ($refraksiType === 'lainnya') {
+                $refraksiAmount = $refraksiValue;
+            }
+        }
+
+        $subtotal = $amountBeforeRefraksi - $refraksiAmount;
+
+        // Prepare items array from pengiriman details
+        $items = [];
+        if ($pengiriman->details && count($pengiriman->details) > 0) {
+            foreach ($pengiriman->details as $detail) {
+                $items[] = [
+                    'description' => $detail->bahanBakuKlien->nama_bahan_baku ?? 'Item',
+                    'quantity' => $detail->qty_kirim,
+                    'unit_price' => $detail->harga_kirim,
+                    'total' => $detail->total_harga,
+                ];
+            }
+        }
+
+        // Create Invoice
+        $invoice = InvoicePenagihan::create([
+            'pengiriman_id' => $pengiriman->id,
+            'invoice_number' => $invoiceNumber,
+            'invoice_date' => now(),
+            'due_date' => now()->addDays(30),
+            'customer_name' => $klien->nama ?? 'Customer',
+            'customer_address' => $klien->cabang ?? '-',
+            'customer_phone' => $klien->no_hp ?? null,
+            'customer_email' => null,
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'tax_percentage' => 0,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => $subtotal,
+            'refraksi_type' => $refraksiType,
+            'refraksi_value' => $refraksiValue,
+            'refraksi_amount' => $refraksiAmount,
+            'qty_before_refraksi' => $qtyBeforeRefraksi,
+            'qty_after_refraksi' => $qtyAfterRefraksi,
+            'amount_before_refraksi' => $amountBeforeRefraksi,
+            'amount_after_refraksi' => $subtotal,
+            'status' => 'pending',
+            'notes' => 'Invoice dibuat otomatis dari approval pembayaran',
+            'created_by' => $userId,
+        ]);
+
+        // Create Approval Penagihan
+        ApprovalPenagihan::create([
+            'pengiriman_id' => $pengiriman->id,
+            'invoice_id' => $invoice->id,
+            'status' => 'pending',
+        ]);
+    }
+
     private function getUserRole($user)
     {
         if ($user->role === 'manager_accounting') {
             return 'manager_keuangan';
         } elseif ($user->role === 'staff_accounting') {
             return 'staff';
+        } elseif ($user->role === 'direktur') {
+            return 'direktur';
+        } elseif ($user->role === 'superadmin') {
+            return 'superadmin';
         }
         return null;
     }

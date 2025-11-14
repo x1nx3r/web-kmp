@@ -21,6 +21,9 @@ class ApprovalPembayaran extends Model
         'superadmin_approved_at',
         'status',
         'bukti_pembayaran',
+        'catatan_piutang_id',
+        'piutang_amount',
+        'piutang_notes',
         'refraksi_type',
         'refraksi_value',
         'refraksi_amount',
@@ -34,6 +37,7 @@ class ApprovalPembayaran extends Model
         'staff_approved_at' => 'datetime',
         'manager_approved_at' => 'datetime',
         'superadmin_approved_at' => 'datetime',
+        'piutang_amount' => 'decimal:2',
         'refraksi_value' => 'decimal:2',
         'refraksi_amount' => 'decimal:2',
         'qty_before_refraksi' => 'decimal:2',
@@ -84,18 +88,26 @@ class ApprovalPembayaran extends Model
     }
 
     /**
-     * Check if staff can approve
+     * Relasi ke Catatan Piutang
      */
-    public function canStaffApprove()
+    public function catatanPiutang()
     {
-        return $this->status === 'pending' && !$this->staff_approved_at;
+        return $this->belongsTo(CatatanPiutang::class, 'catatan_piutang_id');
     }
 
     /**
-     * Check if manager can approve (final approval)
+     * Check if any accounting member can approve
+     */
+    public function canStaffApprove()
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Check if any accounting member can approve
      */
     public function canManagerApprove()
     {
-        return $this->status === 'staff_approved' && $this->staff_approved_at && !$this->manager_approved_at;
+        return $this->status === 'pending';
     }
 }

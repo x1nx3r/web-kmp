@@ -30,7 +30,7 @@ class DatabaseSeeder extends Seeder
             BahanBakuSupplierSeeder::class,
             CompanySettingSeeder::class,
             // PengirimanAccountingSeeder::class, // Old seeder
-            ApprovalAccountingSeeder::class, // New comprehensive seeder with items
+            // ApprovalAccountingSeeder::class, // New comprehensive seeder with items
             // PengirimanAccountingSeeder::class,
             PenawaranSeeder::class, // Penawaran with multi-supplier support
             // OrderSeeder::class, // Removed - incompatible with new multi-supplier order system

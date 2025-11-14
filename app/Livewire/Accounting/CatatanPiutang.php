@@ -35,8 +35,6 @@ class CatatanPiutang extends Component
     public $tanggal_jatuh_tempo;
     public $jumlah_piutang;
     public $keterangan;
-    public $bukti_transaksi;
-    public $existing_bukti;
 
     // Pembayaran form
     public $tanggal_bayar;
@@ -62,7 +60,6 @@ class CatatanPiutang extends Component
         'tanggal_jatuh_tempo' => 'nullable|date|after_or_equal:tanggal_piutang',
         'jumlah_piutang' => 'required|numeric|min:0',
         'keterangan' => 'nullable|string',
-        'bukti_transaksi' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
     ];
 
     public function render()
@@ -126,7 +123,6 @@ class CatatanPiutang extends Component
         $this->tanggal_jatuh_tempo = $piutang->tanggal_jatuh_tempo ? $piutang->tanggal_jatuh_tempo->format('Y-m-d') : null;
         $this->jumlah_piutang = $piutang->jumlah_piutang;
         $this->keterangan = $piutang->keterangan;
-        $this->existing_bukti = $piutang->bukti_transaksi;
 
         $this->showEditModal = true;
     }
@@ -173,11 +169,6 @@ class CatatanPiutang extends Component
                 'created_by' => Auth::id(),
             ];
 
-            // Upload bukti transaksi
-            if ($this->bukti_transaksi) {
-                $data['bukti_transaksi'] = $this->bukti_transaksi->store('bukti-piutang', 'public');
-            }
-
             CatatanPiutangModel::create($data);
 
             DB::commit();
@@ -206,15 +197,6 @@ class CatatanPiutang extends Component
                 'updated_by' => Auth::id(),
             ];
 
-            // Upload bukti transaksi baru jika ada
-            if ($this->bukti_transaksi) {
-                // Hapus file lama
-                if ($piutang->bukti_transaksi) {
-                    Storage::disk('public')->delete($piutang->bukti_transaksi);
-                }
-                $data['bukti_transaksi'] = $this->bukti_transaksi->store('bukti-piutang', 'public');
-            }
-
             $piutang->update($data);
 
             // Recalculate sisa piutang after updating jumlah_piutang
@@ -235,11 +217,6 @@ class CatatanPiutang extends Component
         DB::beginTransaction();
         try {
             $piutang = CatatanPiutangModel::findOrFail($this->piutangId);
-
-            // Hapus bukti transaksi
-            if ($piutang->bukti_transaksi) {
-                Storage::disk('public')->delete($piutang->bukti_transaksi);
-            }
 
             // Hapus semua pembayaran terkait
             foreach ($piutang->pembayaran as $pembayaran) {
@@ -360,8 +337,6 @@ class CatatanPiutang extends Component
             'tanggal_jatuh_tempo',
             'jumlah_piutang',
             'keterangan',
-            'bukti_transaksi',
-            'existing_bukti',
             'tanggal_bayar',
             'jumlah_bayar',
             'metode_pembayaran',

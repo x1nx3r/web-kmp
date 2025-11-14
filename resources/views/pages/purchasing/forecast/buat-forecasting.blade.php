@@ -140,7 +140,15 @@
                             {{-- Mobile Date --}}
                             <div class="flex items-center text-xs text-gray-500">
                                 <i class="fas fa-calendar-alt mr-1"></i>
-                                <span>{{ $po->created_at ? $po->created_at->format('d/m/Y') : 'N/A' }}</span>
+                                <span>
+                                    @if($po->po_start_date && $po->po_end_date)
+                                        {{ \Carbon\Carbon::parse($po->po_start_date)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($po->po_end_date)->format('d/m/Y') }}
+                                    @elseif($po->po_start_date)
+                                        {{ \Carbon\Carbon::parse($po->po_start_date)->format('d/m/Y') }}
+                                    @else
+                                        N/A
+                                    @endif
+                                </span>
                             </div>
                         </div>
                         
@@ -156,7 +164,10 @@
                                 </button>
                                 
                                 <div class="flex items-center space-x-2">
-                                    <span class="text-xs text-gray-500">{{ $po->updated_at ? $po->updated_at->format('d/m/Y') : 'N/A' }}</span>
+                                    <span class="text-xs text-gray-500">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        {{ $po->updated_at ? $po->updated_at->format('d/m/Y') : 'N/A' }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -178,11 +189,18 @@
                                         <div class="flex items-center mb-1">
                                             <i class="fas fa-user w-4 text-green-500 mr-2"></i>
                                             <span>{{ ($po->klien->nama ?? 'N/A') . ($po->klien->cabang ? ' - ' . $po->klien->cabang : '') }}</span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <i class="fas fa-calendar-alt w-4 text-green-500 mr-2"></i>
-                                            <span>{{ $po->created_at ? $po->created_at->format('d F Y') : 'N/A' }}</span>
-                                        </div>
+                                        </div>                        <div class="flex items-center">
+                            <i class="fas fa-calendar-alt w-4 text-green-500 mr-2"></i>
+                            <span>
+                                @if($po->po_start_date && $po->po_end_date)
+                                    {{ \Carbon\Carbon::parse($po->po_start_date)->format('d M Y') }} - {{ \Carbon\Carbon::parse($po->po_end_date)->format('d M Y') }}
+                                @elseif($po->po_start_date)
+                                    {{ \Carbon\Carbon::parse($po->po_start_date)->format('d M Y') }}
+                                @else
+                                    N/A
+                                @endif
+                            </span>
+                        </div>
                                     </div>
                                 </div>
 

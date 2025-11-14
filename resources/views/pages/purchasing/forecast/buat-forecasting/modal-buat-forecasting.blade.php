@@ -143,20 +143,62 @@
                                 <div>
                                     <label for="harga_satuan_forecast" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                         <i class="fas fa-tag text-green-500 mr-1"></i>
-                                        Harga Satuan Supplier <span class="text-gray-500">(otomatis)</span>
+                                        Harga Satuan Supplier <span id="hargaLabel">(sesuai data)</span>
                                     </label>
                                     <div class="relative">
                                         <span class="absolute inset-y-0 left-0 flex items-center pl-2 sm:pl-3 text-gray-500 text-sm">Rp</span>
                                         <input type="text" id="harga_satuan_forecast" name="harga_satuan_forecast" required readonly
-                                               class="w-full border border-gray-300 rounded-lg pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-sm bg-gray-50 cursor-not-allowed text-right font-medium"
+                                               class="w-full border border-gray-300 rounded-lg pl-8 sm:pl-10 pr-20 sm:pr-24 py-2 text-sm bg-gray-50 cursor-not-allowed text-right font-medium transition-colors"
                                                placeholder="Pilih supplier dulu"
                                                style="appearance: textfield; -moz-appearance: textfield;">
+                                        <button type="button" id="editPriceBtn" onclick="togglePriceEdit()" 
+                                                class="absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3 text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50"
+                                                title="Edit harga" disabled>
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
                                     </div>
                                     <p class="text-xs text-gray-500 mt-1">
                                         <i class="fas fa-info-circle mr-1"></i>
-                                        Harga PO: <span id="hargaPO" class="font-medium text-blue-600">-</span>
+                                        Harga PO: <span id="hargaPO" class="font-medium text-blue-600">-</span> | 
+                                        <span id="hargaSebelumnya" class="font-medium text-gray-600">Harga lama: -</span>
                                     </p>
                                 </div>
+                            </div>
+
+                            {{-- Custom Price Input (Hidden by default) --}}
+                            <div id="customPriceSection" class="hidden bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-4 sm:mb-6">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-sm font-medium text-yellow-800">
+                                        <i class="fas fa-edit text-yellow-600 mr-2"></i>
+                                        Ubah Harga Supplier
+                                    </h4>
+                                    <button type="button" onclick="cancelPriceEdit()" 
+                                            class="text-yellow-600 hover:text-yellow-800 text-sm">
+                                        <i class="fas fa-times mr-1"></i>Batal
+                                    </button>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label for="custom_harga_supplier" class="block text-xs font-medium text-yellow-800 mb-2">
+                                            Harga Baru per Satuan <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 text-sm">Rp</span>
+                                            <input type="number" id="custom_harga_supplier" name="custom_harga_supplier" 
+                                                   min="0.01" step="0.01" placeholder="0.00"
+                                                   class="w-full border border-yellow-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors text-right font-medium"
+                                                   oninput="calculateCustomPrice()"
+                                                   style="appearance: textfield; -moz-appearance: textfield;">
+                                        </div>
+                                        <p class="text-xs text-yellow-700 mt-1">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            Harga ini akan mengupdate data supplier
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                
                             </div>
 
                             {{-- Total Harga & Perbandingan --}}
@@ -212,6 +254,11 @@
                             <input type="hidden" id="harga_satuan_po" name="harga_satuan_po">
                             <input type="hidden" id="tanggal_forecast" name="tanggal_forecast">
                             <input type="hidden" id="hari_kirim_forecast" name="hari_kirim_forecast">
+                            
+                            {{-- Price update fields --}}
+                            <input type="hidden" id="update_harga_supplier" name="update_harga_supplier" value="false">
+                            <input type="hidden" id="harga_lama_supplier" name="harga_lama_supplier">
+                            <input type="hidden" id="is_custom_price" name="is_custom_price" value="false">
                             
                             </div>
                             {{-- End Modal Content --}}
@@ -432,6 +479,20 @@ async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseO
 function closeForecastModal() {
     document.getElementById('forecastModal').classList.add('hidden');
     document.getElementById('forecastForm').reset();
+    
+    // Reset custom price state
+    cancelPriceEdit();
+    
+    // Reset hidden fields
+    document.getElementById('is_custom_price').value = 'false';
+    document.getElementById('update_harga_supplier').value = 'false';
+    document.getElementById('harga_lama_supplier').value = '';
+    
+    // Disable edit price button
+    const editBtn = document.getElementById('editPriceBtn');
+    editBtn.disabled = true;
+    editBtn.classList.add('opacity-50');
+    
     currentOrderDetailId = null;
     currentPurchaseOrderId = null;
 }
@@ -460,7 +521,17 @@ function calculateDeliveryDays() {
 // Calculate total
 function calculateTotal() {
     const qty = parseFloat(document.getElementById('qty_forecast').value) || 0;
-    const hargaSupplierRaw = parseFloat(document.getElementById('harga_satuan_forecast').dataset.rawValue) || 0;
+    
+    // Check if using custom price
+    const isCustomPrice = document.getElementById('is_custom_price').value === 'true';
+    let hargaSupplierRaw;
+    
+    if (isCustomPrice) {
+        hargaSupplierRaw = parseFloat(document.getElementById('custom_harga_supplier').value) || 0;
+    } else {
+        hargaSupplierRaw = parseFloat(document.getElementById('harga_satuan_forecast').dataset.rawValue) || 0;
+    }
+    
     const hargaPO = parseFloat(document.getElementById('harga_satuan_po').value) || 0;
     
     const totalForecast = qty * hargaSupplierRaw;
@@ -496,11 +567,112 @@ function calculateTotal() {
     }
 }
 
+// Toggle price edit mode
+function togglePriceEdit() {
+    const customSection = document.getElementById('customPriceSection');
+    const editBtn = document.getElementById('editPriceBtn');
+    const hargaInput = document.getElementById('harga_satuan_forecast');
+    const hargaLabel = document.getElementById('hargaLabel');
+    const customHargaInput = document.getElementById('custom_harga_supplier');
+    
+    // Show custom price section
+    customSection.classList.remove('hidden');
+    
+    // Update label
+    hargaLabel.textContent = '(akan diubah)';
+    hargaLabel.className = 'text-yellow-600 font-medium';
+    
+    // Set default value from current price
+    const currentPrice = parseFloat(hargaInput.dataset.rawValue) || 0;
+    customHargaInput.value = currentPrice;
+    
+    // Focus on custom price input
+    setTimeout(() => {
+        customHargaInput.focus();
+        customHargaInput.select();
+    }, 100);
+    
+    console.log('Price edit mode enabled');
+}
+
+// Cancel price edit
+function cancelPriceEdit() {
+    const customSection = document.getElementById('customPriceSection');
+    const hargaLabel = document.getElementById('hargaLabel');
+    const customHargaInput = document.getElementById('custom_harga_supplier');
+    const isCustomPriceField = document.getElementById('is_custom_price');
+    const updateHargaField = document.getElementById('update_harga_supplier');
+    
+    // Hide custom price section
+    customSection.classList.add('hidden');
+    
+    // Reset label
+    hargaLabel.textContent = '(sesuai data)';
+    hargaLabel.className = '';
+    
+    // Reset custom price
+    customHargaInput.value = '';
+    
+    // Reset hidden fields
+    isCustomPriceField.value = 'false';
+    updateHargaField.value = 'false';
+    
+    // Recalculate with original price
+    calculateTotal();
+    
+    console.log('Price edit mode cancelled');
+}
+
+// Calculate custom price
+function calculateCustomPrice() {
+    const customPrice = parseFloat(document.getElementById('custom_harga_supplier').value) || 0;
+    const hargaInput = document.getElementById('harga_satuan_forecast');
+    const isCustomPriceField = document.getElementById('is_custom_price');
+    const updateHargaField = document.getElementById('update_harga_supplier');
+    const hargaLamaField = document.getElementById('harga_lama_supplier');
+    
+    if (customPrice > 0) {
+        // Update display price
+        hargaInput.value = formatRupiah(Math.round(customPrice));
+        
+        // Set hidden fields
+        isCustomPriceField.value = 'true';
+        updateHargaField.value = 'true';
+        
+        // Store old price if not already stored
+        if (!hargaLamaField.value) {
+            hargaLamaField.value = hargaInput.dataset.rawValue || '0';
+        }
+        
+        // Set raw value for calculation
+        hargaInput.dataset.rawValue = customPrice;
+        
+        // Recalculate totals
+        calculateTotal();
+        
+        console.log('Custom price set:', customPrice);
+    } else {
+        // Reset if empty
+        const originalPrice = parseFloat(hargaLamaField.value) || 0;
+        if (originalPrice > 0) {
+            hargaInput.value = formatRupiah(Math.round(originalPrice));
+            hargaInput.dataset.rawValue = originalPrice;
+        }
+        
+        isCustomPriceField.value = 'false';
+        updateHargaField.value = 'false';
+        
+        calculateTotal();
+    }
+}
+
 // Select bahan baku supplier from dropdown
 function selectBahanBakuSupplier() {
     const select = document.getElementById('bahan_baku_supplier_select');
     const selectedOption = select.options[select.selectedIndex];
     const infoDiv = document.getElementById('selectedSupplierInfo');
+    const editBtn = document.getElementById('editPriceBtn');
+    const hargaSebelumnyaSpan = document.getElementById('hargaSebelumnya');
     
     if (select.value && !selectedOption.disabled) {
         const price = parseFloat(selectedOption.dataset.hargaPerSatuan);
@@ -513,6 +685,9 @@ function selectBahanBakuSupplier() {
         // Set raw price for calculations
         document.getElementById('harga_satuan_forecast').dataset.rawValue = price;
         
+        // Store original price
+        document.getElementById('harga_lama_supplier').value = price;
+        
         // Show supplier info with stock status
         const stokText = stok > 0 ? `${formatRupiah(stok)} ${selectedOption.dataset.satuan}` : 'KOSONG';
         const stokClass = stok > 0 ? 'text-green-700' : 'text-red-700';
@@ -523,7 +698,17 @@ function selectBahanBakuSupplier() {
         document.getElementById('infoSupplier').textContent = selectedOption.dataset.supplierNama;
         document.getElementById('infoPICPurchasing').textContent = selectedOption.dataset.picPurchasing || 'Belum ditentukan';
         
+        // Show harga sebelumnya
+        hargaSebelumnyaSpan.innerHTML = `Harga lama: <span class="text-gray-800">Rp ${formatRupiah(Math.round(price))}</span>`;
+        
+        // Enable edit price button
+        editBtn.disabled = false;
+        editBtn.classList.remove('opacity-50');
+        
         infoDiv.classList.remove('hidden');
+        
+        // Reset custom price state
+        cancelPriceEdit();
         
         // Calculate total
         calculateTotal();
@@ -533,7 +718,17 @@ function selectBahanBakuSupplier() {
         document.getElementById('bahan_baku_supplier_id').value = '';
         document.getElementById('harga_satuan_forecast').value = '';
         document.getElementById('harga_satuan_forecast').dataset.rawValue = '';
+        document.getElementById('harga_lama_supplier').value = '';
         document.getElementById('infoPICPurchasing').textContent = '-';
+        hargaSebelumnyaSpan.textContent = 'Harga lama: -';
+        
+        // Disable edit price button
+        editBtn.disabled = true;
+        editBtn.classList.add('opacity-50');
+        
+        // Reset custom price state
+        cancelPriceEdit();
+        
         calculateTotal();
     }
 }
@@ -588,10 +783,23 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
     }
     
     // Validate price data
-    const hargaSupplierRaw = document.getElementById('harga_satuan_forecast').dataset.rawValue;
-    if (!hargaSupplierRaw || parseFloat(hargaSupplierRaw) <= 0) {
-        alert('Harga supplier tidak valid. Silakan pilih supplier lagi.');
-        return;
+    const isCustomPrice = document.getElementById('is_custom_price').value === 'true';
+    let hargaSupplierRaw;
+    
+    if (isCustomPrice) {
+        hargaSupplierRaw = parseFloat(document.getElementById('custom_harga_supplier').value);
+        
+        // Validate custom price and reason
+        if (!hargaSupplierRaw || hargaSupplierRaw <= 0) {
+            alert('Harga baru supplier tidak valid. Silakan masukkan harga yang benar.');
+            return;
+        }
+    } else {
+        hargaSupplierRaw = parseFloat(document.getElementById('harga_satuan_forecast').dataset.rawValue);
+        if (!hargaSupplierRaw || hargaSupplierRaw <= 0) {
+            alert('Harga supplier tidak valid. Silakan pilih supplier lagi.');
+            return;
+        }
     }
     
     // Set supplier ID
@@ -608,7 +816,15 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         const orderDetailId = parseInt(formData.get('order_detail_id'));
         const bahanBakuSupplierId = parseInt(selectedSupplier);
         const qtyForecast = parseFloat(formData.get('qty_forecast'));
-        const hargaSupplierRaw = parseFloat(document.getElementById('harga_satuan_forecast').dataset.rawValue);
+        
+        // Use the correct price - either custom price or original price
+        let finalHargaSupplier;
+        if (isCustomPrice) {
+            finalHargaSupplier = parseFloat(document.getElementById('custom_harga_supplier').value);
+        } else {
+            finalHargaSupplier = parseFloat(document.getElementById('harga_satuan_forecast').dataset.rawValue);
+        }
+        
         const tanggalForecast = formData.get('tanggal_forecast') || deliveryDate;
         const hariForecast = formData.get('hari_kirim_forecast') || document.getElementById('perkiraan_hari_kirim').value;
         const catatan = formData.get('catatan') || '';
@@ -626,7 +842,7 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         if (isNaN(qtyForecast) || qtyForecast <= 0) {
             throw new Error('Quantity forecast tidak valid');
         }
-        if (isNaN(hargaSupplierRaw) || hargaSupplierRaw <= 0) {
+        if (isNaN(finalHargaSupplier) || finalHargaSupplier <= 0) {
             throw new Error('Harga supplier tidak valid');
         }
         if (!tanggalForecast) {
@@ -653,10 +869,22 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
                 purchase_order_bahan_baku_id: orderDetailId,
                 bahan_baku_supplier_id: bahanBakuSupplierId,
                 qty_forecast: qtyForecast,
-                harga_satuan_forecast: hargaSupplierRaw,
+                harga_satuan_forecast: finalHargaSupplier,
                 catatan_detail: null
             }]
         };
+        
+        // Add price update data if custom price is used
+        if (isCustomPrice) {
+            const hargaLama = parseFloat(document.getElementById('harga_lama_supplier').value) || 0;
+            
+            data.update_harga_supplier = {
+                bahan_baku_supplier_id: bahanBakuSupplierId,
+                harga_lama: hargaLama,
+                harga_baru: finalHargaSupplier,
+                update_harga_supplier: true
+            };
+        }
         
         console.log('Data yang akan dikirim:', data);
         console.log('FormData values:');

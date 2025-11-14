@@ -119,6 +119,12 @@ class PengirimanExport implements
                 return (float)($detail->harga_satuan ?? 0);
             })->sum();
 
+            // Untuk status 'berhasil', tidak tampilkan catatan
+            $keterangan = '-';
+            if ($pengiriman->status !== 'berhasil' && $pengiriman->catatan) {
+                $keterangan = $pengiriman->catatan;
+            }
+
             $data[] = [
                 $pengiriman->tanggal_kirim ? 
                     \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d/m/Y') : 'N/A',
@@ -132,7 +138,7 @@ class PengirimanExport implements
                 (float)(($pengiriman->forecast && $pengiriman->forecast->total_harga_forecast) ? $pengiriman->forecast->total_harga_forecast : 0),
                 number_format((float)($pengiriman->total_qty_kirim ?? 0), 2),
                 (float)($pengiriman->total_harga_kirim ?? 0),
-                $pengiriman->catatan ?: '-'
+                $keterangan
             ];
         }
 

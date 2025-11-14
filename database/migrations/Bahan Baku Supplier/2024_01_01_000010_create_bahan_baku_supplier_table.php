@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('cascade');
             $table->string('nama')->nullable();
-            $table->decimal('harga_per_satuan', 15, 2);
+            $table->decimal('harga_per_satuan', 15, 2)->nullable();
             $table->string('satuan')->nullable();
             $table->decimal('stok', 15, 2)->default(0);
             $table->timestamps();

@@ -495,7 +495,7 @@
                                 Sebelumnya
                             </span>
                         @else
-                            <a href="{{ $suppliers->previousPageUrl() }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
+                            <a href="{{ $suppliers->appends(request()->query())->previousPageUrl() }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
                                 <i class="fas fa-chevron-left mr-1"></i>
                                 Sebelumnya
                             </a>
@@ -504,7 +504,7 @@
                         {{-- Page Numbers --}}
                         @if($suppliers->lastPage() > 1)
                             <div class="hidden sm:flex items-center space-x-1">
-                                @foreach ($suppliers->getUrlRange(1, $suppliers->lastPage()) as $page => $url)
+                                @foreach ($suppliers->appends(request()->query())->getUrlRange(1, $suppliers->lastPage()) as $page => $url)
                                     @if ($page == $suppliers->currentPage())
                                         <span class="px-3 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-lg">
                                             {{ $page }}
@@ -525,7 +525,7 @@
 
                         {{-- Next Page --}}
                         @if ($suppliers->hasMorePages())
-                            <a href="{{ $suppliers->nextPageUrl() }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
+                            <a href="{{ $suppliers->appends(request()->query())->nextPageUrl() }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors">
                                 Selanjutnya
                                 <i class="fas fa-chevron-right ml-1"></i>
                             </a>
@@ -629,18 +629,28 @@ function applyFilters() {
     const bahanBaku = document.getElementById('bahanBakuFilter').value;
 
     // Build URL with parameters
-    const params = new URLSearchParams();
+    const currentParams = new URLSearchParams(window.location.search);
     
-    if (search) params.append('search', search);
-    if (sortBahanBaku) params.append('sort_bahan_baku', sortBahanBaku);
-    if (sortStok) params.append('sort_stok', sortStok);
-    if (bahanBaku) params.append('bahan_baku', bahanBaku);
+    // Clear existing filter parameters but keep pagination and per_page if applicable
+    currentParams.delete('search');
+    currentParams.delete('sort_bahan_baku');
+    currentParams.delete('sort_stok');
+    currentParams.delete('bahan_baku');
+    
+    // Add new filter parameters
+    if (search) currentParams.set('search', search);
+    if (sortBahanBaku) currentParams.set('sort_bahan_baku', sortBahanBaku);
+    if (sortStok) currentParams.set('sort_stok', sortStok);
+    if (bahanBaku) currentParams.set('bahan_baku', bahanBaku);
+    
+    // Reset to first page only when applying new filters
+    currentParams.delete('page');
 
     // Show active filters
     showActiveFilters(search, sortBahanBaku, sortStok, bahanBaku);
 
     // Redirect with new parameters
-    const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    const newUrl = window.location.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '');
     window.location.href = newUrl;
 }
 
@@ -695,9 +705,16 @@ function showActiveFilters(search, sortBahanBaku, sortStok, bahanBaku) {
 function changePerPage() {
     const perPage = document.getElementById('perPageSelect').value;
     const url = new URL(window.location);
-    url.searchParams.set('per_page', perPage);
-    url.searchParams.delete('page'); // Reset to first page
-    window.location.href = url.toString();
+    
+    // Preserve existing parameters
+    const currentParams = new URLSearchParams(window.location.search);
+    
+    // Set per_page parameter
+    currentParams.set('per_page', perPage);
+    currentParams.delete('page'); // Reset to first page when changing per_page
+    
+    // Build new URL with preserved parameters
+    window.location.href = window.location.pathname + '?' + currentParams.toString();
 }
 
 // Toggle product list function

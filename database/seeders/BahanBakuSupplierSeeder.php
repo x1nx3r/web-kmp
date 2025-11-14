@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\BahanBakuSupplier;
 use App\Models\Supplier;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class BahanBakuSupplierSeeder extends Seeder
@@ -13,131 +14,783 @@ class BahanBakuSupplierSeeder extends Seeder
      */
     public function run(): void
     {
-        // Update slug untuk bahan baku yang sudah ada tapi belum memiliki slug
-        $bahanBakuTanpaSlug = BahanBakuSupplier::whereNull('slug')->orWhere('slug', '')->get();
+        // Ensure suppliers are created first
+        $this->call(SupplierSeeder::class);
         
-        foreach ($bahanBakuTanpaSlug as $bahanBaku) {
-            $slug = BahanBakuSupplier::generateUniqueSlug($bahanBaku->nama, $bahanBaku->supplier_id, $bahanBaku->id);
-            $bahanBaku->update(['slug' => $slug]);
-        }
-        
-        // Ambil semua supplier
-        $suppliers = Supplier::all();
+        // Get suppliers by slug for mapping
+        $supplierIdMap = Supplier::pluck('id', 'slug')->toArray();
 
-        // Data bahan baku yang cocok dengan material klien
-        $bahanBakuData = [
+        $bahanBakuSuppliers = [
+            // pak Giarto
             [
-                'nama' => 'Biji Batu',
-                'satuan' => 'KG',
-                'harga_min' => 8000,
-                'harga_max' => 12000,
-                'stok_min' => 100,
-                'stok_max' => 200
+                'supplier_slug' => 'pak-giarto',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3800,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Pak Rul
+            [
+                'supplier_slug' => 'pak-rul',
+                'nama' => 'katul',
+                'harga_per_satuan' => 4700,
+                'satuan' => 'Kg',
+                'stok' => 200000, // 200 ton = 200,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Solikin
+            [
+                'supplier_slug' => 'pak-solikin',
+                'nama' => 'katul',
+                'harga_per_satuan' => 4500,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // abah ariff
+            [
+                'supplier_slug' => 'abah-ariff',
+                'nama' => 'shm',
+                'harga_per_satuan' => 7100,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Hasan
+            [
+                'supplier_slug' => 'pak-hasan',
+                'nama' => 'bone meal',
+                'harga_per_satuan' => 3500,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Widodo (multiple products)
+            [
+                'supplier_slug' => 'pak-widodo',
+                'nama' => 'pkd',
+                'harga_per_satuan' => 3700,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
-                'nama' => 'Cangkang Kemiri',
-                'satuan' => 'KG',
-                'harga_min' => 9000,
-                'harga_max' => 13000,
-                'stok_min' => 150,
-                'stok_max' => 250
+                'supplier_slug' => 'pak-widodo',
+                'nama' => 'pkm',
+                'harga_per_satuan' => 2200,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
-                'nama' => 'CPO',
-                'satuan' => 'KG',
-                'harga_min' => 7500,
-                'harga_max' => 11000,
-                'stok_min' => 50,
-                'stok_max' => 100
+                'supplier_slug' => 'pak-widodo',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3550,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Heri
+            [
+                'supplier_slug' => 'pak-heri',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3600,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Wawan
+            [
+                'supplier_slug' => 'pak-wawan',
+                'nama' => 'mie kuning',
+                'harga_per_satuan' => 5200,
+                'satuan' => 'Kg',
+                'stok' => 60000, // 60 ton = 60,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Kusnadi
+            [
+                'supplier_slug' => 'pak-kusnadi',
+                'nama' => 'mie merah',
+                'harga_per_satuan' => 4650,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Adit (multiple products)
+            [
+                'supplier_slug' => 'pak-adit-nganjuk',
+                'nama' => 'corn germ',
+                'harga_per_satuan' => 6450,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
-                'nama' => 'Molases',
-                'satuan' => 'LITER',
-                'harga_min' => 6000,
-                'harga_max' => 9500,
-                'stok_min' => 80,
-                'stok_max' => 150
+                'supplier_slug' => 'pak-adit-nganjuk',
+                'nama' => 'cgm',
+                'harga_per_satuan' => 9000,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
-                'nama' => 'DSS',
-                'satuan' => 'KG',
-                'harga_min' => 8500,
-                'harga_max' => 12500,
-                'stok_min' => 120,
-                'stok_max' => 180
+                'supplier_slug' => 'pak-adit-nganjuk',
+                'nama' => 'pkd',
+                'harga_per_satuan' => 3700,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
-                'nama' => 'Bungkil Copra',
-                'satuan' => 'KG',
-                'harga_min' => 7000,
-                'harga_max' => 10500,
-                'stok_min' => 90,
-                'stok_max' => 160
+                'supplier_slug' => 'pak-adit-nganjuk',
+                'nama' => 'cgf',
+                'harga_per_satuan' => 3500,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Toni
+            [
+                'supplier_slug' => 'pak-toni',
+                'nama' => 'katul',
+                'harga_per_satuan' => 4700,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // bu Hadiah
+            [
+                'supplier_slug' => 'bu-hadiah',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Fitra
+            [
+                'supplier_slug' => 'pak-fitra',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3900,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Yuda (PT. Sorini)
+            [
+                'supplier_slug' => 'pak-yuda-pt-sorini',
+                'nama' => 'corn germ',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Wandi
+            [
+                'supplier_slug' => 'pak-wandi',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // bu Lestari
+            [
+                'supplier_slug' => 'bu-lestari',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Yohannes
+            [
+                'supplier_slug' => 'pak-yohannes',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // ibu Anis
+            [
+                'supplier_slug' => 'ibu-anis',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // bu Ulil CV Sumber Pangan (multiple products)
+            [
+                'supplier_slug' => 'bu-ulil-cv-sumber-pangan',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
-                'nama' => 'Katul',
-                'satuan' => 'KG',
-                'harga_min' => 5500,
-                'harga_max' => 8000,
-                'stok_min' => 200,
-                'stok_max' => 300
+                'supplier_slug' => 'bu-ulil-cv-sumber-pangan',
+                'nama' => 'kebi',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Pak Haris
+            [
+                'supplier_slug' => 'pak-haris',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Ade
+            [
+                'supplier_slug' => 'pak-ade',
+                'nama' => 'cgf',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Iwan (multiple products)
+            [
+                'supplier_slug' => 'pak-iwan',
+                'nama' => 'cfm',
+                'harga_per_satuan' => 6400,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
-                'nama' => 'PKM',
-                'satuan' => 'KG',
-                'harga_min' => 6500,
-                'harga_max' => 9000,
-                'stok_min' => 110,
-                'stok_max' => 190
+                'supplier_slug' => 'pak-iwan',
+                'nama' => 'bone meal',
+                'harga_per_satuan' => 3400,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Benny
+            [
+                'supplier_slug' => 'pak-benny',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3600,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Akbar
+            [
+                'supplier_slug' => 'pak-akbar',
+                'nama' => 'cangkang sawit',
+                'harga_per_satuan' => 1300,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Ibu Silvia PT Garuda Perkasa Jaya (multiple products)
+            [
+                'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
+                'nama' => 'fish meal 60%',
+                'harga_per_satuan' => 17700,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
+                'nama' => 'mbm 50%',
+                'harga_per_satuan' => 7800,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
+                'nama' => 'pmm 65%',
+                'harga_per_satuan' => 14900,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
+                'nama' => 'pmm 60%',
+                'harga_per_satuan' => 14100,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Rudi (multiple products)
+            [
+                'supplier_slug' => 'pak-rudi',
+                'nama' => 'pkm',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'pak-rudi',
+                'nama' => 'cpo',
+                'harga_per_satuan' => 15850, // 15.85 * 1000 untuk konversi ke per Kg
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Lutfi
+            [
+                'supplier_slug' => 'pak-lutfi',
+                'nama' => 'biji batu',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 200000, // 200 ton = 200,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Daniel PT Miwon
+            [
+                'supplier_slug' => 'pak-daniel-pt-miwon',
+                'nama' => 'corn germ',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Korun PT Bungasari
+            [
+                'supplier_slug' => 'pak-korun-pt-bungasari',
+                'nama' => 'tepung industri',
+                'harga_per_satuan' => 5100,
+                'satuan' => 'Kg',
+                'stok' => 400000, // 400 ton = 400,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // abah Julio
+            [
+                'supplier_slug' => 'abah-julio',
+                'nama' => 'molases',
+                'harga_per_satuan' => 1400,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // abah Zainal
+            [
+                'supplier_slug' => 'abah-zainal',
+                'nama' => 'cfm',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Darsono
+            [
+                'supplier_slug' => 'pak-darsono',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // ibu Taslima
+            [
+                'supplier_slug' => 'ibu-taslima',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Tris
+            [
+                'supplier_slug' => 'pak-tris',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // ibu Romtini
+            [
+                'supplier_slug' => 'ibu-romtini',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Fani (multiple products)
+            [
+                'supplier_slug' => 'pak-fani',
+                'nama' => 'cfm',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'pak-fani',
+                'nama' => 'bone meal',
+                'harga_per_satuan' => 3700,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Pri
+            [
+                'supplier_slug' => 'pak-pri',
+                'nama' => 'katul',
+                'harga_per_satuan' => 4700,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak San
+            [
+                'supplier_slug' => 'pak-san',
+                'nama' => 'katul',
+                'harga_per_satuan' => 4550,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Iman
+            [
+                'supplier_slug' => 'pak-iman',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3900,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Wahyu
+            [
+                'supplier_slug' => 'pak-wahyu',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3700,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Bambang (multiple products)
+            [
+                'supplier_slug' => 'pak-bambang',
+                'nama' => 'katul',
+                'harga_per_satuan' => 4350,
+                'satuan' => 'Kg',
+                'stok' => 150000, // 150 ton = 150,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'pak-bambang',
+                'nama' => 'gaplek meal',
+                'harga_per_satuan' => 4000,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Ali
+            [
+                'supplier_slug' => 'pak-ali',
+                'nama' => 'gaplek meal',
+                'harga_per_satuan' => 4000,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Adit (Prambong) - multiple products
+            [
+                'supplier_slug' => 'pak-adit-prambong',
+                'nama' => 'kebi',
+                'harga_per_satuan' => 5200,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'pak-adit-prambong',
+                'nama' => 'katul',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // ibu Hilma
+            [
+                'supplier_slug' => 'ibu-hilma',
+                'nama' => 'tepung batu',
+                'harga_per_satuan' => 1100,
+                'satuan' => 'Kg',
+                'stok' => 200000, // 200 ton = 200,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Yamin
+            [
+                'supplier_slug' => 'pak-yamin',
+                'nama' => 'bone meal',
+                'harga_per_satuan' => 3550,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Alim
+            [
+                'supplier_slug' => 'pak-alim',
+                'nama' => 'katul',
+                'harga_per_satuan' => 5200,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Aldy
+            [
+                'supplier_slug' => 'pak-aldy',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3850,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Ridho
+            [
+                'supplier_slug' => 'pak-ridho',
+                'nama' => 'katul',
+                'harga_per_satuan' => 5300,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Budi
+            [
+                'supplier_slug' => 'pak-budi',
+                'nama' => 'cfm',
+                'harga_per_satuan' => 6800,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Heru
+            [
+                'supplier_slug' => 'pak-heru',
+                'nama' => 'cfm',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Adit (Karawang)
+            [
+                'supplier_slug' => 'pak-adit-karawang',
+                'nama' => 'biskuit',
+                'harga_per_satuan' => 3900,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // abah Mashuri (multiple products)
+            [
+                'supplier_slug' => 'abah-mashuri',
+                'nama' => 'cfm',
+                'harga_per_satuan' => 6600,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'abah-mashuri',
+                'nama' => 'bone meal',
+                'harga_per_satuan' => 3550,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Abi (multiple products)
+            [
+                'supplier_slug' => 'pak-abi',
+                'nama' => 'gaplek meal',
+                'harga_per_satuan' => 4000,
+                'satuan' => 'Kg',
+                'stok' => 200000, // 200 ton = 200,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'pak-abi',
+                'nama' => 'gaplek chip',
+                'harga_per_satuan' => null,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Wahyudi
+            [
+                'supplier_slug' => 'pak-wahyudi',
+                'nama' => 'katul',
+                'harga_per_satuan' => 5200,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Nafar
+            [
+                'supplier_slug' => 'pak-nafar',
+                'nama' => 'shm',
+                'harga_per_satuan' => 7000,
+                'satuan' => 'Kg',
+                'stok' => 30000, // 30 ton = 30,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
         ];
 
-        // Create materials for each supplier ensuring multiple suppliers per material
-        foreach ($bahanBakuData as $materialIndex => $bahanBaku) {
-            // Each material will be offered by 3-5 random suppliers with different prices
-            $suppliersForMaterial = $suppliers->random(rand(3, min(5, $suppliers->count())));
+        // Create bahan baku supplier records
+        foreach ($bahanBakuSuppliers as $bahanBaku) {
+            // Get supplier ID from slug mapping
+            $supplierId = isset($supplierIdMap[$bahanBaku['supplier_slug']]) ? $supplierIdMap[$bahanBaku['supplier_slug']] : null;
             
-            foreach ($suppliersForMaterial as $supplierIndex => $supplier) {
-                // Cek apakah bahan baku ini sudah ada untuk supplier ini
-                $existingBahanBaku = BahanBakuSupplier::where('supplier_id', $supplier->id)
-                    ->where('nama', $bahanBaku['nama'])
-                    ->first();
+            if ($supplierId) {
+                // Remove supplier_slug from array and set supplier_id
+                unset($bahanBaku['supplier_slug']);
+                $bahanBaku['supplier_id'] = $supplierId;
                 
-                if (!$existingBahanBaku) {
-                    // Generate unique slug for this bahan baku
-                    $slug = BahanBakuSupplier::generateUniqueSlug($bahanBaku['nama'], $supplier->id);
-                    
-                    // Create price variation for each supplier
-                    // First supplier gets the lowest price (best), others get progressively higher
-                    $priceMultiplier = 1 + ($supplierIndex * 0.12); // 0%, 12%, 24%, 36%, 48% markup
-                    $basePrice = $bahanBaku['harga_min'];
-                    $finalPrice = round($basePrice * $priceMultiplier, -2); // Round to nearest 100
-                    
-                    // Add some randomness to make it more realistic
-                    $randomVariation = rand(-5, 5) / 100; // ±5% random variation
-                    $finalPrice = round($finalPrice * (1 + $randomVariation), -2);
-                    
-                    // Ensure price is within reasonable bounds
-                    $finalPrice = max($bahanBaku['harga_min'], min($bahanBaku['harga_max'], $finalPrice));
-                    
-                    // Stock variation
-                    $stockVariation = $bahanBaku['stok_min'] + rand(0, $bahanBaku['stok_max'] - $bahanBaku['stok_min']);
-                    
-                    BahanBakuSupplier::create([
-                        'supplier_id' => $supplier->id,
-                        'nama' => $bahanBaku['nama'],
-                        'slug' => $slug,
-                        'satuan' => $bahanBaku['satuan'],
-                        'harga_per_satuan' => $finalPrice,
-                        'stok' => $stockVariation,
-                    ]);
-                    
-                    $this->command->info("Created: {$bahanBaku['nama']} for {$supplier->nama} at Rp " . number_format($finalPrice));
-                } else if (empty($existingBahanBaku->slug)) {
-                    // Update slug jika bahan baku sudah ada tapi belum memiliki slug
-                    $slug = BahanBakuSupplier::generateUniqueSlug($existingBahanBaku->nama, $existingBahanBaku->supplier_id, $existingBahanBaku->id);
-                    $existingBahanBaku->update(['slug' => $slug]);
-                }
+                // Generate slug for bahan baku
+                $bahanBaku['slug'] = \App\Models\BahanBakuSupplier::generateUniqueSlug($bahanBaku['nama'], $supplierId);
+                
+                BahanBakuSupplier::updateOrCreate(
+                    [
+                        'supplier_id' => $supplierId,
+                        'nama' => $bahanBaku['nama']
+                    ], // Check by supplier_id and nama (unique combination)
+                    $bahanBaku // Update or create with this data
+                );
             }
         }
     }

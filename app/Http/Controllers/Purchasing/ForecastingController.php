@@ -8,6 +8,7 @@ use App\Models\OrderDetail;
 use App\Models\Forecast;
 use App\Models\ForecastDetail;
 use App\Models\BahanBakuSupplier;
+use App\Models\RiwayatHargaBahanBaku;
 use App\Models\Pengiriman;
 use App\Models\PengirimanDetail;
 use Illuminate\Http\Request;
@@ -451,7 +452,13 @@ class ForecastingController extends Controller
                 'details.*.bahan_baku_supplier_id' => 'required|exists:bahan_baku_supplier,id',
                 'details.*.qty_forecast' => 'required|numeric|min:0.01|max:9999999.99',
                 'details.*.harga_satuan_forecast' => 'required|numeric|min:0.01|max:999999999.99',
-                'details.*.catatan_detail' => 'nullable|string|max:500'
+                'details.*.catatan_detail' => 'nullable|string|max:500',
+                // Validation for price update
+                'update_harga_supplier' => 'sometimes|array',
+                'update_harga_supplier.bahan_baku_supplier_id' => 'required_with:update_harga_supplier|exists:bahan_baku_supplier,id',
+                'update_harga_supplier.harga_lama' => 'required_with:update_harga_supplier|numeric|min:0',
+                'update_harga_supplier.harga_baru' => 'required_with:update_harga_supplier|numeric|min:0.01|max:999999999.99',
+                'update_harga_supplier.update_harga_supplier' => 'required_with:update_harga_supplier|boolean'
             ], [
                 'purchase_order_id.required' => 'Order harus dipilih',
                 'purchase_order_id.exists' => 'Order tidak valid',
@@ -464,6 +471,7 @@ class ForecastingController extends Controller
                 'details.*.qty_forecast.min' => 'Qty forecast minimal 0.01',
                 'details.*.harga_satuan_forecast.required' => 'Harga satuan forecast harus diisi',
                 'details.*.harga_satuan_forecast.min' => 'Harga satuan forecast minimal 0.01',
+                'update_harga_supplier.harga_baru.min' => 'Harga baru minimal 0.01',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Validation failed:', $e->errors());
@@ -509,6 +517,43 @@ class ForecastingController extends Controller
             
             $orderDetails = OrderDetail::whereIn('id', $orderDetailIds)->get()->keyBy('id');
             $suppliers = BahanBakuSupplier::with('supplier')->whereIn('id', $supplierIds)->get()->keyBy('id');
+
+            // Handle price update for supplier if requested
+            if ($request->has('update_harga_supplier') && $request->update_harga_supplier['update_harga_supplier'] === true) {
+                $updatePriceData = $request->update_harga_supplier;
+                
+                Log::info('Processing price update for supplier', [
+                    'bahan_baku_supplier_id' => $updatePriceData['bahan_baku_supplier_id'],
+                    'harga_lama' => $updatePriceData['harga_lama'],
+                    'harga_baru' => $updatePriceData['harga_baru']
+                ]);
+                
+                // Validate that supplier exists
+                $supplierToUpdate = BahanBakuSupplier::find($updatePriceData['bahan_baku_supplier_id']);
+                if (!$supplierToUpdate) {
+                    throw new \Exception("Bahan Baku Supplier tidak ditemukan untuk update harga");
+                }
+                
+                // Update harga_per_satuan pada BahanBakuSupplier
+                $supplierToUpdate->update([
+                    'harga_per_satuan' => $updatePriceData['harga_baru']
+                ]);
+                
+                // Catat perubahan harga ke RiwayatHargaBahanBaku
+                RiwayatHargaBahanBaku::catatPerubahanHarga(
+                    $updatePriceData['bahan_baku_supplier_id'],
+                    $updatePriceData['harga_lama'],
+                    $updatePriceData['harga_baru'],
+                    'Perubahan harga melalui forecast', // Default keterangan
+                    Auth::id(),
+                    now()
+                );
+                
+                // Update supplier data dalam collection untuk forecast
+                $suppliers[$updatePriceData['bahan_baku_supplier_id']]->harga_per_satuan = $updatePriceData['harga_baru'];
+                
+                Log::info('Price update completed successfully');
+            }
 
             // Get timestamp sekali saja
             $timestamp = now();

@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             BahanBakuKlienSeeder::class, // Now creates client-specific materials with pricing
             BahanBakuSupplierSeeder::class,
             CompanySettingSeeder::class,
+            RiwayatHargaBahanBakuSeeder::class,
             // PengirimanAccountingSeeder::class,
             PenawaranSeeder::class, // Penawaran with multi-supplier support
             // OrderSeeder::class, // Removed - incompatible with new multi-supplier order system

@@ -207,7 +207,7 @@
 
                             {{-- Hidden Fields --}}
                             <input type="hidden" id="purchase_order_id" name="purchase_order_id">
-                            <input type="hidden" id="purchase_order_bahan_baku_id" name="purchase_order_bahan_baku_id">
+                            <input type="hidden" id="order_detail_id" name="order_detail_id">
                             <input type="hidden" id="bahan_baku_supplier_id" name="bahan_baku_supplier_id">
                             <input type="hidden" id="harga_satuan_po" name="harga_satuan_po">
                             <input type="hidden" id="tanggal_forecast" name="tanggal_forecast">
@@ -274,7 +274,7 @@ input[type="text"]::-webkit-inner-spin-button {
 
 <script>
 // Variables untuk modal
-let currentPurchaseOrderBahanBakuId = null;
+let currentOrderDetailId = null;
 let currentPurchaseOrderId = null;
 
 // Fungsi untuk format rupiah Indonesia (titik untuk ribuan)
@@ -290,16 +290,16 @@ function formatNumber(num, decimals = 2) {
 }
 
 // Open forecast modal
-async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah, purchaseOrderId, noPO) {
+async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseOrderId, noPO) {
     console.log('Opening forecast modal with params:', {
-        purchaseOrderBahanBakuId,
+        orderDetailId,
         bahanBakuNama,
         jumlah,
         purchaseOrderId,
         noPO
     });
     
-    currentPurchaseOrderBahanBakuId = purchaseOrderBahanBakuId;
+    currentOrderDetailId = orderDetailId;
     currentPurchaseOrderId = purchaseOrderId;
     
     // Set info
@@ -307,17 +307,17 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
     document.getElementById('modalBahanBaku').textContent = bahanBakuNama;
     document.getElementById('jumlahPO').textContent = jumlah;
     document.getElementById('purchase_order_id').value = purchaseOrderId;
-    document.getElementById('purchase_order_bahan_baku_id').value = purchaseOrderBahanBakuId;
+    document.getElementById('order_detail_id').value = orderDetailId;
     
     // Reset form
     document.getElementById('forecastForm').reset();
     document.getElementById('purchase_order_id').value = purchaseOrderId;
-    document.getElementById('purchase_order_bahan_baku_id').value = purchaseOrderBahanBakuId;
+    document.getElementById('order_detail_id').value = orderDetailId;
     
     // Set default perkiraan tanggal kirim ke 7 hari dari sekarang
     const today = new Date();
     const deliveryDate = new Date(today);
-    deliveryDate.setDate(today.getDate() + 7);
+    deliveryDate.setDate(today.getDate() + 7);  
     document.getElementById('perkiraan_tanggal_kirim').value = deliveryDate.toISOString().split('T')[0];
     
     // Calculate delivery days
@@ -325,8 +325,8 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
     
     try {
         // Load supplier options
-        console.log(`Fetching supplier data from: /procurement/forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
-        const response = await fetch(`/procurement/forecasting/bahan-baku-suppliers/${purchaseOrderBahanBakuId}`);
+        console.log(`Fetching supplier data from: /procurement/forecasting/bahan-baku-suppliers/${orderDetailId}`);
+        const response = await fetch(`/procurement/forecasting/bahan-baku-suppliers/${orderDetailId}`);
         console.log('Supplier fetch response status:', response.status);
         
         if (!response.ok) {
@@ -400,19 +400,20 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
             supplierLoading.style.display = 'none';
         }
         
-        // Set satuan dan harga PO
-        if (data.purchase_order_bahan_baku && data.purchase_order_bahan_baku.bahan_baku_klien) {
-            document.getElementById('satuanBahanBaku').textContent = data.purchase_order_bahan_baku.bahan_baku_klien.satuan || '';
-        }
-        
-        // Set harga PO
-        if (data.purchase_order_bahan_baku) {
-            const hargaPO = data.purchase_order_bahan_baku.harga_satuan || 0;
+        // Set satuan dan harga PO dari order_detail
+        if (data.order_detail) {
+            // Set satuan dari bahan_baku_klien yang sudah di-load
+            if (data.order_detail.bahan_baku_klien) {
+                document.getElementById('satuanBahanBaku').textContent = data.order_detail.bahan_baku_klien.satuan || '';
+            }
+            
+            // Set harga PO - ambil dari harga_jual pada order_detail
+            const hargaPO = data.order_detail.harga_jual || 0;
             document.getElementById('harga_satuan_po').value = hargaPO;
             document.getElementById('hargaPO').textContent = 'Rp ' + formatRupiah(Math.round(hargaPO));
             
             // Calculate total PO
-            const qtyPO = data.purchase_order_bahan_baku.jumlah || 0;
+            const qtyPO = data.order_detail.qty || 0;
             const totalPO = hargaPO * qtyPO;
             document.getElementById('totalHargaPO').textContent = 'Rp ' + formatRupiah(Math.round(totalPO));
         }
@@ -431,7 +432,7 @@ async function openForecastModal(purchaseOrderBahanBakuId, bahanBakuNama, jumlah
 function closeForecastModal() {
     document.getElementById('forecastModal').classList.add('hidden');
     document.getElementById('forecastForm').reset();
-    currentPurchaseOrderBahanBakuId = null;
+    currentOrderDetailId = null;
     currentPurchaseOrderId = null;
 }
 
@@ -574,15 +575,15 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
     
     // Additional validations
     const purchaseOrderId = document.getElementById('purchase_order_id').value;
-    const purchaseOrderBahanBakuId = document.getElementById('purchase_order_bahan_baku_id').value;
+    const orderDetailId = document.getElementById('order_detail_id').value;
     
     if (!purchaseOrderId) {
-        alert('Purchase Order ID tidak ditemukan. Silakan refresh halaman dan coba lagi.');
+        alert('Order ID tidak ditemukan. Silakan refresh halaman dan coba lagi.');
         return;
     }
     
-    if (!purchaseOrderBahanBakuId) {
-        alert('Purchase Order Bahan Baku ID tidak ditemukan. Silakan refresh halaman dan coba lagi.');
+    if (!orderDetailId) {
+        alert('Order Detail ID tidak ditemukan. Silakan refresh halaman dan coba lagi.');
         return;
     }
     
@@ -604,7 +605,7 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         
         // Get and validate all required data
         const purchaseOrderId = parseInt(formData.get('purchase_order_id'));
-        const purchaseOrderBahanBakuId = parseInt(formData.get('purchase_order_bahan_baku_id'));
+        const orderDetailId = parseInt(formData.get('order_detail_id'));
         const bahanBakuSupplierId = parseInt(selectedSupplier);
         const qtyForecast = parseFloat(formData.get('qty_forecast'));
         const hargaSupplierRaw = parseFloat(document.getElementById('harga_satuan_forecast').dataset.rawValue);
@@ -614,10 +615,10 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         
         // Validate all data
         if (isNaN(purchaseOrderId) || purchaseOrderId <= 0) {
-            throw new Error('Purchase Order ID tidak valid');
+            throw new Error('Order ID tidak valid');
         }
-        if (isNaN(purchaseOrderBahanBakuId) || purchaseOrderBahanBakuId <= 0) {
-            throw new Error('Purchase Order Bahan Baku ID tidak valid');
+        if (isNaN(orderDetailId) || orderDetailId <= 0) {
+            throw new Error('Order Detail ID tidak valid');
         }
         if (isNaN(bahanBakuSupplierId) || bahanBakuSupplierId <= 0) {
             throw new Error('Bahan Baku Supplier ID tidak valid');
@@ -649,7 +650,7 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
             hari_kirim_forecast: hariForecast,
             catatan: catatan,
             details: [{
-                purchase_order_bahan_baku_id: purchaseOrderBahanBakuId,
+                purchase_order_bahan_baku_id: orderDetailId,
                 bahan_baku_supplier_id: bahanBakuSupplierId,
                 qty_forecast: qtyForecast,
                 harga_satuan_forecast: hargaSupplierRaw,

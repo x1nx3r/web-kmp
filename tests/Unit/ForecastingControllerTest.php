@@ -4,8 +4,8 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 use App\Http\Controllers\Purchasing\ForecastingController;
-use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderBahanBaku;
+use App\Models\Order;
+use App\Models\OrderDetail;
 use App\Models\Forecast;
 use App\Models\ForecastDetail;
 use App\Models\BahanBakuSupplier;
@@ -38,13 +38,13 @@ class ForecastingControllerTest extends TestCase
     {
         // Arrange
         $klien = Klien::factory()->create();
-        $purchaseOrder = PurchaseOrder::factory()->create([
+        $order = Order::factory()->create([
             'klien_id' => $klien->id,
-            'status' => 'siap'
+            'status' => 'dikonfirmasi'
         ]);
         
-        $purchaseOrderBahanBaku = PurchaseOrderBahanBaku::factory()->create([
-            'purchase_order_id' => $purchaseOrder->id
+        $orderDetail = OrderDetail::factory()->create([
+            'order_id' => $order->id
         ]);
 
         // Act
@@ -52,7 +52,7 @@ class ForecastingControllerTest extends TestCase
 
         // Assert
         $this->assertEquals('pages.purchasing.forecast', $response->name());
-        $this->assertArrayHasKey('purchaseOrders', $response->getData());
+        $this->assertArrayHasKey('orders', $response->getData());
         $this->assertArrayHasKey('pendingForecasts', $response->getData());
         $this->assertArrayHasKey('suksesForecasts', $response->getData());
         $this->assertArrayHasKey('gagalForecasts', $response->getData());
@@ -61,16 +61,16 @@ class ForecastingControllerTest extends TestCase
     public function test_getBahanBakuSuppliers_returns_correct_data()
     {
         // Arrange
-        $purchaseOrderBahanBaku = PurchaseOrderBahanBaku::factory()->create();
+        $orderDetail = OrderDetail::factory()->create();
         $bahanBakuSupplier = BahanBakuSupplier::factory()->create();
 
         // Act
-        $response = $this->controller->getBahanBakuSuppliers($purchaseOrderBahanBaku->id);
+        $response = $this->controller->getBahanBakuSuppliers($orderDetail->id);
 
         // Assert
         $this->assertEquals(200, $response->getStatusCode());
         $responseData = json_decode($response->getContent(), true);
-        $this->assertArrayHasKey('purchase_order_bahan_baku', $responseData);
+        $this->assertArrayHasKey('order_detail', $responseData);
         $this->assertArrayHasKey('bahan_baku_suppliers', $responseData);
     }
 
@@ -90,7 +90,7 @@ class ForecastingControllerTest extends TestCase
     {
         // Arrange
         $request = new Request([
-            'purchase_order_id' => null, // Invalid: required field
+            'order_id' => null, // Invalid: required field
             'tanggal_forecast' => 'invalid-date', // Invalid: not a date
             'details' => [] // Invalid: array must have at least 1 item
         ]);
@@ -109,21 +109,21 @@ class ForecastingControllerTest extends TestCase
     public function test_createForecast_creates_forecast_successfully()
     {
         // Arrange
-        $purchaseOrder = PurchaseOrder::factory()->create();
-        $purchaseOrderBahanBaku = PurchaseOrderBahanBaku::factory()->create([
-            'purchase_order_id' => $purchaseOrder->id,
-            'harga_satuan' => 10000
+        $order = Order::factory()->create();
+        $orderDetail = OrderDetail::factory()->create([
+            'order_id' => $order->id,
+            'harga_jual' => 10000
         ]);
         $bahanBakuSupplier = BahanBakuSupplier::factory()->create();
 
         $requestData = [
-            'purchase_order_id' => $purchaseOrder->id,
+            'order_id' => $order->id,
             'tanggal_forecast' => '2025-09-24',
             'hari_kirim_forecast' => 'Senin',
             'catatan' => 'Test forecast',
             'details' => [
                 [
-                    'purchase_order_bahan_baku_id' => $purchaseOrderBahanBaku->id,
+                    'order_detail_id' => $orderDetail->id,
                     'bahan_baku_supplier_id' => $bahanBakuSupplier->id,
                     'qty_forecast' => 100,
                     'harga_satuan_forecast' => 12000,
@@ -146,7 +146,7 @@ class ForecastingControllerTest extends TestCase
 
         // Verify database
         $this->assertDatabaseHas('forecasts', [
-            'purchase_order_id' => $purchaseOrder->id,
+            'order_id' => $order->id,
             'tanggal_forecast' => '2025-09-24',
             'hari_kirim_forecast' => 'Senin',
             'status' => 'pending',
@@ -154,7 +154,7 @@ class ForecastingControllerTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('forecast_details', [
-            'purchase_order_bahan_baku_id' => $purchaseOrderBahanBaku->id,
+            'order_detail_id' => $orderDetail->id,
             'bahan_baku_supplier_id' => $bahanBakuSupplier->id,
             'qty_forecast' => 100,
             'harga_satuan_forecast' => 12000,
@@ -168,19 +168,19 @@ class ForecastingControllerTest extends TestCase
         // Create existing forecasts to test counter
         Forecast::factory()->count(3)->create();
         
-        $purchaseOrder = PurchaseOrder::factory()->create();
-        $purchaseOrderBahanBaku = PurchaseOrderBahanBaku::factory()->create([
-            'purchase_order_id' => $purchaseOrder->id
+        $order = Order::factory()->create();
+        $orderDetail = OrderDetail::factory()->create([
+            'order_id' => $order->id
         ]);
         $bahanBakuSupplier = BahanBakuSupplier::factory()->create();
 
         $requestData = [
-            'purchase_order_id' => $purchaseOrder->id,
+            'order_id' => $order->id,
             'tanggal_forecast' => '2025-09-24',
             'hari_kirim_forecast' => 'Senin',
             'details' => [
                 [
-                    'purchase_order_bahan_baku_id' => $purchaseOrderBahanBaku->id,
+                    'order_detail_id' => $orderDetail->id,
                     'bahan_baku_supplier_id' => $bahanBakuSupplier->id,
                     'qty_forecast' => 100,
                     'harga_satuan_forecast' => 12000
@@ -205,20 +205,20 @@ class ForecastingControllerTest extends TestCase
     public function test_createForecast_calculates_totals_correctly()
     {
         // Arrange
-        $purchaseOrder = PurchaseOrder::factory()->create();
-        $purchaseOrderBahanBaku = PurchaseOrderBahanBaku::factory()->create([
-            'purchase_order_id' => $purchaseOrder->id,
-            'harga_satuan' => 10000
+        $order = Order::factory()->create();
+        $orderDetail = OrderDetail::factory()->create([
+            'order_id' => $order->id,
+            'harga_jual' => 10000
         ]);
         $bahanBakuSupplier = BahanBakuSupplier::factory()->create();
 
         $requestData = [
-            'purchase_order_id' => $purchaseOrder->id,
+            'order_id' => $order->id,
             'tanggal_forecast' => '2025-09-24',
             'hari_kirim_forecast' => 'Senin',
             'details' => [
                 [
-                    'purchase_order_bahan_baku_id' => $purchaseOrderBahanBaku->id,
+                    'order_detail_id' => $orderDetail->id,
                     'bahan_baku_supplier_id' => $bahanBakuSupplier->id,
                     'qty_forecast' => 100,
                     'harga_satuan_forecast' => 12000
@@ -242,15 +242,15 @@ class ForecastingControllerTest extends TestCase
     public function test_createForecast_handles_database_error()
     {
         // Arrange
-        $purchaseOrder = PurchaseOrder::factory()->create();
+        $order = Order::factory()->create();
         
         $requestData = [
-            'purchase_order_id' => $purchaseOrder->id,
+            'order_id' => $order->id,
             'tanggal_forecast' => '2025-09-24',
             'hari_kirim_forecast' => 'Senin',
             'details' => [
                 [
-                    'purchase_order_bahan_baku_id' => 999, // Non-existent ID
+                    'order_detail_id' => 999, // Non-existent ID
                     'bahan_baku_supplier_id' => 999, // Non-existent ID
                     'qty_forecast' => 100,
                     'harga_satuan_forecast' => 12000

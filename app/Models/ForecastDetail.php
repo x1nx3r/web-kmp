@@ -59,6 +59,14 @@ class ForecastDetail extends Model
     }
 
     /**
+     * Alias untuk purchaseOrderBahanBaku (untuk konsistensi penamaan)
+     */
+    public function orderDetail()
+    {
+        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id');
+    }
+
+    /**
      * Accessor untuk format qty
      */
     public function getFormattedQtyForecastAttribute()

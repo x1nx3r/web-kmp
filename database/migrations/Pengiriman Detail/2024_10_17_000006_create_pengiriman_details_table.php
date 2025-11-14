@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('pengiriman_details', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pengiriman_id')->constrained('pengiriman')->onDelete('cascade');
-            $table->foreignId('purchase_order_bahan_baku_id')->constrained('purchase_order_bahan_baku')->onDelete('cascade');
+            $table->foreignId('purchase_order_bahan_baku_id')->constrained('order_details')->onDelete('cascade'); // References order_details table
             $table->foreignId('bahan_baku_supplier_id')->constrained('bahan_baku_supplier')->onDelete('cascade');
-            $table->decimal('qty_kirim', 15, 2);
-            $table->decimal('harga_satuan', 15, 2);
-            $table->decimal('total_harga', 15, 2);
+            $table->decimal('qty_kirim', 15, 2)->nullable();
+            $table->decimal('harga_satuan', 15, 2)->nullable();
+            $table->decimal('total_harga', 15, 2)->nullable();
             $table->text('catatan_detail')->nullable();
             $table->timestamps();
             $table->softDeletes();

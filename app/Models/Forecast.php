@@ -69,7 +69,7 @@ class Forecast extends Model
     /**
      * Relasi ke Order Detail melalui forecast details (Many-to-Many)
      */
-    public function purchaseOrderBahanBakus()
+    public function orderDetails()
     {
         return $this->belongsToMany(
             OrderDetail::class,
@@ -89,6 +89,14 @@ class Forecast extends Model
      * Relasi ke Order (menggunakan purchase_order_id sebagai foreign key)
      */
     public function purchaseOrder()
+    {
+        return $this->belongsTo(Order::class, 'purchase_order_id');
+    }
+
+    /**
+     * Alias untuk purchaseOrder (untuk konsistensi penamaan)
+     */
+    public function order()
     {
         return $this->belongsTo(Order::class, 'purchase_order_id');
     }

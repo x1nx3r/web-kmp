@@ -75,7 +75,7 @@ class Pengiriman extends Model
      */
     public function purchaseOrder()
     {
-        return $this->belongsTo(PurchaseOrder::class);
+        return $this->belongsTo(Order::class, 'purchase_order_id');
     }
 
     /**
@@ -83,7 +83,7 @@ class Pengiriman extends Model
      */
     public function order()
     {
-        return $this->belongsTo(Order::class, 'purchase_order_id', 'id');
+        return $this->belongsTo(Order::class, 'purchase_order_id');
     }
 
     /**

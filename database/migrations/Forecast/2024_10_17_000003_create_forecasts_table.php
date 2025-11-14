@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('forecasts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('purchase_order_id')->constrained('purchase_orders')->onDelete('cascade');
+            $table->foreignId('purchase_order_id')->constrained('orders')->onDelete('cascade'); // References orders table
             $table->foreignId('purchasing_id')->nullable()->constrained('users')->onDelete('set null');
             $table->string('no_forecast')->unique();
             $table->date('tanggal_forecast');

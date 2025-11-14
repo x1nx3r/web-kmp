@@ -57,13 +57,13 @@ class ForecastingController extends Controller
         ->withQueryString();
 
         // Ambil forecast berdasarkan status dengan eager loading dan pagination
-        $pendingForecasts = Forecast::with(['purchaseOrder.klien', 'purchasing'])
+        $pendingForecasts = Forecast::with(['order.klien', 'purchasing'])
             ->pending()
             ->when(request('search_pending'), function($query) {
                 $searchTerm = request('search_pending');
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('no_forecast', 'like', "%{$searchTerm}%")
-                      ->orWhereHas('purchaseOrder', function($subQ) use ($searchTerm) {
+                      ->orWhereHas('order', function($subQ) use ($searchTerm) {
                           $subQ->where('po_number', 'like', "%{$searchTerm}%")
                                ->orWhereHas('klien', function($klienQ) use ($searchTerm) {
                                    $klienQ->where('nama', 'like', "%{$searchTerm}%");
@@ -106,13 +106,13 @@ class ForecastingController extends Controller
             ->paginate(10, ['*'], 'page_pending')
             ->withQueryString();
 
-        $suksesForecasts = Forecast::with(['purchaseOrder.klien', 'purchasing'])
+        $suksesForecasts = Forecast::with(['order.klien', 'purchasing'])
             ->sukses()
             ->when(request('search_sukses'), function($query) {
                 $searchTerm = request('search_sukses');
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('no_forecast', 'like', '%' . $searchTerm . '%')
-                      ->orWhereHas('purchaseOrder', function($poQuery) use ($searchTerm) {
+                      ->orWhereHas('order', function($poQuery) use ($searchTerm) {
                           $poQuery->where('po_number', 'like', '%' . $searchTerm . '%')
                                   ->orWhereHas('klien', function($klienQuery) use ($searchTerm) {
                                       $klienQuery->where('nama', 'like', '%' . $searchTerm . '%');
@@ -135,13 +135,13 @@ class ForecastingController extends Controller
             ->paginate(10, ['*'], 'page_sukses')
             ->withQueryString();
 
-        $gagalForecasts = Forecast::with(['purchaseOrder.klien', 'purchasing'])
+        $gagalForecasts = Forecast::with(['order.klien', 'purchasing'])
             ->gagal()
             ->when(request('search_gagal'), function($query) {
                 $searchTerm = request('search_gagal');
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('no_forecast', 'like', '%' . $searchTerm . '%')
-                      ->orWhereHas('purchaseOrder', function($poQuery) use ($searchTerm) {
+                      ->orWhereHas('order', function($poQuery) use ($searchTerm) {
                           $poQuery->where('po_number', 'like', '%' . $searchTerm . '%')
                                   ->orWhereHas('klien', function($klienQuery) use ($searchTerm) {
                                       $klienQuery->where('nama', 'like', '%' . $searchTerm . '%');
@@ -191,10 +191,17 @@ class ForecastingController extends Controller
             
             Log::info("Found OrderDetail: " . json_encode($orderDetail));
 
-            // Ambil semua bahan baku supplier yang tersedia, diurutkan berdasarkan nama supplier
+            // Ambil nama bahan baku dari order detail untuk filtering
+            $orderBahanBakuNama = null;
+            if ($orderDetail->bahanBakuKlien) {
+                $orderBahanBakuNama = $orderDetail->bahanBakuKlien->nama;
+                Log::info("Order bahan baku nama: {$orderBahanBakuNama}");
+            }
+
+            // Ambil bahan baku supplier yang tersedia dengan filtering berdasarkan nama bahan baku
             // Optimized query dengan proper join dan select, termasuk pic_purchasing
             try {
-                $bahanBakuSuppliers = BahanBakuSupplier::select([
+                $query = BahanBakuSupplier::select([
                         'bahan_baku_supplier.*',
                         'suppliers.nama as supplier_nama',
                         'suppliers.pic_purchasing_id',
@@ -202,9 +209,34 @@ class ForecastingController extends Controller
                     ])
                     ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
                     ->leftJoin('users', 'suppliers.pic_purchasing_id', '=', 'users.id')
-                    ->where('bahan_baku_supplier.stok', '>', 0) // Hanya ambil yang ada stoknya
-                    ->orderBy('bahan_baku_supplier.nama', 'asc')
-                    ->get();
+                    ->where('bahan_baku_supplier.stok', '>', 0); // Hanya ambil yang ada stoknya
+                    
+                // Filter berdasarkan kemiripan nama bahan baku (case-insensitive, partial match)
+                if ($orderBahanBakuNama) {
+                    // Remove common words and clean the name for better matching
+                    $cleanOrderName = strtolower(trim($orderBahanBakuNama));
+                    $keywords = explode(' ', $cleanOrderName);
+                    
+                    $query->where(function($subQuery) use ($cleanOrderName, $keywords) {
+                        // Exact match (case-insensitive)
+                        $subQuery->whereRaw('LOWER(bahan_baku_supplier.nama) = ?', [$cleanOrderName])
+                                // Partial match with full name
+                                ->orWhereRaw('LOWER(bahan_baku_supplier.nama) LIKE ?', ['%' . $cleanOrderName . '%'])
+                                ->orWhereRaw('LOWER(?) LIKE CONCAT("%", LOWER(bahan_baku_supplier.nama), "%")', [$cleanOrderName]);
+                        
+                        // Match individual keywords for better coverage
+                        foreach ($keywords as $keyword) {
+                            $keyword = trim($keyword);
+                            if (strlen($keyword) >= 3) { // Only consider keywords with 3+ characters
+                                $subQuery->orWhereRaw('LOWER(bahan_baku_supplier.nama) LIKE ?', ['%' . $keyword . '%']);
+                            }
+                        }
+                    });
+                    
+                    Log::info("Applied bahan baku name filter for: {$orderBahanBakuNama}");
+                }
+                
+                $bahanBakuSuppliers = $query->orderBy('bahan_baku_supplier.nama', 'asc')->get();
                     
                 Log::info('Main query executed successfully, found: ' . $bahanBakuSuppliers->count() . ' records');
             } catch (\Exception $queryError) {
@@ -212,16 +244,40 @@ class ForecastingController extends Controller
                 Log::error('Query error details: ' . $queryError->getTraceAsString());
                 
                 // Fallback to simpler query with manual supplier loading
-                $bahanBakuSuppliers = BahanBakuSupplier::with('supplier.picPurchasing')
-                    ->where('stok', '>', 0)
-                    ->orderBy('nama', 'asc')
-                    ->get();                    // Transform the data to include supplier_nama field
-                    $bahanBakuSuppliers = $bahanBakuSuppliers->map(function($item) {
-                        $item->supplier_nama = $item->supplier ? $item->supplier->nama : 'Supplier tidak diketahui';
-                        $item->pic_purchasing_id = $item->supplier ? $item->supplier->pic_purchasing_id : null;
-                        $item->pic_purchasing_nama = $item->supplier && $item->supplier->picPurchasing ? $item->supplier->picPurchasing->nama : null;
-                        return $item;
+                $fallbackQuery = BahanBakuSupplier::with('supplier.picPurchasing')
+                    ->where('stok', '>', 0);
+                
+                // Apply the same bahan baku name filtering in fallback
+                if ($orderBahanBakuNama) {
+                    $cleanOrderName = strtolower(trim($orderBahanBakuNama));
+                    $keywords = explode(' ', $cleanOrderName);
+                    
+                    $fallbackQuery->where(function($subQuery) use ($cleanOrderName, $keywords) {
+                        // Exact match (case-insensitive)
+                        $subQuery->whereRaw('LOWER(nama) = ?', [$cleanOrderName])
+                                // Partial match with full name
+                                ->orWhereRaw('LOWER(nama) LIKE ?', ['%' . $cleanOrderName . '%'])
+                                ->orWhereRaw('LOWER(?) LIKE CONCAT("%", LOWER(nama), "%")', [$cleanOrderName]);
+                        
+                        // Match individual keywords for better coverage
+                        foreach ($keywords as $keyword) {
+                            $keyword = trim($keyword);
+                            if (strlen($keyword) >= 3) {
+                                $subQuery->orWhereRaw('LOWER(nama) LIKE ?', ['%' . $keyword . '%']);
+                            }
+                        }
                     });
+                }
+                
+                $bahanBakuSuppliers = $fallbackQuery->orderBy('nama', 'asc')->get();
+                
+                // Transform the data to include supplier_nama field
+                $bahanBakuSuppliers = $bahanBakuSuppliers->map(function($item) {
+                    $item->supplier_nama = $item->supplier ? $item->supplier->nama : 'Supplier tidak diketahui';
+                    $item->pic_purchasing_id = $item->supplier ? $item->supplier->pic_purchasing_id : null;
+                    $item->pic_purchasing_nama = $item->supplier && $item->supplier->picPurchasing ? $item->supplier->picPurchasing->nama : null;
+                    return $item;
+                });
                 
                 Log::info('Fallback query executed, found: ' . $bahanBakuSuppliers->count() . ' records');
             }
@@ -254,15 +310,38 @@ class ForecastingController extends Controller
             // Jika tidak ada supplier dengan stok, ambil semua untuk debugging
             if ($bahanBakuSuppliers->count() === 0) {
                 try {
-                    $allSuppliers = BahanBakuSupplier::select([
+                    $allSuppliersQuery = BahanBakuSupplier::select([
                             'bahan_baku_supplier.*',
                             'suppliers.nama as supplier_nama',
                             'suppliers.pic_purchasing_id',
                             'users.nama as pic_purchasing_nama'
                         ])
                         ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                        ->leftJoin('users', 'suppliers.pic_purchasing_id', '=', 'users.id')
-                        ->orderBy('suppliers.nama', 'asc')
+                        ->leftJoin('users', 'suppliers.pic_purchasing_id', '=', 'users.id');
+                    
+                    // Apply the same bahan baku name filtering in all suppliers query
+                    if ($orderBahanBakuNama) {
+                        $cleanOrderName = strtolower(trim($orderBahanBakuNama));
+                        $keywords = explode(' ', $cleanOrderName);
+                        
+                        $allSuppliersQuery->where(function($subQuery) use ($cleanOrderName, $keywords) {
+                            // Exact match (case-insensitive)
+                            $subQuery->whereRaw('LOWER(bahan_baku_supplier.nama) = ?', [$cleanOrderName])
+                                    // Partial match with full name
+                                    ->orWhereRaw('LOWER(bahan_baku_supplier.nama) LIKE ?', ['%' . $cleanOrderName . '%'])
+                                    ->orWhereRaw('LOWER(?) LIKE CONCAT("%", LOWER(bahan_baku_supplier.nama), "%")', [$cleanOrderName]);
+                            
+                            // Match individual keywords for better coverage
+                            foreach ($keywords as $keyword) {
+                                $keyword = trim($keyword);
+                                if (strlen($keyword) >= 3) {
+                                    $subQuery->orWhereRaw('LOWER(bahan_baku_supplier.nama) LIKE ?', ['%' . $keyword . '%']);
+                                }
+                            }
+                        });
+                    }
+                    
+                    $allSuppliers = $allSuppliersQuery->orderBy('suppliers.nama', 'asc')
                         ->orderBy('bahan_baku_supplier.nama', 'asc')
                         ->get();
                         
@@ -272,9 +351,31 @@ class ForecastingController extends Controller
                     Log::error('Fallback error details: ' . $fallbackError->getTraceAsString());
                     
                     // Use simple query as last resort with manual supplier loading
-                    $allSuppliers = BahanBakuSupplier::with('supplier.picPurchasing')
-                        ->orderBy('nama', 'asc')
-                        ->get();
+                    $finalFallbackQuery = BahanBakuSupplier::with('supplier.picPurchasing');
+                    
+                    // Apply the same bahan baku name filtering in final fallback
+                    if ($orderBahanBakuNama) {
+                        $cleanOrderName = strtolower(trim($orderBahanBakuNama));
+                        $keywords = explode(' ', $cleanOrderName);
+                        
+                        $finalFallbackQuery->where(function($subQuery) use ($cleanOrderName, $keywords) {
+                            // Exact match (case-insensitive)
+                            $subQuery->whereRaw('LOWER(nama) = ?', [$cleanOrderName])
+                                    // Partial match with full name
+                                    ->orWhereRaw('LOWER(nama) LIKE ?', ['%' . $cleanOrderName . '%'])
+                                    ->orWhereRaw('LOWER(?) LIKE CONCAT("%", LOWER(nama), "%")', [$cleanOrderName]);
+                            
+                            // Match individual keywords for better coverage
+                            foreach ($keywords as $keyword) {
+                                $keyword = trim($keyword);
+                                if (strlen($keyword) >= 3) {
+                                    $subQuery->orWhereRaw('LOWER(nama) LIKE ?', ['%' . $keyword . '%']);
+                                }
+                            }
+                        });
+                    }
+                    
+                    $allSuppliers = $finalFallbackQuery->orderBy('nama', 'asc')->get();
                         
                     // Transform the data to include supplier_nama field
                     $allSuppliers = $allSuppliers->map(function($item) {
@@ -379,7 +480,7 @@ class ForecastingController extends Controller
             
             DB::beginTransaction();
             
-            // Log::info('Creating forecast for PO ID:', ['purchase_order_id' => $request->purchase_order_id]);
+            // Log::info('Creating forecast for Order ID:', ['purchase_order_id' => $request->purchase_order_id]);
 
             // Generate nomor forecast otomatis (simplified untuk debugging)
             $year = date('Y');
@@ -417,8 +518,11 @@ class ForecastingController extends Controller
             $existingForecast = null;
             $supplierIdsInRequest = collect($request->details)->pluck('bahan_baku_supplier_id')->unique();
             
-            // Ambil supplier_id yang sebenarnya dari bahan_baku_supplier
+            // Ambil supplier_id yang sebenarnya dari bahan_baku_supplier dengan null safety
             $actualSupplierIds = $suppliers->whereIn('id', $supplierIdsInRequest)
+                ->filter(function($item) {
+                    return $item->supplier_id !== null; // Only include items with valid supplier_id
+                })
                 ->pluck('supplier_id')
                 ->unique()
                 ->sort()
@@ -440,7 +544,7 @@ class ForecastingController extends Controller
                 ->with(['forecastDetails']) // Remove bahanBakuSupplier eager loading
                 ->get();
                 
-            Log::info("Searching for existing forecast with criteria - PO: {$request->purchase_order_id}, Date: {$request->tanggal_forecast}, Hari Kirim: {$request->hari_kirim_forecast}");
+            Log::info("Searching for existing forecast with criteria - Order: {$request->purchase_order_id}, Date: {$request->tanggal_forecast}, Hari Kirim: {$request->hari_kirim_forecast}");
             Log::info("Found " . $potentialForecasts->count() . " potential forecasts");
                 
             foreach ($potentialForecasts as $potentialForecast) {
@@ -448,10 +552,14 @@ class ForecastingController extends Controller
                 $existingBahanBakuSupplierIds = $potentialForecast->forecastDetails->pluck('bahan_baku_supplier_id')->unique();
                 
                 // Load supplier data untuk forecast detail yang sudah ada (terpisah dari $suppliers yang baru)
-                $existingSuppliersData = BahanBakuSupplier::whereIn('id', $existingBahanBakuSupplierIds)->get()->keyBy('id');
+                $existingSuppliersData = BahanBakuSupplier::with('supplier')->whereIn('id', $existingBahanBakuSupplierIds)->get()->keyBy('id');
                 
-                // Ambil supplier_id yang sebenarnya dari forecast detail yang sudah ada
-                $existingActualSupplierIds = $existingSuppliersData->pluck('supplier_id')
+                // Ambil supplier_id yang sebenarnya dari forecast detail yang sudah ada dengan null safety
+                $existingActualSupplierIds = $existingSuppliersData
+                    ->filter(function($item) {
+                        return $item->supplier_id !== null; // Only include items with valid supplier_id
+                    })
+                    ->pluck('supplier_id')
                     ->unique()
                     ->sort()
                     ->values();
@@ -519,7 +627,14 @@ class ForecastingController extends Controller
                 // Tentukan purchasing_id berdasarkan supplier dari detail pertama
                 $firstDetail = $request->details[0];
                 $firstSupplier = $suppliers->get($firstDetail['bahan_baku_supplier_id']);
-                $purchasingId = $firstSupplier && $firstSupplier->supplier ? $firstSupplier->supplier->pic_purchasing_id : Auth::id();
+                
+                // Null safety check untuk accessing supplier relation
+                $purchasingId = null;
+                if ($firstSupplier && $firstSupplier->supplier && $firstSupplier->supplier->pic_purchasing_id) {
+                    $purchasingId = $firstSupplier->supplier->pic_purchasing_id;
+                } else {
+                    $purchasingId = Auth::id();
+                }
 
                 // Buat forecast baru
                 $forecast = Forecast::create([
@@ -802,7 +917,7 @@ class ForecastingController extends Controller
             
             // Load forecast with all necessary relations
             $forecast = Forecast::with([
-                'purchaseOrder.klien',
+                'order.klien',
                 'purchasing',
                 'forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien',
                 'forecastDetails.bahanBakuSupplier.supplier'
@@ -819,8 +934,8 @@ class ForecastingController extends Controller
             Log::info("Forecast found: {$forecast->no_forecast}");
             
             // Log relationship data for debugging
-            Log::info("Purchase Order: " . ($forecast->purchaseOrder ? $forecast->purchaseOrder->po_number : 'null'));
-            Log::info("Klien: " . ($forecast->purchaseOrder && $forecast->purchaseOrder->klien ? $forecast->purchaseOrder->klien->nama : 'null'));
+            Log::info("Order: " . ($forecast->order ? $forecast->order->po_number : 'null'));
+            Log::info("Klien: " . ($forecast->order && $forecast->order->klien ? $forecast->order->klien->nama : 'null'));
             Log::info("Purchasing: " . ($forecast->purchasing ? $forecast->purchasing->nama : 'null'));
             Log::info("Forecast Details Count: " . $forecast->forecastDetails->count());
 
@@ -828,8 +943,8 @@ class ForecastingController extends Controller
             $forecastData = [
                 'id' => $forecast->id,
                 'no_forecast' => $forecast->no_forecast ?: 'N/A',
-                'klien' => $forecast->purchaseOrder && $forecast->purchaseOrder->klien ? $forecast->purchaseOrder->klien->nama : 'N/A',
-                'no_po' => $forecast->purchaseOrder ? $forecast->purchaseOrder->po_number : 'N/A',
+                'klien' => $forecast->order && $forecast->order->klien ? $forecast->order->klien->nama : 'N/A',
+                'po_number' => $forecast->order ? $forecast->order->po_number : 'N/A',
                 'pic_purchasing' => $forecast->purchasing ? $forecast->purchasing->nama : 'N/A',
                 'tanggal_forecast' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('d M Y') : 'N/A',
                 'hari_kirim' => $forecast->hari_kirim_forecast ?: 'N/A',

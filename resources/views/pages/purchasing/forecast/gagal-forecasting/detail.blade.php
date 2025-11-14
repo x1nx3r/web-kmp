@@ -125,7 +125,7 @@ function populateDetailModalGagal(forecast) {
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-600">No PO</label>
-                    <p class="text-sm text-gray-900">${forecast.no_po}</p>
+                    <p class="text-sm text-gray-900">${forecast.po_number}</p>
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-600">Klien</label>

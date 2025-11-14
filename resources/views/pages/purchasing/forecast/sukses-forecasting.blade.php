@@ -138,8 +138,8 @@ Tab Sukses Forecasting
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm text-gray-900">
-                                        <div class="font-medium">{{ $forecast->purchaseOrder->no_po ?? 'N/A' }}</div>
-                                        <div class="text-gray-500">{{ $forecast->purchaseOrder->klien->nama ?? 'N/A' }}</div>
+                                        <div class="font-medium">{{ optional($forecast->order)->po_number ?? 'N/A' }}</div>
+                                        <div class="text-gray-500">{{ optional(optional($forecast->order)->klien)->nama ?? 'N/A' }}</div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
@@ -443,7 +443,7 @@ function populateDetailModal(forecast) {
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-600">No PO</label>
-                    <p class="text-sm text-gray-900">${forecast.no_po}</p>
+                    <p class="text-sm text-gray-900">${forecast.po_number}</p>
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-600">Klien</label>

@@ -10,7 +10,7 @@
 
         <div class="grid grid-cols-1 gap-4">
             <div>
-                <p class="text-xs text-green-600 uppercase font-bold">Cabang</p>
+                <p class="text-xs text-green-600 uppercase font-bold">Plant</p>
                 <p class="text-sm text-gray-900">{{ $klien->cabang ?? '-' }}</p>
             </div>
 

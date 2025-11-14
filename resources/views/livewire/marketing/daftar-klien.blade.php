@@ -94,7 +94,7 @@
                         <input
                             type="text"
                             wire:model.live.debounce.500ms="search"
-                            placeholder="Cari nama perusahaan, cabang, atau nomor HP..."
+                            placeholder="Cari nama perusahaan, plant, atau nomor HP..."
                             class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm
                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                                    transition-all duration-200 bg-gray-50 focus:bg-white
@@ -167,7 +167,7 @@
                                        appearance-none cursor-pointer pr-8"
                             >
                                 <option value="nama">Nama</option>
-                                <option value="cabang_count">Jumlah Cabang</option>
+                                <option value="cabang_count">Jumlah Plant</option>
                                 <option value="lokasi">Lokasi</option>
                                 <option value="updated_at">Terakhir Update</option>
                             </select>
@@ -193,7 +193,7 @@
                         {{ $direction === 'asc' ? 'A → Z' : 'Z → A' }}
                         @if($sort !== 'nama')
                             • {{ 
-                                $sort === 'cabang_count' ? 'Jumlah Cabang' :
+                                $sort === 'cabang_count' ? 'Jumlah Plant' :
                                 ($sort === 'lokasi' ? 'Lokasi' : 'Terakhir Update')
                             }}
                         @endif
@@ -212,7 +212,7 @@
                     <i class="fas fa-users text-blue-600 mr-3"></i>
                     Daftar Klien
                 </h2>
-                <p class="text-gray-600 mt-1">Kelola data klien dan cabang perusahaan</p>
+                <p class="text-gray-600 mt-1">Kelola data klien dan plant perusahaan</p>
             </div>
             
             <div class="flex items-center space-x-4">
@@ -292,10 +292,10 @@
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Klien</th>
-                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Cabang</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Plant</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
-                            <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -331,7 +331,7 @@
                                             class="flex items-center px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
                                         >
                                             <i class="fas mr-1 transform transition-transform duration-200 {{ in_array($groupId, $openGroups) ? 'fa-chevron-down rotate-0' : 'fa-chevron-right' }}"></i>
-                                            <span>{{ in_array($groupId, $openGroups) ? 'Tutup' : 'Lihat Cabang' }}</span>
+                                            <span>{{ in_array($groupId, $openGroups) ? 'Tutup' : 'Lihat Plant' }}</span>
                                         </button>
                                     </div>
                                 </td>
@@ -339,7 +339,7 @@
                                     <div class="flex items-center">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             <i class="fas fa-map-marker-alt mr-1"></i>
-                                            {{ $group->count() }} cabang
+                                            {{ $group->count() }} plant
                                         </span>
                                     </div>
                                 </td>
@@ -355,30 +355,38 @@
                                 <td class="px-6 py-4 text-sm text-gray-500">
                                     {{ $latestUpdate ? \Carbon\Carbon::parse($latestUpdate)->format('d/m/Y H:i') : '-' }}
                                 </td>
-                                <td class="px-6 py-4 text-right">
-                                    <div class="flex items-center justify-end space-x-2">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-end space-x-1">
+                                        <a
+                                            href="{{ route('kontak-klien.index', ['klien' => $name]) }}"
+                                            class="flex items-center justify-center w-8 h-8 bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-800 rounded-md transition-all duration-200 group"
+                                            title="Kelola Kontak"
+                                        >
+                                            <i class="fas fa-address-book text-xs group-hover:scale-110 transition-transform duration-200"></i>
+                                        </a>
                                         <button
                                             type="button"
                                             wire:click.stop="editCompany('{{ $name }}')"
-                                            class="text-amber-600 hover:text-amber-800 text-sm font-medium"
+                                            class="flex items-center justify-center w-8 h-8 bg-amber-100 hover:bg-amber-200 text-amber-700 hover:text-amber-800 rounded-md transition-all duration-200 group"
                                             title="Edit Perusahaan"
                                         >
-                                            <i class="fas fa-edit"></i>
+                                            <i class="fas fa-edit text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
                                         <button
                                             type="button"
                                             wire:click.stop="deleteCompany('{{ $name }}')"
-                                            class="text-red-600 hover:text-red-800 text-sm font-medium"
+                                            class="flex items-center justify-center w-8 h-8 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800 rounded-md transition-all duration-200 group"
                                             title="Hapus Perusahaan"
                                         >
-                                            <i class="fas fa-trash-alt"></i>
+                                            <i class="fas fa-trash-alt text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
                                         <button
                                             type="button"
                                             wire:click.stop="toggleGroup('{{ $groupId }}')"
-                                            class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                            class="flex items-center justify-center w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 rounded-md transition-all duration-200 group"
+                                            title="{{ in_array($groupId, $openGroups) ? 'Tutup Detail' : 'Lihat Detail' }}"
                                         >
-                                            Detail
+                                            <i class="fas fa-{{ in_array($groupId, $openGroups) ? 'chevron-up' : 'chevron-down' }} text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -391,7 +399,7 @@
                                         <div class="border-t border-gray-200">
                                             {{-- Branch header --}}
                                             <div class="px-6 py-3 bg-gray-100 border-b border-gray-200">
-                                                <h4 class="text-sm font-medium text-gray-900">Cabang untuk: {{ $name }}</h4>
+                                                <h4 class="text-sm font-medium text-gray-900">Plant untuk: {{ $name }}</h4>
                                             </div>
 
                                             {{-- Branch table --}}
@@ -399,10 +407,10 @@
                                                 <table class="w-full">
                                                     <thead class="bg-gray-50">
                                                         <tr>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Cabang</th>
+                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Plant</th>
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
-                                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="bg-white divide-y divide-gray-200">
@@ -411,18 +419,7 @@
 
                                                             <tr class="hover:bg-gray-50">
                                                                 <td class="px-4 py-3">
-                                                                    <div class="flex items-center justify-between">
-                                                                        <div>
-                                                                            <div class="text-sm font-medium text-gray-900">{{ $klien->cabang }}</div>
-                                                                        </div>
-                                                                        <button
-                                                                            wire:click="toggleBahanBaku('{{ $detailId }}')"
-                                                                            class="text-xs text-blue-600 hover:text-blue-800"
-                                                                        >
-                                                                            <i class="fas {{ in_array($detailId, $openBahanBaku) ? 'fa-chevron-up' : 'fa-chevron-down' }} mr-1"></i>
-                                                                            Material
-                                                                        </button>
-                                                                    </div>
+                                                                    <div class="text-sm font-medium text-gray-900">{{ $klien->cabang }}</div>
                                                                 </td>
                                                                 <td class="px-4 py-3 text-sm text-gray-500">
                                                                     {{ $klien->no_hp ?: '-' }}
@@ -430,125 +427,25 @@
                                                                 <td class="px-4 py-3 text-sm text-gray-500">
                                                                     {{ $klien->updated_at->format('d/m/Y H:i') }}
                                                                 </td>
-                                                                <td class="px-4 py-3 text-right">
-                                                                    <div class="flex items-center justify-end space-x-2">
+                                                                <td class="px-4 py-3">
+                                                                    <div class="flex items-center justify-end space-x-1">
                                                                         <a
                                                                             href="{{ route('klien.edit', $klien) }}"
-                                                                            class="text-blue-600 hover:text-blue-800 text-sm"
-                                                                            title="Edit Cabang & Kelola Material"
+                                                                            class="flex items-center justify-center w-7 h-7 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 rounded-md transition-all duration-200 group"
+                                                                            title="Edit Plant & Kelola Material"
                                                                         >
-                                                                            <i class="fas fa-edit"></i>
+                                                                            <i class="fas fa-edit text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                                                         </a>
                                                                         <button
                                                                             wire:click="deleteBranch({{ $klien->id }}, '{{ $klien->cabang }}')"
-                                                                            class="text-red-600 hover:text-red-800 text-sm"
-                                                                            title="Hapus Cabang"
+                                                                            class="flex items-center justify-center w-7 h-7 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800 rounded-md transition-all duration-200 group"
+                                                                            title="Hapus Plant"
                                                                         >
-                                                                            <i class="fas fa-trash-alt"></i>
+                                                                            <i class="fas fa-trash-alt text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                                                         </button>
                                                                     </div>
                                                                 </td>
                                                             </tr>
-
-                                                            {{-- Bahan Baku detail row --}}
-                                                            @if(in_array($detailId, $openBahanBaku))
-                                                                <tr>
-                                                                    <td colspan="4" class="p-0">
-                                                                        <div class="bg-gray-50 border-t border-gray-200">
-                                                                            <div class="px-4 py-3 bg-gray-100 border-b border-gray-200">
-                                                                                <h5 class="text-sm font-medium text-gray-900">Material untuk {{ $klien->cabang }}</h5>
-                                                                            </div>
-
-                                                                            @if($klien->bahanBakuKliens->count() > 0)
-                                                                                <div class="overflow-x-auto">
-                                                                                    <table class="w-full">
-                                                                                        <thead class="bg-gray-50">
-                                                                                            <tr>
-                                                                                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Material</th>
-                                                                                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Satuan</th>
-                                                                                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Harga</th>
-                                                                                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                                                                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
-                                                                                            </tr>
-                                                                                        </thead>
-                                                                                        <tbody class="bg-white divide-y divide-gray-200">
-                                                                                            @foreach($klien->bahanBakuKliens as $material)
-                                                                                                <tr class="hover:bg-gray-50">
-                                                                                                    <td class="px-3 py-2">
-                                                                                                        <div>
-                                                                                                            <div class="text-sm font-medium text-gray-900">{{ $material->nama }}</div>
-                                                                                                            @if($material->spesifikasi)
-                                                                                                                <div class="text-xs text-gray-500">{{ \Illuminate\Support\Str::limit($material->spesifikasi, 50) }}</div>
-                                                                                                            @endif
-                                                                                                        </div>
-                                                                                                    </td>
-                                                                                                    <td class="px-3 py-2 text-sm text-gray-900">{{ $material->satuan }}</td>
-                                                                                                    <td class="px-3 py-2">
-                                                                                                        @if($material->harga_approved)
-                                                                                                            <div class="text-sm font-medium text-green-600">
-                                                                                                                Rp {{ number_format($material->harga_approved, 0, ',', '.') }}
-                                                                                                            </div>
-                                                                                                        @else
-                                                                                                            <span class="text-xs text-gray-400">Belum ada harga</span>
-                                                                                                        @endif
-                                                                                                    </td>
-                                                                                                    <td class="px-3 py-2">
-                                                                                                        @if($material->status === 'aktif')
-                                                                                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                                                                                <i class="fas fa-check-circle mr-1"></i>
-                                                                                                                Aktif
-                                                                                                            </span>
-                                                                                                        @elseif($material->status === 'pending')
-                                                                                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                                                                                <i class="fas fa-clock mr-1"></i>
-                                                                                                                Pending
-                                                                                                            </span>
-                                                                                                        @else
-                                                                                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                                                                                <i class="fas fa-times-circle mr-1"></i>
-                                                                                                                Non-aktif
-                                                                                                            </span>
-                                                                                                        @endif
-                                                                                                    </td>
-                                                                                                    <td class="px-3 py-2 text-right">
-                                                                                                        <div class="flex items-center justify-end space-x-2">
-                                                                                                            @if($material->harga_approved)
-                                                                                                                <a href="{{ route('klien.riwayat-harga', [$klien, $material]) }}"
-                                                                                                                   class="text-blue-600 hover:text-blue-800 text-xs"
-                                                                                                                   title="Lihat Riwayat Harga">
-                                                                                                                    <i class="fas fa-chart-line"></i>
-                                                                                                                </a>
-                                                                                                            @endif
-                                                                                                            <span class="text-xs text-gray-400 italic">Read-only</span>
-                                                                                                        </div>
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            @endforeach
-                                                                                        </tbody>
-                                                                                    </table>
-                                                                                </div>
-                                                                                <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                                                                                    <a href="{{ route('klien.edit', $klien) }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                                                                        <i class="fas fa-edit mr-1"></i>
-                                                                                        Kelola Material
-                                                                                    </a>
-                                                                                </div>
-                                                                            @else
-                                                                                <div class="px-4 py-6 text-center">
-                                                                                    <div class="text-gray-400 mb-2">
-                                                                                        <i class="fas fa-box-open text-2xl"></i>
-                                                                                    </div>
-                                                                                    <p class="text-sm text-gray-500 mb-3">Belum ada material untuk cabang ini</p>
-                                                                                    <a href="{{ route('klien.edit', $klien) }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                                                                        <i class="fas fa-edit mr-1"></i>
-                                                                                        Kelola Material
-                                                                                    </a>
-                                                                                </div>
-                                                                            @endif
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            @endif
                                                         @endforeach
                                                     </tbody>
                                                 </table>
@@ -586,7 +483,7 @@
                     @if($search || $location)
                         Coba ubah kata kunci pencarian atau hapus filter yang diterapkan.
                     @else
-                        Mulai dengan menambahkan perusahaan atau cabang klien pertama.
+                        Mulai dengan menambahkan perusahaan atau plant klien pertama.
                     @endif
                 </p>
                 @if($search || $location)
@@ -611,7 +508,7 @@
                             class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                         >
                             <i class="fas fa-plus mr-2"></i>
-                            Tambah Cabang
+                            Tambah Plant
                         </button>
                     </div>
                 @endif
@@ -691,7 +588,7 @@
                     <div class="sm:flex sm:items-start">
                         <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
                             <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                                {{ $editingBranch ? 'Edit Cabang' : 'Tambah Cabang' }}
+                                {{ $editingBranch ? 'Edit Plant' : 'Tambah Plant' }}
                             </h3>
 
                             @if(!$editingBranch)
@@ -739,12 +636,12 @@
                             </div>
 
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Lokasi Cabang</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Lokasi Plant</label>
                                 <input
                                     type="text"
                                     wire:model="branchForm.cabang"
                                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('branchForm.cabang') border-red-500 @enderror"
-                                    placeholder="Masukkan lokasi cabang"
+                                    placeholder="Masukkan lokasi plant"
                                 >
                                 @error('branchForm.cabang')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

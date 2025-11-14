@@ -318,7 +318,7 @@ class DaftarKlien extends Component
         $this->confirmModal = [
             'title' => 'Hapus Perusahaan',
             'message' => "Anda yakin ingin menghapus perusahaan \"{$nama}\"?",
-            'warning' => 'Semua cabang dari perusahaan ini akan ikut terhapus.',
+            'warning' => 'Semua plant dari perusahaan ini akan ikut terhapus.',
             'confirmText' => 'Hapus',
             'action' => 'performCompanyDelete',
             'actionParams' => [$nama],
@@ -396,7 +396,7 @@ class DaftarKlien extends Component
 
         $this->validate($rules, [
             'branchForm.company_nama.required' => $this->branchForm['company_type'] === 'existing' ? 'Perusahaan wajib dipilih' : 'Nama perusahaan wajib diisi',
-            'branchForm.cabang.required' => 'Lokasi cabang wajib diisi',
+            'branchForm.cabang.required' => 'Lokasi plant wajib diisi',
         ]);
 
         try {

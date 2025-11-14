@@ -167,4 +167,12 @@ class Supplier extends Model
                 return null;
         }
     }
+
+    /**
+     * Relasi ke Penawaran Detail
+     */
+    public function penawaranDetails()
+    {
+        return $this->hasMany(PenawaranDetail::class);
+    }
 }

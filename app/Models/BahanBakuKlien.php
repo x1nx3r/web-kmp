@@ -21,11 +21,17 @@ class BahanBakuKlien extends Model
         'approved_at',
         'approved_by_marketing',
         'status',
+        'post',
+        'present',
+        'cause',
+        'jenis',
     ];
 
     protected $casts = [
         'harga_approved' => 'decimal:2',
         'approved_at' => 'datetime',
+        'post' => 'boolean',
+        'jenis' => 'array',
     ];
 
     protected $dates = ['deleted_at'];
@@ -126,5 +132,36 @@ class BahanBakuKlien extends Model
         return $this->hasApprovedPrice() ? 
             $this->formatted_approved_price . '/' . $this->satuan : 
             'Harga belum disetujui';
+    }
+
+    /**
+     * Relasi ke Penawaran Detail
+     */
+    public function penawaranDetails()
+    {
+        return $this->hasMany(PenawaranDetail::class);
+    }
+
+    /**
+     * Get suppliers that have matching materials (by name similarity)
+     * This is a pseudo-relationship since there's no direct FK
+     */
+    public function bahanBakuSuppliers()
+    {
+        // Match by material name similarity
+        $materialName = $this->nama;
+        $firstWord = trim(explode(' ', $materialName)[0]);
+        
+        return \App\Models\BahanBakuSupplier::where('nama', 'LIKE', '%' . $materialName . '%')
+            ->orWhere('nama', 'LIKE', '%' . $firstWord . '%')
+            ->get();
+    }
+
+    /**
+     * Get suppliers that have matching materials (as relationship)
+     */
+    public function getMatchingSuppliersAttribute()
+    {
+        return $this->bahanBakuSuppliers();
     }
 }

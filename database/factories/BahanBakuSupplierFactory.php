@@ -12,10 +12,12 @@ class BahanBakuSupplierFactory extends Factory
 
     public function definition(): array
     {
+        $nama = fake()->words(3, true);
+        
         return [
             'supplier_id' => Supplier::factory(),
-            'nama' => fake()->words(3, true),
-            'slug' => fake()->unique()->slug(),
+            'nama' => $nama,
+            'slug' => \Illuminate\Support\Str::slug($nama) . '-' . fake()->unique()->randomNumber(5),
             'harga_per_satuan' => fake()->randomFloat(2, 1000, 100000),
             'satuan' => fake()->randomElement(['kg', 'liter', 'pcs', 'meter']),
             'stok' => fake()->randomFloat(2, 1, 1000),

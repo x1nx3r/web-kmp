@@ -5,6 +5,7 @@ namespace App\Livewire\Marketing;
 use App\Models\Klien;
 use App\Models\BahanBakuKlien;
 use App\Models\RiwayatHargaKlien;
+use App\Services\AuthFallbackService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -26,6 +27,10 @@ class EditKlien extends Component
         'spesifikasi' => '',
         'harga_approved' => '',
         'status' => 'pending',
+        'post' => false,
+        'present' => 'NotUsed',
+        'cause' => '',
+        'jenis' => [],
     ];
 
     // UI state
@@ -75,7 +80,7 @@ class EditKlien extends Component
             'klienForm.no_hp' => 'nullable|string|max:30',
         ], [
             'klienForm.nama.required' => 'Nama perusahaan wajib diisi',
-            'klienForm.cabang.required' => 'Lokasi cabang wajib diisi',
+            'klienForm.cabang.required' => 'Lokasi plant wajib diisi',
         ]);
 
         try {
@@ -86,12 +91,12 @@ class EditKlien extends Component
                 ->exists();
 
             if ($exists) {
-                throw new \Exception('Cabang ini sudah terdaftar untuk perusahaan tersebut');
+                throw new \Exception('Plant ini sudah terdaftar untuk perusahaan tersebut');
             }
 
             $this->klien->update($this->klienForm);
 
-            session()->flash('message', 'Cabang berhasil diperbarui');
+            session()->flash('message', 'Plant berhasil diperbarui');
         } catch (\Exception $e) {
             $this->addError('klienForm.cabang', $e->getMessage());
         }
@@ -120,6 +125,10 @@ class EditKlien extends Component
             'spesifikasi' => '',
             'harga_approved' => '',
             'status' => 'pending',
+            'post' => false,
+            'present' => 'NotUsed',
+            'cause' => '',
+            'jenis' => [],
         ];
     }
 
@@ -133,6 +142,10 @@ class EditKlien extends Component
             'spesifikasi' => $material->spesifikasi ?? '',
             'harga_approved' => $material->harga_approved ?? '',
             'status' => $material->status,
+            'post' => $material->post ?? false,
+            'present' => $material->present ?? 'NotUsed',
+            'cause' => $material->cause ?? '',
+            'jenis' => $material->jenis ?? [],
         ];
         $this->showMaterialModal = true;
     }
@@ -145,11 +158,17 @@ class EditKlien extends Component
             'materialForm.spesifikasi' => 'nullable|string',
             'materialForm.harga_approved' => 'nullable|numeric|min:0',
             'materialForm.status' => 'required|in:aktif,non_aktif,pending',
+            'materialForm.post' => 'boolean',
+            'materialForm.present' => 'required|in:NotUsed,Ready,Not Reasonable Price,Pos Closed,Not Qualified Raw,Not Updated Yet,Didnt Have Supplier,Factory No Need Yet,Confirmed,Sample Sent,Hold,Negotiate',
+            'materialForm.cause' => 'nullable|string',
+            'materialForm.jenis' => 'nullable|array',
+            'materialForm.jenis.*' => 'in:Aqua,Poultry,Ruminansia',
         ], [
             'materialForm.nama.required' => 'Nama material wajib diisi',
             'materialForm.satuan.required' => 'Satuan material wajib diisi',
             'materialForm.harga_approved.numeric' => 'Harga harus berupa angka',
             'materialForm.harga_approved.min' => 'Harga tidak boleh negatif',
+            'materialForm.present.required' => 'Status Present wajib dipilih',
         ]);
 
         try {
@@ -165,13 +184,13 @@ class EditKlien extends Component
                 // Handle price approval changes
                 if ($newPrice && $newPrice != $oldPrice) {
                     $data['approved_at'] = now();
-                    $data['approved_by_marketing'] = Auth::id();
+                    $data['approved_by_marketing'] = AuthFallbackService::id();
 
                     // Create price history record
                     RiwayatHargaKlien::createPriceHistory(
                         $material->id,
                         $newPrice,
-                        Auth::id(),
+                        AuthFallbackService::id(),
                         'Perubahan harga approved'
                     );
                 }
@@ -184,7 +203,7 @@ class EditKlien extends Component
 
                 if ($data['harga_approved']) {
                     $material->approved_at = now();
-                    $material->approved_by_marketing = Auth::id();
+                    $material->approved_by_marketing = AuthFallbackService::id();
                 }
 
                 $material->save();
@@ -194,7 +213,7 @@ class EditKlien extends Component
                     RiwayatHargaKlien::createPriceHistory(
                         $material->id,
                         $data['harga_approved'],
-                        Auth::id(),
+                        AuthFallbackService::id(),
                         'Harga initial approval'
                     );
                 }
@@ -257,8 +276,8 @@ class EditKlien extends Component
     public function deleteKlien()
     {
         $this->deleteModal = [
-            'title' => 'Hapus Cabang',
-            'message' => 'Apakah Anda yakin ingin menghapus cabang ini? Semua material yang terkait juga akan terhapus. Tindakan ini tidak dapat dibatalkan.',
+            'title' => 'Hapus Plant',
+            'message' => 'Apakah Anda yakin ingin menghapus plant ini? Semua material yang terkait juga akan terhapus. Tindakan ini tidak dapat dibatalkan.',
             'action' => 'performKlienDelete',
             'actionParams' => [],
         ];
@@ -283,9 +302,9 @@ class EditKlien extends Component
                     ->where('cabang', 'Kantor Pusat')
                     ->whereNull('no_hp')
                     ->delete();
-                $message = 'Cabang dan perusahaan berhasil dihapus';
+                $message = 'Plant dan perusahaan berhasil dihapus';
             } else {
-                $message = 'Cabang berhasil dihapus';
+                $message = 'Plant berhasil dihapus';
             }
 
             session()->flash('message', $message);

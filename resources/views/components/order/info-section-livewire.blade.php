@@ -1,0 +1,128 @@
+@props([
+    'tanggalOrder',
+    'priority',
+    'catatan',
+    'poNumber',
+    'poStartDate',
+    'poEndDate',
+    'poDocument' => null,
+    'isEditing' => false,
+    'existingPoDocumentName' => null,
+    'existingPoDocumentUrl' => null,
+])
+
+{{-- Order Info --}}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="border-b border-gray-200 p-4">
+        <div class="flex items-center">
+            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                <i class="fas fa-info-circle text-purple-600 text-sm"></i>
+            </div>
+            <h3 class="font-semibold text-gray-900">Informasi Order</h3>
+        </div>
+    </div>
+
+    <div class="p-4 space-y-4">
+        {{-- Tanggal Order --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Tanggal Order <span class="text-red-500">*</span>
+            </label>
+            <input type="date" wire:model="tanggalOrder"
+                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                   required>
+            @error('tanggalOrder')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+
+        {{-- PO Number --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Nomor PO <span class="text-red-500">*</span>
+            </label>
+            <input type="text" wire:model.lazy="poNumber"
+                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                   placeholder="Masukkan nomor PO">
+            @error('poNumber')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+
+        {{-- PO Date Range --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    PO Mulai <span class="text-red-500">*</span>
+                </label>
+                <input type="date" wire:model="poStartDate"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                @error('poStartDate')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    PO Berakhir / Jatuh Tempo <span class="text-red-500">*</span>
+                </label>
+                <input type="date" wire:model="poEndDate"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                @error('poEndDate')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+
+        {{-- PO Document Upload --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Unggah Surat PO (JPG/PNG) @unless($isEditing)<span class="text-red-500">*</span>@endunless
+            </label>
+            <input type="file" wire:model="poDocument" accept="image/png,image/jpeg"
+                   class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-600 hover:file:bg-purple-100">
+            @error('poDocument')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+            @enderror
+            @if($poDocument)
+                <p class="text-xs text-gray-600 mt-1">File terpilih: {{ $poDocument->getClientOriginalName() }}</p>
+            @endif
+            @if($isEditing && $existingPoDocumentName)
+                <p class="text-xs text-gray-600 mt-2">
+                    Dokumen saat ini: 
+                    @if($existingPoDocumentUrl)
+                        <a href="{{ $existingPoDocumentUrl }}" class="text-purple-600 hover:text-purple-700 underline" target="_blank" rel="noopener">
+                            {{ $existingPoDocumentName }}
+                        </a>
+                    @else
+                        {{ $existingPoDocumentName }}
+                    @endif
+                </p>
+                <p class="text-xs text-gray-500 mt-1">Biarkan kosong jika tidak ingin mengganti dokumen PO.</p>
+                <p class="text-xs text-gray-500 mt-1">File baru maksimal 5 MB dan akan disimpan di folder publik untuk akses purchasing.</p>
+            @else
+                <p class="text-xs text-gray-500 mt-2">Maksimal 5 MB. File akan disimpan di folder publik untuk akses purchasing.</p>
+            @endif
+        </div>
+
+        {{-- Catatan --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Catatan
+            </label>
+            <textarea wire:model="catatan" rows="3"
+                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="Catatan tambahan untuk order ini..."></textarea>
+        </div>
+
+        {{-- Priority Info --}}
+        <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-medium text-gray-700">Prioritas Otomatis</div>
+                <x-order.priority-badge :priority="$priority" />
+            </div>
+            <p class="text-xs text-gray-500">
+                Prioritas dihitung otomatis dari jarak hari menuju tanggal berakhir PO: ≤3 hari = Mendesak, ≤7 hari = Tinggi, ≤14 hari = Normal, selebihnya Rendah.
+            </p>
+        </div>
+    </div>
+</div>

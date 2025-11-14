@@ -13,7 +13,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <a href="{{ route('penawaran') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                    <a href="{{ route('penawaran.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                         <i class="fas fa-plus mr-2"></i>
                         Buat Penawaran Baru
                     </a>
@@ -50,9 +50,12 @@
                         wire:model.live="statusFilter"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                        <option value="">Semua Status</option>
-                        <option value="butuh_verifikasi">Butuh Verifikasi</option>
-                        <option value="sudah_diverifikasi">Sudah Diverifikasi</option>
+                        <option value="">Semua Status ({{ $statusCounts['all'] }})</option>
+                        <option value="draft">Draft ({{ $statusCounts['draft'] }})</option>
+                        <option value="menunggu_verifikasi">Menunggu Verifikasi ({{ $statusCounts['menunggu_verifikasi'] }})</option>
+                        <option value="disetujui">Disetujui ({{ $statusCounts['disetujui'] }})</option>
+                        <option value="ditolak">Ditolak ({{ $statusCounts['ditolak'] }})</option>
+                        <option value="expired">Expired ({{ $statusCounts['expired'] }})</option>
                     </select>
                 </div>
 
@@ -68,8 +71,10 @@
                     >
                         <option value="tanggal_desc">Tanggal (Terbaru)</option>
                         <option value="tanggal_asc">Tanggal (Terlama)</option>
-                        <option value="nomor_desc">Nomor (Z-A)</option>
-                        <option value="nomor_asc">Nomor (A-Z)</option>
+                        <option value="margin_desc">Margin (Tertinggi)</option>
+                        <option value="margin_asc">Margin (Terendah)</option>
+                        <option value="total_desc">Total (Tertinggi)</option>
+                        <option value="total_asc">Total (Terendah)</option>
                     </select>
                 </div>
             </div>
@@ -88,27 +93,42 @@
                                 </div>
                                 <div>
                                     <div class="flex items-center space-x-3">
-                                        <h3 class="text-lg font-semibold text-gray-900">{{ $penawaran['nomor_penawaran'] }}</h3>
-                                        @if($penawaran['status'] === 'butuh_verifikasi')
+                                        <h3 class="text-lg font-semibold text-gray-900">{{ $penawaran->nomor_penawaran }}</h3>
+                                        @if($penawaran->status === 'draft')
+                                            <span class="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                                                <i class="fas fa-pencil-alt mr-1"></i>
+                                                Draft
+                                            </span>
+                                        @elseif($penawaran->status === 'menunggu_verifikasi')
                                             <span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
                                                 <i class="fas fa-clock mr-1"></i>
-                                                Butuh Verifikasi
+                                                Menunggu Verifikasi
                                             </span>
-                                        @else
+                                        @elseif($penawaran->status === 'disetujui')
                                             <span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
                                                 <i class="fas fa-check-circle mr-1"></i>
-                                                Sudah Diverifikasi
+                                                Disetujui
+                                            </span>
+                                        @elseif($penawaran->status === 'ditolak')
+                                            <span class="px-3 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                                                <i class="fas fa-times-circle mr-1"></i>
+                                                Ditolak
+                                            </span>
+                                        @elseif($penawaran->status === 'expired')
+                                            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                                                <i class="fas fa-hourglass-end mr-1"></i>
+                                                Expired
                                             </span>
                                         @endif
                                     </div>
                                     <div class="flex items-center space-x-4 mt-1 text-sm text-gray-600">
                                         <span>
                                             <i class="far fa-calendar mr-1"></i>
-                                            {{ \Carbon\Carbon::parse($penawaran['tanggal'])->format('d M Y') }}
+                                            {{ $penawaran->tanggal_penawaran->format('d M Y') }}
                                         </span>
                                         <span>
                                             <i class="fas fa-user mr-1"></i>
-                                            {{ $penawaran['created_by'] }}
+                                            {{ $penawaran->createdBy->nama }}
                                         </span>
                                     </div>
                                 </div>
@@ -116,10 +136,13 @@
                             <div class="text-right">
                                 <div class="text-sm text-gray-600">Total Revenue</div>
                                 <div class="text-xl font-bold text-green-600">
-                                    Rp {{ number_format($penawaran['total_revenue'], 0, ',', '.') }}
+                                    Rp {{ number_format($penawaran->total_revenue, 0, ',', '.') }}
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1">
-                                    Margin: <span class="font-semibold">{{ number_format($penawaran['margin'], 1) }}%</span>
+                                    Margin: <span class="font-semibold">{{ number_format($penawaran->margin_percentage, 1) }}%</span>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Profit: <span class="font-semibold text-green-600">Rp {{ number_format($penawaran->total_profit, 0, ',', '.') }}</span>
                                 </div>
                             </div>
                         </div>
@@ -127,25 +150,35 @@
 
                     {{-- Client Info --}}
                     <div class="bg-gray-50 border-b border-gray-200 px-4 py-3">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-building text-blue-600 text-sm"></i>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-building text-blue-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900">{{ $penawaran->klien->nama }}</div>
+                                    <div class="text-sm text-gray-600">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>
+                                        {{ $penawaran->klien->cabang }}
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="font-medium text-gray-900">{{ $penawaran['klien']['nama'] }}</div>
-                                <div class="text-sm text-gray-600">
-                                    <i class="fas fa-map-marker-alt mr-1"></i>
-                                    {{ $penawaran['klien']['cabang'] }}
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">
+                                    {{ $penawaran->details->count() }} bahan baku
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{ $penawaran->details->unique('supplier_id')->count() }} supplier{{ $penawaran->details->unique('supplier_id')->count() > 1 ? 's' : '' }}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Materials Table --}}
+                    {{-- Bahan Baku Table --}}
                     <div class="p-4">
                         <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
                             <i class="fas fa-cubes mr-2 text-purple-600"></i>
-                            Daftar Bahan Baku ({{ count($penawaran['materials']) }} item)
+                            Daftar Bahan Baku ({{ $penawaran->details->count() }} item)
                         </h4>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
@@ -154,45 +187,125 @@
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bahan Baku</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Harga Klien</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Harga Supplier</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Keuntungan</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Suppliers & Prices</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Best Margin</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
-                                    @foreach($penawaran['materials'] as $material)
+                                    @foreach($penawaran->details as $detail)
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-3 py-3">
-                                                <div class="font-medium text-gray-900">{{ $material['nama'] }}</div>
-                                                <div class="text-xs text-gray-500">{{ $material['satuan'] }}</div>
+                                                <div class="font-medium text-gray-900">{{ $detail->nama_material }}</div>
+                                                <div class="text-xs text-gray-500">per {{ $detail->satuan }}</div>
                                             </td>
                                             <td class="px-3 py-3 font-medium text-gray-900">
-                                                {{ number_format($material['quantity']) }}
+                                                {{ number_format($detail->quantity, 0, ',', '.') }} {{ $detail->satuan }}
                                             </td>
                                             <td class="px-3 py-3">
                                                 <span class="text-green-700 font-medium">
-                                                    Rp {{ number_format($material['harga_klien'], 0, ',', '.') }}
+                                                    Rp {{ number_format($detail->harga_klien, 0, ',', '.') }}
                                                 </span>
                                             </td>
                                             <td class="px-3 py-3">
-                                                <div class="font-medium text-gray-900">{{ $material['supplier'] }}</div>
-                                                <div class="text-xs text-gray-500">
-                                                    <i class="fas fa-user-tie mr-1"></i>
-                                                    PIC: {{ $material['pic'] }}
+                                                @if($detail->alternativeSuppliers && $detail->alternativeSuppliers->count())
+                                                    <div class="supplier-section" data-detail-id="{{ $detail->id }}">
+                                                        {{-- Collapsed view (default) --}}
+                                                        <div class="supplier-collapsed">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="text-sm">
+                                                                    @php $bestSupplier = $detail->alternativeSuppliers->sortBy('harga_supplier')->first(); @endphp
+                                                                    @if($bestSupplier && $bestSupplier->supplier)
+                                                                        <span class="font-medium text-green-700">
+                                                                            {{ Str::limit($bestSupplier->supplier->nama, 15) }}
+                                                                        </span>
+                                                                        <span class="mx-1 text-gray-400">•</span>
+                                                                        <span class="text-xs text-green-600 font-medium">
+                                                                            Rp {{ number_format($bestSupplier->harga_supplier / 1000, 0) }}k
+                                                                        </span>
+                                                                        <span class="ml-1 text-xs bg-green-100 text-green-700 px-1 rounded">Best</span>
+                                                                    @endif
+                                                                    <span class="text-xs text-gray-500 ml-2">
+                                                                        +{{ $detail->alternativeSuppliers->count() - 1 }} more
+                                                                    </span>
+                                                                </div>
+                                                                <button 
+                                                                    onclick="toggleSuppliers({{ $detail->id }})"
+                                                                    class="text-blue-600 hover:text-blue-800 text-xs ml-2 flex items-center"
+                                                                >
+                                                                    <span class="expand-text">Show All</span>
+                                                                    <i class="fas fa-chevron-down ml-1 expand-icon transition-transform"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {{-- Expanded view (hidden by default) --}}
+                                                        <div class="supplier-expanded hidden">
+                                                            <div class="space-y-1">
+                                                                @foreach($detail->alternativeSuppliers->sortBy('harga_supplier') as $altSupplier)
+                                                                    @if($altSupplier->supplier)
+                                                                        <div class="flex items-center justify-between p-2 rounded-lg {{ $loop->first ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }}">
+                                                                            <div class="flex-1 min-w-0">
+                                                                                <div class="font-medium text-sm {{ $loop->first ? 'text-green-900' : 'text-gray-900' }} truncate">
+                                                                                    {{ $altSupplier->supplier->nama }}
+                                                                                    @if($loop->first)
+                                                                                        <span class="ml-1 text-xs bg-green-100 text-green-700 px-1 rounded">Best</span>
+                                                                                    @endif
+                                                                                </div>
+                                                                                @if($altSupplier->supplier->picPurchasing)
+                                                                                    <div class="text-xs {{ $loop->first ? 'text-green-600' : 'text-gray-500' }} truncate">
+                                                                                        <i class="fas fa-user-tie mr-1"></i>
+                                                                                        PIC: {{ $altSupplier->supplier->picPurchasing->nama }}
+                                                                                    </div>
+                                                                                @endif
+                                                                            </div>
+                                                                            <div class="text-right ml-2">
+                                                                                <div class="text-sm font-medium {{ $loop->first ? 'text-green-700' : 'text-red-700' }}">
+                                                                                    Rp {{ number_format($altSupplier->harga_supplier, 0, ',', '.') }}
+                                                                                </div>
+                                                                                @if($detail->harga_klien > 0)
+                                                                                    @php
+                                                                                        $margin = (($detail->harga_klien - $altSupplier->harga_supplier) / $detail->harga_klien) * 100;
+                                                                                    @endphp
+                                                                                    <div class="text-xs {{ $margin >= 20 ? 'text-green-600' : ($margin >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                                                        {{ number_format($margin, 1) }}%
+                                                                                    </div>
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    @endif
+                                                                @endforeach
+                                                            </div>
+                                                            <button 
+                                                                onclick="toggleSuppliers({{ $detail->id }})"
+                                                                class="text-blue-600 hover:text-blue-800 text-xs mt-2 flex items-center"
+                                                            >
+                                                                <span class="collapse-text">Show Less</span>
+                                                                <i class="fas fa-chevron-up ml-1 collapse-icon"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                @elseif($detail->supplier)
+                                                    {{-- Fallback: Show selected supplier only --}}
+                                                    <div class="font-medium text-gray-900">{{ $detail->supplier->nama }}</div>
+                                                @else
+                                                    <div class="font-medium text-gray-500">Tidak ada supplier</div>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-3">
+                                                <div class="flex items-center">
+                                                    <span class="px-2 py-1 text-xs font-semibold rounded {{ $detail->margin_percentage >= 20 ? 'bg-green-100 text-green-800' : ($detail->margin_percentage >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                                        {{ number_format($detail->margin_percentage, 1) }}%
+                                                    </span>
                                                 </div>
                                             </td>
-                                            <td class="px-3 py-3">
-                                                <span class="text-red-700 font-medium">
-                                                    Rp {{ number_format($material['harga_supplier'], 0, ',', '.') }}
-                                                </span>
-                                            </td>
-                                            <td class="px-3 py-3">
-                                                @php
-                                                    $profit = ($material['harga_klien'] - $material['harga_supplier']) * $material['quantity'];
-                                                @endphp
-                                                <span class="text-blue-700 font-medium">
-                                                    Rp {{ number_format($profit, 0, ',', '.') }}
-                                                </span>
+                                            <td class="px-3 py-3 text-right">
+                                                <div class="font-medium text-gray-900">
+                                                    Rp {{ number_format($detail->subtotal_revenue, 0, ',', '.') }}
+                                                </div>
+                                                <div class="text-xs text-green-600">
+                                                    +Rp {{ number_format($detail->subtotal_profit, 0, ',', '.') }}
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -201,29 +314,83 @@
                         </div>
                     </div>
 
-                    {{-- Footer Summary --}}
+                    {{-- Footer Actions --}}
                     <div class="bg-gray-50 border-t border-gray-200 px-4 py-3">
                         <div class="flex items-center justify-between">
+                            {{-- Summary --}}
                             <div class="flex space-x-6 text-sm">
                                 <div>
                                     <span class="text-gray-600">Total Biaya:</span>
                                     <span class="font-semibold text-red-700 ml-2">
-                                        Rp {{ number_format($penawaran['total_cost'], 0, ',', '.') }}
+                                        Rp {{ number_format($penawaran->total_cost, 0, ',', '.') }}
                                     </span>
                                 </div>
                                 <div>
                                     <span class="text-gray-600">Total Keuntungan:</span>
                                     <span class="font-semibold text-green-700 ml-2">
-                                        Rp {{ number_format($penawaran['total_profit'], 0, ',', '.') }}
+                                        Rp {{ number_format($penawaran->total_profit, 0, ',', '.') }}
                                     </span>
                                 </div>
                             </div>
-                            @if($penawaran['status'] === 'butuh_verifikasi')
-                                <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
-                                    <i class="fas fa-check mr-2"></i>
-                                    Verifikasi
+
+                            {{-- Action Buttons --}}
+                            <div class="flex items-center space-x-2">
+                                {{-- View Detail --}}
+                                <button 
+                                    wire:click="viewDetail({{ $penawaran->id }})"
+                                    class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors text-sm font-medium"
+                                    title="Lihat Detail"
+                                >
+                                    <i class="fas fa-eye"></i>
                                 </button>
-                            @endif
+
+                                {{-- Edit (only for draft) --}}
+                                @if($penawaran->status === 'draft')
+                                    <a 
+                                        href="{{ route('penawaran.edit', $penawaran->id) }}"
+                                        class="px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition-colors text-sm font-medium"
+                                        title="Edit Penawaran"
+                                    >
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                @endif
+
+                                {{-- Duplicate --}}
+                                <button 
+                                    wire:click="duplicate({{ $penawaran->id }})"
+                                    class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors text-sm font-medium"
+                                    title="Duplikat Penawaran"
+                                >
+                                    <i class="fas fa-copy"></i>
+                                </button>
+
+                                {{-- Approve (only for pending) --}}
+                                @if($penawaran->status === 'menunggu_verifikasi')
+                                    <button 
+                                        wire:click="approve({{ $penawaran->id }})"
+                                        class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors text-sm font-medium"
+                                        title="Setujui Penawaran"
+                                    >
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button 
+                                        wire:click="confirmReject({{ $penawaran->id }})"
+                                        class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
+                                        title="Tolak Penawaran"
+                                    >
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                @endif
+
+                                {{-- Delete --}}
+                                <button 
+                                    wire:click="confirmDelete({{ $penawaran->id }})"
+                                    class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
+                                    title="Hapus Penawaran"
+                                >
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -247,7 +414,7 @@
                                 Reset Filter
                             </button>
                         @else
-                            <a href="{{ route('penawaran') }}" class="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                            <a href="{{ route('penawaran.create') }}" class="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
                                 <i class="fas fa-plus mr-2"></i>
                                 Buat Penawaran Baru
                             </a>
@@ -256,5 +423,322 @@
                 </div>
             @endforelse
         </div>
+
+        {{-- Pagination --}}
+        @if($penawaranList->hasPages())
+            <div class="mt-6">
+                {{ $penawaranList->links() }}
+            </div>
+        @endif
     </div>
+
+    {{-- Detail Modal --}}
+    @if($showDetailModal && $selectedPenawaran)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" wire:click="closeDetailModal"></div>
+
+            {{-- Modal Container --}}
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="relative bg-white rounded-xl shadow-xl max-w-4xl w-full transform transition-all" @click.stop>
+                    {{-- Modal Header --}}
+                    <div class="border-b border-gray-200 px-6 py-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-900">Detail Penawaran</h3>
+                                <p class="text-sm text-gray-600 mt-1">{{ $selectedPenawaran->nomor_penawaran }}</p>
+                            </div>
+                            <button 
+                                wire:click="closeDetailModal"
+                                class="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Modal Body --}}
+                    <div class="p-6 max-h-[70vh] overflow-y-auto">
+                        {{-- Client Info --}}
+                        <div class="bg-blue-50 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold text-gray-900 mb-2">Informasi Klien</h4>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-600">Nama:</span>
+                                    <span class="font-medium text-gray-900 ml-2">{{ $selectedPenawaran->klien->nama }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Cabang:</span>
+                                    <span class="font-medium text-gray-900 ml-2">{{ $selectedPenawaran->klien->cabang }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Penawaran Info --}}
+                        <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold text-gray-900 mb-2">Informasi Penawaran</h4>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-600">Tanggal:</span>
+                                    <span class="font-medium text-gray-900 ml-2">{{ $selectedPenawaran->tanggal_penawaran->format('d M Y') }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Berlaku Sampai:</span>
+                                    <span class="font-medium text-gray-900 ml-2">{{ $selectedPenawaran->tanggal_berlaku_sampai->format('d M Y') }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Status:</span>
+                                    <span class="ml-2">{!! $selectedPenawaran->status_badge !!}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Dibuat Oleh:</span>
+                                    <span class="font-medium text-gray-900 ml-2">{{ $selectedPenawaran->createdBy->nama }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Bahan Baku --}}
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-gray-900 mb-3">Daftar Bahan Baku ({{ $selectedPenawaran->details->count() }})</h4>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Bahan Baku</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Qty</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">All Suppliers</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Best Margin</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        @foreach($selectedPenawaran->details as $detail)
+                                            <tr>
+                                                <td class="px-3 py-2">{{ $detail->nama_material }}</td>
+                                                <td class="px-3 py-2">{{ number_format($detail->quantity) }} {{ $detail->satuan }}</td>
+                                                <td class="px-3 py-2">
+                                                    @if($detail->alternativeSuppliers && $detail->alternativeSuppliers->count())
+                                                        <div class="space-y-1">
+                                                            @foreach($detail->alternativeSuppliers->sortBy('harga_supplier') as $altSupplier)
+                                                                @if($altSupplier->supplier)
+                                                                    <div class="text-xs {{ $loop->first ? 'font-medium text-green-700' : 'text-gray-600' }}">
+                                                                        {{ $altSupplier->supplier->nama }}
+                                                                        <span class="ml-2">Rp {{ number_format($altSupplier->harga_supplier, 0, ',', '.') }}</span>
+                                                                        @if($loop->first)
+                                                                            <span class="ml-1 bg-green-100 text-green-700 px-1 rounded">Best</span>
+                                                                        @endif
+                                                                        @if($altSupplier->supplier->picPurchasing)
+                                                                            <div class="text-xs text-gray-500 ml-4">
+                                                                                PIC: {{ $altSupplier->supplier->picPurchasing->nama }}
+                                                                            </div>
+                                                                        @endif
+                                                                    </div>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                    @elseif($detail->supplier)
+                                                        <div class="text-sm">{{ $detail->supplier->nama }}</div>
+                                                    @else
+                                                        <div class="text-gray-500 text-sm">No suppliers</div>
+                                                    @endif
+                                                </td>
+                                                <td class="px-3 py-2 text-right">
+                                                    <span class="px-2 py-1 text-xs font-semibold rounded {{ $detail->margin_percentage >= 20 ? 'bg-green-100 text-green-800' : ($detail->margin_percentage >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                                        {{ number_format($detail->margin_percentage, 1) }}%
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-2 text-right font-medium">Rp {{ number_format($detail->subtotal_revenue, 0, ',', '.') }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {{-- Financial Summary --}}
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h4 class="font-semibold text-gray-900 mb-3">Ringkasan Finansial</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Total Revenue:</span>
+                                    <span class="font-semibold text-green-700">Rp {{ number_format($selectedPenawaran->total_revenue, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Total Cost:</span>
+                                    <span class="font-semibold text-red-700">Rp {{ number_format($selectedPenawaran->total_cost, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t border-green-200">
+                                    <span class="text-gray-900 font-semibold">Total Profit:</span>
+                                    <span class="font-bold text-green-700 text-lg">Rp {{ number_format($selectedPenawaran->total_profit, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Margin:</span>
+                                    <span class="font-semibold text-blue-700">{{ number_format($selectedPenawaran->margin_percentage, 2) }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Modal Footer --}}
+                    <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl">
+                        <div class="flex justify-end">
+                            <button
+                                wire:click="closeDetailModal"
+                                class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Delete Confirmation Modal --}}
+    @if($showDeleteModal && $selectedPenawaran)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" wire:click="cancelDelete"></div>
+
+            {{-- Modal Container --}}
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full transform transition-all" @click.stop>
+                    {{-- Modal Header --}}
+                    <div class="border-b border-gray-200 px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-trash text-red-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Hapus Penawaran</h3>
+                                <p class="text-sm text-gray-600 mt-1">{{ $selectedPenawaran->nomor_penawaran }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Modal Body --}}
+                    <div class="p-6">
+                        <p class="text-gray-700">
+                            @if($selectedPenawaran->status === 'draft')
+                                Apakah Anda yakin ingin <strong class="text-red-600">menghapus permanen</strong> penawaran ini? 
+                                Data yang dihapus tidak dapat dikembalikan.
+                            @else
+                                Apakah Anda yakin ingin <strong class="text-orange-600">mengarsipkan</strong> penawaran ini?
+                            @endif
+                        </p>
+                        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <div class="flex">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 mt-0.5 mr-2"></i>
+                                <p class="text-sm text-yellow-800">
+                                    Semua data bahan baku dan supplier yang terkait akan ikut dihapus.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Modal Footer --}}
+                    <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl">
+                        <div class="flex justify-end space-x-3">
+                            <button
+                                wire:click="cancelDelete"
+                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                wire:click="delete"
+                                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                            >
+                                <i class="fas fa-trash mr-2"></i>
+                                Hapus
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Reject Confirmation Modal --}}
+    @if($showRejectModal && $selectedPenawaran)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" wire:click="cancelReject"></div>
+
+            {{-- Modal Container --}}
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full transform transition-all" @click.stop>
+                    {{-- Modal Header --}}
+                    <div class="border-b border-gray-200 px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-times-circle text-red-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Tolak Penawaran</h3>
+                                <p class="text-sm text-gray-600 mt-1">{{ $selectedPenawaran->nomor_penawaran }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Modal Body --}}
+                    <div class="p-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Alasan Penolakan <span class="text-red-600">*</span>
+                        </label>
+                        <textarea
+                            wire:model="rejectReason"
+                            rows="4"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            placeholder="Masukkan alasan penolakan..."
+                        ></textarea>
+                        @error('rejectReason')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Modal Footer --}}
+                    <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-xl">
+                        <div class="flex justify-end space-x-3">
+                            <button
+                                wire:click="cancelReject"
+                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                wire:click="reject"
+                                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                {{ empty($rejectReason) ? 'disabled' : '' }}
+                            >
+                                <i class="fas fa-times-circle mr-2"></i>
+                                Tolak Penawaran
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
+
+<script>
+function toggleSuppliers(detailId) {
+    const section = document.querySelector(`[data-detail-id="${detailId}"]`);
+    if (!section) return;
+    
+    const collapsed = section.querySelector('.supplier-collapsed');
+    const expanded = section.querySelector('.supplier-expanded');
+    
+    if (collapsed.style.display === 'none') {
+        // Currently expanded, collapse it
+        collapsed.style.display = 'block';
+        expanded.style.display = 'none';
+    } else {
+        // Currently collapsed, expand it
+        collapsed.style.display = 'none';
+        expanded.style.display = 'block';
+    }
+}
+</script>

@@ -6,7 +6,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700">Cabang</label>
+        <label class="block text-sm font-medium text-gray-700">Plant</label>
         <input type="text" name="cabang" value="{{ old('cabang', $klien->cabang ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
         @error('cabang') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
     </div>

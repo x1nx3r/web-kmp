@@ -28,11 +28,14 @@ class DatabaseSeeder extends Seeder
             BahanBakuKlienSeeder::class, // Now creates client-specific materials with pricing
             BahanBakuSupplierSeeder::class,
             RiwayatHargaBahanBakuSeeder::class,
-            // RiwayatHargaKlienSeeder::class, // Price history created in BahanBakuKlienSeeder
+            // RiwayatHargaKlienSeeder::class, // Price history created in BahanBrakuKlienSeeder
             PurchaseOrderSeeder::class,
             PurchaseOrderBahanBakuSeeder::class,
             CompanySettingSeeder::class,
             // PengirimanAccountingSeeder::class,
+            PenawaranSeeder::class, // Penawaran with multi-supplier support
+            // OrderSeeder::class, // Removed - incompatible with new multi-supplier order system
+            EnhancedOrderSeeder::class, // New multi-supplier order system with auto-population
         ]);
     }
 }

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\Marketing\KlienController;
+use App\Http\Controllers\Marketing\OrderController;
 use App\Http\Controllers\Direktur\PengelolaanAkunController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Purchasing\ForecastingController;
@@ -44,6 +45,54 @@ Route::middleware(['auth'])->group(function () {
     // Pengaturan - accessible by all authenticated users
     Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan');
     Route::put('/pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
+
+    // Kontak Klien routes
+    Route::get('/kontak-klien/{klien}', function($klien) {
+        return view('pages.marketing.daftar-kontak-livewire', compact('klien'));
+    })->name('kontak-klien.index');
+
+    // Spesifikasi routes
+    Route::get('/spesifikasi', function() {
+        return view('pages.marketing.spesifikasi');
+    })->name('spesifikasi.index');
+
+    Route::get('/marketing/spesifikasi', function() {
+        return view('pages.marketing.spesifikasi');
+    })->name('marketing.spesifikasi');
+
+    // Order routes
+    Route::resource('orders', OrderController::class);
+    // API: get top suppliers for a client material (used in order creation UI)
+    Route::get('/orders/material/{material}/suppliers', [OrderController::class, 'getSuppliersForMaterial'])->name('orders.material.suppliers');
+    Route::prefix('orders/{order}')->group(function () {
+        Route::post('/confirm', [OrderController::class, 'confirm'])->name('orders.confirm');
+        Route::post('/start-processing', [OrderController::class, 'startProcessing'])->name('orders.start-processing');
+        Route::post('/complete', [OrderController::class, 'complete'])->name('orders.complete');
+        Route::post('/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    });
+
+    // Penawaran routes
+    Route::get('/penawaran', function() {
+        return view('pages.marketing.riwayat-penawaran');
+    })->name('penawaran.index');
+    Route::get('/penawaran/buat', function() {
+        return view('pages.marketing.penawaran');
+    })->name('penawaran.create');
+    Route::get('/penawaran/{penawaran}/edit', function(App\Models\Penawaran $penawaran) {
+        return view('pages.marketing.penawaran', compact('penawaran'));
+    })->name('penawaran.edit');
+
+    // Klien routes
+    Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
+    Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
+    Route::get('/klien/{klien}/edit', function(App\Models\Klien $klien) {
+        return view('pages.marketing.klien.edit-livewire', compact('klien'));
+    })->name('klien.edit');
+    Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
+    Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
+    Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');
+    // Klien material price history page
+    Route::get('/klien/{klien}/bahan-baku/{material}/riwayat-harga', [KlienController::class, 'riwayatHarga'])->name('klien.riwayat-harga');
 
     // Procurement routes - only for purchasing roles
     Route::prefix('procurement')->group(function () {
@@ -135,42 +184,22 @@ Route::middleware(['auth'])->group(function () {
         ]);
     });
 
+    // Marketing routes - only for marketing and direktur (moved inside auth middleware)
+    Route::get('/klien', function() {
+        return view('pages.marketing.daftar-klien-livewire');
+    })->name('klien.index');
+
+    // Company-level CRUD routes
+    Route::post('/klien/company/store', [KlienController::class, 'storeCompany'])->name('klien.company.store');
+    Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
+    Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
+
+    // Client Materials API routes
+    Route::prefix('api/klien-materials')->group(function () {
+        Route::post('/', [KlienController::class, 'storeMaterial'])->name('api.klien-materials.store');
+        Route::put('/{material}', [KlienController::class, 'updateMaterial'])->name('api.klien-materials.update');
+        Route::delete('/{material}', [KlienController::class, 'destroyMaterial'])->name('api.klien-materials.destroy');
+        Route::get('/{material}/price-history', [KlienController::class, 'getMaterialPriceHistory'])->name('api.klien-materials.price-history');
+    });
+
 });
-
-        // Marketing routes - only for marketing and direktur
-        Route::get('/klien', function() {
-            return view('pages.marketing.daftar-klien-livewire');
-        })->name('klien.index');
-
-        // Penawaran routes
-        Route::get('/penawaran', function() {
-            return view('pages.marketing.penawaran');
-        })->name('penawaran');
-        Route::get('/riwayat-penawaran', function() {
-            return view('pages.marketing.riwayat-penawaran');
-        })->name('riwayat-penawaran');
-        Route::get('/klien/create', [KlienController::class, 'create'])->name('klien.create');
-        Route::post('/klien', [KlienController::class, 'store'])->name('klien.store');
-        Route::get('/klien/{klien}/edit', function(App\Models\Klien $klien) {
-            return view('pages.marketing.klien.edit-livewire', compact('klien'));
-        })->name('klien.edit');
-        Route::get('/klien/{klien}', [KlienController::class, 'show'])->name('klien.show');
-        Route::put('/klien/{klien}', [KlienController::class, 'update'])->name('klien.update');
-        Route::delete('/klien/{klien}', [KlienController::class, 'destroy'])->name('klien.destroy');
-        // Klien material price history page
-        Route::get('/klien/{klien}/bahan-baku/{material}/riwayat-harga', [KlienController::class, 'riwayatHarga'])->name('klien.riwayat-harga');
-
-        // Company-level CRUD routes
-        Route::post('/klien/company/store', [KlienController::class, 'storeCompany'])->name('klien.company.store');
-        Route::put('/klien/company/update', [KlienController::class, 'updateCompany'])->name('klien.company.update');
-        Route::delete('/klien/company/destroy', [KlienController::class, 'destroyCompany'])->name('klien.company.destroy');
-
-     
-
-        // Client Materials API routes
-        Route::prefix('api/klien-materials')->group(function () {
-            Route::post('/', [KlienController::class, 'storeMaterial'])->name('api.klien-materials.store');
-            Route::put('/{material}', [KlienController::class, 'updateMaterial'])->name('api.klien-materials.update');
-            Route::delete('/{material}', [KlienController::class, 'destroyMaterial'])->name('api.klien-materials.destroy');
-            Route::get('/{material}/price-history', [KlienController::class, 'getMaterialPriceHistory'])->name('api.klien-materials.price-history');
-        });

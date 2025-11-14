@@ -47,8 +47,8 @@
                         </label>
                         <select id="statusFilter" name="status" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFilters()">
                             <option value="">Semua Status</option>
-                            <option value="siap" {{ request('status') == 'siap' ? 'selected' : '' }}>Siap</option>
-                            <option value="proses" {{ request('status') == 'proses' ? 'selected' : '' }}>Proses</option>
+                            <option value="dikonfirmasi" {{ request('status') == 'dikonfirmasi' ? 'selected' : '' }}>Dikonfirmasi</option>
+                            <option value="diproses" {{ request('status') == 'diproses' ? 'selected' : '' }}>Diproses</option>
                         </select>
                     </div>
 
@@ -99,11 +99,11 @@
 
     {{-- PO Cards List --}}
     <div class="space-y-1 sm:space-y-4">
-        @if(isset($purchaseOrders) && $purchaseOrders->count() > 0)
-            @foreach($purchaseOrders as $po)
+        @if(isset($orders) && $orders->count() > 0)
+            @foreach($orders as $po)
                 {{-- Mobile: Simple List Item / Desktop: Full Card --}}
                 <div class="bg-white rounded-lg sm:rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 hover:border-gray-300 border-l-4 border-l-green-500 hover:border-l-green-600 po-card" 
-                     data-no-po="{{ strtolower($po->no_po ?? '') }}" 
+                     data-no-po="{{ strtolower($po->po_number ?? '') }}" 
                      data-klien="{{ strtolower(($po->klien->nama ?? '') . ($po->klien->cabang ? ' - ' . $po->klien->cabang : '')) }}" 
                      data-status="{{ $po->status ?? '' }}">
                     
@@ -113,11 +113,11 @@
                             {{-- Mobile Header --}}
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex-1">
-                                    <h3 class="text-sm font-bold text-gray-900">{{ $po->no_po ?? 'N/A' }}</h3>
+                                    <h3 class="text-sm font-bold text-gray-900">{{ $po->po_number ?? 'N/A' }}</h3>
                                     <p class="text-xs text-green-600 mt-1">{{ ($po->klien->nama ?? 'N/A') . ($po->klien->cabang ? ' - ' . $po->klien->cabang : '') }}</p>
                                 </div>
                                 <div class="flex items-center space-x-1">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ ($po->status ?? '') === 'siap' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ ($po->status ?? '') === 'dikonfirmasi' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
                                         {{ ucfirst($po->status ?? 'Unknown') }}
                                     </span>
                                 </div>
@@ -126,7 +126,7 @@
                             {{-- Mobile Stats --}}
                             <div class="flex items-center justify-between text-xs text-gray-600 mb-2">
                                 <div class="flex items-center space-x-3">
-                                    <span class="font-bold text-blue-600">{{ $po->purchaseOrderBahanBakus->count() }}</span>
+                                    <span class="font-bold text-blue-600">{{ $po->orderDetails->count() }}</span>
                                     <span class="text-blue-600">Items</span>
                                     <span class="mx-1 text-gray-300">|</span>
                                     <span class="font-bold text-green-600">{{ number_format($po->qty_total ?? 0, 2, ',', '.') }}</span>
@@ -169,8 +169,8 @@
                                 {{-- Left Section: PO Info --}}
                                 <div class="flex-1">
                                     <div class="flex items-center space-x-3 mb-2">
-                                        <h3 class="text-xl font-bold text-gray-900">{{ $po->no_po ?? 'N/A' }}</h3>
-                                        <span class="px-3 py-1 text-xs font-medium rounded-full {{ ($po->status ?? '') === 'siap' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                        <h3 class="text-xl font-bold text-gray-900">{{ $po->po_number ?? 'N/A' }}</h3>
+                                        <span class="px-3 py-1 text-xs font-medium rounded-full {{ ($po->status ?? '') === 'dikonfirmasi' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
                                             {{ ucfirst($po->status ?? 'Unknown') }}
                                         </span>
                                     </div>
@@ -189,11 +189,11 @@
                                 {{-- Right Section: Stats --}}
                                 <div class="flex items-center space-x-6">
                                     <div class="text-center">
-                                        <div class="text-2xl font-bold text-blue-600">{{ $po->purchaseOrderBahanBakus->count() }}</div>
+                                        <div class="text-2xl font-bold text-blue-600">{{ $po->orderDetails->count() }}</div>
                                         <div class="text-xs text-gray-500 uppercase tracking-wider">Items</div>
                                     </div>
                                     <div class="text-center">
-                                        <div class="text-2xl font-bold text-green-600">{{ number_format($po->qty_total ?? 0, 2, ',', '.') }}</div>
+                                        <div class="text-2xl font-bold text-green-600">{{ number_format($po->total_qty ?? 0, 2, ',', '.') }}</div>
                                         <div class="text-xs text-gray-500 uppercase tracking-wider">Total Kuantitas</div>
                                     </div>
                                     <div class="text-center">
@@ -223,7 +223,7 @@
                                         onclick="togglePODetails({{ $po->id }})"
                                         class="flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm">
                                     <i class="fas fa-list mr-2"></i>
-                                    <span>Lihat Detail Bahan Baku ({{ $po->purchaseOrderBahanBakus->count() }})</span>
+                                    <span>Lihat Detail Bahan Baku ({{ $po->orderDetails->count() }})</span>
                                     <i class="fas fa-chevron-down transform transition-transform ml-2" id="chevron-desktop-{{ $po->id }}"></i>
                                 </button>
 
@@ -247,23 +247,23 @@
                                 Detail Bahan Baku & Harga
                             </h4>
                             <div class="space-y-2 max-h-80 overflow-y-auto">
-                                @forelse($po->purchaseOrderBahanBakus as $detail)
+                                @forelse($po->orderDetails as $detail)
                                     <div class="bg-white rounded p-3 border border-gray-200 hover:border-green-300 transition-colors">
                                         <div class="flex justify-between items-start gap-2">
                                             <div class="flex-1 min-w-0">
                                                 <h6 class="text-xs font-semibold text-gray-900 truncate">{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}</h6>
                                                
                                                 <div class="flex items-center gap-2 text-xs text-gray-600 mt-1.5">
-                                                    <span></i>{{ number_format($detail->jumlah ?? 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'kg' }}</span>
+                                                    <span></i>{{ number_format($detail->qty ?? 0) }} {{ $detail->satuan ?? 'kg' }}</span>
                                                     <span>•</span>
-                                                    <span>Rp {{ number_format($detail->harga_satuan ?? 0, 0, ',', '.') }}</span>
+                                                    <span>Rp {{ number_format($detail->harga_jual ?? 0, 0, ',', '.') }}</span>
                                                 </div>
                                                 <div class="text-xs font-semibold text-gray-700 mt-1">
                                                     Total: Rp {{ number_format($detail->total_harga ?? 0, 0, ',', '.') }}
                                                 </div>
                                             </div>
                                             <button type="button" 
-                                                    onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->jumlah ?? 0 }}, {{ $po->id }}, '{{ $po->no_po ?? 'N/A' }}')"
+                                                    onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->qty ?? 0 }}, {{ $po->id }}, '{{ $po->po_number ?? 'N/A' }}')"
                                                     class="flex-shrink-0 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
                                                 <i class="fas fa-chart-bar"></i>
                                             </button>
@@ -285,7 +285,7 @@
                                 Detail Bahan Baku & Harga
                             </h4>
                             <div class="space-y-2 max-h-96 overflow-y-auto">
-                                @forelse($po->purchaseOrderBahanBakus as $detail)
+                                @forelse($po->orderDetails as $detail)
                                     <div class="bg-white rounded p-3 border border-gray-200 hover:border-green-300 transition-colors">
                                         <div class="flex items-center justify-between gap-4">
                                             <div class="flex-1 min-w-0">
@@ -293,10 +293,10 @@
                                                
                                                 <div class="flex items-center gap-4 text-sm text-gray-600 mt-2">
                                                     <span>
-                                                        <strong>{{ number_format($detail->jumlah ?? 0) }}</strong> {{ $detail->bahanBakuKlien->satuan ?? 'kg' }}
+                                                        <strong>{{ number_format($detail->qty ?? 0) }}</strong> {{ $detail->satuan ?? 'kg' }}
                                                     </span>
                                                     <span>
-                                                        <strong>Rp {{ number_format($detail->harga_satuan ?? 0, 0, ',', '.') }}</strong>/{{ $detail->bahanBakuKlien->satuan ?? 'kg' }}
+                                                        <strong>Rp {{ number_format($detail->harga_jual ?? 0, 0, ',', '.') }}</strong>/{{ $detail->satuan ?? 'kg' }}
                                                     </span>
                                                     <span>
                                                         <strong>Rp {{ number_format($detail->total_harga ?? 0, 0, ',', '.') }}</strong>
@@ -304,7 +304,7 @@
                                                 </div>
                                             </div>
                                             <button type="button" 
-                                                    onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->jumlah ?? 0 }}, {{ $po->id }}, '{{ $po->no_po ?? 'N/A' }}')"
+                                                    onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->qty ?? 0 }}, {{ $po->id }}, '{{ $po->po_number ?? 'N/A' }}')"
                                                     class="flex-shrink-0 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm">
                                                     <i class="fas fa-chart-bar mr-2"></i>
                                                     Buat Forecast
@@ -338,18 +338,18 @@
     </div>
 
     {{-- Pagination --}}
-    @if(isset($purchaseOrders) && $purchaseOrders->hasPages())
+    @if(isset($orders) && $orders->hasPages())
         <div class="bg-white rounded-lg shadow-sm border p-4 mt-6">
             <div class="flex flex-col sm:flex-row items-center justify-between">
                 {{-- Results Info --}}
                 <div class="mb-3 sm:mb-0">
                     <p class="text-sm text-gray-700">
                         Menampilkan
-                        <span class="font-medium">{{ $purchaseOrders->firstItem() }}</span>
+                        <span class="font-medium">{{ $orders->firstItem() }}</span>
                         sampai
-                        <span class="font-medium">{{ $purchaseOrders->lastItem() }}</span>
+                        <span class="font-medium">{{ $orders->lastItem() }}</span>
                         dari
-                        <span class="font-medium">{{ $purchaseOrders->total() }}</span>
+                        <span class="font-medium">{{ $orders->total() }}</span>
                         Purchase Order
                     </p>
                 </div>
@@ -357,14 +357,14 @@
                 {{-- Pagination Links --}}
                 <div class="flex items-center space-x-2">
                     {{-- Previous Page --}}
-                    @if ($purchaseOrders->onFirstPage())
+                    @if ($orders->onFirstPage())
                         <span class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
                             <i class="fas fa-chevron-left mr-1"></i>
                             Sebelumnya
                         </span>
                     @else
                         @php
-                            $prevUrl = $purchaseOrders->previousPageUrl();
+                            $prevUrl = $orders->previousPageUrl();
                             $prevUrlParts = parse_url($prevUrl);
                             parse_str($prevUrlParts['query'] ?? '', $prevParams);
                             $prevParams['tab'] = 'buat-forecasting';
@@ -382,10 +382,10 @@
                     @endif
 
                     {{-- Page Numbers --}}
-                    @if($purchaseOrders->lastPage() > 1)
-                        <div class="hidden sm:flex items-center space-x-1">
-                            @foreach ($purchaseOrders->getUrlRange(1, $purchaseOrders->lastPage()) as $page => $url)
-                                @if ($page == $purchaseOrders->currentPage())
+                    @if($orders->lastPage() > 1)
+                        <div class="hidden sm:flex space-x-1">
+                            @foreach ($orders->getUrlRange(1, $orders->lastPage()) as $page => $url)
+                                @if ($page == $orders->currentPage())
                                     <span class="px-3 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-lg">
                                         {{ $page }}
                                     </span>
@@ -410,14 +410,14 @@
 
                         {{-- Mobile Page Indicator --}}
                         <div class="sm:hidden px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-lg">
-                            {{ $purchaseOrders->currentPage() }} / {{ $purchaseOrders->lastPage() }}
+                            {{ $orders->currentPage() }} / {{ $orders->lastPage() }}
                         </div>
                     @endif
 
                     {{-- Next Page --}}
-                    @if ($purchaseOrders->hasMorePages())
+                    @if ($orders->hasMorePages())
                         @php
-                            $nextUrl = $purchaseOrders->nextPageUrl();
+                            $nextUrl = $orders->nextPageUrl();
                             $nextUrlParts = parse_url($nextUrl);
                             parse_str($nextUrlParts['query'] ?? '', $nextParams);
                             $nextParams['tab'] = 'buat-forecasting';

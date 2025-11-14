@@ -67,12 +67,12 @@ class Forecast extends Model
     }
 
     /**
-     * Relasi ke Purchase Order Bahan Baku melalui details (Many-to-Many)
+     * Relasi ke Order Detail melalui forecast details (Many-to-Many)
      */
     public function purchaseOrderBahanBakus()
     {
         return $this->belongsToMany(
-            PurchaseOrderBahanBaku::class,
+            OrderDetail::class,
             'forecast_details',
             'forecast_id',
             'purchase_order_bahan_baku_id'
@@ -86,11 +86,11 @@ class Forecast extends Model
     }
 
     /**
-     * Relasi ke Purchase Order
+     * Relasi ke Order (menggunakan purchase_order_id sebagai foreign key)
      */
     public function purchaseOrder()
     {
-        return $this->belongsTo(PurchaseOrder::class);
+        return $this->belongsTo(Order::class, 'purchase_order_id');
     }
 
     /**

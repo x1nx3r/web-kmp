@@ -51,11 +51,11 @@ class ForecastDetail extends Model
     }
 
     /**
-     * Relasi ke Purchase Order Bahan Baku
+     * Relasi ke Order Detail (menggunakan purchase_order_bahan_baku_id sebagai foreign key)
      */
     public function purchaseOrderBahanBaku()
     {
-        return $this->belongsTo(PurchaseOrderBahanBaku::class);
+        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id');
     }
 
     /**

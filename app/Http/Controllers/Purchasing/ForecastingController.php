@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Purchasing;
 
 use App\Http\Controllers\Controller;
-use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderBahanBaku;
+use App\Models\Order;
+use App\Models\OrderDetail;
 use App\Models\Forecast;
 use App\Models\ForecastDetail;
 use App\Models\BahanBakuSupplier;
@@ -19,15 +19,15 @@ class ForecastingController extends Controller
 {
     public function index()
     {
-        // Ambil PO yang statusnya siap atau proses dan belum selesai
-        $purchaseOrders = PurchaseOrder::with([
+        // Ambil Order yang statusnya dikonfirmasi atau diproses
+        $orders = Order::with([
             'klien',
-            'purchaseOrderBahanBakus.bahanBakuKlien'
+            'orderDetails.bahanBakuKlien'
         ])
-        ->whereIn('status', ['siap', 'proses'])
+        ->whereIn('status', ['dikonfirmasi', 'diproses'])
         ->when(request('search'), function($query) {
             $query->where(function($q) {
-                $q->where('no_po', 'like', '%' . request('search') . '%')
+                $q->where('po_number', 'like', '%' . request('search') . '%')
                   ->orWhereHas('klien', function($klienQuery) {
                       $klienQuery->where('nama', 'like', '%' . request('search') . '%');
                   });
@@ -44,11 +44,11 @@ class ForecastingController extends Controller
             }
         })
         ->when(request('sort_items'), function($query) {
-            $query->withCount('purchaseOrderBahanBakus');
+            $query->withCount('orderDetails');
             if (request('sort_items') == 'most') {
-                $query->orderBy('purchase_order_bahan_bakus_count', 'desc');
+                $query->orderBy('order_details_count', 'desc');
             } elseif (request('sort_items') == 'least') {
-                $query->orderBy('purchase_order_bahan_bakus_count', 'asc');
+                $query->orderBy('order_details_count', 'asc');
             }
         }, function($query) {
             $query->orderBy('created_at', 'desc');
@@ -64,7 +64,7 @@ class ForecastingController extends Controller
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('no_forecast', 'like', "%{$searchTerm}%")
                       ->orWhereHas('purchaseOrder', function($subQ) use ($searchTerm) {
-                          $subQ->where('no_po', 'like', "%{$searchTerm}%")
+                          $subQ->where('po_number', 'like', "%{$searchTerm}%")
                                ->orWhereHas('klien', function($klienQ) use ($searchTerm) {
                                    $klienQ->where('nama', 'like', "%{$searchTerm}%");
                                });
@@ -113,7 +113,7 @@ class ForecastingController extends Controller
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('no_forecast', 'like', '%' . $searchTerm . '%')
                       ->orWhereHas('purchaseOrder', function($poQuery) use ($searchTerm) {
-                          $poQuery->where('no_po', 'like', '%' . $searchTerm . '%')
+                          $poQuery->where('po_number', 'like', '%' . $searchTerm . '%')
                                   ->orWhereHas('klien', function($klienQuery) use ($searchTerm) {
                                       $klienQuery->where('nama', 'like', '%' . $searchTerm . '%');
                                   });
@@ -142,7 +142,7 @@ class ForecastingController extends Controller
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('no_forecast', 'like', '%' . $searchTerm . '%')
                       ->orWhereHas('purchaseOrder', function($poQuery) use ($searchTerm) {
-                          $poQuery->where('no_po', 'like', '%' . $searchTerm . '%')
+                          $poQuery->where('po_number', 'like', '%' . $searchTerm . '%')
                                   ->orWhereHas('klien', function($klienQuery) use ($searchTerm) {
                                       $klienQuery->where('nama', 'like', '%' . $searchTerm . '%');
                                   });
@@ -165,16 +165,16 @@ class ForecastingController extends Controller
             ->withQueryString();
 
         return view('pages.purchasing.forecast', compact(
-            'purchaseOrders',
+            'orders',
             'pendingForecasts',
             'suksesForecasts',
             'gagalForecasts'
         ));
     }
 
-    public function getBahanBakuSuppliers($purchaseOrderBahanBakuId)
+    public function getBahanBakuSuppliers($orderDetailId)
     {
-        Log::info("getBahanBakuSuppliers called with ID: {$purchaseOrderBahanBakuId}");
+        Log::info("getBahanBakuSuppliers called with OrderDetail ID: {$orderDetailId}");
         
         try {
             // Debug: Check if tables exist and have data
@@ -182,14 +182,14 @@ class ForecastingController extends Controller
             $bahanBakuSupplierCount = DB::table('bahan_baku_supplier')->count();
             Log::info("Table counts - suppliers: {$supplierCount}, bahan_baku_supplier: {$bahanBakuSupplierCount}");
             
-            $purchaseOrderBahanBaku = PurchaseOrderBahanBaku::with('bahanBakuKlien')->find($purchaseOrderBahanBakuId);
+            $orderDetail = OrderDetail::with('bahanBakuKlien')->find($orderDetailId);
             
-            if (!$purchaseOrderBahanBaku) {
-                Log::error("PurchaseOrderBahanBaku not found with ID: {$purchaseOrderBahanBakuId}");
+            if (!$orderDetail) {
+                Log::error("OrderDetail not found with ID: {$orderDetailId}");
                 return response()->json(['error' => 'Data tidak ditemukan'], 404);
             }
             
-            Log::info("Found PurchaseOrderBahanBaku: " . json_encode($purchaseOrderBahanBaku));
+            Log::info("Found OrderDetail: " . json_encode($orderDetail));
 
             // Ambil semua bahan baku supplier yang tersedia, diurutkan berdasarkan nama supplier
             // Optimized query dengan proper join dan select, termasuk pic_purchasing
@@ -318,7 +318,7 @@ class ForecastingController extends Controller
             }
 
             return response()->json([
-                'purchase_order_bahan_baku' => $purchaseOrderBahanBaku,
+                'order_detail' => $orderDetail,
                 'bahan_baku_suppliers' => $bahanBakuSuppliers
             ]);
 
@@ -341,19 +341,19 @@ class ForecastingController extends Controller
         // Improved validation with better error messages
         try {
             $request->validate([
-                'purchase_order_id' => 'required|exists:purchase_orders,id',
+                'purchase_order_id' => 'required|exists:orders,id',
                 'tanggal_forecast' => 'required|date',
                 'hari_kirim_forecast' => 'required|string|max:50',
                 'catatan' => 'nullable|string|max:1000',
                 'details' => 'required|array|min:1',
-                'details.*.purchase_order_bahan_baku_id' => 'required|exists:purchase_order_bahan_baku,id',
+                'details.*.purchase_order_bahan_baku_id' => 'required|exists:order_details,id',
                 'details.*.bahan_baku_supplier_id' => 'required|exists:bahan_baku_supplier,id',
                 'details.*.qty_forecast' => 'required|numeric|min:0.01|max:9999999.99',
                 'details.*.harga_satuan_forecast' => 'required|numeric|min:0.01|max:999999999.99',
                 'details.*.catatan_detail' => 'nullable|string|max:500'
             ], [
-                'purchase_order_id.required' => 'Purchase Order harus dipilih',
-                'purchase_order_id.exists' => 'Purchase Order tidak valid',
+                'purchase_order_id.required' => 'Order harus dipilih',
+                'purchase_order_id.exists' => 'Order tidak valid',
                 'tanggal_forecast.required' => 'Tanggal forecast harus diisi',
                 'tanggal_forecast.date' => 'Format tanggal tidak valid',
                 'hari_kirim_forecast.required' => 'Hari kirim forecast harus diisi',
@@ -402,11 +402,11 @@ class ForecastingController extends Controller
 
             $forecastDetails = [];
 
-            // Ambil semua PO Bahan Baku dan Supplier yang dibutuhkan sekaligus untuk efisiensi
-            $poBahanBakuIds = collect($request->details)->pluck('purchase_order_bahan_baku_id')->unique();
+            // Ambil semua Order Details dan Supplier yang dibutuhkan sekaligus untuk efisiensi
+            $orderDetailIds = collect($request->details)->pluck('purchase_order_bahan_baku_id')->unique();
             $supplierIds = collect($request->details)->pluck('bahan_baku_supplier_id')->unique();
             
-            $poBahanBakus = PurchaseOrderBahanBaku::whereIn('id', $poBahanBakuIds)->get()->keyBy('id');
+            $orderDetails = OrderDetail::whereIn('id', $orderDetailIds)->get()->keyBy('id');
             $suppliers = BahanBakuSupplier::with('supplier')->whereIn('id', $supplierIds)->get()->keyBy('id');
 
             // Get timestamp sekali saja
@@ -541,11 +541,11 @@ class ForecastingController extends Controller
 
             // Validasi dan prepare data details
             foreach ($request->details as $index => $detail) {
-                // Ambil data PO Bahan Baku dari collection
-                $poBahanBaku = $poBahanBakus->get($detail['purchase_order_bahan_baku_id']);
+                // Ambil data Order Detail dari collection
+                $orderDetail = $orderDetails->get($detail['purchase_order_bahan_baku_id']);
                 
-                if (!$poBahanBaku) {
-                    throw new \Exception("Purchase Order Bahan Baku dengan ID {$detail['purchase_order_bahan_baku_id']} tidak ditemukan");
+                if (!$orderDetail) {
+                    throw new \Exception("Order Detail dengan ID {$detail['purchase_order_bahan_baku_id']} tidak ditemukan");
                 }
 
                 // Validasi supplier dari collection
@@ -554,12 +554,12 @@ class ForecastingController extends Controller
                     throw new \Exception("Bahan Baku Supplier dengan ID {$detail['bahan_baku_supplier_id']} tidak ditemukan");
                 }
                 
-                // Hitung total harga PO dan Supplier
+                // Hitung total harga Order dan Supplier
                 $qtyForecast = (float) $detail['qty_forecast'];
                 $hargaSatuanForecast = (float) $detail['harga_satuan_forecast'];
-                $hargaSatuanPO = (float) $poBahanBaku->harga_satuan;
+                $hargaSatuanOrder = (float) $orderDetail->harga_jual; // Menggunakan harga_jual dari order_details
                 
-                $totalHargaPO = $qtyForecast * $hargaSatuanPO;
+                $totalHargaOrder = $qtyForecast * $hargaSatuanOrder;
                 $totalHargaSupplier = $qtyForecast * $hargaSatuanForecast;
                 
                 // Prepare data untuk batch insert
@@ -570,8 +570,8 @@ class ForecastingController extends Controller
                     'qty_forecast' => $qtyForecast,
                     'harga_satuan_forecast' => $hargaSatuanForecast,
                     'total_harga_forecast' => $totalHargaSupplier,
-                    'harga_satuan_po' => $hargaSatuanPO,
-                    'total_harga_po' => $totalHargaPO,
+                    'harga_satuan_po' => $hargaSatuanOrder,
+                    'total_harga_po' => $totalHargaOrder,
                     'catatan_detail' => $detail['catatan_detail'] ?? null,
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp
@@ -581,9 +581,9 @@ class ForecastingController extends Controller
                 
                 // Log comparison untuk debugging (dimatikan untuk performa)
                 // if ($index === 0) {
-                //     $selisih = $totalHargaSupplier - $totalHargaPO;
-                //     $persentase = $totalHargaPO > 0 ? (($selisih / $totalHargaPO) * 100) : 0;
-                //     Log::info("Forecast detail #{$index} - PO: Rp" . number_format($hargaSatuanPO, 0, ',', '.') .
+                //     $selisih = $totalHargaSupplier - $totalHargaOrder;
+                //     $persentase = $totalHargaOrder > 0 ? (($selisih / $totalHargaOrder) * 100) : 0;
+                //     Log::info("Forecast detail #{$index} - Order: Rp" . number_format($hargaSatuanOrder, 0, ',', '.') .
                 //               ", Supplier: Rp" . number_format($hargaSatuanForecast, 0, ',', '.') .
                 //               ", Selisih: Rp" . number_format($selisih, 0, ',', '.') . " (" . number_format($persentase, 2) . "%)");
                 // }
@@ -819,7 +819,7 @@ class ForecastingController extends Controller
             Log::info("Forecast found: {$forecast->no_forecast}");
             
             // Log relationship data for debugging
-            Log::info("Purchase Order: " . ($forecast->purchaseOrder ? $forecast->purchaseOrder->no_po : 'null'));
+            Log::info("Purchase Order: " . ($forecast->purchaseOrder ? $forecast->purchaseOrder->po_number : 'null'));
             Log::info("Klien: " . ($forecast->purchaseOrder && $forecast->purchaseOrder->klien ? $forecast->purchaseOrder->klien->nama : 'null'));
             Log::info("Purchasing: " . ($forecast->purchasing ? $forecast->purchasing->nama : 'null'));
             Log::info("Forecast Details Count: " . $forecast->forecastDetails->count());
@@ -829,7 +829,7 @@ class ForecastingController extends Controller
                 'id' => $forecast->id,
                 'no_forecast' => $forecast->no_forecast ?: 'N/A',
                 'klien' => $forecast->purchaseOrder && $forecast->purchaseOrder->klien ? $forecast->purchaseOrder->klien->nama : 'N/A',
-                'no_po' => $forecast->purchaseOrder ? $forecast->purchaseOrder->no_po : 'N/A',
+                'no_po' => $forecast->purchaseOrder ? $forecast->purchaseOrder->po_number : 'N/A',
                 'pic_purchasing' => $forecast->purchasing ? $forecast->purchasing->nama : 'N/A',
                 'tanggal_forecast' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('d M Y') : 'N/A',
                 'hari_kirim' => $forecast->hari_kirim_forecast ?: 'N/A',

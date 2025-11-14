@@ -45,8 +45,8 @@ class ApprovalPembayaran extends Component
 
         // Filter by active tab
         if ($this->activeTab === 'pending') {
-            // Pending approval: show items with status pending or staff_approved
-            $query->whereIn('status', ['pending', 'staff_approved']);
+            // Pending approval: show items with status pending
+            $query->where('status', 'pending');
         } elseif ($this->activeTab === 'approved') {
             // Approved: show only completed items
             $query->where('status', 'completed');
@@ -125,33 +125,31 @@ class ApprovalPembayaran extends Component
                 throw new \Exception('Anda tidak memiliki akses untuk melakukan approval');
             }
 
-            // Check permission based on role
-            if ($role === 'staff' && $approval->canStaffApprove()) {
-                $approval->update([
-                    'staff_id' => $user->id,
-                    'staff_approved_at' => now(),
-                    'status' => 'staff_approved',
-                ]);
-            } elseif ($role === 'manager_keuangan' && $approval->canManagerApprove()) {
-                $approval->update([
-                    'manager_id' => $user->id,
-                    'manager_approved_at' => now(),
-                    'status' => 'manager_approved',
-                ]);
-            } elseif ($role === 'superadmin' && $approval->canSuperadminApprove()) {
-                $approval->update([
-                    'superadmin_id' => $user->id,
-                    'superadmin_approved_at' => now(),
-                    'status' => 'completed',
-                ]);
-
-                // Update status pengiriman ke 'berhasil'
-                $approval->pengiriman->update([
-                    'status' => 'berhasil',
-                ]);
-            } else {
-                throw new \Exception('Anda tidak dapat melakukan approval pada tahap ini');
+            // Check if approval can be processed
+            if ($approval->status !== 'pending') {
+                throw new \Exception('Approval ini sudah diproses atau tidak dapat diapprove');
             }
+
+            // Langsung complete untuk semua anggota keuangan
+            $updateData = [
+                'status' => 'completed',
+            ];
+
+            // Set approver based on role
+            if ($role === 'manager_keuangan') {
+                $updateData['manager_id'] = $user->id;
+                $updateData['manager_approved_at'] = now();
+            } else {
+                $updateData['staff_id'] = $user->id;
+                $updateData['staff_approved_at'] = now();
+            }
+
+            $approval->update($updateData);
+
+            // Update status pengiriman ke 'berhasil'
+            $approval->pengiriman->update([
+                'status' => 'berhasil',
+            ]);
 
             // Save history
             ApprovalHistory::create([

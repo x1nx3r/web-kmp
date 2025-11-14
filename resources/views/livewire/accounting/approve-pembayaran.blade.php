@@ -72,14 +72,20 @@
             @if($approval)
                 <span class="px-4 py-2 text-sm font-semibold rounded-full
                     @if($approval->status === 'pending') bg-yellow-100 text-yellow-800
-                    @elseif($approval->status === 'staff_approved') bg-blue-100 text-blue-800
-                    @elseif($approval->status === 'manager_approved') bg-purple-100 text-purple-800
                     @elseif($approval->status === 'completed') bg-green-100 text-green-800
                     @elseif($approval->status === 'rejected') bg-red-100 text-red-800
                     @else bg-gray-100 text-gray-800
                     @endif">
                     <i class="fas fa-circle text-xs mr-1"></i>
-                    {{ ucfirst($approval->status) }}
+                    @if($approval->status === 'pending')
+                        Menunggu Approval
+                    @elseif($approval->status === 'completed')
+                        Selesai
+                    @elseif($approval->status === 'rejected')
+                        Ditolak
+                    @else
+                        {{ ucfirst($approval->status) }}
+                    @endif
                 </span>
             @endif
         </div>
@@ -133,7 +139,7 @@
                                                     </div>
                                                     <div>
                                                         <span class="text-gray-500">Bahan Baku:</span>
-                                                        <span class="font-medium text-gray-900">{{ $detail->bahanBakuSupplier->bahanBaku->nama ?? '-' }}</span>
+                                                        <span class="font-medium text-gray-900">{{ $detail->bahanBakuSupplier->nama ?? '-' }}</span>
                                                     </div>
                                                     <div>
                                                         <span class="text-gray-500">Qty:</span>
@@ -153,35 +159,216 @@
                     </div>
 
                     {{-- Refraksi Penagihan (dari Invoice) --}}
-                    @if($invoicePenagihan && $invoicePenagihan->refraksi_type)
+                    @if($invoicePenagihan)
                         <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm border border-purple-200">
                             <div class="border-b border-purple-200 bg-purple-100 px-6 py-4">
                                 <h2 class="text-lg font-semibold text-gray-900 flex items-center">
                                     <i class="fas fa-file-invoice text-purple-600 mr-3"></i>
                                     Refraksi Penagihan (Customer)
                                 </h2>
-                                <p class="text-sm text-purple-700 mt-1">Refraksi yang dikenakan kepada customer</p>
+                                <p class="text-sm text-purple-700 mt-1">Refraksi yang dikenakan kepada customer (opsional)</p>
                             </div>
                             <div class="p-6">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-xs font-medium text-purple-700">Jenis</label>
-                                        <p class="mt-1 text-sm font-semibold">
-                                            @if($invoicePenagihan->refraksi_type === 'qty')
-                                                <i class="fas fa-percentage text-purple-600 mr-1"></i>Qty ({{ number_format($invoicePenagihan->refraksi_value, 2) }}%)
-                                            @else
-                                                <i class="fas fa-money-bill text-purple-600 mr-1"></i>Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
-                                            @endif
-                                        </p>
+                                @if($invoicePenagihan->refraksi_type && $invoicePenagihan->refraksi_value > 0)
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs font-medium text-purple-700">Jenis</label>
+                                            <p class="mt-1 text-sm font-semibold">
+                                                @if($invoicePenagihan->refraksi_type === 'qty')
+                                                    <i class="fas fa-percentage text-purple-600 mr-1"></i>Qty ({{ number_format($invoicePenagihan->refraksi_value, 2) }}%)
+                                                @else
+                                                    <i class="fas fa-money-bill text-purple-600 mr-1"></i>Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-purple-700">Potongan</label>
+                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="text-xs font-medium text-purple-700">Potongan</label>
-                                        <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
-                                    </div>
-                                </div>
+                                @else
+                                    <p class="text-sm text-gray-500 text-center py-3">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Tidak ada refraksi penagihan diterapkan
+                                    </p>
+                                @endif
                             </div>
                         </div>
                     @endif
+
+                    {{-- Piutang Supplier --}}
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm border border-blue-200">
+                        <div class="border-b border-blue-200 bg-blue-100 px-6 py-4">
+                            <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-file-invoice text-blue-600 mr-3"></i>
+                                Potong Piutang Supplier (Opsional)
+                            </h2>
+                            <p class="text-sm text-blue-700 mt-1">Kurangi pembayaran dengan piutang yang dimiliki supplier</p>
+                        </div>
+                        <div class="p-6">
+                            @php
+                                $supplier = $pengiriman->pengirimanDetails->first()?->bahanBakuSupplier?->supplier;
+                                $totalPiutang = $supplier ? \App\Models\CatatanPiutang::where('supplier_id', $supplier->id)
+                                    ->where('status', '!=', 'lunas')
+                                    ->sum('sisa_piutang') : 0;
+                            @endphp
+
+                            {{-- Info Total Piutang Supplier --}}
+                            <div class="bg-white border-2 border-blue-300 rounded-lg p-4 mb-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <label class="text-xs font-medium text-blue-700">Total Piutang Supplier</label>
+                                        @if($supplier)
+                                            <p class="text-xs text-gray-600 mt-0.5">{{ $supplier->nama }}</p>
+                                        @endif
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-bold {{ $totalPiutang > 0 ? 'text-orange-600' : 'text-gray-600' }}">
+                                            Rp {{ number_format($totalPiutang, 0, ',', '.') }}
+                                        </p>
+                                        @if($totalPiutang > 0)
+                                            <p class="text-xs text-orange-600 mt-0.5">
+                                                <i class="fas fa-exclamation-circle mr-1"></i>Ada piutang
+                                            </p>
+                                        @else
+                                            <p class="text-xs text-gray-500 mt-0.5">
+                                                <i class="fas fa-check-circle mr-1"></i>Tidak ada piutang
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if($approval->catatan_piutang_id)
+                                <div class="bg-white border border-blue-200 rounded-lg p-4 mb-4">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs font-medium text-blue-700">Piutang Dipilih</label>
+                                            <p class="mt-1 text-sm font-semibold">{{ $approval->catatanPiutang->no_piutang ?? '-' }}</p>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-blue-700">Jumlah Pemotongan</label>
+                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($approval->piutang_amount, 0, ',', '.') }}</p>
+                                        </div>
+                                        @if($approval->piutang_notes)
+                                        <div class="col-span-2">
+                                            <label class="text-xs font-medium text-blue-700">Catatan</label>
+                                            <p class="mt-1 text-sm text-gray-700">{{ $approval->piutang_notes }}</p>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Edit Piutang Form --}}
+                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                                    <i class="fas fa-edit text-indigo-600 mr-2"></i>
+                                    {{ $approval->catatan_piutang_id ? 'Edit' : 'Tambah' }} Pemotongan Piutang (Opsional)
+                                </h3>
+
+                                @php
+                                    $piutangList = $supplier ? \App\Models\CatatanPiutang::where('supplier_id', $supplier->id)
+                                        ->where('status', '!=', 'lunas')
+                                        ->where('sisa_piutang', '>', 0)
+                                        ->with('supplier')
+                                        ->get() : collect();
+                                @endphp
+
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">
+                                            Pilih Piutang Supplier
+                                            @if($supplier)
+                                                <span class="text-blue-600">({{ $supplier->nama }})</span>
+                                            @endif
+                                        </label>
+                                        <select wire:model="piutangForm.catatan_piutang_id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">-- Tidak ada pemotongan piutang --</option>
+                                            @foreach($piutangList as $piutang)
+                                                <option value="{{ $piutang->id }}">
+                                                    {{ $piutang->no_piutang }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @if($piutangList->isEmpty() && $supplier)
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Supplier ini tidak memiliki piutang aktif
+                                            </p>
+                                        @endif
+                                    </div>
+
+                                    @if($piutangForm['catatan_piutang_id'])
+                                        @php
+                                            $selectedPiutang = $piutangList->firstWhere('id', $piutangForm['catatan_piutang_id']);
+                                        @endphp
+                                        <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                            <p class="text-xs font-medium text-blue-800 mb-2">Informasi Piutang Terpilih</p>
+                                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                                <div>
+                                                    <span class="text-gray-600">Total Piutang:</span>
+                                                    <span class="font-semibold ml-2">Rp {{ number_format($selectedPiutang->jumlah_piutang ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-600">Sisa Piutang:</span>
+                                                    <span class="font-semibold ml-2 text-orange-600">Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-2">
+                                                Jumlah Pemotongan <span class="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                wire:model="piutangForm.amount"
+                                                max="{{ $selectedPiutang->sisa_piutang ?? 0 }}"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Masukkan jumlah pemotongan"
+                                            >
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Maksimal: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
+                                            <textarea
+                                                wire:model="piutangForm.notes"
+                                                rows="2"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="Tambahkan catatan untuk pemotongan ini..."
+                                            ></textarea>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                    <p class="text-xs text-yellow-800 flex items-start">
+                                        <i class="fas fa-exclamation-triangle mr-2 mt-0.5"></i>
+                                        <span>
+                                            <strong>Perhatian:</strong> Jumlah pemotongan akan otomatis dikurangkan dari pembayaran dan dicatat sebagai pembayaran piutang ketika approval disetujui.
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div class="flex justify-end mt-4">
+                                    <button
+                                        type="button"
+                                        wire:click="updatePiutang"
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center"
+                                    >
+                                        <i class="fas fa-save mr-2"></i>
+                                        Simpan Pemotongan Piutang
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     {{-- Refraksi Pembayaran --}}
                     <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200">
@@ -222,7 +409,7 @@
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                 <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                                     <i class="fas fa-edit text-yellow-600 mr-2"></i>
-                                    Edit Refraksi Pembayaran
+                                    Edit Refraksi Pembayaran (Opsional - Isi 0 untuk tanpa refraksi)
                                 </h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -235,7 +422,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-700 mb-2">
-                                            Nilai Refraksi
+                                            Nilai Refraksi (0 = tanpa refraksi)
                                             @if($refraksiForm['type'] === 'qty')
                                                 <span class="text-gray-500">(dalam %)</span>
                                             @elseif($refraksiForm['type'] === 'rupiah')
@@ -247,9 +434,10 @@
                                         <input
                                             type="number"
                                             step="0.01"
+                                            min="0"
                                             wire:model="refraksiForm.value"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
-                                            placeholder="{{ $refraksiForm['type'] === 'qty' ? 'Contoh: 2.5' : ($refraksiForm['type'] === 'rupiah' ? 'Contoh: 1000' : 'Contoh: 50000') }}"
+                                            placeholder="{{ $refraksiForm['type'] === 'qty' ? 'Contoh: 2.5 atau 0' : ($refraksiForm['type'] === 'rupiah' ? 'Contoh: 1000 atau 0' : 'Contoh: 50000 atau 0') }}"
                                         >
                                     </div>
                                 </div>
@@ -297,14 +485,14 @@
                                 {{-- Approval Info --}}
                                 <div class="mb-6 space-y-3">
                                     <div>
-                                        <label class="text-xs font-medium text-gray-500">Current Approver</label>
+                                        <label class="text-xs font-medium text-gray-500">Status Approval</label>
                                         <p class="mt-1 text-sm font-semibold text-gray-900">
                                             @if($approval->status === 'pending')
-                                                <i class="fas fa-user text-blue-600 mr-1"></i>Staff Accounting
-                                            @elseif($approval->status === 'staff_approved')
-                                                <i class="fas fa-user-tie text-purple-600 mr-1"></i>Manager Keuangan (Final)
+                                                <i class="fas fa-clock text-blue-600 mr-1"></i>Menunggu Approval
                                             @elseif($approval->status === 'completed')
                                                 <i class="fas fa-check-circle text-green-600 mr-1"></i>Selesai
+                                            @elseif($approval->status === 'rejected')
+                                                <i class="fas fa-times-circle text-red-600 mr-1"></i>Ditolak
                                             @else
                                                 -
                                             @endif
@@ -313,20 +501,20 @@
 
                                     @if($approval->staff)
                                         <div>
-                                            <label class="text-xs font-medium text-gray-500">Staff</label>
+                                            <label class="text-xs font-medium text-gray-500">Disetujui Oleh</label>
                                             <p class="mt-1 text-sm text-gray-900">
                                                 <i class="fas fa-check text-green-500 mr-1"></i>
-                                                {{ $approval->staff->nama }}
+                                                {{ $approval->staff->nama }} (Staff Accounting)
                                             </p>
                                         </div>
                                     @endif
 
                                     @if($approval->manager)
                                         <div>
-                                            <label class="text-xs font-medium text-gray-500">Manager (Final Approval)</label>
+                                            <label class="text-xs font-medium text-gray-500">Disetujui Oleh</label>
                                             <p class="mt-1 text-sm text-gray-900">
                                                 <i class="fas fa-check text-green-500 mr-1"></i>
-                                                {{ $approval->manager->nama }}
+                                                {{ $approval->manager->nama }} (Manager Accounting)
                                             </p>
                                         </div>
                                     @endif
@@ -343,13 +531,8 @@
                                     ></textarea>
                                 </div>
 
-                                {{-- Upload Bukti Pembayaran (Only for Manager) --}}
-                                @php
-                                    $user = Auth::user();
-                                    $isManager = $user->role === 'manager_accounting' && $approval->status === 'staff_approved';
-                                @endphp
-
-                                @if($isManager)
+                                {{-- Upload Bukti Pembayaran (Wajib untuk semua anggota keuangan) --}}
+                                @if($approval->status === 'pending')
                                     <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                         <label class="flex items-center text-sm font-semibold text-gray-900 mb-2">
                                             <i class="fas fa-file-upload text-blue-600 mr-2"></i>
@@ -393,7 +576,7 @@
                                         <div class="mt-2 flex items-start">
                                             <i class="fas fa-info-circle text-blue-500 text-xs mt-0.5 mr-1"></i>
                                             <p class="text-xs text-blue-700">
-                                                Bukti pembayaran wajib diupload untuk menyelesaikan approval sebagai Manager.
+                                                Bukti pembayaran wajib diupload untuk menyelesaikan approval.
                                             </p>
                                         </div>
                                     </div>

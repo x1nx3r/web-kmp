@@ -146,11 +146,6 @@ class ApprovalPembayaran extends Component
 
             $approval->update($updateData);
 
-            // Update status pengiriman ke 'berhasil'
-            $approval->pengiriman->update([
-                'status' => 'berhasil',
-            ]);
-
             // Save history
             ApprovalHistory::create([
                 'approval_type' => 'pembayaran',

@@ -268,15 +268,15 @@
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-semibold text-gray-900">
-                                {{ number_format($pengiriman->total_qty_kirim ?? 0) }} Kg
+                                {{ number_format($pengiriman->display_qty ?? $pengiriman->total_qty_kirim ?? 0) }} Kg
                             </div>
                             <div class="text-xs text-gray-500 md:hidden">
-                                Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}
+                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}
                             </div>
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold hidden md:table-cell">
                             <div class="flex items-center">
-                                Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}
+                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}
                             </div>
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">

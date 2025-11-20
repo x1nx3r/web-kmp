@@ -126,14 +126,15 @@
                 <h4 class="text-md font-semibold text-gray-800 mb-4">Data Pengiriman</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">No. Pengiriman <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">No. Pengiriman</label>
                         <input type="text" 
-                               name="no_pengiriman" 
-                               id="no_pengiriman"
-                               value="{{ old('no_pengiriman', $pengiriman->no_pengiriman ?? '') }}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="Masukkan nomor pengiriman" 
-                               required>
+                               name="no_pengiriman_display" 
+                               id="no_pengiriman_display"
+                               value="{{ $pengiriman->no_pengiriman ?? 'Auto Generate' }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                               readonly
+                               placeholder="Akan di-generate otomatis">
+                       
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Kirim <span class="text-red-500">*</span></label>
@@ -177,8 +178,55 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Bukti Foto Bongkar</label>
                         <input type="file" 
                                name="bukti_foto_bongkar" 
+                               id="bukti_foto_bongkar"
                                accept="image/*"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        @if($pengiriman->bukti_foto_bongkar)
+                            <div class="mt-2 space-y-1">
+                                <a href="{{ asset('storage/pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar) }}" 
+                                   target="_blank"
+                                   class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    Lihat foto saat ini
+                                </a>
+                                @if($pengiriman->bukti_foto_bongkar_uploaded_at)
+                                    <p class="text-xs text-gray-500">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        {{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }}
+                                        <span class="text-gray-400">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d/m/Y H:i') }})</span>
+                                    </p>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Foto Tanda Terima</label>
+                        <input type="file" 
+                               name="foto_tanda_terima" 
+                               id="foto_tanda_terima"
+                               accept="image/*"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        @if($pengiriman->foto_tanda_terima)
+                            <div class="mt-2 space-y-1">
+                                <a href="{{ asset('storage/pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima) }}" 
+                                   target="_blank"
+                                   class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    Lihat foto saat ini
+                                </a>
+                                @if($pengiriman->foto_tanda_terima_uploaded_at)
+                                    <p class="text-xs text-gray-500">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        {{ $pengiriman->foto_tanda_terima_uploaded_at->diffForHumans() }}
+                                        <span class="text-gray-400">({{ $pengiriman->foto_tanda_terima_uploaded_at->format('d/m/Y H:i') }})</span>
+                                    </p>
+                                @endif
+                            </div>
+                        @endif
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Upload foto tanda terima dari penerima barang
+                        </p>
                     </div>
                 </div>
             </div>
@@ -520,18 +568,6 @@ function submitPengiriman() {
         return;
     }
     
-    // Validasi khusus untuk no pengiriman
-    const noPengiriman = document.getElementById('no_pengiriman').value.trim();
-    if (!noPengiriman) {
-        Swal.fire({
-            title: 'Validation Error!',
-            text: 'Nomor pengiriman harus diisi',
-            icon: 'warning',
-            confirmButtonColor: '#EF4444'
-        });
-        return;
-    }
-    
     // Validasi tanggal kirim
     const tanggalKirim = document.getElementById('tanggal_kirim').value;
     if (!tanggalKirim) {
@@ -567,7 +603,7 @@ function submitPengiriman() {
     // Konfirmasi submit
     Swal.fire({
         title: 'Konfirmasi Pengajuan',
-        text: 'Apakah Anda yakin ingin mengajukan verifikasi pengiriman ini?',
+        html: 'Apakah Anda yakin ingin mengajukan verifikasi pengiriman ini?<br><small class="text-gray-600">Nomor pengiriman akan di-generate otomatis</small>',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#10B981',

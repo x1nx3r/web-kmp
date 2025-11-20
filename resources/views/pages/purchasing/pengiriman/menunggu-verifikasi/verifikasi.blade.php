@@ -134,7 +134,6 @@
                         <ul class="text-sm text-yellow-700 space-y-1">
                             <li>• Status pengiriman akan berubah menjadi <strong>"Berhasil"</strong></li>
                             <li>• Kuantitas di Order Detail akan dikurangi sesuai qty pengiriman</li>
-                            <li>• Total Qty Order akan diupdate: <strong>{{ number_format((optional($pengiriman->order)->total_qty ?? 0) - ($pengiriman->total_qty_kirim ?? 0), 0, ',', '.') }} kg</strong></li>
                             @if(optional($pengiriman->order)->status === 'dikonfirmasi')
                                 <li>• Status Order akan berubah dari <strong>"Dikonfirmasi"</strong> menjadi <strong>"Diproses"</strong></li>
                             @endif

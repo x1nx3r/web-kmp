@@ -991,21 +991,34 @@ class PengirimanController extends Controller
 
             Log::info("Updated pengiriman status to berhasil");
 
-            // Kurangi qty di order_details untuk setiap detail
+            // Kurangi qty dan total_harga di order_details untuk setiap detail
+            // PENTING: Gunakan withoutEvents() agar tidak trigger observer yang update order totals
             foreach ($pengiriman->pengirimanDetails as $detail) {
                 $orderDetail = $detail->orderDetail;
                 if ($orderDetail) {
                     $oldQty = $orderDetail->qty;
+                    $oldTotalHarga = $orderDetail->total_harga;
                     $newQty = $orderDetail->qty - $detail->qty_kirim;
-                    $orderDetail->update([
-                        'qty' => max(0, $newQty) // Pastikan tidak negatif
-                    ]);
                     
-                    Log::info("Updated order detail qty", [
+                    // Hitung total_harga baru berdasarkan qty baru
+                    $newTotalHarga = max(0, $newQty) * $orderDetail->harga_jual;
+                    
+                    // Update tanpa trigger events (agar tidak update total_qty & total_amount di order)
+                    $orderDetail->withoutEvents(function () use ($orderDetail, $newQty, $newTotalHarga) {
+                        $orderDetail->update([
+                            'qty' => max(0, $newQty),
+                            'total_harga' => $newTotalHarga
+                        ]);
+                    });
+                    
+                    Log::info("Updated order detail qty and total_harga (without triggering order totals update)", [
                         'order_detail_id' => $orderDetail->id,
                         'old_qty' => $oldQty,
                         'qty_kirim' => $detail->qty_kirim,
-                        'new_qty' => max(0, $newQty)
+                        'new_qty' => max(0, $newQty),
+                        'old_total_harga' => $oldTotalHarga,
+                        'new_total_harga' => $newTotalHarga,
+                        'harga_jual' => $orderDetail->harga_jual
                     ]);
                 } else {
                     Log::warning("OrderDetail not found for pengiriman detail", [
@@ -1015,32 +1028,22 @@ class PengirimanController extends Controller
                 }
             }
 
-            // Update qty_total di order dan ubah status jika diperlukan
+            // Update status order jika diperlukan (tanpa mengubah qty)
             if ($pengiriman->order) {
-                $oldQtyTotal = $pengiriman->order->total_qty;
                 $oldStatus = $pengiriman->order->status;
-                $newQtyTotal = $pengiriman->order->total_qty - $pengiriman->total_qty_kirim;
-                
-                $updateData = [
-                    'total_qty' => max(0, $newQtyTotal) // Pastikan tidak negatif
-                ];
                 
                 // Jika status order adalah 'dikonfirmasi', ubah menjadi 'diproses'
                 if ($pengiriman->order->status === 'dikonfirmasi') {
-                    $updateData['status'] = 'diproses';
+                    $pengiriman->order->update([
+                        'status' => 'diproses'
+                    ]);
+                    
+                    Log::info("Updated order status", [
+                        'order_id' => $pengiriman->order->id,
+                        'old_status' => $oldStatus,
+                        'new_status' => 'diproses'
+                    ]);
                 }
-                
-                $pengiriman->order->update($updateData);
-                
-                Log::info("Updated order total_qty and status", [
-                    'order_id' => $pengiriman->order->id,
-                    'old_total_qty' => $oldQtyTotal,
-                    'old_status' => $oldStatus,
-                    'total_qty_kirim' => $pengiriman->total_qty_kirim,
-                    'new_total_qty' => max(0, $newQtyTotal),
-                    'new_status' => $updateData['status'] ?? $oldStatus,
-                    'status_changed' => isset($updateData['status'])
-                ]);
             } else {
                 Log::warning("Order not found for pengiriman", [
                     'pengiriman_id' => $pengiriman->id,

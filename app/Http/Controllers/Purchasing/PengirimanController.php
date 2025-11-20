@@ -504,24 +504,10 @@ class PengirimanController extends Controller
                 }
             }
             
-            // Handle foto tanda terima upload with old file deletion
+            // Note: Foto tanda terima now uploaded separately via menunggu-verifikasi view
+            // Keep existing foto_tanda_terima data if it exists
             $tandaTerimaFileName = $pengiriman->foto_tanda_terima;
             $tandaTerimaUploadedAt = $pengiriman->foto_tanda_terima_uploaded_at;
-            
-            if ($request->hasFile('foto_tanda_terima')) {
-                // Delete old photo if exists
-                if ($pengiriman->foto_tanda_terima && Storage::disk('public')->exists('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima)) {
-                    Storage::disk('public')->delete('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima);
-                }
-                
-                // Upload new file
-                $file = $request->file('foto_tanda_terima');
-                if ($file && $file->isValid()) {
-                    $tandaTerimaFileName = 'tanda_terima_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
-                    $file->storeAs('pengiriman/tanda-terima', $tandaTerimaFileName, 'public');
-                    $tandaTerimaUploadedAt = now(); // Set timestamp saat upload
-                }
-            }
 
             // Update pengiriman data
             $pengiriman->update([
@@ -1225,6 +1211,73 @@ class PengirimanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memuat modal verifikasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload foto tanda terima for pengiriman
+     */
+    public function uploadFotoTandaTerima(Request $request, $id)
+    {
+        try {
+            // Validate
+            $request->validate([
+                'foto_tanda_terima' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            ]);
+
+            // Find pengiriman (menunggu verifikasi only)
+            $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->findOrFail($id);
+
+            // Handle file upload
+            if ($request->hasFile('foto_tanda_terima')) {
+                // Delete old photo if exists
+                if ($pengiriman->foto_tanda_terima && Storage::disk('public')->exists('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima)) {
+                    Storage::disk('public')->delete('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima);
+                }
+                
+                // Upload new file
+                $file = $request->file('foto_tanda_terima');
+                if ($file && $file->isValid()) {
+                    $tandaTerimaFileName = 'tanda_terima_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                    $file->storeAs('pengiriman/tanda-terima', $tandaTerimaFileName, 'public');
+                    
+                    // Update pengiriman
+                    $pengiriman->update([
+                        'foto_tanda_terima' => $tandaTerimaFileName,
+                        'foto_tanda_terima_uploaded_at' => now(),
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Foto tanda terima berhasil diupload',
+                        'foto_url' => asset('storage/pengiriman/tanda-terima/' . $tandaTerimaFileName),
+                        'uploaded_at' => now()->format('d M Y, H:i') . ' WIB'
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'File tidak valid'
+            ], 400);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal: ' . $e->validator->errors()->first()
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan atau bukan status menunggu verifikasi'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error uploading foto tanda terima for ID ' . $id . ': ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupload foto: ' . $e->getMessage()
             ], 500);
         }
     }

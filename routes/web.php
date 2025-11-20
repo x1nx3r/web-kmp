@@ -144,6 +144,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('pengiriman/{pengiriman}/modal/verifikasi', [PengirimanController::class, 'getVerifikasiModal'])->name('purchasing.pengiriman.modal.verifikasi');
     Route::post('pengiriman/{pengiriman}/verifikasi', [PengirimanController::class, 'verifikasiPengiriman'])->name('purchasing.pengiriman.verifikasi');
     Route::post('pengiriman/{pengiriman}/revisi', [PengirimanController::class, 'revisiPengiriman'])->name('purchasing.pengiriman.revisi');
+    Route::post('pengiriman/{pengiriman}/upload-foto-tanda-terima', [PengirimanController::class, 'uploadFotoTandaTerima'])->name('purchasing.pengiriman.upload-foto-tanda-terima');
     Route::get('pengiriman/{pengiriman}/aksi-modal', [PengirimanController::class, 'getAksiModal'])->name('purchasing.pengiriman.aksi-modal');
         Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
     });

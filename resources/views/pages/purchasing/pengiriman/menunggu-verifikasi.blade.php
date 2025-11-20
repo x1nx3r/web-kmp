@@ -187,6 +187,12 @@
                                                     <i class="fas fa-clock mr-1"></i>
                                                     Menunggu Verifikasi
                                                 </span>
+                                                @if($pengiriman->foto_tanda_terima)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Foto tanda terima sudah diupload">
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                        Foto Tersedia
+                                                    </span>
+                                                @endif
                                             </div>
                                             <div class="flex items-center space-x-4 mt-1 text-xs text-gray-500">
                                                 @if($purchasing && $purchasing->nama)
@@ -204,6 +210,21 @@
                                             </div>
                                         </div>
                                         <div class="flex space-x-2">
+                                            {{-- Upload Foto Tanda Terima Button --}}
+                                            <div class="relative">
+                                                <input type="file" 
+                                                       id="upload-foto-{{ $pengiriman->id }}" 
+                                                       class="hidden" 
+                                                       accept="image/*"
+                                                       onchange="uploadFotoTandaTerima({{ $pengiriman->id }}, this)">
+                                                <button onclick="document.getElementById('upload-foto-{{ $pengiriman->id }}').click()" 
+                                                        class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs flex items-center transition-all duration-200" 
+                                                        title="Upload Foto Tanda Terima">
+                                                    <i class="fas fa-upload mr-1"></i>
+                                                    {{ $pengiriman->foto_tanda_terima ? 'Ganti Foto' : 'Upload Foto' }}
+                                                </button>
+                                            </div>
+                                            
                                             <button onclick="openAksiVerifikasiModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}', '{{ $pengiriman->status }}')" 
                                                     class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs flex items-center transition-all duration-200" 
                                                     title="Aksi Verifikasi">
@@ -434,6 +455,100 @@ function clearAllFiltersVerifikasi() {
     newParams.set('tab', 'menunggu-verifikasi');
     
     window.location.href = '/procurement/pengiriman?' + newParams.toString();
+}
+
+// Upload foto tanda terima function
+function uploadFotoTandaTerima(pengirimanId, inputElement) {
+    const file = inputElement.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'File Tidak Valid',
+            text: 'Hanya file gambar (JPEG, PNG, JPG) yang diperbolehkan.',
+            confirmButtonColor: '#dc2626'
+        });
+        inputElement.value = '';
+        return;
+    }
+    
+    // Validate file size (max 2MB)
+    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+    if (file.size > maxSize) {
+        Swal.fire({
+            icon: 'error',
+            title: 'File Terlalu Besar',
+            text: 'Ukuran file maksimal adalah 2MB.',
+            confirmButtonColor: '#dc2626'
+        });
+        inputElement.value = '';
+        return;
+    }
+    
+    // Show loading
+    Swal.fire({
+        title: 'Mengupload Foto...',
+        text: 'Silakan tunggu sebentar.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Create FormData
+    const formData = new FormData();
+    formData.append('foto_tanda_terima', file);
+    formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+    
+    // Upload to server
+    fetch(`/procurement/pengiriman/${pengirimanId}/upload-foto-tanda-terima`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        Swal.close();
+        
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: data.message || 'Foto tanda terima berhasil diupload.',
+                showConfirmButton: false,
+                timer: 2000
+            }).then(() => {
+                // Reload page to show updated status
+                window.location.reload();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Upload Gagal',
+                text: data.message || 'Terjadi kesalahan saat mengupload foto.',
+                confirmButtonColor: '#dc2626'
+            });
+            inputElement.value = '';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.close();
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+            confirmButtonColor: '#dc2626'
+        });
+        inputElement.value = '';
+    });
 }
 
 // Open aksi verifikasi modal

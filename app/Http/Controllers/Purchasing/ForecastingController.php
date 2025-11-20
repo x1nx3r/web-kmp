@@ -1220,4 +1220,27 @@ class ForecastingController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Export pending forecasts to Excel
+     */
+    public function exportPending(Request $request)
+    {
+        try {
+            $dateRange = $request->input('date_range');
+            $purchasing = $request->input('filter_purchasing_pending');
+            $search = $request->input('search_pending');
+            $hariKirim = $request->input('sort_hari_kirim');
+
+            $fileName = 'forecast_pending_' . now()->format('Y-m-d_His') . '.xlsx';
+            
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\ForecastPendingExport($dateRange, $purchasing, $search, $hariKirim),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            Log::error('Error exporting pending forecasts: ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengekspor data forecast pending.');
+        }
+    }
 }

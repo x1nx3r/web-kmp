@@ -149,25 +149,34 @@
             Forecast Pending
         </h2>
         
-        {{-- Compact Summary Stats --}}
-        <div class="flex items-center space-x-4 text-sm">
-            @php
-                $totalForecasts = $pendingForecasts->total();
-                $totalPOs = collect($pendingForecasts->items())->groupBy('order_id')->count();
-                $totalAmount = collect($pendingForecasts->items())->sum('total_harga_forecast');
-            @endphp
-            <div class="text-center">
-                <p class="text-xs text-gray-500">PO</p>
-                <p class="text-sm font-bold text-blue-600">{{ $totalPOs }}</p>
+        <div class="flex items-center space-x-4">
+            {{-- Compact Summary Stats --}}
+            <div class="flex items-center space-x-4 text-sm">
+                @php
+                    $totalForecasts = $pendingForecasts->total();
+                    $totalPOs = collect($pendingForecasts->items())->groupBy('order_id')->count();
+                    $totalAmount = collect($pendingForecasts->items())->sum('total_harga_forecast');
+                @endphp
+                <div class="text-center">
+                    <p class="text-xs text-gray-500">PO</p>
+                    <p class="text-sm font-bold text-blue-600">{{ $totalPOs }}</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs text-gray-500">Forecast</p>
+                    <p class="text-sm font-bold text-yellow-600">{{ $totalForecasts }}</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs text-gray-500">Total</p>
+                    <p class="text-sm font-bold text-green-600">Rp {{ number_format($totalAmount, 0, ',', '.') }}</p>
+                </div>
             </div>
-            <div class="text-center">
-                <p class="text-xs text-gray-500">Forecast</p>
-                <p class="text-sm font-bold text-yellow-600">{{ $totalForecasts }}</p>
-            </div>
-            <div class="text-center">
-                <p class="text-xs text-gray-500">Total</p>
-                <p class="text-sm font-bold text-green-600">Rp {{ number_format($totalAmount, 0, ',', '.') }}</p>
-            </div>
+            
+            {{-- Export Button --}}
+            <a href="{{ route('forecast.export-pending', request()->all()) }}" 
+               class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
+                <i class="fas fa-file-excel mr-2"></i>
+                Export Excel
+            </a>
         </div>
     </div>
 

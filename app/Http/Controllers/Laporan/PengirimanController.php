@@ -50,28 +50,42 @@ class PengirimanController extends Controller
         $chartData = $this->getYearlyChartData($selectedYear);
         
         // Get paginated pengiriman data with filters
-        $pengirimanQuery = Pengiriman::with(['purchasing', 'purchaseOrder', 'pengirimanDetails.bahanBakuSupplier'])
-            ->whereBetween('tanggal_kirim', [$startDate, $endDate]);
+        // Untuk status berhasil, join dengan invoice_penagihan untuk ambil qty dan harga setelah refraksi
+        $pengirimanQuery = Pengiriman::with(['purchasing', 'purchaseOrder', 'pengirimanDetails.bahanBakuSupplier', 'invoicePenagihan'])
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->select('pengiriman.*', 
+                DB::raw('CASE 
+                    WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                    THEN invoice_penagihan.qty_after_refraksi 
+                    ELSE pengiriman.total_qty_kirim 
+                END as display_qty'),
+                DB::raw('CASE 
+                    WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
+                    THEN invoice_penagihan.amount_after_refraksi 
+                    ELSE pengiriman.total_harga_kirim 
+                END as display_harga')
+            )
+            ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         
         // Apply filters
         if ($status) {
-            $pengirimanQuery->where('status', $status);
+            $pengirimanQuery->where('pengiriman.status', $status);
         }
         
         if ($purchasing) {
-            $pengirimanQuery->where('purchasing_id', $purchasing);
+            $pengirimanQuery->where('pengiriman.purchasing_id', $purchasing);
         }
         
         if ($search) {
             $pengirimanQuery->where(function($q) use ($search) {
-                $q->where('no_pengiriman', 'like', "%{$search}%")
+                $q->where('pengiriman.no_pengiriman', 'like', "%{$search}%")
                   ->orWhereHas('purchasing', function($q2) use ($search) {
                       $q2->where('name', 'like', "%{$search}%");
                   });
             });
         }
         
-        $pengirimanData = $pengirimanQuery->orderBy('tanggal_kirim', 'desc')->paginate(15);
+        $pengirimanData = $pengirimanQuery->orderBy('pengiriman.tanggal_kirim', 'desc')->paginate(15);
         
         // Get purchasing users for filter dropdown (including direktur)
         $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
@@ -123,11 +137,26 @@ class PengirimanController extends Controller
             $dateField = 'created_at';
         }
         
+        // Hanya tampilkan pengiriman dengan status berhasil
         $weeklyData = Pengiriman::whereBetween($dateField, [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')])
+            ->where('pengiriman.status', 'berhasil')  // Filter hanya status berhasil
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
-                COUNT(*) as total_pengiriman,
-                COALESCE(SUM(total_qty_kirim), 0) as total_tonase,
-                COALESCE(SUM(total_harga_kirim), 0) as total_harga
+                COUNT(DISTINCT pengiriman.id) as total_pengiriman,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.qty_after_refraksi 
+                        ELSE pengiriman.total_qty_kirim 
+                    END
+                ), 0) as total_tonase,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN invoice_penagihan.amount_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.amount_after_refraksi 
+                        ELSE pengiriman.total_harga_kirim 
+                    END
+                ), 0) as total_harga
             ')
             ->first();
             
@@ -142,9 +171,18 @@ class PengirimanController extends Controller
     
     private function getTotalStats()
     {
-        $totalData = Pengiriman::selectRaw('
-                COUNT(*) as total_pengiriman,
-                SUM(total_qty_kirim) as total_tonase
+        // Hanya tampilkan pengiriman dengan status berhasil
+        $totalData = Pengiriman::where('pengiriman.status', 'berhasil')  // Filter hanya status berhasil
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->selectRaw('
+                COUNT(DISTINCT pengiriman.id) as total_pengiriman,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.qty_after_refraksi 
+                        ELSE pengiriman.total_qty_kirim 
+                    END
+                ), 0) as total_tonase
             ')
             ->first();
             
@@ -162,9 +200,18 @@ class PengirimanController extends Controller
             $dateField = 'created_at';
         }
         
+        // Hanya tampilkan pengiriman dengan status berhasil
         $yearlyData = Pengiriman::whereYear($dateField, $year)
+            ->where('pengiriman.status', 'berhasil')  // Filter hanya status berhasil
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
-                COALESCE(SUM(total_harga_kirim), 0) as total_harga_tahun
+                COALESCE(SUM(
+                    CASE 
+                        WHEN invoice_penagihan.amount_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.amount_after_refraksi 
+                        ELSE pengiriman.total_harga_kirim 
+                    END
+                ), 0) as total_harga_tahun
             ')
             ->first();
             
@@ -186,15 +233,23 @@ class PengirimanController extends Controller
         }
         
         // Get monthly data for the specified year - ONLY status 'berhasil'
+        // Untuk status berhasil, ambil qty dan harga dari invoice_penagihan
         $monthlyData = Pengiriman::whereYear($dateField, $year)
-            ->where('status', 'berhasil')  // Filter hanya pengiriman berhasil
+            ->where('pengiriman.status', 'berhasil')  // Tambahkan prefix 'pengiriman.' untuk menghindari ambiguitas
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw("
                 MONTH({$dateField}) as month,
-                purchasing_id,
-                COUNT(*) as total_pengiriman,
-                COALESCE(SUM(total_qty_kirim), 0) as total_tonase
+                pengiriman.purchasing_id,
+                COUNT(DISTINCT pengiriman.id) as total_pengiriman,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.qty_after_refraksi 
+                        ELSE pengiriman.total_qty_kirim 
+                    END
+                ), 0) as total_tonase
             ")
-            ->groupBy(['month', 'purchasing_id'])
+            ->groupBy(['month', 'pengiriman.purchasing_id'])
             ->with('purchasing')
             ->get();
             

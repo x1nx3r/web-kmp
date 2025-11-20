@@ -115,6 +115,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/forecasting/{id}/detail', [ForecastingController::class, 'getForecastDetail'])->name('forecasting.detail');
     Route::post('/forecasting/{id}/kirim', [ForecastingController::class, 'kirimForecast'])->name('forecasting.kirim');
     Route::post('/forecasting/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
+    Route::get('/forecasting/export-pending', [ForecastingController::class, 'exportPending'])->name('forecast.export-pending');
 
     // Pengiriman routes
     // Routes tanpa parameter harus diletakkan sebelum resource routes
@@ -143,6 +144,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('pengiriman/{pengiriman}/modal/verifikasi', [PengirimanController::class, 'getVerifikasiModal'])->name('purchasing.pengiriman.modal.verifikasi');
     Route::post('pengiriman/{pengiriman}/verifikasi', [PengirimanController::class, 'verifikasiPengiriman'])->name('purchasing.pengiriman.verifikasi');
     Route::post('pengiriman/{pengiriman}/revisi', [PengirimanController::class, 'revisiPengiriman'])->name('purchasing.pengiriman.revisi');
+    Route::post('pengiriman/{pengiriman}/upload-foto-tanda-terima', [PengirimanController::class, 'uploadFotoTandaTerima'])->name('purchasing.pengiriman.upload-foto-tanda-terima');
     Route::get('pengiriman/{pengiriman}/aksi-modal', [PengirimanController::class, 'getAksiModal'])->name('purchasing.pengiriman.aksi-modal');
         Route::get('bahan-baku-supplier/{id}/harga', [PengirimanController::class, 'getBahanBakuHarga'])->name('purchasing.bahan-baku-supplier.harga');
     });

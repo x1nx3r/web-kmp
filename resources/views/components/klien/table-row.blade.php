@@ -108,17 +108,6 @@
                             {{-- Bahan Baku detail row --}}
                             <tr x-show="openBahanBaku.has('{{ $detailId }}')" x-transition>
                                 <td colspan="4" class="p-0">
-                                    @php
-                                        $bahanBakuItems = collect();
-                                        foreach ($klien->purchaseOrders as $po) {
-                                            foreach ($po->purchaseOrderBahanBakus as $item) {
-                                                if ($item->bahanBakuKlien) {
-                                                    $bahanBakuItems->push($item->bahanBakuKlien);
-                                                }
-                                            }
-                                        }
-                                    @endphp
-
                                     <x-klien.bahan-baku-section :klien="$klien" />
                                 </td>
                             </tr>

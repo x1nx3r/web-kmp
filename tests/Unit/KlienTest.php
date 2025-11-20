@@ -139,12 +139,12 @@ class KlienTest extends TestCase
     }
 
     /** @test */
-    public function it_has_purchase_orders_relationship()
+    public function it_has_orders_relationship()
     {
         $klien = new Klien();
         
-        $this->assertTrue(method_exists($klien, 'purchaseOrders'));
-        $relation = $klien->purchaseOrders();
+        $this->assertTrue(method_exists($klien, 'orders'));
+        $relation = $klien->orders();
         
         $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\HasMany::class, $relation);
     }

@@ -143,7 +143,6 @@ class DaftarKlien extends Component
             $query = Klien::query()
                 ->with([
                     'contactPerson',
-                    'purchaseOrders.purchaseOrderBahanBakus.bahanBakuKlien',
                     'bahanBakuKliens' => function($query) {
                         $query->with(['riwayatHarga' => function($q) {
                             $q->latest('tanggal_perubahan')->take(1);

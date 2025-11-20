@@ -38,10 +38,10 @@ class Klien extends Model
         });
     }
 
-    // Relationship dengan Purchase Orders
-    public function purchaseOrders()
+    // Relationship dengan Orders (replaces legacy purchaseOrders)
+    public function orders()
     {
-        return $this->hasMany(PurchaseOrder::class);
+        return $this->hasMany(Order::class);
     }
 
     // Relationship dengan Bahan Baku Klien (Client Materials)

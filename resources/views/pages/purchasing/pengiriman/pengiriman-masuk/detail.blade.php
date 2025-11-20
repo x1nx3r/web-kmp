@@ -313,7 +313,8 @@
                               rows="4"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none transition-colors"
                               placeholder="Tambahkan catatan baru atau update catatan pengiriman..."
-                              maxlength="500">{{ old('catatan', $pengiriman->catatan ?? '') }}</textarea>
+                              maxlength="500"
+                              data-original-catatan="{{ $pengiriman->catatan ?? '' }}">{{ old('catatan', $pengiriman->catatan ?? '') }}</textarea>
                     
                     <div class="flex justify-between items-center text-xs text-gray-500">
                         <span>
@@ -505,43 +506,8 @@ function updateTotals() {
     if (totalHargaDisplay) totalHargaDisplay.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHarga);
 }
 
-// Functions untuk catatan
-function updateCatatanCounter() {
-    const textarea = document.getElementById('catatan_pengiriman');
-    const counter = document.getElementById('catatanCounter');
-    if (textarea && counter) {
-        const currentLength = textarea.value.length;
-        const maxLength = textarea.getAttribute('maxlength') || 500;
-        counter.textContent = `${currentLength}/${maxLength} karakter`;
-        
-        // Change color based on usage
-        if (currentLength > maxLength * 0.8) {
-            counter.classList.add('text-red-500');
-            counter.classList.remove('text-gray-500');
-        } else {
-            counter.classList.add('text-gray-500');
-            counter.classList.remove('text-red-500');
-        }
-    }
-}
-
-function clearCatatan() {
-    const textarea = document.getElementById('catatan_pengiriman');
-    if (textarea) {
-        textarea.value = '';
-        updateCatatanCounter();
-        textarea.focus();
-    }
-}
-
-function resetToOriginal() {
-    const textarea = document.getElementById('catatan_pengiriman');
-    if (textarea) {
-        // Reset to original value from server
-        textarea.value = '{{ addslashes($pengiriman->catatan ?? '') }}';
-        updateCatatanCounter();
-    }
-}
+// Note: Functions updateCatatanCounter(), clearCatatan(), and resetToOriginal() 
+// are defined globally in pengiriman-masuk.blade.php parent file
 
 // Submit pengiriman - menggunakan fungsi global dari pengiriman-masuk blade
 function submitPengiriman() {

@@ -357,6 +357,45 @@
 
 {{-- JavaScript untuk Tab Pengiriman Masuk --}}
 <script>
+// ===== GLOBAL FUNCTIONS FOR CATATAN (Used in detail modal) =====
+function updateCatatanCounter() {
+    const textarea = document.getElementById('catatan_pengiriman');
+    const counter = document.getElementById('catatanCounter');
+    if (textarea && counter) {
+        const currentLength = textarea.value.length;
+        const maxLength = textarea.getAttribute('maxlength') || 500;
+        counter.textContent = `${currentLength}/${maxLength} karakter`;
+        
+        // Change color based on usage
+        if (currentLength > maxLength * 0.8) {
+            counter.classList.add('text-red-500');
+            counter.classList.remove('text-gray-500');
+        } else {
+            counter.classList.add('text-gray-500');
+            counter.classList.remove('text-red-500');
+        }
+    }
+}
+
+function clearCatatan() {
+    const textarea = document.getElementById('catatan_pengiriman');
+    if (textarea) {
+        textarea.value = '';
+        updateCatatanCounter();
+        textarea.focus();
+    }
+}
+
+function resetToOriginal() {
+    const textarea = document.getElementById('catatan_pengiriman');
+    if (textarea) {
+        const originalCatatan = textarea.getAttribute('data-original-catatan') || '';
+        textarea.value = originalCatatan;
+        updateCatatanCounter();
+    }
+}
+// ===== END GLOBAL FUNCTIONS FOR CATATAN =====
+
 // Debounced search function for server-side filtering
 let searchTimeoutMasuk;
 function debounceSearchMasuk() {

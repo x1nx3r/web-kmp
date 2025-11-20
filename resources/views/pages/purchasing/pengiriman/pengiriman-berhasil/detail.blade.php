@@ -152,52 +152,221 @@ function populateDetailModalBerhasil(pengiriman) {
         `;
     }
 
-    // Generate bukti foto section
-    let buktiSection = '';
-    if (pengiriman.bukti_foto_urls && pengiriman.bukti_foto_urls.length > 0) {
-        buktiSection = `
-            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h4 class="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                    <i class="fas fa-camera text-blue-600 mr-2"></i>
-                    Bukti Foto Bongkar
+    // Generate file pengiriman section (Combined: Foto Tanda Terima + Bukti Foto Bongkar) - HORIZONTAL LAYOUT
+    let filePengirimanSection = '';
+    if (pengiriman.foto_tanda_terima_url || (pengiriman.bukti_foto_urls && pengiriman.bukti_foto_urls.length > 0)) {
+        filePengirimanSection = `
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border border-blue-200">
+                <h4 class="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-folder-open text-blue-600 mr-2"></i>
+                    File Pengiriman
                 </h4>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    ${pengiriman.bukti_foto_urls.map((url, index) => `
-                        <div class="relative group image-grid-item">
-                            <img src="${url}" 
-                                 alt="Bukti foto bongkar ${index + 1}" 
-                                 class="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                 onclick="viewImageBerhasil('${url}', 'Bukti Foto Bongkar ${index + 1}')">
-                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                <div class="flex space-x-2">
-                                    <button onclick="viewImageBerhasil('${url}', 'Bukti Foto Bongkar ${index + 1}')" 
-                                            class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all image-action-btn">
-                                        <i class="fas fa-eye text-sm"></i>
-                                    </button>
-                                    <button onclick="downloadImageBerhasil('${url}', 'bukti_bongkar_${index + 1}.jpg')" 
-                                            class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all image-action-btn">
-                                        <i class="fas fa-download text-sm"></i>
-                                    </button>
+                
+                <div class="grid grid-cols-1 ${pengiriman.foto_tanda_terima_url && pengiriman.bukti_foto_urls && pengiriman.bukti_foto_urls.length > 0 ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-4">
+                    ${pengiriman.foto_tanda_terima_url ? `
+                        <!-- Foto Tanda Terima -->
+                        <div class="bg-white rounded-lg p-4 border border-purple-200">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-file-signature text-purple-600 mr-2"></i>
+                                <h5 class="text-sm font-semibold text-gray-800">Foto Tanda Terima</h5>
+                            </div>
+                            ${pengiriman.foto_tanda_terima_uploaded_at ? `
+                                <div class="flex items-center text-xs text-gray-500 mb-3">
+                                    <i class="far fa-clock mr-1"></i>
+                                    <span>${pengiriman.foto_tanda_terima_uploaded_at}</span>
+                                </div>
+                            ` : ''}
+                            <div class="relative group">
+                                <img src="${pengiriman.foto_tanda_terima_url}" 
+                                     alt="Foto Tanda Terima" 
+                                     class="w-full h-48 object-cover rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90 transition-opacity shadow-md"
+                                     onclick="viewImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'Foto Tanda Terima')">
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                    <div class="flex space-x-2">
+                                        <button onclick="viewImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'Foto Tanda Terima')" 
+                                                class="bg-white text-purple-600 p-3 rounded-full shadow-lg hover:bg-purple-50 transition-all">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button onclick="downloadImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'tanda_terima_${pengiriman.no_pengiriman}.jpg')" 
+                                                class="bg-white text-green-600 p-3 rounded-full shadow-lg hover:bg-green-50 transition-all">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="photo-counter">${index + 1}</div>
                         </div>
-                    `).join('')}
+                    ` : ''}
+                    
+                    ${pengiriman.bukti_foto_urls && pengiriman.bukti_foto_urls.length > 0 ? `
+                        <!-- Bukti Foto Bongkar -->
+                        <div class="bg-white rounded-lg p-4 border border-blue-200">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-camera text-blue-600 mr-2"></i>
+                                <h5 class="text-sm font-semibold text-gray-800">Bukti Foto Bongkar</h5>
+                            </div>
+                            ${pengiriman.bukti_foto_bongkar_uploaded_at ? `
+                                <div class="flex items-center text-xs text-gray-500 mb-3">
+                                    <i class="far fa-clock mr-1"></i>
+                                    <span>${pengiriman.bukti_foto_bongkar_uploaded_at}</span>
+                                </div>
+                            ` : ''}
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                ${pengiriman.bukti_foto_urls.slice(0, 4).map((url, index) => `
+                                    <div class="relative group image-grid-item">
+                                        <img src="${url}" 
+                                             alt="Bukti foto bongkar ${index + 1}" 
+                                             class="w-full h-24 object-cover rounded-lg border-2 border-blue-300 cursor-pointer hover:opacity-90 transition-opacity shadow-md"
+                                             onclick="viewImageBerhasil('${url}', 'Bukti Foto Bongkar ${index + 1}')">
+                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                            <div class="flex space-x-1">
+                                                <button onclick="viewImageBerhasil('${url}', 'Bukti Foto Bongkar ${index + 1}')" 
+                                                        class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all">
+                                                    <i class="fas fa-eye text-xs"></i>
+                                                </button>
+                                                <button onclick="downloadImageBerhasil('${url}', 'bukti_bongkar_${index + 1}.jpg')" 
+                                                        class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all">
+                                                    <i class="fas fa-download text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="photo-counter">${index + 1}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            ${pengiriman.bukti_foto_urls.length > 4 ? `
+                                <p class="text-xs text-gray-500 mb-2">+${pengiriman.bukti_foto_urls.length - 4} foto lainnya</p>
+                            ` : ''}
+                            <div class="flex justify-between items-center pt-2 border-t border-blue-200">
+                                <span class="text-xs text-gray-600">
+                                    ${pengiriman.foto_tanda_terima_url ? pengiriman.bukti_foto_urls.length + 1 : pengiriman.bukti_foto_urls.length} file total
+                                </span>
+                                <button onclick="downloadAllFilesBerhasil(${JSON.stringify(pengiriman.bukti_foto_urls).replace(/"/g, '&quot;')}, '${pengiriman.foto_tanda_terima_url || ''}', '${pengiriman.no_pengiriman}')" 
+                                        class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-all">
+                                    <i class="fas fa-download mr-1"></i>
+                                    Download Semua
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
-                <div class="flex justify-between items-center mt-3 pt-3 border-t border-blue-200">
-                    <span class="text-sm text-gray-600">${pengiriman.bukti_foto_urls.length} foto tersedia</span>
-                    <button onclick="downloadAllImagesBerhasil(${JSON.stringify(pengiriman.bukti_foto_urls).replace(/"/g, '&quot;')}, '${pengiriman.no_pengiriman}')" 
-                            class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-all">
-                        <i class="fas fa-download mr-1"></i>
-                        Download Semua
-                    </button>
+            </div>
+        `;
+    }
+    
+    // Generate timeline section with sub-timeline for file uploads
+    let timelineSection = '';
+    if (pengiriman.timeline && pengiriman.timeline.length > 0) {
+        timelineSection = `
+            <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-6 border border-indigo-200">
+                <h4 class="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-history text-indigo-600 mr-2"></i>
+                    Timeline Proses
+                </h4>
+                <div class="relative">
+                    ${pengiriman.timeline.map((item, index) => {
+                        const isLast = index === pengiriman.timeline.length - 1;
+                        const colorClasses = {
+                            'blue': 'bg-blue-500 border-blue-600',
+                            'yellow': 'bg-yellow-500 border-yellow-600',
+                            'green': 'bg-green-500 border-green-600',
+                            'gray': 'bg-gray-500 border-gray-600',
+                            'indigo': 'bg-indigo-500 border-indigo-600',
+                            'purple': 'bg-purple-500 border-purple-600'
+                        };
+                        const bgColorClasses = {
+                            'blue': 'bg-blue-50 border-blue-200',
+                            'yellow': 'bg-yellow-50 border-yellow-200',
+                            'green': 'bg-green-50 border-green-200',
+                            'gray': 'bg-gray-50 border-gray-200',
+                            'indigo': 'bg-indigo-50 border-indigo-200',
+                            'purple': 'bg-purple-50 border-purple-200'
+                        };
+                        const textColorClasses = {
+                            'blue': 'text-blue-700',
+                            'yellow': 'text-yellow-700',
+                            'green': 'text-green-700',
+                            'gray': 'text-gray-700',
+                            'indigo': 'text-indigo-700',
+                            'purple': 'text-purple-700'
+                        };
+                        
+                        // Check if this is "Pengiriman Dibuat" to add file upload sub-timeline
+                        const isPengirimanDibuat = item.type === 'pengiriman' && item.status === 'pending';
+                        
+                        let subTimeline = '';
+                        if (isPengirimanDibuat) {
+                            const uploads = [];
+                            if (pengiriman.bukti_foto_bongkar_uploaded_at) {
+                                uploads.push({
+                                    title: 'Upload Bukti Foto Bongkar',
+                                    time: pengiriman.bukti_foto_bongkar_uploaded_at,
+                                    icon: 'fa-camera'
+                                });
+                            }
+                            if (pengiriman.foto_tanda_terima_uploaded_at) {
+                                uploads.push({
+                                    title: 'Upload Foto Tanda Terima',
+                                    time: pengiriman.foto_tanda_terima_uploaded_at,
+                                    icon: 'fa-file-signature'
+                                });
+                            }
+                            
+                            if (uploads.length > 0) {
+                                subTimeline = `
+                                    <div class="ml-8 mt-2 space-y-2">
+                                        ${uploads.map((upload, idx) => `
+                                            <div class="flex items-start text-xs">
+                                                <div class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-400 mr-2 flex-shrink-0">
+                                                    <i class="fas ${upload.icon} text-white text-[10px]"></i>
+                                                </div>
+                                                <div class="flex-1 bg-gray-50 rounded px-2 py-1 border border-gray-200">
+                                                    <span class="text-gray-700 font-medium">${upload.title}</span>
+                                                    <div class="text-gray-500 mt-0.5">
+                                                        <i class="far fa-clock mr-1"></i>${upload.time}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `;
+                            }
+                        }
+                        
+                        return `
+                            <div class="flex mb-4 ${isLast ? '' : 'pb-4'}">
+                                <div class="flex flex-col items-center mr-4">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full ${colorClasses[item.color] || colorClasses['gray']} border-2 shadow-lg flex-shrink-0">
+                                        <i class="fas ${item.icon} text-white text-sm"></i>
+                                    </div>
+                                    ${!isLast ? '<div class="w-0.5 flex-1 bg-gray-300 mt-2"></div>' : ''}
+                                </div>
+                                <div class="flex-1">
+                                    <div class="${bgColorClasses[item.color] || bgColorClasses['gray']} rounded-lg p-4 border shadow-sm">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <h5 class="font-semibold ${textColorClasses[item.color] || textColorClasses['gray']} text-sm">${item.title}</h5>
+                                                <p class="text-xs text-gray-600 mt-1">${item.description}</p>
+                                            </div>
+                                            <div class="ml-4 text-right flex-shrink-0">
+                                                <p class="text-xs text-gray-500 whitespace-nowrap">
+                                                    <i class="far fa-clock mr-1"></i>
+                                                    ${item.formatted_time}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ${subTimeline}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
     }
     
     content.innerHTML = `
-        <!-- Informasi Umum -->
+        <!-- 1. Informasi Pengiriman -->
         <div class="bg-green-50 rounded-lg p-4 border border-green-200">
             <h4 class="text-md font-semibold text-gray-900 mb-3">Informasi Pengiriman</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -233,7 +402,7 @@ function populateDetailModalBerhasil(pengiriman) {
             </div>
         </div>
 
-        <!-- Ringkasan -->
+        <!-- 2. Ringkasan -->
         <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h4 class="text-md font-semibold text-gray-900 mb-3">Ringkasan</h4>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -252,7 +421,24 @@ function populateDetailModalBerhasil(pengiriman) {
             </div>
         </div>
 
-        <!-- Review Pengiriman -->
+        <!-- 3. Detail Barang -->
+        ${detailsTable}
+
+        <!-- 4. File Pengiriman -->
+        ${filePengirimanSection}
+
+        <!-- 5. Catatan -->
+        ${pengiriman.catatan ? `
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <h4 class="text-md font-semibold text-gray-900 mb-2 flex items-center">
+                    <i class="fas fa-sticky-note text-blue-600 mr-2"></i>
+                    Catatan
+                </h4>
+                <p class="text-sm text-gray-700">${pengiriman.catatan}</p>
+            </div>
+        ` : ''}
+
+        <!-- 6. Review Pengiriman -->
         ${pengiriman.rating || pengiriman.ulasan ? `
             <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                 <h4 class="text-md font-semibold text-gray-900 mb-3 flex items-center">
@@ -281,12 +467,6 @@ function populateDetailModalBerhasil(pengiriman) {
                             </div>
                         </div>
                     ` : ''}
-                    ${!pengiriman.rating && !pengiriman.ulasan ? `
-                        <div class="text-center py-3">
-                            <i class="fas fa-star-o text-gray-400 text-2xl mb-2"></i>
-                            <p class="text-sm text-gray-500 italic">Belum ada review untuk pengiriman ini</p>
-                        </div>
-                    ` : ''}
                 </div>
             </div>
         ` : `
@@ -302,19 +482,8 @@ function populateDetailModalBerhasil(pengiriman) {
             </div>
         `}
 
-        ${pengiriman.catatan ? `
-            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h4 class="text-md font-semibold text-gray-900 mb-2 flex items-center">
-                    <i class="fas fa-sticky-note text-blue-600 mr-2"></i>
-                    Catatan
-                </h4>
-                <p class="text-sm text-gray-700">${pengiriman.catatan}</p>
-            </div>
-        ` : ''}
-
-        ${buktiSection}
-
-        ${detailsTable}
+        <!-- 7. Timeline Proses -->
+        ${timelineSection}
     `;
 }
 
@@ -393,19 +562,43 @@ function downloadImageBerhasil(imageUrl, filename) {
     document.body.removeChild(link);
 }
 
-// Function to download all images
-function downloadAllImagesBerhasil(imageUrls, noPengiriman) {
-    if (!imageUrls || imageUrls.length === 0) {
-        alert('Tidak ada gambar untuk diunduh');
+// Function to download all files (foto tanda terima + bukti foto bongkar)
+function downloadAllFilesBerhasil(buktiFotoUrls, fotoTandaTerimaUrl, noPengiriman) {
+    const allFiles = [];
+    
+    // Add foto tanda terima if exists
+    if (fotoTandaTerimaUrl && fotoTandaTerimaUrl !== '') {
+        allFiles.push({
+            url: fotoTandaTerimaUrl,
+            filename: `${noPengiriman}_tanda_terima.jpg`
+        });
+    }
+    
+    // Add all bukti foto bongkar
+    if (buktiFotoUrls && buktiFotoUrls.length > 0) {
+        buktiFotoUrls.forEach((url, index) => {
+            allFiles.push({
+                url: url,
+                filename: `${noPengiriman}_bukti_bongkar_${index + 1}.jpg`
+            });
+        });
+    }
+    
+    if (allFiles.length === 0) {
+        alert('Tidak ada file untuk diunduh');
         return;
     }
     
-    imageUrls.forEach((url, index) => {
+    // Download all files with delay
+    allFiles.forEach((file, index) => {
         setTimeout(() => {
-            const filename = `${noPengiriman}_bukti_bongkar_${index + 1}.jpg`;
-            downloadImageBerhasil(url, filename);
+            downloadImageBerhasil(file.url, file.filename);
         }, index * 500); // Delay 500ms between downloads
     });
+    
+    // Show notification
+    const totalFiles = allFiles.length;
+    console.log(`Mengunduh ${totalFiles} file...`);
 }
 </script>
 
@@ -507,5 +700,54 @@ function downloadAllImagesBerhasil(imageUrls, noPengiriman) {
 /* Smooth scroll behavior */
 .modal-scrollable {
     scroll-behavior: smooth;
+}
+
+/* Timeline styling */
+.timeline-item {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.timeline-item:hover {
+    transform: translateX(5px);
+}
+
+.timeline-connector {
+    position: absolute;
+    left: 1.25rem;
+    top: 2.5rem;
+    width: 2px;
+    height: calc(100% - 2.5rem);
+    background: linear-gradient(180deg, #d1d5db 0%, #f3f4f6 100%);
+}
+
+.timeline-icon-wrapper {
+    position: relative;
+    z-index: 10;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+    }
+}
+
+.timeline-content {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 </style>

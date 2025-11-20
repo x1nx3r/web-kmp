@@ -437,8 +437,8 @@ function confirmSidebarLogout() {
 document.addEventListener('DOMContentLoaded', function() {
     const currentPath = window.location.pathname;
 
-    // Auto-expand purchasing menu if on supplier pages
-    if (currentPath.includes('/supplier')) {
+    // Auto-expand purchasing menu if on supplier, forecasting, or pengiriman pages
+    if (currentPath.includes('/supplier') || currentPath.includes('/forecasting') || currentPath.includes('/pengiriman')) {
         const purchasingMenu = document.getElementById('purchasing-menu');
         const purchasingChevron = document.getElementById('purchasing-chevron');
         const mobilePurchasingMenu = document.getElementById('mobile-purchasing-menu');
@@ -473,6 +473,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Auto-expand accounting menu if on accounting pages
+    if (currentPath.includes('/accounting')) {
+        const keuanganMenu = document.getElementById('keuangan-menu');
+        const keuanganChevron = document.getElementById('keuangan-chevron');
+        const mobileKeuanganMenu = document.getElementById('mobile-keuangan-menu');
+        const mobileKeuanganChevron = document.getElementById('mobile-keuangan-chevron');
+
+        if (keuanganMenu) {
+            keuanganMenu.classList.remove('hidden');
+            keuanganChevron.classList.add('rotate-180');
+        }
+
+        if (mobileKeuanganMenu) {
+            mobileKeuanganMenu.classList.remove('hidden');
+            mobileKeuanganChevron.classList.add('rotate-180');
+        }
+    }
+
     // Close modal when clicking outside
     document.getElementById('sidebarLogoutModal').addEventListener('click', function(e) {
         if (e.target === this) {
@@ -490,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Sidebar Logout Modal -->
-<div id="sidebarLogoutModal" class="fixed inset-0 bg-black/20 bg-opacity-50 backdrop-blur-xs z-50 hidden flex items-center justify-center">
+<div id="sidebarLogoutModal" class="fixed inset-0 bg-black/20 bg-opacity-50 backdrop-blur-xs z-50 hidden items-center justify-center">
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
             <div class="flex items-center mb-4">

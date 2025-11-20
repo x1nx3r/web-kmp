@@ -259,7 +259,16 @@
                 <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
                     <i class="fas fa-camera text-indigo-600"></i>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900">Bukti Foto Bongkar</h3>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Bukti Foto Bongkar</h3>
+                    @if($pengiriman->bukti_foto_bongkar_uploaded_at)
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            <i class="fas fa-clock mr-1"></i>
+                            Upload: {{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d M Y, H:i') }} WIB
+                            <span class="text-gray-400">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }})</span>
+                        </p>
+                    @endif
+                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 @php
@@ -277,32 +286,28 @@
                             <div class="relative group">
                                 @php
                                     $photoUrl = asset('storage/pengiriman/bukti/' . $photo);
-                                    $fullPath = public_path('storage/pengiriman/bukti/' . $photo);
-                                    $fileExists = file_exists($fullPath);
                                 @endphp
                                 
-                                <div class="relative group">
-                                    <a href="{{ $photoUrl }}" target="_blank" rel="noopener noreferrer" class="block">
-                                        <img src="{{ $photoUrl }}" 
-                                             alt="Bukti Foto Bongkar {{ $index + 1 }}" 
-                                             class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
-                                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDIwMCAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTkyIiBmaWxsPSIjRjNGNEY2IiBzdHJva2U9IiNEMUQ1REIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iNCIvPgo8Y2lyY2xlIGN4PSIxMDAiIGN5PSI3NiIgcj0iMjAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTkwIDg2SDE5MEwxNzAgMTA2SDE5MEwxNzAgMTI2SDkwVjg2WiIgZmlsbD0iIzlDQTNBRiIvPgo8dGV4dCB4PSIxMDAiIHk9IjE1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNkI3MjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HYW1iYXIgdGlkYWsgZGl0ZW11a2FuPC90ZXh0Pgo8L3N2Zz4K'; this.alt='Gambar tidak ditemukan';"
-                                             loading="lazy">
-                                        
-                                        {{-- Overlay dengan icon --}}
-                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
-                                            <div class="bg-blue-600 bg-opacity-80 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <i class="fas fa-external-link-alt text-white text-lg" title="Buka gambar di tab baru"></i>
-                                            </div>
-                                        </div>
-                                    </a>
-                                    
-                                    {{-- Download button terpisah --}}
-                                    <button onclick="event.preventDefault(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
-                                            class="absolute top-2 right-2 bg-green-600 hover:bg-green-700 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            title="Download gambar">
-                                        <i class="fas fa-download text-sm"></i>
-                                    </button>
+                                <img src="{{ $photoUrl }}" 
+                                     alt="Bukti Foto Bongkar {{ $index + 1 }}" 
+                                     class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                     onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE1MCAxNjBIMjUwTDIzMCAxOTBIMjUwTDIzMCAyMjBIMTUwVjE2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                
+                                {{-- Overlay dengan buttons --}}
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                    <div class="flex space-x-2">
+                                        <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
+                                                class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
+                                                title="Lihat gambar">
+                                            <i class="fas fa-eye text-sm"></i>
+                                        </button>
+                                        <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
+                                                class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                                title="Download gambar">
+                                            <i class="fas fa-download text-sm"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         @endif
@@ -313,6 +318,56 @@
                         <p>Tidak ada foto bukti bongkar</p>
                     </div>
                 @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- Card 6.5: Foto Tanda Terima --}}
+    @if($pengiriman->foto_tanda_terima)
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-4">
+            <div class="flex items-center mb-4">
+                <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-receipt text-purple-600"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Foto Tanda Terima</h3>
+                    @if($pengiriman->foto_tanda_terima_uploaded_at)
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            <i class="fas fa-clock mr-1"></i>
+                            Upload: {{ $pengiriman->foto_tanda_terima_uploaded_at->format('d M Y, H:i') }} WIB
+                            <span class="text-gray-400">({{ $pengiriman->foto_tanda_terima_uploaded_at->diffForHumans() }})</span>
+                        </p>
+                    @endif
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @php
+                    $photoUrl = asset('storage/pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima);
+                @endphp
+                
+                <div class="relative group">
+                    <img src="{{ $photoUrl }}" 
+                         alt="Foto Tanda Terima" 
+                         class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                         onclick="window.open('{{ $photoUrl }}', '_blank')"
+                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE1MCAxNjBIMjUwTDIzMCAxOTBIMjUwTDIzMCAyMjBIMTUwVjE2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                    
+                    {{-- Overlay dengan buttons --}}
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div class="flex space-x-2">
+                            <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
+                                    class="bg-white text-purple-600 p-2 rounded-full shadow-lg hover:bg-purple-50 transition-all"
+                                    title="Lihat gambar">
+                                <i class="fas fa-eye text-sm"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', 'tanda_terima_{{ $pengiriman->no_pengiriman }}.jpg');"
+                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                    title="Download gambar">
+                                <i class="fas fa-download text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     @endif

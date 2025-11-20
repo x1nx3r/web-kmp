@@ -22,6 +22,9 @@ return new class extends Migration
             $table->decimal('total_qty_kirim', 15, 2)->nullable()->default(0);
             $table->decimal('total_harga_kirim', 15, 2)->nullable()->default(0);
             $table->string('bukti_foto_bongkar')->nullable();
+            $table->timestamp('bukti_foto_bongkar_uploaded_at')->nullable();
+            $table->string('foto_tanda_terima')->nullable();
+            $table->timestamp('foto_tanda_terima_uploaded_at')->nullable();
             $table->enum('status', ['pending','menunggu_verifikasi', 'berhasil', 'gagal'])->default('pending');
             $table->text('catatan')->nullable();
             $table->timestamps();

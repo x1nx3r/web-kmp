@@ -446,12 +446,12 @@ class PengirimanController extends Controller
             // Validate request
             $validatedData = $request->validate([
                 'pengiriman_id' => 'required|exists:pengiriman,id',
-                'no_pengiriman' => 'required|string|max:255',
                 'tanggal_kirim' => 'required|date',
                 'hari_kirim' => 'required|string',
                 'total_qty_kirim' => 'required|numeric|min:0',
                 'total_harga_kirim' => 'required|numeric|min:0',
-                'bukti_foto_bongkar.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+                'bukti_foto_bongkar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+                'foto_tanda_terima' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
                 'catatan' => 'nullable|string',
                 'details' => 'required|array|min:1',
                 'details.*.bahan_baku_supplier_id' => 'required|exists:bahan_baku_supplier,id',
@@ -461,7 +461,6 @@ class PengirimanController extends Controller
             ], [
                 'pengiriman_id.required' => 'ID pengiriman diperlukan',
                 'pengiriman_id.exists' => 'Pengiriman tidak ditemukan',
-                'no_pengiriman.required' => 'Nomor pengiriman harus diisi',
                 'tanggal_kirim.required' => 'Tanggal kirim harus diisi',
                 'tanggal_kirim.date' => 'Format tanggal kirim tidak valid',
                 'total_qty_kirim.required' => 'Total qty kirim harus diisi',
@@ -479,49 +478,62 @@ class PengirimanController extends Controller
             // Update pengiriman
             $pengiriman = Pengiriman::findOrFail($validatedData['pengiriman_id']);
             
-            // Handle multiple file upload with old file deletion
-            $buktiFileNames = $pengiriman->bukti_foto_bongkar; // Keep existing files if no new files
+            // Generate nomor pengiriman jika belum ada
+            if (empty($pengiriman->no_pengiriman)) {
+                $noPengiriman = Pengiriman::generateNoPengiriman();
+            } else {
+                $noPengiriman = $pengiriman->no_pengiriman;
+            }
+            
+            // Handle bukti foto bongkar upload with old file deletion
+            $buktiFileName = $pengiriman->bukti_foto_bongkar;
+            $buktiFotoUploadedAt = $pengiriman->bukti_foto_bongkar_uploaded_at;
             
             if ($request->hasFile('bukti_foto_bongkar')) {
-                // Delete all old photos if exists
-                if ($pengiriman->bukti_foto_bongkar) {
-                    $oldPhotos = is_array($pengiriman->bukti_foto_bongkar) 
-                        ? $pengiriman->bukti_foto_bongkar 
-                        : [$pengiriman->bukti_foto_bongkar];
-                        
-                    foreach ($oldPhotos as $oldPhoto) {
-                        if (Storage::disk('public')->exists('pengiriman/bukti/' . $oldPhoto)) {
-                            Storage::disk('public')->delete('pengiriman/bukti/' . $oldPhoto);
-                        }
-                    }
+                // Delete old photo if exists
+                if ($pengiriman->bukti_foto_bongkar && Storage::disk('public')->exists('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar)) {
+                    Storage::disk('public')->delete('pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar);
                 }
                 
-                // Upload new files
-                $buktiFileNames = [];
-                $files = $request->file('bukti_foto_bongkar');
-                
-                // Handle single or multiple files
-                if (!is_array($files)) {
-                    $files = [$files];
+                // Upload new file
+                $file = $request->file('bukti_foto_bongkar');
+                if ($file && $file->isValid()) {
+                    $buktiFileName = 'bukti_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                    $file->storeAs('pengiriman/bukti', $buktiFileName, 'public');
+                    $buktiFotoUploadedAt = now(); // Set timestamp saat upload
+                }
+            }
+            
+            // Handle foto tanda terima upload with old file deletion
+            $tandaTerimaFileName = $pengiriman->foto_tanda_terima;
+            $tandaTerimaUploadedAt = $pengiriman->foto_tanda_terima_uploaded_at;
+            
+            if ($request->hasFile('foto_tanda_terima')) {
+                // Delete old photo if exists
+                if ($pengiriman->foto_tanda_terima && Storage::disk('public')->exists('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima)) {
+                    Storage::disk('public')->delete('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima);
                 }
                 
-                foreach ($files as $index => $file) {
-                    if ($file && $file->isValid()) {
-                        $buktiFileName = 'pengiriman_' . $pengiriman->id . '_' . time() . '_' . $index . '.' . $file->getClientOriginalExtension();
-                        $file->storeAs('pengiriman/bukti', $buktiFileName, 'public');
-                        $buktiFileNames[] = $buktiFileName;
-                    }
+                // Upload new file
+                $file = $request->file('foto_tanda_terima');
+                if ($file && $file->isValid()) {
+                    $tandaTerimaFileName = 'tanda_terima_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                    $file->storeAs('pengiriman/tanda-terima', $tandaTerimaFileName, 'public');
+                    $tandaTerimaUploadedAt = now(); // Set timestamp saat upload
                 }
             }
 
             // Update pengiriman data
             $pengiriman->update([
-                'no_pengiriman' => $validatedData['no_pengiriman'],
+                'no_pengiriman' => $noPengiriman,
                 'tanggal_kirim' => $validatedData['tanggal_kirim'],
                 'hari_kirim' => $validatedData['hari_kirim'],
                 'total_qty_kirim' => $validatedData['total_qty_kirim'],
                 'total_harga_kirim' => $validatedData['total_harga_kirim'],
-                'bukti_foto_bongkar' => $buktiFileNames, // Store array of filenames
+                'bukti_foto_bongkar' => $buktiFileName,
+                'bukti_foto_bongkar_uploaded_at' => $buktiFotoUploadedAt,
+                'foto_tanda_terima' => $tandaTerimaFileName,
+                'foto_tanda_terima_uploaded_at' => $tandaTerimaUploadedAt,
                 'catatan' => $validatedData['catatan'],
                 'status' => 'menunggu_verifikasi'
             ]);
@@ -712,9 +724,102 @@ class PengirimanController extends Controller
                 'order',
                 'order.klien',
                 'purchasing',
+                'forecast',
                 'pengirimanDetails.bahanBakuSupplier',
                 'pengirimanDetails.bahanBakuSupplier.supplier'
             ])->where('status', 'berhasil')->findOrFail($id);
+
+            // Build timeline
+            $timeline = [];
+            
+            // Forecast timeline
+            if ($pengiriman->forecast) {
+                $forecast = $pengiriman->forecast;
+                
+                // Forecast created
+                $timeline[] = [
+                    'type' => 'forecast',
+                    'status' => 'created',
+                    'title' => 'Forecast Dibuat',
+                    'description' => "Forecast {$forecast->no_forecast} telah dibuat",
+                    'timestamp' => $forecast->created_at,
+                    'formatted_time' => $forecast->created_at ? Carbon::parse($forecast->created_at)->format('d M Y, H:i') : '-',
+                    'icon' => 'fa-plus-circle',
+                    'color' => 'blue'
+                ];
+                
+                // Forecast updated if different from created
+                if ($forecast->updated_at && $forecast->updated_at != $forecast->created_at) {
+                    $timeline[] = [
+                        'type' => 'forecast',
+                        'status' => 'updated',
+                        'title' => 'Forecast Diperbarui',
+                        'description' => "Forecast {$forecast->no_forecast} telah diperbarui",
+                        'timestamp' => $forecast->updated_at,
+                        'formatted_time' => $forecast->updated_at ? Carbon::parse($forecast->updated_at)->format('d M Y, H:i') : '-',
+                        'icon' => 'fa-edit',
+                        'color' => 'yellow'
+                    ];
+                }
+                
+                // Forecast success (when pengiriman created)
+                if ($forecast->status === 'sukses') {
+                    $timeline[] = [
+                        'type' => 'forecast',
+                        'status' => 'sukses',
+                        'title' => 'Forecast Berhasil',
+                        'description' => "Forecast {$forecast->no_forecast} berhasil diproses",
+                        'timestamp' => $pengiriman->created_at,
+                        'formatted_time' => $pengiriman->created_at ? Carbon::parse($pengiriman->created_at)->format('d M Y, H:i') : '-',
+                        'icon' => 'fa-check-circle',
+                        'color' => 'green'
+                    ];
+                }
+            }
+            
+            // Pengiriman timeline
+            // Pengiriman created (pending)
+            $timeline[] = [
+                'type' => 'pengiriman',
+                'status' => 'pending',
+                'title' => 'Pengiriman Dibuat',
+                'description' => "Pengiriman {$pengiriman->no_pengiriman} telah dibuat",
+                'timestamp' => $pengiriman->created_at,
+                'formatted_time' => $pengiriman->created_at ? Carbon::parse($pengiriman->created_at)->format('d M Y, H:i') : '-',
+                'icon' => 'fa-box',
+                'color' => 'gray'
+            ];
+            
+            // Pengiriman updated (menunggu verifikasi)
+            if ($pengiriman->updated_at && $pengiriman->updated_at != $pengiriman->created_at) {
+                $timeline[] = [
+                    'type' => 'pengiriman',
+                    'status' => 'menunggu_verifikasi',
+                    'title' => 'Menunggu Verifikasi',
+                    'description' => "Pengiriman {$pengiriman->no_pengiriman} menunggu verifikasi",
+                    'timestamp' => $pengiriman->updated_at,
+                    'formatted_time' => $pengiriman->updated_at ? Carbon::parse($pengiriman->updated_at)->format('d M Y, H:i') : '-',
+                    'icon' => 'fa-clock',
+                    'color' => 'yellow'
+                ];
+            }
+            
+            // Pengiriman success
+            $timeline[] = [
+                'type' => 'pengiriman',
+                'status' => 'berhasil',
+                'title' => 'Pengiriman Berhasil',
+                'description' => "Pengiriman {$pengiriman->no_pengiriman} telah berhasil diverifikasi",
+                'timestamp' => $pengiriman->updated_at,
+                'formatted_time' => $pengiriman->updated_at ? Carbon::parse($pengiriman->updated_at)->format('d M Y, H:i') : '-',
+                'icon' => 'fa-check-double',
+                'color' => 'green'
+            ];
+            
+            // Sort timeline by timestamp
+            usort($timeline, function($a, $b) {
+                return $a['timestamp'] <=> $b['timestamp'];
+            });
 
             // Format data for response
             $data = [
@@ -733,6 +838,11 @@ class PengirimanController extends Controller
                 'ulasan' => $pengiriman->ulasan,
                 'bukti_foto_bongkar' => $pengiriman->bukti_foto_bongkar_array ?? [],
                 'bukti_foto_urls' => $pengiriman->bukti_foto_bongkar_url ?? [],
+                'bukti_foto_bongkar_uploaded_at' => $pengiriman->bukti_foto_bongkar_uploaded_at ? Carbon::parse($pengiriman->bukti_foto_bongkar_uploaded_at)->format('d M Y, H:i') . ' WIB' : null,
+                'foto_tanda_terima' => $pengiriman->foto_tanda_terima,
+                'foto_tanda_terima_url' => $pengiriman->foto_tanda_terima ? asset('storage/pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima) : null,
+                'foto_tanda_terima_uploaded_at' => $pengiriman->foto_tanda_terima_uploaded_at ? Carbon::parse($pengiriman->foto_tanda_terima_uploaded_at)->format('d M Y, H:i') . ' WIB' : null,
+                'timeline' => $timeline,
                 'details' => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->map(function($detail) {
                     return [
                         'bahan_baku' => $detail->bahanBakuSupplier->nama ?? '-',

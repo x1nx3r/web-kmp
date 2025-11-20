@@ -23,6 +23,9 @@ class Pengiriman extends Model
         'total_qty_kirim',
         'total_harga_kirim',
         'bukti_foto_bongkar',
+        'bukti_foto_bongkar_uploaded_at',
+        'foto_tanda_terima',
+        'foto_tanda_terima_uploaded_at',
         'status',
         'catatan',
         'rating',
@@ -34,6 +37,8 @@ class Pengiriman extends Model
         'total_qty_kirim' => 'decimal:2',
         'total_harga_kirim' => 'decimal:2',
         'total_qty_sisa' => 'decimal:2',
+        'bukti_foto_bongkar_uploaded_at' => 'datetime',
+        'foto_tanda_terima_uploaded_at' => 'datetime',
     ];
 
     protected $dates = ['deleted_at'];
@@ -293,5 +298,56 @@ class Pengiriman extends Model
         return array_map(function($photo) {
             return 'pengiriman/bukti/' . $photo;
         }, $photos);
+    }
+
+    /**
+     * Generate nomor pengiriman otomatis
+     * Format: PGR/YYYYMM/XXXX
+     * Contoh: PGR/202511/0001
+     */
+    public static function generateNoPengiriman()
+    {
+        $yearMonth = now()->format('Ym'); // Format: 202511
+        $prefix = "PGR/{$yearMonth}/";
+
+        // Cari nomor pengiriman terakhir di bulan ini
+        $lastPengiriman = self::where('no_pengiriman', 'LIKE', $prefix . '%')
+            ->orderBy('no_pengiriman', 'desc')
+            ->first();
+
+        if ($lastPengiriman) {
+            // Extract nomor urut dari no_pengiriman terakhir
+            $lastNumber = (int) substr($lastPengiriman->no_pengiriman, -4);
+            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            // Jika belum ada, mulai dari 0001
+            $newNumber = '0001';
+        }
+
+        return $prefix . $newNumber;
+    }
+
+    /**
+     * Accessor untuk URL foto tanda terima
+     */
+    public function getFotoTandaTerimaUrlAttribute()
+    {
+        if (!$this->foto_tanda_terima) {
+            return null;
+        }
+
+        return asset('storage/pengiriman/tanda-terima/' . $this->foto_tanda_terima);
+    }
+
+    /**
+     * Get foto tanda terima path untuk storage
+     */
+    public function getFotoTandaTerimaPathAttribute()
+    {
+        if (!$this->foto_tanda_terima) {
+            return null;
+        }
+
+        return 'pengiriman/tanda-terima/' . $this->foto_tanda_terima;
     }
 }

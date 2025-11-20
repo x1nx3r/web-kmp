@@ -115,6 +115,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/forecasting/{id}/detail', [ForecastingController::class, 'getForecastDetail'])->name('forecasting.detail');
     Route::post('/forecasting/{id}/kirim', [ForecastingController::class, 'kirimForecast'])->name('forecasting.kirim');
     Route::post('/forecasting/{id}/batal', [ForecastingController::class, 'batalkanForecast'])->name('forecasting.batal');
+    Route::get('/forecasting/export-pending', [ForecastingController::class, 'exportPending'])->name('forecast.export-pending');
 
     // Pengiriman routes
     // Routes tanpa parameter harus diletakkan sebelum resource routes

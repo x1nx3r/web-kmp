@@ -131,11 +131,6 @@ class ApprovePembayaran extends Component
 
             $this->approval->update($updateData);
 
-            // Update status pengiriman ke 'berhasil' ketika approved (final approval)
-            $this->approval->pengiriman->update([
-                'status' => 'berhasil',
-            ]);
-
             // Process piutang as pembayaran if exists
             if ($this->approval->catatan_piutang_id && $this->approval->piutang_amount > 0) {
                 $catatanPiutang = \App\Models\CatatanPiutang::find($this->approval->catatan_piutang_id);

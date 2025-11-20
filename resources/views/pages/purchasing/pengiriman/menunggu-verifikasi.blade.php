@@ -221,7 +221,7 @@
                                                         class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs flex items-center transition-all duration-200" 
                                                         title="Upload Foto Tanda Terima">
                                                     <i class="fas fa-upload mr-1"></i>
-                                                    {{ $pengiriman->foto_tanda_terima ? 'Ganti Foto' : 'Upload Foto' }}
+                                                    {{ $pengiriman->foto_tanda_terima ? 'Ganti Foto Tanda Terima' : 'Upload Foto Tanda Terima' }}
                                                 </button>
                                             </div>
                                             

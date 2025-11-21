@@ -51,6 +51,7 @@ class OrderCreate extends Component
     
     // Single Material Selection (no modal needed)
     public $selectedMaterial = null;
+    public $namaMaterialPO = '';
     public $quantity = 1;
     public $satuan = '';
     public $hargaJual = 0;
@@ -150,6 +151,7 @@ class OrderCreate extends Component
         
         // Reset material selection when client changes
         $this->selectedMaterial = null;
+        $this->namaMaterialPO = '';
         $this->quantity = 1;
         $this->hargaJual = 0;
         $this->autoSuppliers = [];
@@ -379,6 +381,7 @@ class OrderCreate extends Component
         $this->validate([
             'selectedKlienId' => 'required',
             'selectedMaterial' => 'required',
+            'namaMaterialPO' => 'nullable|string|max:255',
             'quantity' => 'required|numeric|min:0.01',
             'hargaJual' => 'required|numeric|min:0',
             'tanggalOrder' => 'required|date',
@@ -434,10 +437,15 @@ class OrderCreate extends Component
                 'total_margin' => 0, // Will be calculated by model
             ]);
             
+            // Get material name for fallback
+            $material = BahanBakuKlien::find($this->selectedMaterial);
+            $namaMaterialPO = !empty($this->namaMaterialPO) ? $this->namaMaterialPO : ($material ? $material->nama : null);
+            
             // Create single order detail with auto-supplier population
             $orderDetail = OrderDetail::create([
                 'order_id' => $order->id,
                 'bahan_baku_klien_id' => $this->selectedMaterial,
+                'nama_material_po' => $namaMaterialPO,
                 'qty' => $this->quantity,
                 'satuan' => $this->satuan,
                 'harga_jual' => $this->hargaJual,
@@ -479,6 +487,7 @@ class OrderCreate extends Component
 
         $this->validate([
             'selectedKlienId' => 'required',
+            'namaMaterialPO' => 'nullable|string|max:255',
             'tanggalOrder' => 'required|date',
             'poNumber' => 'required|string|max:50',
             'poStartDate' => 'required|date',
@@ -539,10 +548,15 @@ class OrderCreate extends Component
             }
             $order->orderDetails()->delete();
 
+            // Get material name for fallback
+            $material = BahanBakuKlien::find($this->selectedMaterial);
+            $namaMaterialPO = !empty($this->namaMaterialPO) ? $this->namaMaterialPO : ($material ? $material->nama : null);
+            
             // Create single updated order detail
             $orderDetail = OrderDetail::create([
                 'order_id' => $order->id,
                 'bahan_baku_klien_id' => $this->selectedMaterial,
+                'nama_material_po' => $namaMaterialPO,
                 'qty' => $this->quantity,
                 'satuan' => $this->satuan,
                 'harga_jual' => $this->hargaJual,

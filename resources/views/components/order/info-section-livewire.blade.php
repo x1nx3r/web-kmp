@@ -9,7 +9,20 @@
     'isEditing' => false,
     'existingPoDocumentName' => null,
     'existingPoDocumentUrl' => null,
+    // Provide a default so the component can be rendered outside Livewire context
+    'availableWinners' => [],
 ])
+
+@php
+    // If no available winners were passed in, fetch directly from DB.
+    // This allows the component to work even when rendered outside Livewire.
+    if (empty($availableWinners)) {
+        $availableWinners = \App\Models\User::whereIn('role', ['direktur', 'marketing'])
+            ->where('status', 'aktif')
+            ->orderBy('nama')
+            ->get();
+    }
+@endphp
 
 {{-- Order Info --}}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -112,6 +125,24 @@
             <textarea wire:model="catatan" rows="3"
                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       placeholder="Catatan tambahan untuk order ini..."></textarea>
+        </div>
+
+        {{-- PO Winner --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                PO Winner
+            </label>
+            <select wire:model="poWinnerId"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                <option value="">-- Pilih PO Winner (opsional) --</option>
+                @foreach($availableWinners ?? [] as $winner)
+                    <option value="{{ $winner->id }}">{{ $winner->nama }} @if($winner->role) ({{ $winner->role }}) @endif</option>
+                @endforeach
+            </select>
+            @error('poWinnerId')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+            @enderror
+            <p class="text-xs text-gray-500 mt-1">Hanya menampilkan pengguna dengan peran 'direktur' atau 'marketing'.</p>
         </div>
 
         {{-- Priority Info --}}

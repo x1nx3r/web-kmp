@@ -43,6 +43,8 @@ class OrderCreate extends Component
     public $poDocument;
     public $priority = 'normal';
     public $catatan = '';
+    public $poWinnerId = null;
+    public $availableWinners = [];
     
     // Search and filter properties
     public $klienSearch = "";
@@ -74,6 +76,36 @@ class OrderCreate extends Component
         $this->poEndDate = now()->addDays(14)->format('Y-m-d');
         $this->resetTotals();
         $this->updatePriorityFromSchedule();
+        $this->loadAvailableWinners();
+
+        // If editing an existing order, load its winner
+        if ($order) {
+            $this->isEditing = true;
+            $this->editingOrderId = $order->id;
+            $this->editingOrderNumber = $order->po_number;
+            $this->selectedKlienId = $order->klien_id;
+            $this->tanggalOrder = $order->tanggal_order ? \Illuminate\Support\Carbon::parse($order->tanggal_order)->format('Y-m-d') : $this->tanggalOrder;
+            $this->poNumber = $order->po_number;
+            $this->poStartDate = $order->po_start_date ? \Illuminate\Support\Carbon::parse($order->po_start_date)->format('Y-m-d') : $this->poStartDate;
+            $this->poEndDate = $order->po_end_date ? \Illuminate\Support\Carbon::parse($order->po_end_date)->format('Y-m-d') : $this->poEndDate;
+            $this->priority = $order->priority ?? $this->priority;
+            $this->catatan = $order->catatan ?? $this->catatan;
+            $this->existingPoDocumentPath = $order->po_document_path;
+            $this->existingPoDocumentName = $order->po_document_original_name;
+            $this->existingPoDocumentUrl = $order->po_document_url;
+
+            if ($order->winner) {
+                $this->poWinnerId = $order->winner->user_id;
+            }
+        }
+    }
+
+    public function loadAvailableWinners()
+    {
+        $this->availableWinners = \App\Models\User::whereIn('role', ['direktur', 'marketing'])
+            ->where('status', 'aktif')
+            ->orderBy('nama')
+            ->get();
     }
     
     public function render()
@@ -460,6 +492,14 @@ class OrderCreate extends Component
 
             // Set recommended supplier based on auto-populated data
             $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
+
+            // Persist PO winner if selected
+            if ($this->poWinnerId) {
+                \App\Models\OrderWinner::updateOrCreate(
+                    ['order_id' => $order->id],
+                    ['user_id' => $this->poWinnerId]
+                );
+            }
             
             DB::commit();
             
@@ -570,6 +610,17 @@ class OrderCreate extends Component
             $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
 
             $order->calculateTotals();
+
+            // Update or create PO winner record
+            if ($this->poWinnerId) {
+                \App\Models\OrderWinner::updateOrCreate(
+                    ['order_id' => $order->id],
+                    ['user_id' => $this->poWinnerId]
+                );
+            } else {
+                // If null, remove any existing winner assignment
+                \App\Models\OrderWinner::where('order_id', $order->id)->delete();
+            }
 
             DB::commit();
 

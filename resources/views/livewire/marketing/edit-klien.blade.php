@@ -86,7 +86,23 @@
                                 @enderror
                             </div>
 
-                            <div>
+                            <div class="md:col-span-2">
+                                <label for="alamat_lengkap" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Alamat Lengkap (Opsional)
+                                </label>
+                                <textarea
+                                    wire:model="klienForm.alamat_lengkap"
+                                    id="alamat_lengkap"
+                                    rows="3"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klienForm.alamat_lengkap') border-red-500 @enderror"
+                                    placeholder="Masukkan alamat lengkap plant..."
+                                ></textarea>
+                                @error('klienForm.alamat_lengkap')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="md:col-span-2">
                                 <label for="contact_person_id" class="block text-sm font-medium text-gray-700 mb-2">
                                     Contact Person
                                 </label>
@@ -383,6 +399,12 @@
                             <span class="text-sm text-gray-500">Cabang:</span>
                             <span class="text-sm font-medium text-gray-900">{{ $klien->cabang }}</span>
                         </div>
+                        @if($klien->alamat_lengkap)
+                            <div>
+                                <span class="text-sm text-gray-500 block mb-1">Alamat:</span>
+                                <span class="text-sm text-gray-700 block text-right">{{ $klien->alamat_lengkap }}</span>
+                            </div>
+                        @endif
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-500">Total Material:</span>
                             <span class="text-sm font-medium text-green-600">{{ $klien->bahanBakuKliens->count() }}</span>

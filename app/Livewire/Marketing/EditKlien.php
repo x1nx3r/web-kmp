@@ -20,6 +20,7 @@ class EditKlien extends Component
     public $klienForm = [
         'nama' => '',
         'cabang' => '',
+        'alamat_lengkap' => '',
         'contact_person_id' => '',
     ];
 
@@ -63,6 +64,7 @@ class EditKlien extends Component
         $this->klienForm = [
             'nama' => $klien->nama,
             'cabang' => $klien->cabang,
+            'alamat_lengkap' => $klien->alamat_lengkap ?? '',
             'contact_person_id' => $klien->contact_person_id ?? '',
         ];
 
@@ -99,6 +101,7 @@ class EditKlien extends Component
         $this->validate([
             'klienForm.nama' => 'required|string|max:255',
             'klienForm.cabang' => 'required|string|max:255',
+            'klienForm.alamat_lengkap' => 'nullable|string',
             'klienForm.contact_person_id' => 'nullable|exists:kontak_klien,id',
         ], [
             'klienForm.nama.required' => 'Nama perusahaan wajib diisi',

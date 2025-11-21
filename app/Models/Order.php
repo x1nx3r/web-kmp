@@ -62,6 +62,11 @@ class Order extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function winner()
+    {
+        return $this->hasOne(OrderWinner::class);
+    }
+
 
 
     public function orderDetails(): HasMany

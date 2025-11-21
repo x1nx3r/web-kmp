@@ -13,6 +13,7 @@ class Klien extends Model
     protected $fillable = [
         'nama',
         'cabang',
+        'alamat_lengkap',
         'contact_person_id'
     ];
 

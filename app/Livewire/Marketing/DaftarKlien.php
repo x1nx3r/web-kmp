@@ -41,6 +41,7 @@ class DaftarKlien extends Component
         'company_type' => 'existing',
         'company_nama' => '',
         'cabang' => '',
+        'alamat_lengkap' => '',
         'contact_person_id' => '',
     ];
 
@@ -368,6 +369,7 @@ class DaftarKlien extends Component
             'company_type' => 'existing',
             'company_nama' => '',
             'cabang' => '',
+            'alamat_lengkap' => '',
             'contact_person_id' => '',
         ];
         $this->availableContacts = collect();
@@ -391,16 +393,19 @@ class DaftarKlien extends Component
         }
     }
 
-    public function editBranch($id, $nama, $cabang, $no_hp)
+    public function editBranch($id, $nama, $cabang, $alamat_lengkap = null)
     {
         $this->editingBranch = $id;
+        $klien = Klien::find($id);
         $this->branchForm = [
             'id' => $id,
             'company_type' => 'existing',
             'company_nama' => $nama,
             'cabang' => $cabang,
-            'no_hp' => $no_hp ?? '',
+            'alamat_lengkap' => $alamat_lengkap ?? ($klien ? $klien->alamat_lengkap : ''),
+            'contact_person_id' => $klien ? $klien->contact_person_id : '',
         ];
+        $this->updateAvailableContacts();
         $this->showBranchModal = true;
     }
 
@@ -409,6 +414,7 @@ class DaftarKlien extends Component
         $rules = [
             'branchForm.company_nama' => 'required|string|max:255',
             'branchForm.cabang' => 'required|string|max:255',
+            'branchForm.alamat_lengkap' => 'nullable|string',
             'branchForm.contact_person_id' => 'nullable|exists:kontak_klien,id',
         ];
 
@@ -425,6 +431,7 @@ class DaftarKlien extends Component
             $data = [
                 'nama' => $this->branchForm['company_nama'],
                 'cabang' => $this->branchForm['cabang'],
+                'alamat_lengkap' => $this->branchForm['alamat_lengkap'] ?: null,
                 'contact_person_id' => $this->branchForm['contact_person_id'],
             ];
 

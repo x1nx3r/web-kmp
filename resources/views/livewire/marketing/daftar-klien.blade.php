@@ -408,6 +408,7 @@
                                                     <thead class="bg-gray-50">
                                                         <tr>
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Plant</th>
+                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alamat</th>
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
                                                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
                                                             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -420,6 +421,16 @@
                                                             <tr class="hover:bg-gray-50">
                                                                 <td class="px-4 py-3">
                                                                     <div class="text-sm font-medium text-gray-900">{{ $klien->cabang }}</div>
+                                                                </td>
+                                                                <td class="px-4 py-3">
+                                                                    @if($klien->alamat_lengkap)
+                                                                        <div class="text-sm text-gray-700 max-w-xs">
+                                                                            <i class="fas fa-map-marked-alt text-gray-400 mr-1"></i>
+                                                                            {{ $klien->alamat_lengkap }}
+                                                                        </div>
+                                                                    @else
+                                                                        <span class="text-sm text-gray-400 italic">-</span>
+                                                                    @endif
                                                                 </td>
                                                                 <td class="px-4 py-3 text-sm text-gray-500">
                                                                     @if($klien->contactPerson)
@@ -649,6 +660,19 @@
                                     placeholder="Masukkan lokasi plant"
                                 >
                                 @error('branchForm.cabang')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Alamat Lengkap (Opsional)</label>
+                                <textarea
+                                    wire:model="branchForm.alamat_lengkap"
+                                    rows="3"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('branchForm.alamat_lengkap') border-red-500 @enderror"
+                                    placeholder="Masukkan alamat lengkap plant..."
+                                ></textarea>
+                                @error('branchForm.alamat_lengkap')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>

@@ -99,12 +99,29 @@ class DaftarKlien extends Component
             $query->orderBy($this->sort === 'updated_at' ? 'updated_at' : 'nama', $this->direction);
         }
 
-        $kliens = $query->paginate(10);
-
-        // Guard against out-of-range page numbers (e.g., ?page=999) which can cause unexpected states
-        if ($kliens->currentPage() > $kliens->lastPage() && $kliens->lastPage() > 0) {
-            $this->gotoPage($kliens->lastPage());
+        try {
             $kliens = $query->paginate(10);
+
+            // Guard against out-of-range page numbers (e.g., ?page=999) which can cause unexpected states
+            if ($kliens->currentPage() > $kliens->lastPage() && $kliens->lastPage() > 0) {
+                $this->gotoPage($kliens->lastPage());
+                $kliens = $query->paginate(10);
+            }
+        } catch (\Exception $e) {
+            // Log the error for diagnostics, reset to a safe page and retry once.
+            \Log::warning('Pagination error in DaftarKlien::render - resetting page to 1', [
+                'message' => $e->getMessage(),
+                'page' => request()->query('page'),
+            ]);
+
+            // Reset page and re-run pagination to return an empty/first page instead of throwing
+            $this->resetPage();
+            try {
+                $kliens = $query->paginate(10);
+            } catch (\Exception $e) {
+                // As a last resort, return an empty LengthAwarePaginator-like structure
+                $kliens = collect();
+            }
         }
 
         // Get available locations

@@ -94,6 +94,46 @@
                             </div>
                         </div>
 
+                        {{-- Financial Summary from Order --}}
+                        @if($order)
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                                <div class="px-6 py-4 border-b border-gray-200">
+                                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        <i class="fas fa-calculator text-blue-600 mr-3"></i>
+                                        Ringkasan Keuangan Order
+                                    </h3>
+                                </div>
+                                <div class="p-6 space-y-4">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Nomor PO:</span>
+                                        <span class="text-sm font-semibold text-gray-900">{{ $order->po_number ?? '-' }}</span>
+                                    </div>
+                                    <hr class="border-gray-200">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Total Harga Supplier:</span>
+                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Total Harga Jual:</span>
+                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</span>
+                                    </div>
+                                    <hr class="border-gray-200">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-700">Total Margin:</span>
+                                        <span class="text-sm font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-700">Persentase Margin:</span>
+                                        <span class="text-sm font-bold {{ $marginPercentage >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ number_format($marginPercentage, 2, ',', '.') }}%
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- Pengiriman Information --}}
                         <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">

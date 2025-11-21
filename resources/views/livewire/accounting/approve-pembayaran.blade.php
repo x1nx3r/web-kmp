@@ -245,20 +245,128 @@
                                                     <img
                                                         src="{{ $photoUrl }}"
                                                         alt="Bukti Foto Bongkar {{ $index + 1 }}"
-                                                        class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                                        onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                                        class="w-full h-48 object-cover rounded-lg shadow-md border-2 border-gray-200 hover:border-blue-400 transition-all cursor-pointer"
+                                                        onclick="openPhotoModal('{{ $photoUrl }}')"
                                                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
                                                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                                                         <div class="flex space-x-2">
-                                                            <button onclick="window.open('{{ $photoUrl }}', '_blank')"
-                                                                    class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
-                                                                    title="Lihat gambar">
-                                                                <i class="fas fa-eye text-sm"></i>
+                                                            <button
+                                                                onclick="event.stopPropagation(); openPhotoModal('{{ $photoUrl }}')"
+                                                                class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-colors"
+                                                                title="Lihat"
+                                                            >
+                                                                <i class="fas fa-search-plus"></i>
                                                             </button>
-                                                            <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
-                                                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
-                                                                    title="Download gambar">
-                                                                <i class="fas fa-download text-sm"></i>
+                                                            <button
+                                                                onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', 'bukti_foto_bongkar_{{ $index + 1 }}.jpg')"
+                                                                class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-colors"
+                                                                title="Download"
+                                                            >
+                                                                <i class="fas fa-download"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="flex flex-col items-center justify-center py-12">
+                                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                            <i class="fas fa-image text-gray-400 text-3xl"></i>
+                                        </div>
+                                        <p class="text-gray-500 text-sm">Tidak ada bukti foto bongkar</p>
+                                        <p class="text-gray-400 text-xs mt-1">Foto belum diunggah untuk pengiriman ini</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Photo Modal --}}
+                        <div id="photoModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4" onclick="if(event.target === this) closePhotoModal()">
+                            <div class="relative max-w-6xl max-h-full">
+                                <button onclick="closePhotoModal(); event.stopPropagation();" class="absolute -top-12 right-0 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center z-10">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                                <img id="photoModalImage" src="" alt="Bukti Foto Bongkar" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl bg-white">
+                            </div>
+                        </div>
+
+                        <script>
+                            function openPhotoModal(imageSrc) {
+                                const modal = document.getElementById('photoModal');
+                                const modalImage = document.getElementById('photoModalImage');
+                                modalImage.src = imageSrc;
+                                modal.classList.remove('hidden');
+                                modal.classList.add('flex');
+                                document.body.style.overflow = 'hidden';
+                            }
+
+                            function closePhotoModal() {
+                                const modal = document.getElementById('photoModal');
+                                modal.classList.add('hidden');
+                                modal.classList.remove('flex');
+                                document.body.style.overflow = '';
+                            }
+
+                            // Close modal with Escape key
+                            document.addEventListener('keydown', function(e) {
+                                if (e.key === 'Escape') {
+                                    closePhotoModal();
+                                }
+                            });
+                        </script>
+                    @else
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4">
+                                <div class="flex items-center justify-between">
+                                    <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        <i class="fas fa-camera text-blue-600 mr-3"></i>
+                                        Bukti Foto Bongkar
+                                    </h2>
+                                    @if($pengiriman->bukti_foto_bongkar_uploaded_at)
+                                        <p class="text-xs text-gray-500">
+                                            <i class="fas fa-clock mr-1"></i>
+                                            Upload: {{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d M Y, H:i') }} WIB
+                                            <span class="text-gray-400">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }})</span>
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                @php
+                                    $photos = $pengiriman->bukti_foto_bongkar_array ?? [];
+                                @endphp
+
+                                @if(is_array($photos) && count($photos) > 0)
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        @foreach($photos as $index => $photo)
+                                            @if($photo)
+                                                @php
+                                                    $photoUrl = asset('storage/pengiriman/bukti/' . $photo);
+                                                @endphp
+                                                <div class="relative group">
+                                                    <img
+                                                        src="{{ $photoUrl }}"
+                                                        alt="Bukti Foto Bongkar {{ $index + 1 }}"
+                                                        class="w-full h-48 object-cover rounded-lg shadow-md border-2 border-gray-200 hover:border-blue-400 transition-all cursor-pointer"
+                                                        onclick="openPhotoModal('{{ $photoUrl }}')"
+                                                        onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <div class="flex space-x-2">
+                                                            <button
+                                                                onclick="event.stopPropagation(); openPhotoModal('{{ $photoUrl }}')"
+                                                                class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-colors"
+                                                                title="Lihat"
+                                                            >
+                                                                <i class="fas fa-search-plus"></i>
+                                                            </button>
+                                                            <button
+                                                                onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', 'bukti_foto_bongkar_{{ $index + 1 }}.jpg')"
+                                                                class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-colors"
+                                                                title="Download"
+                                                            >
+                                                                <i class="fas fa-download"></i>
                                                             </button>
                                                         </div>
                                                     </div>

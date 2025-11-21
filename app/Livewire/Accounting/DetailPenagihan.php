@@ -32,6 +32,7 @@ class DetailPenagihan extends Component
             'invoice',
             'pengiriman.details.bahanBakuSupplier',
             'pengiriman.details.purchaseOrderBahanBaku.bahanBakuKlien',
+            'pengiriman.purchaseOrder.orderDetails.orderSuppliers.supplier',
             'histories.user'
         ])->findOrFail($this->approvalId);
 
@@ -82,6 +83,34 @@ class DetailPenagihan extends Component
 
     public function render()
     {
-        return view('livewire.accounting.detail-penagihan');
+        // Calculate financial summary from order
+        $order = $this->pengiriman->purchaseOrder ?? null;
+        $totalSupplierCost = 0;
+        $totalSelling = 0;
+        $totalMargin = 0;
+        $marginPercentage = 0;
+
+        if ($order && $order->orderDetails) {
+            foreach ($order->orderDetails as $detail) {
+                // Get best supplier price
+                $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first();
+                if ($bestSupplier) {
+                    $totalSupplierCost += ($bestSupplier->harga_supplier ?? 0) * $detail->qty;
+                }
+                // Total selling price
+                $totalSelling += $detail->total_harga;
+            }
+            
+            $totalMargin = $totalSelling - $totalSupplierCost;
+            $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
+        }
+
+        return view('livewire.accounting.detail-penagihan', [
+            'order' => $order,
+            'totalSupplierCost' => $totalSupplierCost,
+            'totalSelling' => $totalSelling,
+            'totalMargin' => $totalMargin,
+            'marginPercentage' => $marginPercentage,
+        ]);
     }
 }

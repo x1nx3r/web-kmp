@@ -335,7 +335,7 @@
                                             <i class="fas fa-address-book text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </a>
                                         <a
-                                            href="{{ route('klien.show', $klien->id) }}"
+                                            href="{{ route('klien.edit', $klien->id) }}"
                                             class="flex items-center justify-center w-8 h-8 bg-amber-100 hover:bg-amber-200 text-amber-700 hover:text-amber-800 rounded-md transition-all duration-200 group"
                                             title="Lihat Detail"
                                         >

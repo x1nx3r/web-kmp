@@ -232,23 +232,35 @@ class ApprovePembayaran extends Component
 
         DB::beginTransaction();
         try {
+            // Jika tidak ada catatan_piutang_id dipilih (kosong/null), set semua field piutang menjadi null/0
+            if (empty($this->piutangForm['catatan_piutang_id'])) {
+                $this->approval->update([
+                    'catatan_piutang_id' => null,
+                    'piutang_amount' => 0,
+                    'piutang_notes' => null,
+                ]);
+
+                DB::commit();
+                session()->flash('message', 'Pemotongan piutang berhasil dihapus');
+                $this->loadApproval();
+                return;
+            }
+
             // Validate amount if piutang is selected
-            if ($this->piutangForm['catatan_piutang_id'] && $this->piutangForm['amount'] <= 0) {
-                throw new \Exception('Jumlah pengurangan hutang harus lebih dari 0');
+            if ($this->piutangForm['amount'] <= 0) {
+                throw new \Exception('Jumlah pemotongan harus lebih dari 0');
             }
 
             // Get catatan piutang if selected
-            if ($this->piutangForm['catatan_piutang_id']) {
-                $catatanPiutang = \App\Models\CatatanPiutang::find($this->piutangForm['catatan_piutang_id']);
+            $catatanPiutang = \App\Models\CatatanPiutang::find($this->piutangForm['catatan_piutang_id']);
 
-                if (!$catatanPiutang) {
-                    throw new \Exception('Data piutang tidak ditemukan');
-                }
+            if (!$catatanPiutang) {
+                throw new \Exception('Data piutang tidak ditemukan');
+            }
 
-                // Validate amount tidak melebihi sisa piutang
-                if ($this->piutangForm['amount'] > $catatanPiutang->sisa_piutang) {
-                    throw new \Exception('Jumlah pengurangan tidak boleh melebihi sisa piutang Rp ' . number_format($catatanPiutang->sisa_piutang, 0, ',', '.'));
-                }
+            // Validate amount tidak melebihi sisa piutang
+            if ($this->piutangForm['amount'] > $catatanPiutang->sisa_piutang) {
+                throw new \Exception('Jumlah pemotongan tidak boleh melebihi sisa piutang Rp ' . number_format($catatanPiutang->sisa_piutang, 0, ',', '.'));
             }
 
             $this->approval->update([
@@ -258,7 +270,7 @@ class ApprovePembayaran extends Component
             ]);
 
             DB::commit();
-            session()->flash('message', 'Data piutang berhasil disimpan');
+            session()->flash('message', 'Pemotongan piutang berhasil disimpan');
             $this->loadApproval();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -285,10 +297,10 @@ class ApprovePembayaran extends Component
             $amountAfterRefraksi = $amountBeforeRefraksi;
             $refraksiAmount = 0;
 
-            // Jika value 0 atau kosong, set refraksi menjadi null
+            // Jika value 0 atau kosong, set refraksi menjadi 0 (bukan null karena constraint database)
             if ($refraksiValue <= 0) {
                 $this->approval->refraksi_type = null;
-                $this->approval->refraksi_value = null;
+                $this->approval->refraksi_value = 0;
                 $this->approval->refraksi_amount = 0;
                 $this->approval->qty_after_refraksi = $qtyBeforeRefraksi;
                 $this->approval->amount_after_refraksi = $amountBeforeRefraksi;

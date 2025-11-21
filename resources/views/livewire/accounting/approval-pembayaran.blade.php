@@ -169,13 +169,20 @@
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
-                                <div class="text-xs text-gray-500">PO: {{ $approval->pengiriman->purchaseOrder->no_po ?? '-' }}</div>
+                                <div class="text-xs text-gray-500">PO: {{ $approval->pengiriman->purchaseOrder->po_number ?? '-' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                 {{ $approval->pengiriman->tanggal_kirim ? $approval->pengiriman->tanggal_kirim->format('d M Y') : '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->pengiriman->total_harga_kirim, 0, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">
+                                    Rp {{ number_format($approval->amount_after_refraksi > 0 ? $approval->amount_after_refraksi : $approval->pengiriman->total_harga_kirim, 0, ',', '.') }}
+                                </div>
+                                @if($approval->refraksi_value > 0)
+                                    <div class="text-xs text-red-600">
+                                        <i class="fas fa-arrow-down mr-1"></i>Refraksi: Rp {{ number_format($approval->refraksi_amount, 0, ',', '.') }}
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
@@ -294,7 +301,7 @@
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500">No. PO</p>
-                                <p class="font-medium text-gray-900">{{ $selectedPengiriman->pengiriman->purchaseOrder->no_po ?? '-' }}</p>
+                                <p class="font-medium text-gray-900">{{ $selectedPengiriman->pengiriman->purchaseOrder->po_number ?? '-' }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500">Qty Kirim</p>

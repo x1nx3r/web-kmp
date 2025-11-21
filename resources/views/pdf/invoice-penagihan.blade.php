@@ -195,7 +195,7 @@
             padding: 10px 15px;
             font-weight: bold;
             font-size: 10pt;
-            margin-bottom: 60px;
+            margin-bottom: 120px;
             text-align: center;
         }
 
@@ -277,9 +277,15 @@
             <td style="width: 50%; vertical-align: top;">
                 <div class="customer-section" style="margin: 0;">
                     <div class="customer-label">Kepada Yth:</div>
-                    <div class="customer-name">{{ $invoice->customer_name }}</div>
-                    @if($invoice->customer_phone)
-                        <div class="customer-phone">Telp : {{ $invoice->customer_phone }}</div>
+                    <div class="customer-name">{{ $pengiriman->purchaseOrder->klien->nama ?? $invoice->customer_name }}</div>
+                    @if($pengiriman->purchaseOrder->klien->cabang)
+                        <div style="font-size: 10pt; margin-top: 5px;">
+                            <strong>Plant:</strong> {{ $pengiriman->purchaseOrder->klien->cabang }}
+                        </div>
+                    @endif
+                    @if($pengiriman->purchaseOrder->klien->contactPerson)
+                        <div class="customer-phone">Contact: {{ $pengiriman->purchaseOrder->klien->contactPerson->nama }}</div>
+                        <div class="customer-phone">Telp: {{ $pengiriman->purchaseOrder->klien->contactPerson->nomor_hp }}</div>
                     @endif
                 </div>
             </td>
@@ -299,7 +305,7 @@
         <tbody>
             <tr>
                 <td>{{ $invoice->invoice_number }}</td>
-                <td>{{ $pengiriman->purchaseOrder->no_po ?? '-' }}</td>
+                <td>{{ $pengiriman->purchaseOrder->po_number ?? $pengiriman->purchaseOrder->no_order ?? '-' }}</td>
                 <td>{{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
                 <td>{{ \Carbon\Carbon::parse($invoice->due_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
             </tr>
@@ -323,7 +329,7 @@
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
                     <td class="text-center">{{ number_format($detail->qty_kirim, 2, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($detail->harga_kirim, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($detail->purchaseOrderBahanBaku->harga_satuan ?? $detail->harga_satuan ?? 0, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($detail->total_harga, 0, ',', '.') }}</td>
                 </tr>
             @empty
@@ -378,9 +384,9 @@
             <td class="signature-spacer"></td>
             <td class="signature-content">
                 <div class="company-box">PT KAMIL MAJU PERSADA</div>
-                <div style="margin-bottom: 10px;">
+                {{-- <div style="margin-bottom: 10px;">
                     <img src="{{ public_path('assets/image/signature/vitol.jpg') }}" alt="Signature" style="width: 150px; height: auto;">
-                </div>
+                </div> --}}
                 <div class="signature-line">
                     <div class="signature-name">MAHENDA ABDILLAH KAMIL</div>
                     <div class="signature-title">Direktur</div>

@@ -19,8 +19,8 @@
                 <div class="mb-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm">
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div class="bg-white rounded-lg px-3 py-2">
-                            <span class="font-medium text-blue-900">No. Piutang:</span>
-                            <span class="ml-2 text-blue-700 font-semibold">{{ $selectedPiutang->no_piutang }}</span>
+                            <span class="font-medium text-blue-900">ID Piutang:</span>
+                            <span class="ml-2 text-blue-700 font-semibold">#{{ $selectedPiutang->id }}</span>
                         </div>
                         <div class="bg-white rounded-lg px-3 py-2">
                             <span class="font-medium text-blue-900">Supplier:</span>
@@ -38,7 +38,6 @@
                 </div>
 
                 <form wire:submit.prevent="addPembayaran">
-                    <div class="space-y-5">
                     <div class="space-y-5">
                         <!-- Tanggal Bayar -->
                         <div>

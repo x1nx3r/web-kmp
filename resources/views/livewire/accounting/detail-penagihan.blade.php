@@ -96,6 +96,46 @@
                             </div>
                         </div>
 
+                        {{-- Financial Summary from Order --}}
+                        @if($order)
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                                <div class="px-6 py-4 border-b border-gray-200">
+                                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        <i class="fas fa-calculator text-blue-600 mr-3"></i>
+                                        Ringkasan Keuangan Order
+                                    </h3>
+                                </div>
+                                <div class="p-6 space-y-4">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Nomor PO:</span>
+                                        <span class="text-sm font-semibold text-gray-900">{{ $order->po_number ?? '-' }}</span>
+                                    </div>
+                                    <hr class="border-gray-200">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Total Harga Supplier:</span>
+                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600">Total Harga Jual:</span>
+                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</span>
+                                    </div>
+                                    <hr class="border-gray-200">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-700">Total Margin:</span>
+                                        <span class="text-sm font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm font-medium text-gray-700">Persentase Margin:</span>
+                                        <span class="text-sm font-bold {{ $marginPercentage >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ number_format($marginPercentage, 2, ',', '.') }}%
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- Pengiriman Information --}}
                         <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -121,6 +161,122 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Bukti Foto Bongkar --}}
+                        @if($pengiriman->bukti_foto_bongkar_raw)
+                            <div class="bg-white rounded-lg border border-gray-200 p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center">
+                                        <span class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-camera"></i>
+                                        </span>
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-900">Bukti Foto Bongkar</h3>
+                                            @if($pengiriman->bukti_foto_bongkar_uploaded_at)
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    Upload: {{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d M Y, H:i') }} WIB
+                                                    <span class="text-gray-400">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }})</span>
+                                                </p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                @php
+                                    $photos = $pengiriman->bukti_foto_bongkar_array ?? [];
+                                @endphp
+                                @if(is_array($photos) && count($photos) > 0)
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        @foreach($photos as $index => $photo)
+                                            @php
+                                                $photoPath = \Illuminate\Support\Str::startsWith($photo, 'pengiriman/bukti/')
+                                                    ? $photo
+                                                    : 'pengiriman/bukti/' . ltrim($photo, '/');
+                                                $photoUrl = \Illuminate\Support\Facades\Storage::url($photoPath);
+                                            @endphp
+                                            <div class="relative group">
+                                                <img
+                                                    src="{{ $photoUrl }}"
+                                                    alt="Bukti Foto Bongkar {{ $index + 1 }}"
+                                                    class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                    onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                                    onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                    <div class="flex space-x-2">
+                                                        <button onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                                                class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
+                                                                title="Lihat gambar">
+                                                            <i class="fas fa-eye text-sm"></i>
+                                                        </button>
+                                                        <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
+                                                                class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                                                title="Download gambar">
+                                                            <i class="fas fa-download text-sm"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="text-center py-10 text-sm text-gray-500">
+                                        <i class="fas fa-image text-gray-300 text-3xl mb-2"></i>
+                                        <p>Tidak ada foto bukti bongkar</p>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
+                        {{-- Foto Tanda Terima --}}
+                        @if($pengiriman->foto_tanda_terima)
+                            <div class="bg-white rounded-lg border border-gray-200 p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center">
+                                        <span class="w-10 h-10 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-receipt"></i>
+                                        </span>
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-900">Foto Tanda Terima</h3>
+                                            @if($pengiriman->foto_tanda_terima_uploaded_at)
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    Upload: {{ $pengiriman->foto_tanda_terima_uploaded_at->format('d M Y, H:i') }} WIB
+                                                    <span class="text-gray-400">({{ $pengiriman->foto_tanda_terima_uploaded_at->diffForHumans() }})</span>
+                                                </p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                @php
+                                    $tandaTerimaPath = \Illuminate\Support\Str::startsWith($pengiriman->foto_tanda_terima, 'pengiriman/tanda-terima/')
+                                        ? $pengiriman->foto_tanda_terima
+                                        : 'pengiriman/tanda-terima/' . ltrim($pengiriman->foto_tanda_terima, '/');
+                                    $tandaTerimaUrl = \Illuminate\Support\Facades\Storage::url($tandaTerimaPath);
+                                @endphp
+                                <div class="relative group">
+                                    <img
+                                        src="{{ $tandaTerimaUrl }}"
+                                        alt="Foto Tanda Terima"
+                                        class="w-full h-56 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                        onclick="window.open('{{ $tandaTerimaUrl }}', '_blank')"
+                                        onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <div class="flex space-x-2">
+                                            <button onclick="window.open('{{ $tandaTerimaUrl }}', '_blank')"
+                                                    class="bg-white text-purple-600 p-2 rounded-full shadow-lg hover:bg-purple-50 transition-all"
+                                                    title="Lihat gambar">
+                                                <i class="fas fa-eye text-sm"></i>
+                                            </button>
+                                            <button onclick="event.stopPropagation(); downloadImage('{{ $tandaTerimaUrl }}', 'tanda_terima_{{ $pengiriman->no_pengiriman }}.jpg');"
+                                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                                    title="Download gambar">
+                                                <i class="fas fa-download text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- Items Detail --}}
                         <div class="bg-white rounded-lg border border-gray-200 p-6">
@@ -148,7 +304,7 @@
                                                     {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg
                                                 </td>
                                                 <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->harga_kirim, 0, ',', '.') }}
+                                                    Rp {{ number_format($detail->harga_satuan, 0, ',', '.') }}
                                                 </td>
                                                 <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
                                                     Rp {{ number_format($detail->total_harga, 0, ',', '.') }}
@@ -297,3 +453,16 @@
         </div>
     </div>
 </div>
+
+<script>
+    if (typeof window.downloadImage !== 'function') {
+        window.downloadImage = function(imageSrc, imageName = 'bukti_foto_bongkar.jpg') {
+            const link = document.createElement('a');
+            link.href = imageSrc;
+            link.download = imageName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    }
+</script>

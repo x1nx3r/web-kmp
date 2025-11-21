@@ -27,6 +27,7 @@ class ApprovePenagihan extends Component
     // Invoice date form
     public $invoiceDate;
     public $dueDate;
+    public $invoiceNumber = '';
 
     public function mount($approvalId)
     {
@@ -41,6 +42,7 @@ class ApprovePenagihan extends Component
             'pengiriman.pengirimanDetails.bahanBakuSupplier',
             'pengiriman.pengirimanDetails.purchaseOrderBahanBaku.bahanBakuKlien',
             'pengiriman.purchaseOrder.klien',
+            'pengiriman.purchaseOrder.orderDetails.orderSuppliers.supplier',
             'histories' => function($query) {
                 $query->orderBy('created_at', 'desc');
             },
@@ -60,6 +62,7 @@ class ApprovePenagihan extends Component
         // Load invoice dates
         $this->invoiceDate = $this->invoice->invoice_date?->format('Y-m-d');
         $this->dueDate = $this->invoice->due_date?->format('Y-m-d');
+        $this->invoiceNumber = $this->invoice->invoice_number ?? '';
     }
 
     public function approve()
@@ -243,6 +246,33 @@ class ApprovePenagihan extends Component
         }
     }
 
+    public function updateInvoiceNumber()
+    {
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        $this->validate([
+            'invoiceNumber' => 'required|string|max:191',
+        ], [
+            'invoiceNumber.required' => 'Nomor invoice harus diisi',
+            'invoiceNumber.string' => 'Nomor invoice harus berupa teks',
+            'invoiceNumber.max' => 'Nomor invoice maksimal 191 karakter',
+        ]);
+
+        try {
+            $this->invoice->update([
+                'invoice_number' => $this->invoiceNumber,
+            ]);
+
+            session()->flash('message', 'Nomor invoice berhasil diperbarui');
+            $this->loadApproval();
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memperbarui nomor invoice: ' . $e->getMessage());
+        }
+    }
+
     public function updateInvoiceDates()
     {
         if (!$this->invoice) {
@@ -292,6 +322,34 @@ class ApprovePenagihan extends Component
 
     public function render()
     {
-        return view('livewire.accounting.approve-penagihan');
+        // Calculate financial summary from order
+        $order = $this->pengiriman->purchaseOrder ?? null;
+        $totalSupplierCost = 0;
+        $totalSelling = 0;
+        $totalMargin = 0;
+        $marginPercentage = 0;
+
+        if ($order && $order->orderDetails) {
+            foreach ($order->orderDetails as $detail) {
+                // Get best supplier price
+                $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first();
+                if ($bestSupplier) {
+                    $totalSupplierCost += ($bestSupplier->harga_supplier ?? 0) * $detail->qty;
+                }
+                // Total selling price
+                $totalSelling += $detail->total_harga;
+            }
+            
+            $totalMargin = $totalSelling - $totalSupplierCost;
+            $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
+        }
+
+        return view('livewire.accounting.approve-penagihan', [
+            'order' => $order,
+            'totalSupplierCost' => $totalSupplierCost,
+            'totalSelling' => $totalSelling,
+            'totalMargin' => $totalMargin,
+            'marginPercentage' => $marginPercentage,
+        ]);
     }
 }

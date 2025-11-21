@@ -16,7 +16,6 @@ class CatatanPiutang extends Component
 {
     use WithPagination, WithFileUploads;
 
-    public $activeTab = 'supplier';
     public $search = '';
     public $statusFilter = 'all';
     public $supplierFilter = 'all';
@@ -51,7 +50,6 @@ class CatatanPiutang extends Component
     public $deletePiutang;
 
     protected $queryString = [
-        'activeTab' => ['except' => 'supplier'],
         'search' => ['except' => ''],
         'statusFilter' => ['except' => 'all'],
         'supplierFilter' => ['except' => 'all'],
@@ -119,12 +117,6 @@ class CatatanPiutang extends Component
             'totalSisa' => $totalSisa,
             'totalBelumLunas' => $totalBelumLunas,
         ]);
-    }
-
-    public function setActiveTab($tab)
-    {
-        $this->activeTab = $tab;
-        $this->resetPage();
     }
 
     public function sortBy($field)

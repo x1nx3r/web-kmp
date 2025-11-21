@@ -118,7 +118,7 @@
                             <tr class="hover:bg-yellow-50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">{{ $pengiriman->no_pengiriman }}</div>
-                                    <div class="text-xs text-gray-500">PO: {{ $pengiriman->purchaseOrder->no_po ?? '-' }}</div>
+                                    <div class="text-xs text-gray-500">PO: {{ $pengiriman->purchaseOrder->po_number ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                     {{ $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('d M Y') : '-' }}

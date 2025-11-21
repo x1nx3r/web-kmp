@@ -13,7 +13,6 @@ class CatatanPiutang extends Model
 
     protected $fillable = [
         'supplier_id',
-        'no_piutang',
         'tanggal_piutang',
         'tanggal_jatuh_tempo',
         'jumlah_piutang',
@@ -64,21 +63,6 @@ class CatatanPiutang extends Model
     public function pembayaran()
     {
         return $this->hasMany(PembayaranPiutang::class, 'catatan_piutang_id');
-    }
-
-    /**
-     * Generate nomor piutang otomatis
-     */
-    public static function generateNoPiutang()
-    {
-        $lastPiutang = self::whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $sequence = $lastPiutang ? (intval(substr($lastPiutang->no_piutang, -4)) + 1) : 1;
-
-        return 'PIU-' . now()->format('Ym') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 
     /**

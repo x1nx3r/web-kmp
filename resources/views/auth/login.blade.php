@@ -7,6 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link rel="icon" type="image/png" href="{{ asset('assets/image/logo/ptkmp-logo.png') }}">
+  
+  <!-- Cloudflare Turnstile -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body class="min-h-screen bg-gray-50">
 
@@ -113,6 +116,20 @@
             </div>
           </div>
 
+          <!-- Cloudflare Turnstile CAPTCHA -->
+          <div>
+            <div class="cf-turnstile" 
+                 data-sitekey="{{ config('services.turnstile.site_key') }}"
+                 data-callback="onTurnstileSuccess"
+                 data-expired-callback="onTurnstileExpired"
+                 data-error-callback="onTurnstileError">
+            </div>
+            <div id="captcha-error" class="hidden mt-2 text-sm text-red-600">
+              <i class="fas fa-exclamation-circle mr-1"></i>
+              <span>Mohon verifikasi bahwa Anda bukan robot.</span>
+            </div>
+          </div>
+
           <!-- Submit Button -->
           <button type="submit" id="submit-btn" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
             <i class="fas fa-sign-in-alt mr-2"></i>
@@ -137,6 +154,28 @@
   </div>
 
   <script>
+    // Turnstile CAPTCHA variables
+    let turnstileToken = null;
+
+    // Turnstile callbacks
+    function onTurnstileSuccess(token) {
+      turnstileToken = token;
+      document.getElementById('captcha-error').classList.add('hidden');
+      document.getElementById('submit-btn').disabled = false;
+    }
+
+    function onTurnstileExpired() {
+      turnstileToken = null;
+      document.getElementById('submit-btn').disabled = true;
+      showMessage('CAPTCHA telah kadaluarsa. Mohon verifikasi ulang.');
+    }
+
+    function onTurnstileError() {
+      turnstileToken = null;
+      document.getElementById('submit-btn').disabled = true;
+      showMessage('Terjadi kesalahan pada verifikasi CAPTCHA. Silakan refresh halaman.');
+    }
+
     function togglePassword() {
       const input = document.getElementById('password');
       const eye = document.getElementById('eye');
@@ -178,6 +217,9 @@
       const form = document.getElementById('login-form');
       const submitButton = document.getElementById('submit-btn');
       
+      // Disable submit button initially until CAPTCHA is completed
+      submitButton.disabled = true;
+      
       form.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -190,11 +232,19 @@
           return;
         }
         
+        // Validate CAPTCHA
+        if (!turnstileToken) {
+          document.getElementById('captcha-error').classList.remove('hidden');
+          showMessage('Mohon verifikasi bahwa Anda bukan robot.');
+          return;
+        }
+        
         // Submit login request
         submitButton.disabled = true;
         submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
         
         const formData = new FormData(form);
+        formData.append('cf-turnstile-response', turnstileToken);
         
         fetch(form.action, {
           method: 'POST',
@@ -212,11 +262,21 @@
             }, 1500);
           } else {
             showMessage(data.message);
+            // Reset Turnstile on error
+            if (window.turnstile) {
+              window.turnstile.reset();
+              turnstileToken = null;
+            }
           }
         })
         .catch(error => {
           console.error('Error:', error);
           showMessage('Terjadi kesalahan. Silakan coba lagi.');
+          // Reset Turnstile on error
+          if (window.turnstile) {
+            window.turnstile.reset();
+            turnstileToken = null;
+          }
         })
         .finally(() => {
           // Reset button

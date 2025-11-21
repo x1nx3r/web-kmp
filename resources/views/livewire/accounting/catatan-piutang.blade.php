@@ -87,7 +87,7 @@
                 </label>
                 <input type="text" wire:model.live.debounce.300ms="search"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Cari nomor piutang atau supplier...">
+                    placeholder="Cari ID piutang atau supplier...">
             </div>
 
             <div>
@@ -131,13 +131,48 @@
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Piutang</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dibayar</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <button type="button" wire:click="sortBy('id')" class="flex items-center space-x-1 focus:outline-none">
+                                <span>No.</span>
+                                <i class="fas {{ $sortField === 'id' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
+                            </button>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <button type="button" wire:click="sortBy('supplier_name')" class="flex items-center space-x-1 focus:outline-none">
+                                <span>Supplier</span>
+                                <i class="fas {{ $sortField === 'supplier_name' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
+                            </button>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <button type="button" wire:click="sortBy('tanggal_piutang')" class="flex items-center space-x-1 focus:outline-none">
+                                <span>Tanggal</span>
+                                <i class="fas {{ $sortField === 'tanggal_piutang' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
+                            </button>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <button type="button" wire:click="sortBy('jumlah_piutang')" class="flex items-center space-x-1 focus:outline-none">
+                                <span>Jumlah</span>
+                                <i class="fas {{ $sortField === 'jumlah_piutang' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
+                            </button>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <button type="button" wire:click="sortBy('jumlah_dibayar')" class="flex items-center space-x-1 focus:outline-none">
+                                <span>Dibayar</span>
+                                <i class="fas {{ $sortField === 'jumlah_dibayar' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
+                            </button>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <button type="button" wire:click="sortBy('sisa_piutang')" class="flex items-center space-x-1 focus:outline-none">
+                                <span>Sisa</span>
+                                <i class="fas {{ $sortField === 'sisa_piutang' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
+                            </button>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <button type="button" wire:click="sortBy('status')" class="flex items-center space-x-1 focus:outline-none">
+                                <span>Status</span>
+                                <i class="fas {{ $sortField === 'status' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
+                            </button>
+                        </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
@@ -145,7 +180,7 @@
                     @forelse($piutangs as $piutang)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $piutang->no_piutang }}</div>
+                                <div class="text-sm font-medium text-gray-900">{{ $loop->iteration + ($piutangs->currentPage() - 1) * $piutangs->perPage() }}</div>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">{{ $piutang->supplier->nama }}</div>

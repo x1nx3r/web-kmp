@@ -16,12 +16,6 @@
             {{-- Modal Body --}}
             <form wire:submit.prevent="update" class="p-6">
                 <div class="space-y-5">
-                    <!-- No Piutang (Read Only) -->
-                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">No. Piutang</label>
-                        <input type="text" value="{{ $no_piutang }}" readonly class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed">
-                    </div>
-
                     <!-- Supplier -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -73,30 +67,6 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
                         <textarea wire:model="keterangan" rows="3" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"></textarea>
                         @error('keterangan') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-
-                    <!-- Bukti Transaksi Saat Ini -->
-                    @if($existing_bukti)
-                    <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-paperclip mr-1 text-blue-600"></i>
-                            Bukti Transaksi Saat Ini
-                        </label>
-                        <a href="{{ Storage::url($existing_bukti) }}" target="_blank" class="inline-flex items-center px-3 py-2 bg-white border border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors text-sm font-medium">
-                            <i class="fas fa-file-alt mr-2"></i>Lihat Bukti
-                        </a>
-                    </div>
-                    @endif
-
-                    <!-- Upload Bukti Transaksi Baru -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload Bukti Baru (Opsional)</label>
-                        <input type="file" wire:model="bukti_transaksi" accept=".jpg,.jpeg,.png,.pdf" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
-                        <p class="text-xs text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Format: JPG, PNG, PDF (Max: 5MB)
-                        </p>
-                        @error('bukti_transaksi') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                     </div>
                 </div>
 

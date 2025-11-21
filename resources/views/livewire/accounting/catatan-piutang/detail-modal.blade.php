@@ -23,8 +23,8 @@
                     </h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div class="flex justify-between py-2 px-3 bg-white rounded-lg">
-                            <span class="font-medium text-gray-600">No. Piutang:</span>
-                            <span class="text-gray-900 font-semibold">{{ $detailPiutang->no_piutang }}</span>
+                            <span class="font-medium text-gray-600">ID Piutang:</span>
+                            <span class="text-gray-900 font-semibold">#{{ $detailPiutang->id }}</span>
                         </div>
                         <div class="flex justify-between py-2 px-3 bg-white rounded-lg">
                             <span class="font-medium text-gray-600">Supplier:</span>
@@ -89,19 +89,6 @@
                         Keterangan
                     </h4>
                     <p class="text-sm text-gray-700 leading-relaxed">{{ $detailPiutang->keterangan }}</p>
-                </div>
-                @endif
-
-                <!-- Bukti Transaksi -->
-                @if($detailPiutang->bukti_transaksi)
-                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-5 border border-indigo-200 shadow-sm">
-                    <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
-                        <i class="fas fa-paperclip mr-2 text-indigo-600"></i>
-                        Bukti Transaksi
-                    </h4>
-                    <a href="{{ Storage::url($detailPiutang->bukti_transaksi) }}" target="_blank" class="inline-flex items-center px-4 py-2.5 bg-white border border-indigo-300 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium shadow-sm">
-                        <i class="fas fa-file-alt mr-2"></i>Lihat Bukti Transaksi
-                    </a>
                 </div>
                 @endif
 

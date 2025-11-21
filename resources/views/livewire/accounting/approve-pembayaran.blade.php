@@ -196,6 +196,89 @@
                         </div>
                     @endif
 
+                    {{-- Catatan Pengiriman --}}
+                    @if(! empty($pengiriman->catatan))
+                        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg shadow-sm border border-yellow-200">
+                            <div class="border-b border-yellow-200 bg-yellow-100 px-6 py-4">
+                                <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                    <i class="fas fa-sticky-note text-yellow-600 mr-3"></i>
+                                    Catatan Pengiriman
+                                </h2>
+                            </div>
+                            <div class="p-6">
+                                <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{{ $pengiriman->catatan }}</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Bukti Foto Bongkar --}}
+                    @if($pengiriman->bukti_foto_bongkar_raw)
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4">
+                                <div class="flex items-center justify-between">
+                                    <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        <i class="fas fa-camera text-blue-600 mr-3"></i>
+                                        Bukti Foto Bongkar
+                                    </h2>
+                                    @if($pengiriman->bukti_foto_bongkar_uploaded_at)
+                                        <p class="text-xs text-gray-500">
+                                            <i class="fas fa-clock mr-1"></i>
+                                            Upload: {{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d M Y, H:i') }} WIB
+                                            <span class="text-gray-400">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }})</span>
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                @php
+                                    $photos = $pengiriman->bukti_foto_bongkar_array ?? [];
+                                @endphp
+
+                                @if(is_array($photos) && count($photos) > 0)
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        @foreach($photos as $index => $photo)
+                                            @if($photo)
+                                                @php
+                                                    $photoUrl = asset('storage/pengiriman/bukti/' . $photo);
+                                                @endphp
+                                                <div class="relative group">
+                                                    <img
+                                                        src="{{ $photoUrl }}"
+                                                        alt="Bukti Foto Bongkar {{ $index + 1 }}"
+                                                        class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                        onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                                        onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <div class="flex space-x-2">
+                                                            <button onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                                                    class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
+                                                                    title="Lihat gambar">
+                                                                <i class="fas fa-eye text-sm"></i>
+                                                            </button>
+                                                            <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
+                                                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                                                    title="Download gambar">
+                                                                <i class="fas fa-download text-sm"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="flex flex-col items-center justify-center py-12">
+                                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                            <i class="fas fa-image text-gray-400 text-3xl"></i>
+                                        </div>
+                                        <p class="text-gray-500 text-sm">Tidak ada bukti foto bongkar</p>
+                                        <p class="text-gray-400 text-xs mt-1">Foto belum diunggah untuk pengiriman ini</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Piutang Supplier --}}
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm border border-blue-200">
                         <div class="border-b border-blue-200 bg-blue-100 px-6 py-4">
@@ -244,7 +327,9 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="text-xs font-medium text-blue-700">Piutang Dipilih</label>
-                                            <p class="mt-1 text-sm font-semibold">{{ $approval->catatanPiutang->no_piutang ?? '-' }}</p>
+                                            <p class="mt-1 text-sm font-semibold">
+                                                {{ $approval->catatanPiutang ? '#'.$approval->catatanPiutang->id : '-' }}
+                                            </p>
                                         </div>
                                         <div>
                                             <label class="text-xs font-medium text-blue-700">Jumlah Pemotongan</label>
@@ -287,7 +372,7 @@
                                             <option value="">-- Tidak ada pemotongan piutang --</option>
                                             @foreach($piutangList as $piutang)
                                                 <option value="{{ $piutang->id }}">
-                                                    {{ $piutang->no_piutang }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}
+                                                    Piutang #{{ $piutang->id }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -473,6 +558,42 @@
                 {{-- Right Column: Approval Actions --}}
                 <div class="lg:col-span-1">
                     <div class="sticky top-6 space-y-6">
+                        {{-- Ringkasan Pembayaran Akhir --}}
+                        @php
+                            $piutangPotongan = $approval->piutang_amount ?? 0;
+                            $refraksiPotongan = $approval->refraksi_amount ?? 0;
+                            $totalPembayaran = max(0, ($approval->amount_after_refraksi ?? 0) - $piutangPotongan);
+                        @endphp
+
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                                <h2 class="text-base font-semibold text-gray-900 flex items-center">
+                                    <i class="fas fa-wallet text-gray-600 mr-2"></i>
+                                    Ringkasan Pembayaran
+                                </h2>
+                            </div>
+                            <div class="p-5 space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Total Awal Pengiriman</span>
+                                    <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Potongan Refraksi</span>
+                                    <span class="text-sm font-semibold text-red-600">- Rp {{ number_format($refraksiPotongan, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Potongan Piutang Supplier</span>
+                                    <span class="text-sm font-semibold text-red-600">- Rp {{ number_format($piutangPotongan, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="border-t border-gray-200 pt-4">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-base font-bold text-gray-900">Total Dibayarkan</span>
+                                        <span class="text-xl font-extrabold text-green-600">Rp {{ number_format($totalPembayaran, 0, ',', '.') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Approval Card --}}
                         <div class="bg-white rounded-lg shadow-lg border border-gray-200">
                             <div class="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 rounded-t-lg">
@@ -618,45 +739,6 @@
                             </div>
                         </div>
 
-                        {{-- Approval History --}}
-                        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
-                                <h2 class="text-base font-semibold text-gray-900 flex items-center">
-                                    <i class="fas fa-history text-gray-600 mr-2"></i>
-                                    Riwayat
-                                </h2>
-                            </div>
-                            <div class="p-4">
-                                @if($approvalHistory && count($approvalHistory) > 0)
-                                    <div class="space-y-3">
-                                        @foreach($approvalHistory as $history)
-                                            <div class="text-xs border-l-2 pl-3 py-2
-                                                @if($history->action === 'approved') border-green-500
-                                                @elseif($history->action === 'rejected') border-red-500
-                                                @else border-blue-500
-                                                @endif">
-                                                <p class="font-semibold text-gray-900">{{ $history->user->nama ?? 'System' }}</p>
-                                                <p class="text-gray-600">
-                                                    <span class="font-medium
-                                                        @if($history->action === 'approved') text-green-600
-                                                        @elseif($history->action === 'rejected') text-red-600
-                                                        @else text-blue-600
-                                                        @endif">
-                                                        {{ ucfirst($history->action) }}
-                                                    </span>
-                                                    • {{ \Carbon\Carbon::parse($history->created_at)->format('d M Y H:i') }}
-                                                </p>
-                                                @if($history->notes)
-                                                    <p class="text-gray-700 mt-1 italic">"{{ $history->notes }}"</p>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <p class="text-xs text-gray-500 text-center py-4">Belum ada riwayat</p>
-                                @endif
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -668,3 +750,16 @@
         @endif
     </div>
 </div>
+
+<script>
+    if (typeof window.downloadImage !== 'function') {
+        window.downloadImage = function(imageSrc, imageName = 'bukti_foto_bongkar.jpg') {
+            const link = document.createElement('a');
+            link.href = imageSrc;
+            link.download = imageName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    }
+</script>

@@ -26,8 +26,8 @@
                 @if($deletePiutang)
                 <div class="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                     <div class="flex justify-between">
-                        <span class="font-medium text-gray-700">No. Piutang:</span>
-                        <span class="text-gray-900">{{ $deletePiutang->no_piutang }}</span>
+                        <span class="font-medium text-gray-700">ID Piutang:</span>
+                        <span class="text-gray-900">#{{ $deletePiutang->id }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="font-medium text-gray-700">Supplier:</span>

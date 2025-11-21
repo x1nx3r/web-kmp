@@ -23,7 +23,7 @@ class DetailPembayaran extends Component
     public function loadApproval()
     {
         $this->approval = ApprovalPembayaran::with([
-            'pengiriman.pengirimanDetails.bahanBakuSupplier.bahanBaku',
+            'pengiriman.pengirimanDetails.bahanBakuSupplier',
             'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
             'pengiriman.purchaseOrder',
             'histories' => function($query) {

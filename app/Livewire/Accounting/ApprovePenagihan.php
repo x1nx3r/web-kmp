@@ -27,6 +27,7 @@ class ApprovePenagihan extends Component
     // Invoice date form
     public $invoiceDate;
     public $dueDate;
+    public $invoiceNumber = '';
 
     public function mount($approvalId)
     {
@@ -60,6 +61,7 @@ class ApprovePenagihan extends Component
         // Load invoice dates
         $this->invoiceDate = $this->invoice->invoice_date?->format('Y-m-d');
         $this->dueDate = $this->invoice->due_date?->format('Y-m-d');
+        $this->invoiceNumber = $this->invoice->invoice_number ?? '';
     }
 
     public function approve()
@@ -240,6 +242,33 @@ class ApprovePenagihan extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal mengupdate refraksi: ' . $e->getMessage());
+        }
+    }
+
+    public function updateInvoiceNumber()
+    {
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        $this->validate([
+            'invoiceNumber' => 'required|string|max:191',
+        ], [
+            'invoiceNumber.required' => 'Nomor invoice harus diisi',
+            'invoiceNumber.string' => 'Nomor invoice harus berupa teks',
+            'invoiceNumber.max' => 'Nomor invoice maksimal 191 karakter',
+        ]);
+
+        try {
+            $this->invoice->update([
+                'invoice_number' => $this->invoiceNumber,
+            ]);
+
+            session()->flash('message', 'Nomor invoice berhasil diperbarui');
+            $this->loadApproval();
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memperbarui nomor invoice: ' . $e->getMessage());
         }
     }
 

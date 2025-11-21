@@ -68,17 +68,6 @@
                         <textarea wire:model="keterangan" rows="3" placeholder="Masukkan keterangan piutang..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"></textarea>
                         @error('keterangan') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                     </div>
-
-                    <!-- Bukti Transaksi -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Bukti Transaksi</label>
-                        <input type="file" wire:model="bukti_transaksi" accept=".jpg,.jpeg,.png,.pdf" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
-                        <p class="text-xs text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Format: JPG, PNG, PDF (Max: 5MB)
-                        </p>
-                        @error('bukti_transaksi') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                    </div>
                 </div>
 
                 {{-- Modal Footer --}}

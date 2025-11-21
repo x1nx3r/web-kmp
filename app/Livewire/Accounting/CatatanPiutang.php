@@ -19,6 +19,8 @@ class CatatanPiutang extends Component
     public $search = '';
     public $statusFilter = 'all';
     public $supplierFilter = 'all';
+    public $sortField = 'created_at';
+    public $sortDirection = 'desc';
 
     // Modal states
     public $showCreateModal = false;
@@ -30,7 +32,6 @@ class CatatanPiutang extends Component
     // Form data
     public $piutangId;
     public $supplier_id;
-    public $no_piutang;
     public $tanggal_piutang;
     public $tanggal_jatuh_tempo;
     public $jumlah_piutang;
@@ -52,6 +53,19 @@ class CatatanPiutang extends Component
         'search' => ['except' => ''],
         'statusFilter' => ['except' => 'all'],
         'supplierFilter' => ['except' => 'all'],
+        'sortField' => ['except' => 'created_at'],
+        'sortDirection' => ['except' => 'desc'],
+    ];
+
+    protected $allowedSortFields = [
+        'id',
+        'tanggal_piutang',
+        'tanggal_jatuh_tempo',
+        'jumlah_piutang',
+        'jumlah_dibayar',
+        'sisa_piutang',
+        'status',
+        'created_at',
     ];
 
     protected $rules = [
@@ -69,7 +83,7 @@ class CatatanPiutang extends Component
         // Search
         if ($this->search) {
             $query->where(function($q) {
-                $q->where('no_piutang', 'like', '%' . $this->search . '%')
+                $q->whereRaw('CAST(id AS CHAR) LIKE ?', ['%' . $this->search . '%'])
                   ->orWhereHas('supplier', function($q2) {
                       $q2->where('nama', 'like', '%' . $this->search . '%');
                   });
@@ -86,7 +100,7 @@ class CatatanPiutang extends Component
             $query->where('supplier_id', $this->supplierFilter);
         }
 
-        $piutangs = $query->latest()->paginate(10);
+        $piutangs = $this->applySorting($query)->paginate(10);
         $suppliers = Supplier::orderBy('nama')->get();
 
         // Summary statistics
@@ -105,6 +119,42 @@ class CatatanPiutang extends Component
         ]);
     }
 
+    public function sortBy($field)
+    {
+        if ($field !== 'supplier_name' && ! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'asc';
+        }
+
+        $this->resetPage();
+    }
+
+    private function applySorting($query)
+    {
+        $field = $this->sortField;
+
+        if ($field === 'supplier_name') {
+            $query->orderBy(
+                Supplier::select('nama')->whereColumn('suppliers.id', 'catatan_piutangs.supplier_id'),
+                $this->sortDirection
+            );
+        } else {
+            if (! in_array($field, $this->allowedSortFields, true)) {
+                $field = 'created_at';
+            }
+
+            $query->orderBy('catatan_piutangs.' . $field, $this->sortDirection);
+        }
+
+        return $query;
+    }
+
     public function openCreateModal()
     {
         $this->resetForm();
@@ -117,7 +167,6 @@ class CatatanPiutang extends Component
         $piutang = CatatanPiutangModel::findOrFail($id);
 
         $this->piutangId = $piutang->id;
-        $this->no_piutang = $piutang->no_piutang;
         $this->supplier_id = $piutang->supplier_id;
         $this->tanggal_piutang = $piutang->tanggal_piutang->format('Y-m-d');
         $this->tanggal_jatuh_tempo = $piutang->tanggal_jatuh_tempo ? $piutang->tanggal_jatuh_tempo->format('Y-m-d') : null;
@@ -158,7 +207,6 @@ class CatatanPiutang extends Component
         try {
             $data = [
                 'supplier_id' => $this->supplier_id,
-                'no_piutang' => CatatanPiutangModel::generateNoPiutang(),
                 'tanggal_piutang' => $this->tanggal_piutang,
                 'tanggal_jatuh_tempo' => $this->tanggal_jatuh_tempo,
                 'jumlah_piutang' => $this->jumlah_piutang,
@@ -332,7 +380,6 @@ class CatatanPiutang extends Component
         $this->reset([
             'piutangId',
             'supplier_id',
-            'no_piutang',
             'tanggal_piutang',
             'tanggal_jatuh_tempo',
             'jumlah_piutang',

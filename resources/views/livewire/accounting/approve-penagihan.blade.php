@@ -36,23 +36,8 @@
                     <div>
                         <h1 class="text-2xl font-bold text-white mb-2">Detail Approval Penagihan</h1>
                         <p class="text-purple-100 text-sm">
-                            Invoice: <span class="font-semibold">{{ $invoice->invoice_number }}</span>
+                            Nomor Invoice Saat Ini: <span class="font-semibold">{{ $invoiceNumber ?: '-' }}</span>
                         </p>
-                    </div>
-                    <div class="text-right">
-                        @if($approval->status === 'pending')
-                            <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                <i class="fas fa-clock mr-2"></i> Menunggu Approval
-                            </span>
-                        @elseif($approval->status === 'completed')
-                            <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                <i class="fas fa-check-circle mr-2"></i> Selesai
-                            </span>
-                        @else
-                            <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                <i class="fas fa-times-circle mr-2"></i> Ditolak
-                            </span>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -68,9 +53,26 @@
                                 Informasi Invoice
                             </h3>
                             <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-sm text-gray-600">Nomor Invoice</p>
-                                    <p class="font-semibold text-gray-900">{{ $invoice->invoice_number }}</p>
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Nomor Invoice</label>
+                                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                                        <input
+                                            type="text"
+                                            wire:model.defer="invoiceNumber"
+                                            placeholder="Masukkan nomor invoice"
+                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                        >
+                                        <button
+                                            wire:click="updateInvoiceNumber"
+                                            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                                        >
+                                            <i class="fas fa-save mr-2"></i>
+                                            Simpan Nomor Invoice
+                                        </button>
+                                    </div>
+                                    @error('invoiceNumber')
+                                        <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Tanggal Invoice</p>
@@ -257,48 +259,6 @@
 
                     {{-- Right Column - Approval Status & Actions --}}
                     <div class="space-y-6">
-                        {{-- Approval Progress --}}
-                        <div class="bg-white rounded-lg border border-gray-200 p-6">
-                            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                <i class="fas fa-tasks text-purple-600 mr-2"></i>
-                                Status Approval
-                            </h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500">Status</label>
-                                    <p class="mt-1 text-sm font-semibold text-gray-900">
-                                        @if($approval->status === 'pending')
-                                            <i class="fas fa-clock text-blue-600 mr-1"></i>Menunggu Approval
-                                        @elseif($approval->status === 'completed')
-                                            <i class="fas fa-check-circle text-green-600 mr-1"></i>Selesai
-                                        @elseif($approval->status === 'rejected')
-                                            <i class="fas fa-times-circle text-red-600 mr-1"></i>Ditolak
-                                        @else
-                                            -
-                                        @endif
-                                    </p>
-                                </div>
-
-                                {{-- Approver Info --}}
-                                @if($approval->status === 'completed')
-                                    <div>
-                                        <label class="text-xs font-medium text-gray-500">Disetujui Oleh</label>
-                                        <p class="mt-1 text-sm text-gray-900">
-                                            @if($approval->staff)
-                                                <i class="fas fa-check text-green-500 mr-1"></i>
-                                                {{ $approval->staff->nama }} (Staff Accounting)
-                                            @elseif($approval->manager)
-                                                <i class="fas fa-check text-green-500 mr-1"></i>
-                                                {{ $approval->manager->nama }} (Manager Accounting)
-                                            @else
-                                                -
-                                            @endif
-                                        </p>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-
                         {{-- Notes Input - Only if not completed --}}
                         @if($approval->status !== 'completed' && $approval->status !== 'rejected')
                             <div class="bg-white rounded-lg border border-gray-200 p-6">

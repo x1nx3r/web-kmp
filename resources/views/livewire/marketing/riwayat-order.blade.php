@@ -271,6 +271,12 @@
                                             <i class="fas fa-user mr-1"></i>
                                             {{ $order->creator->name }}
                                         </span>
+                                        @if($order->winner)
+                                            <span class="flex items-center">
+                                                <i class="fas fa-trophy mr-1 text-yellow-500"></i>
+                                                <span class="font-medium text-yellow-700">PO Winner: {{ $order->winner->user->nama ?? $order->winner->user->name }}</span>
+                                            </span>
+                                        @endif
                                         @if($order->po_end_date)
                                             <span>
                                                 <i class="far fa-calendar-check mr-1"></i>

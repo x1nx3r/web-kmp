@@ -35,6 +35,16 @@
     </div>
 
     <div class="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+        {{-- Debug Info (Remove in production) --}}
+        @if(config('app.debug'))
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm">
+                <strong>Debug Mode:</strong> 
+                isEditing = {{ $isEditing ? 'TRUE' : 'FALSE' }} | 
+                editingOrderId = {{ $editingOrderId ?? 'NULL' }} | 
+                editingOrderNumber = {{ $editingOrderNumber ?? 'NULL' }}
+            </div>
+        @endif
+        
         {{-- Main Content Layout - More Symmetrical --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             {{-- Left Section - Client & Order Info --}}
@@ -84,15 +94,27 @@
                         @endif
                         
                         <div class="flex flex-col space-y-3">
-                            <button 
-                                type="button"
-                                wire:click="{{ $isEditing ? 'updateOrder' : 'createOrder' }}"
-                                class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                {{ $this->canSubmit ? '' : 'disabled' }}
-                            >
-                                <i class="fas fa-save mr-2"></i>
-                                {{ $isEditing ? 'Update Order' : 'Buat Order' }}
-                            </button>
+                            @if($isEditing)
+                                <button 
+                                    type="button"
+                                    wire:click="updateOrder"
+                                    class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    @if(!$this->canSubmit) disabled @endif
+                                >
+                                    <i class="fas fa-save mr-2"></i>
+                                    Update Order
+                                </button>
+                            @else
+                                <button 
+                                    type="button"
+                                    wire:click="createOrder"
+                                    class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    @if(!$this->canSubmit) disabled @endif
+                                >
+                                    <i class="fas fa-save mr-2"></i>
+                                    Buat Order
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>

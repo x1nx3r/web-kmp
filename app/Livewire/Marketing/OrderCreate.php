@@ -71,6 +71,12 @@ class OrderCreate extends Component
     
     public function mount(?Order $order = null)
     {
+        // Initialize default values for CREATE mode
+        $this->isEditing = false;
+        $this->editingOrderId = null;
+        $this->editingOrderNumber = null;
+        $this->currentStatus = 'draft';
+        
         $this->tanggalOrder = now()->format('Y-m-d');
         $this->poStartDate = $this->tanggalOrder;
         $this->poEndDate = now()->addDays(14)->format('Y-m-d');
@@ -78,12 +84,21 @@ class OrderCreate extends Component
         $this->updatePriorityFromSchedule();
         $this->loadAvailableWinners();
 
-        // If editing an existing order, load its winner
-        if ($order) {
+        // If editing an existing order, load its data
+        if ($order && $order->exists) {
             $this->isEditing = true;
             $this->editingOrderId = $order->id;
             $this->editingOrderNumber = $order->po_number;
+            $this->currentStatus = $order->status;
             $this->selectedKlienId = $order->klien_id;
+            
+            // Load klien details
+            $klien = Klien::find($order->klien_id);
+            if ($klien) {
+                $this->selectedKlien = $klien->nama;
+                $this->selectedKlienCabang = $klien->cabang;
+            }
+            
             $this->tanggalOrder = $order->tanggal_order ? \Illuminate\Support\Carbon::parse($order->tanggal_order)->format('Y-m-d') : $this->tanggalOrder;
             $this->poNumber = $order->po_number;
             $this->poStartDate = $order->po_start_date ? \Illuminate\Support\Carbon::parse($order->po_start_date)->format('Y-m-d') : $this->poStartDate;
@@ -96,6 +111,26 @@ class OrderCreate extends Component
 
             if ($order->winner) {
                 $this->poWinnerId = $order->winner->user_id;
+            }
+            
+            // Load first order detail if exists (single material order)
+            $firstDetail = $order->orderDetails()->first();
+            if ($firstDetail) {
+                $this->selectedMaterial = $firstDetail->bahan_baku_klien_id;
+                $this->namaMaterialPO = $firstDetail->nama_material_po;
+                $this->quantity = $firstDetail->qty;
+                $this->satuan = $firstDetail->satuan;
+                $this->hargaJual = $firstDetail->harga_jual;
+                $this->spesifikasiKhusus = $firstDetail->spesifikasi_khusus ?? '';
+                $this->catatanMaterial = $firstDetail->catatan ?? '';
+                
+                // Auto-populate suppliers for this material
+                $material = BahanBakuKlien::find($this->selectedMaterial);
+                if ($material) {
+                    $this->autoPopulateSuppliers($material);
+                }
+                
+                $this->updateTotals();
             }
         }
     }
@@ -257,7 +292,7 @@ class OrderCreate extends Component
         $this->updateTotals();
     }
     
-    private function autoPopulateSuppliers($material)
+    protected function autoPopulateSuppliers($material)
     {
         // Get all suppliers for this material using name matching (like in OrderDetail model)
         $suppliers = Supplier::with([
@@ -360,7 +395,7 @@ class OrderCreate extends Component
         }
     }
 
-    private function updatePriorityFromSchedule(): void
+    protected function updatePriorityFromSchedule(): void
     {
         if (!$this->poEndDate) {
             return;

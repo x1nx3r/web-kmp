@@ -41,6 +41,7 @@ class DaftarKlien extends Component
         'company_type' => 'existing',
         'company_nama' => '',
         'cabang' => '',
+        'alamat_lengkap' => '',
         'contact_person_id' => '',
     ];
 
@@ -71,7 +72,15 @@ class DaftarKlien extends Component
 
     public function render()
     {
-        $query = Klien::query();
+        $query = Klien::query()
+            ->with([
+                'contactPerson',
+                'bahanBakuKliens' => function($query) {
+                    $query->with(['riwayatHarga' => function($q) {
+                        $q->latest('tanggal_perubahan')->take(1);
+                    }]);
+                }
+            ]);
 
         // Apply search
         if ($this->search) {
@@ -83,98 +92,14 @@ class DaftarKlien extends Component
             $query->where('cabang', 'like', '%' . $this->location . '%');
         }
 
-        // Get unique client names for pagination
-        $page = $this->getPage();
-        $perPage = 10;
-
-        $uniqueNamesQuery = Klien::query()
-            ->select('nama')
-            ->distinct();
-
-        if ($this->search) {
-            $uniqueNamesQuery->search($this->search);
-        }
-        if ($this->location) {
-            $uniqueNamesQuery->where('cabang', 'like', '%' . $this->location . '%');
-        }
-
         // Apply sorting
-        if ($this->sort === 'cabang_count') {
-            $uniqueNames = $uniqueNamesQuery
-                ->selectRaw('nama, COUNT(*) as branch_count')
-                ->groupBy('nama')
-                ->orderBy('branch_count', $this->direction)
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->pluck('nama')
-                ->toArray();
-        } elseif ($this->sort === 'lokasi') {
-            $uniqueNames = $uniqueNamesQuery
-                ->selectRaw('nama, MIN(cabang) as first_location')
-                ->groupBy('nama')
-                ->orderBy('first_location', $this->direction)
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->pluck('nama')
-                ->toArray();
+        if ($this->sort === 'lokasi') {
+            $query->orderBy('cabang', $this->direction);
         } else {
-            $uniqueNames = $uniqueNamesQuery
-                ->orderBy($this->sort === 'updated_at' ? 'updated_at' : 'nama', $this->direction)
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->pluck('nama')
-                ->toArray();
+            $query->orderBy($this->sort === 'updated_at' ? 'updated_at' : 'nama', $this->direction);
         }
 
-        // Get total count for pagination
-        $totalUniqueNames = Klien::query()
-            ->when($this->search, function($q) {
-                $q->search($this->search);
-            })
-            ->when($this->location, function($q) {
-                $q->where('cabang', 'like', '%' . $this->location . '%');
-            })
-            ->distinct('nama')
-            ->count();
-
-        // Get all records for these specific names
-        $kliens = collect();
-        if (!empty($uniqueNames)) {
-            $query = Klien::query()
-                ->with([
-                    'contactPerson',
-                    'bahanBakuKliens' => function($query) {
-                        $query->with(['riwayatHarga' => function($q) {
-                            $q->latest('tanggal_perubahan')->take(1);
-                        }]);
-                    }
-                ])
-                ->whereIn('nama', $uniqueNames);
-            
-            // Apply appropriate sorting - only sort by actual table columns
-            if ($this->sort === 'cabang_count' || $this->sort === 'lokasi') {
-                // For aggregated sorts, maintain the order from $uniqueNames array
-                $query->orderByRaw('FIELD(nama, "' . implode('","', $uniqueNames) . '")');
-            } else {
-                $query->orderBy($this->sort === 'updated_at' ? 'updated_at' : 'nama', $this->direction);
-            }
-            
-            $kliens = $query->get();
-        }
-
-        // Create custom paginator
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
-            $kliens,
-            $totalUniqueNames,
-            $perPage,
-            $page,
-            [
-                'path' => request()->url(),
-                'pageName' => 'page'
-            ]
-        );
-
-        $paginator->appends(request()->only(['search', 'location', 'sort', 'direction']));
+        $kliens = $query->paginate(10);
 
         // Get available locations
         $availableLocations = Klien::query()
@@ -187,9 +112,8 @@ class DaftarKlien extends Component
             ->values();
 
         return view('livewire.marketing.daftar-klien', [
-            'kliens' => $paginator,
+            'kliens' => $kliens,
             'availableLocations' => $availableLocations,
-            'uniqueCompanies' => $this->getUniqueCompanies(),
         ]);
     }
 
@@ -329,16 +253,32 @@ class DaftarKlien extends Component
         $this->showConfirmModal = true;
     }
 
-    public function performCompanyDelete($nama)
+    public function deleteClient($id)
+    {
+        $klien = Klien::find($id);
+        if (!$klien) return;
+
+        $this->confirmModal = [
+            'title' => 'Hapus Klien',
+            'message' => "Anda yakin ingin menghapus \"{$klien->nama} - {$klien->cabang}\"?",
+            'warning' => 'Data yang dihapus tidak dapat dikembalikan.',
+            'confirmText' => 'Hapus',
+            'action' => 'performClientDelete',
+            'actionParams' => [$id],
+        ];
+        $this->showConfirmModal = true;
+    }
+
+    public function performClientDelete($id)
     {
         try {
-            $deleted = Klien::where('nama', $nama)->delete();
+            $deleted = Klien::destroy($id);
 
             if ($deleted === 0) {
-                throw new \Exception('Perusahaan tidak ditemukan');
+                throw new \Exception('Data tidak ditemukan');
             }
 
-            session()->flash('message', 'Perusahaan berhasil dihapus');
+            session()->flash('message', 'Klien berhasil dihapus');
             $this->closeConfirmModal();
         } catch (\Exception $e) {
             session()->flash('error', $e->getMessage());
@@ -368,6 +308,7 @@ class DaftarKlien extends Component
             'company_type' => 'existing',
             'company_nama' => '',
             'cabang' => '',
+            'alamat_lengkap' => '',
             'contact_person_id' => '',
         ];
         $this->availableContacts = collect();
@@ -391,16 +332,19 @@ class DaftarKlien extends Component
         }
     }
 
-    public function editBranch($id, $nama, $cabang, $no_hp)
+    public function editBranch($id)
     {
         $this->editingBranch = $id;
+        $klien = Klien::findOrFail($id);
         $this->branchForm = [
             'id' => $id,
             'company_type' => 'existing',
-            'company_nama' => $nama,
-            'cabang' => $cabang,
-            'no_hp' => $no_hp ?? '',
+            'company_nama' => $klien->nama,
+            'cabang' => $klien->cabang,
+            'alamat_lengkap' => $klien->alamat_lengkap,
+            'contact_person_id' => $klien->contact_person_id,
         ];
+        $this->updateAvailableContacts();
         $this->showBranchModal = true;
     }
 
@@ -409,6 +353,7 @@ class DaftarKlien extends Component
         $rules = [
             'branchForm.company_nama' => 'required|string|max:255',
             'branchForm.cabang' => 'required|string|max:255',
+            'branchForm.alamat_lengkap' => 'nullable|string',
             'branchForm.contact_person_id' => 'nullable|exists:kontak_klien,id',
         ];
 
@@ -425,6 +370,7 @@ class DaftarKlien extends Component
             $data = [
                 'nama' => $this->branchForm['company_nama'],
                 'cabang' => $this->branchForm['cabang'],
+                'alamat_lengkap' => $this->branchForm['alamat_lengkap'] ?: null,
                 'contact_person_id' => $this->branchForm['contact_person_id'],
             ];
 

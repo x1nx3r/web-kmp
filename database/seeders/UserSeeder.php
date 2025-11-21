@@ -56,7 +56,24 @@ class UserSeeder extends Seeder
                 'role' => 'marketing',
                 'password' => Hash::make('password123'),
                 'status' => 'aktif'
+            ],
+            [
+                'nama' => 'Dwi Amilatus Solicha',
+                'username' => 'dwiamilatus',
+                'email' => 'dwiamilatus386@gmail.com',
+                'role' => 'manager_accounting',
+                'password' => Hash::make('password123'),
+                'status' => 'aktif'
+            ],
+            [
+                'nama' => 'Annisa Sahira',
+                'username' => 'annisashr',
+                'email' => 'sahiraannisa15@gmail.com',
+                'role' => 'staff_accounting',
+                'password' => Hash::make('password123'),
+                'status' => 'aktif'
             ]
+
         ];
 
         foreach ($users as $userData) {

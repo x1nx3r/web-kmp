@@ -220,20 +220,23 @@
         <div class="space-y-6">
             @forelse($orders as $order)
                 @php
-                    // Ambil outstanding qty dan amount langsung dari order_detail
+                    // Calculate outstanding (remaining/unshipped) qty and amount
                     $outstandingSummary = [];
                     $outstandingAmount = 0;
                     $outstandingQtyTotal = 0;
 
                     foreach ($order->orderDetails as $detail) {
-                        $qty = $detail->qty ?? 0;
-                        $totalHarga = $detail->total_harga ?? 0;
+                        $totalQty = $detail->qty ?? 0;
+                        $shippedQty = $detail->total_shipped_quantity ?? 0;
+                        $remainingQty = $totalQty - $shippedQty;
+                        $hargaJual = $detail->harga_jual ?? 0;
                         $unitKey = $detail->satuan ?: 'unit';
 
-                        // Tambahkan ke summary berdasarkan satuan
-                        $outstandingSummary[$unitKey] = ($outstandingSummary[$unitKey] ?? 0) + $qty;
-                        $outstandingQtyTotal += $qty;
-                        $outstandingAmount += $totalHarga;
+                        // Add to summary by unit - only remaining/outstanding quantity
+                        $outstandingSummary[$unitKey] = ($outstandingSummary[$unitKey] ?? 0) + $remainingQty;
+                        $outstandingQtyTotal += $remainingQty;
+                        // Outstanding amount = remaining qty × selling price
+                        $outstandingAmount += ($remainingQty * $hargaJual);
                     }
 
                     // Format display untuk outstanding qty
@@ -376,12 +379,12 @@
                                         </div>
                                         <div class="text-right">
                                             <div class="text-sm font-semibold text-gray-900">
-                                                Rp {{ number_format($detail->total_amount, 0, ',', '.') }}
+                                                Rp {{ number_format($detail->total_harga, 0, ',', '.') }}
                                             </div>
                                             <div class="text-xs text-gray-500">
                                                 {{ $detail->orderSuppliers->count() }} supplier{{ $detail->orderSuppliers->count() > 1 ? 's' : '' }}
                                                 @if($detail->orderSuppliers->count() > 0)
-                                                    | Best margin: {{ number_format($detail->orderSuppliers->first()->margin_percentage ?? 0, 1) }}%
+                                                    | Best margin: {{ number_format($detail->orderSuppliers->first()->calculated_margin ?? 0, 1) }}%
                                                 @endif
                                             </div>
                                         </div>
@@ -464,13 +467,13 @@
                                                             </div>
                                                             <div class="text-right">
                                                                 <div class="text-sm font-semibold text-gray-900">
-                                                                    Rp {{ number_format($orderSupplier->harga_supplier, 0, ',', '.') }}
+                                                                    Rp {{ number_format($orderSupplier->unit_price, 0, ',', '.') }}
                                                                 </div>
                                                                 <div class="text-xs text-gray-600">
                                                                     per {{ $detail->bahanBakuKlien->satuan ?? 'unit' }}
                                                                 </div>
-                                                                <div class="text-xs {{ $orderSupplier->margin_percentage >= 20 ? 'text-green-600' : ($orderSupplier->margin_percentage >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
-                                                                    Margin: {{ number_format($orderSupplier->margin_percentage, 1) }}%
+                                                                <div class="text-xs {{ $orderSupplier->calculated_margin >= 20 ? 'text-green-600' : ($orderSupplier->calculated_margin >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                                    Margin: {{ number_format($orderSupplier->calculated_margin, 1) }}%
                                                                 </div>
                                                                 @if($orderSupplier->shipped_quantity > 0)
                                                                     <div class="text-xs text-blue-600 mt-1">

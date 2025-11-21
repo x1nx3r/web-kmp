@@ -292,178 +292,68 @@
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Klien</th>
-                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Plant</th>
-                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plant / Cabang</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alamat</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
                             <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        @php
-                            $grouped = $kliens->getCollection()->groupBy('nama');
-                            $currentPage = $kliens->currentPage();
-                            $perPage = $kliens->perPage();
-                            $startingRowNumber = ($currentPage - 1) * $perPage + 1;
-                            $rowNumber = $startingRowNumber;
-                        @endphp
-
-                        @foreach($grouped as $name => $group)
-                            @php
-                                $groupId = 'group-' . md5($name);
-                                $branches = $group->pluck('cabang')->filter()->unique();
-                                $mainLocation = $branches->first() ?? 'Tidak diketahui';
-                                $latestUpdate = $group->max('updated_at');
-                            @endphp
-
-                            {{-- Main client row --}}
-                            <tr
-                                class="hover:bg-gray-50 border-b border-gray-200 cursor-pointer"
-                                wire:click="toggleGroup('{{ $groupId }}')"
-                            >
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $rowNumber }}</td>
+                        @foreach($kliens as $index => $klien)
+                            <tr class="hover:bg-gray-50 border-b border-gray-200">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                                    {{ $kliens->firstItem() + $index }}
+                                </td>
                                 <td class="px-6 py-4">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="text-sm font-semibold text-gray-900">{{ $name }}</div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            class="flex items-center px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
-                                        >
-                                            <i class="fas mr-1 transform transition-transform duration-200 {{ in_array($groupId, $openGroups) ? 'fa-chevron-down rotate-0' : 'fa-chevron-right' }}"></i>
-                                            <span>{{ in_array($groupId, $openGroups) ? 'Tutup' : 'Lihat Plant' }}</span>
-                                        </button>
-                                    </div>
+                                    <div class="text-sm font-semibold text-gray-900">{{ $klien->nama }}</div>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-900">
-                                    <div class="flex items-center">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            <i class="fas fa-map-marker-alt mr-1"></i>
-                                            {{ $group->count() }} plant
-                                        </span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-500">
+                                <td class="px-6 py-4">
                                     <div class="flex items-center">
                                         <i class="fas fa-location-dot text-gray-400 mr-2"></i>
-                                        {{ $mainLocation }}
-                                        @if($branches->count() > 1)
-                                            <span class="text-xs text-gray-400 ml-1">(+{{ $branches->count() - 1 }} lokasi)</span>
-                                        @endif
+                                        <span class="text-sm text-gray-900">{{ $klien->cabang }}</span>
                                     </div>
                                 </td>
+                                <td class="px-6 py-4">
+                                    @if($klien->alamat_lengkap)
+                                        <div class="text-sm text-gray-600 max-w-xs truncate" title="{{ $klien->alamat_lengkap }}">
+                                            {{ $klien->alamat_lengkap }}
+                                        </div>
+                                    @else
+                                        <span class="text-sm text-gray-400 italic">-</span>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 text-sm text-gray-500">
-                                    {{ $latestUpdate ? \Carbon\Carbon::parse($latestUpdate)->format('d/m/Y H:i') : '-' }}
+                                    {{ $klien->updated_at ? $klien->updated_at->format('d/m/Y H:i') : '-' }}
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center justify-end space-x-1">
                                         <a
-                                            href="{{ route('kontak-klien.index', ['klien' => $name]) }}"
+                                            href="{{ route('kontak-klien.index', ['klien' => $klien->nama]) }}"
                                             class="flex items-center justify-center w-8 h-8 bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-800 rounded-md transition-all duration-200 group"
                                             title="Kelola Kontak"
                                         >
                                             <i class="fas fa-address-book text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </a>
-                                        <button
-                                            type="button"
-                                            wire:click.stop="editCompany('{{ $name }}')"
+                                        <a
+                                            href="{{ route('klien.edit', $klien->id) }}"
                                             class="flex items-center justify-center w-8 h-8 bg-amber-100 hover:bg-amber-200 text-amber-700 hover:text-amber-800 rounded-md transition-all duration-200 group"
-                                            title="Edit Perusahaan"
+                                            title="Lihat Detail"
                                         >
-                                            <i class="fas fa-edit text-xs group-hover:scale-110 transition-transform duration-200"></i>
-                                        </button>
+                                            <i class="fas fa-eye text-xs group-hover:scale-110 transition-transform duration-200"></i>
+                                        </a>
                                         <button
                                             type="button"
-                                            wire:click.stop="deleteCompany('{{ $name }}')"
+                                            wire:click.stop="deleteClient({{ $klien->id }})"
                                             class="flex items-center justify-center w-8 h-8 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800 rounded-md transition-all duration-200 group"
-                                            title="Hapus Perusahaan"
+                                            title="Hapus Klien"
                                         >
                                             <i class="fas fa-trash-alt text-xs group-hover:scale-110 transition-transform duration-200"></i>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            wire:click.stop="toggleGroup('{{ $groupId }}')"
-                                            class="flex items-center justify-center w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 rounded-md transition-all duration-200 group"
-                                            title="{{ in_array($groupId, $openGroups) ? 'Tutup Detail' : 'Lihat Detail' }}"
-                                        >
-                                            <i class="fas fa-{{ in_array($groupId, $openGroups) ? 'chevron-up' : 'chevron-down' }} text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-
-                            {{-- Expandable branches section --}}
-                            @if(in_array($groupId, $openGroups))
-                                <tr class="bg-gray-50">
-                                    <td colspan="6" class="p-0">
-                                        <div class="border-t border-gray-200">
-                                            {{-- Branch header --}}
-                                            <div class="px-6 py-3 bg-gray-100 border-b border-gray-200">
-                                                <h4 class="text-sm font-medium text-gray-900">Plant untuk: {{ $name }}</h4>
-                                            </div>
-
-                                            {{-- Branch table --}}
-                                            <div class="overflow-x-auto">
-                                                <table class="w-full">
-                                                    <thead class="bg-gray-50">
-                                                        <tr>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Plant</th>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
-                                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
-                                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody class="bg-white divide-y divide-gray-200">
-                                                        @foreach($group as $klien)
-                                                            @php $detailId = 'detail-' . $klien->id; @endphp
-
-                                                            <tr class="hover:bg-gray-50">
-                                                                <td class="px-4 py-3">
-                                                                    <div class="text-sm font-medium text-gray-900">{{ $klien->cabang }}</div>
-                                                                </td>
-                                                                <td class="px-4 py-3 text-sm text-gray-500">
-                                                                    @if($klien->contactPerson)
-                                                                        <div>{{ $klien->contactPerson->nama }}</div>
-                                                                        <div class="text-xs text-gray-400">{{ $klien->contactPerson->nomor_hp ?? 'No HP' }}</div>
-                                                                    @else
-                                                                        -
-                                                                    @endif
-                                                                </td>
-                                                                <td class="px-4 py-3 text-sm text-gray-500">
-                                                                    {{ $klien->updated_at->format('d/m/Y H:i') }}
-                                                                </td>
-                                                                <td class="px-4 py-3">
-                                                                    <div class="flex items-center justify-end space-x-1">
-                                                                        <a
-                                                                            href="{{ route('klien.edit', $klien) }}"
-                                                                            class="flex items-center justify-center w-7 h-7 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 rounded-md transition-all duration-200 group"
-                                                                            title="Edit Plant & Kelola Material"
-                                                                        >
-                                                                            <i class="fas fa-edit text-xs group-hover:scale-110 transition-transform duration-200"></i>
-                                                                        </a>
-                                                                        <button
-                                                                            wire:click="deleteBranch({{ $klien->id }}, '{{ $klien->cabang }}')"
-                                                                            class="flex items-center justify-center w-7 h-7 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800 rounded-md transition-all duration-200 group"
-                                                                            title="Hapus Plant"
-                                                                        >
-                                                                            <i class="fas fa-trash-alt text-xs group-hover:scale-110 transition-transform duration-200"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endif
-
-                            @php $rowNumber++; @endphp
                         @endforeach
                     </tbody>
-                </table>
             </div>
 
             {{-- Pagination --}}
@@ -649,6 +539,19 @@
                                     placeholder="Masukkan lokasi plant"
                                 >
                                 @error('branchForm.cabang')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Alamat Lengkap (Opsional)</label>
+                                <textarea
+                                    wire:model="branchForm.alamat_lengkap"
+                                    rows="3"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('branchForm.alamat_lengkap') border-red-500 @enderror"
+                                    placeholder="Masukkan alamat lengkap plant..."
+                                ></textarea>
+                                @error('branchForm.alamat_lengkap')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>

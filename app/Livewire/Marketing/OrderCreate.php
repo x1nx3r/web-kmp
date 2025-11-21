@@ -43,6 +43,8 @@ class OrderCreate extends Component
     public $poDocument;
     public $priority = 'normal';
     public $catatan = '';
+    public $poWinnerId = null;
+    public $availableWinners = [];
     
     // Search and filter properties
     public $klienSearch = "";
@@ -51,6 +53,7 @@ class OrderCreate extends Component
     
     // Single Material Selection (no modal needed)
     public $selectedMaterial = null;
+    public $namaMaterialPO = '';
     public $quantity = 1;
     public $satuan = '';
     public $hargaJual = 0;
@@ -68,11 +71,76 @@ class OrderCreate extends Component
     
     public function mount(?Order $order = null)
     {
+        // Initialize default values for CREATE mode
+        $this->isEditing = false;
+        $this->editingOrderId = null;
+        $this->editingOrderNumber = null;
+        $this->currentStatus = 'draft';
+        
         $this->tanggalOrder = now()->format('Y-m-d');
         $this->poStartDate = $this->tanggalOrder;
         $this->poEndDate = now()->addDays(14)->format('Y-m-d');
         $this->resetTotals();
         $this->updatePriorityFromSchedule();
+        $this->loadAvailableWinners();
+
+        // If editing an existing order, load its data
+        if ($order && $order->exists) {
+            $this->isEditing = true;
+            $this->editingOrderId = $order->id;
+            $this->editingOrderNumber = $order->po_number;
+            $this->currentStatus = $order->status;
+            $this->selectedKlienId = $order->klien_id;
+            
+            // Load klien details
+            $klien = Klien::find($order->klien_id);
+            if ($klien) {
+                $this->selectedKlien = $klien->nama;
+                $this->selectedKlienCabang = $klien->cabang;
+            }
+            
+            $this->tanggalOrder = $order->tanggal_order ? \Illuminate\Support\Carbon::parse($order->tanggal_order)->format('Y-m-d') : $this->tanggalOrder;
+            $this->poNumber = $order->po_number;
+            $this->poStartDate = $order->po_start_date ? \Illuminate\Support\Carbon::parse($order->po_start_date)->format('Y-m-d') : $this->poStartDate;
+            $this->poEndDate = $order->po_end_date ? \Illuminate\Support\Carbon::parse($order->po_end_date)->format('Y-m-d') : $this->poEndDate;
+            $this->priority = $order->priority ?? $this->priority;
+            $this->catatan = $order->catatan ?? $this->catatan;
+            $this->existingPoDocumentPath = $order->po_document_path;
+            $this->existingPoDocumentName = $order->po_document_original_name;
+            $this->existingPoDocumentUrl = $order->po_document_url;
+
+            if ($order->winner) {
+                $this->poWinnerId = $order->winner->user_id;
+            }
+            
+            // Load first order detail if exists (single material order)
+            $firstDetail = $order->orderDetails()->first();
+            if ($firstDetail) {
+                $this->selectedMaterial = $firstDetail->bahan_baku_klien_id;
+                $this->namaMaterialPO = $firstDetail->nama_material_po;
+                $this->quantity = $firstDetail->qty;
+                $this->satuan = $firstDetail->satuan;
+                $this->hargaJual = $firstDetail->harga_jual;
+                $this->spesifikasiKhusus = $firstDetail->spesifikasi_khusus ?? '';
+                $this->catatanMaterial = $firstDetail->catatan ?? '';
+                
+                // Auto-populate suppliers for this material
+                $material = BahanBakuKlien::find($this->selectedMaterial);
+                if ($material) {
+                    $this->autoPopulateSuppliers($material);
+                }
+                
+                $this->updateTotals();
+            }
+        }
+    }
+
+    public function loadAvailableWinners()
+    {
+        $this->availableWinners = \App\Models\User::whereIn('role', ['direktur', 'marketing'])
+            ->where('status', 'aktif')
+            ->orderBy('nama')
+            ->get();
     }
     
     public function render()
@@ -150,6 +218,7 @@ class OrderCreate extends Component
         
         // Reset material selection when client changes
         $this->selectedMaterial = null;
+        $this->namaMaterialPO = '';
         $this->quantity = 1;
         $this->hargaJual = 0;
         $this->autoSuppliers = [];
@@ -223,7 +292,7 @@ class OrderCreate extends Component
         $this->updateTotals();
     }
     
-    private function autoPopulateSuppliers($material)
+    protected function autoPopulateSuppliers($material)
     {
         // Get all suppliers for this material using name matching (like in OrderDetail model)
         $suppliers = Supplier::with([
@@ -326,7 +395,7 @@ class OrderCreate extends Component
         }
     }
 
-    private function updatePriorityFromSchedule(): void
+    protected function updatePriorityFromSchedule(): void
     {
         if (!$this->poEndDate) {
             return;
@@ -379,6 +448,7 @@ class OrderCreate extends Component
         $this->validate([
             'selectedKlienId' => 'required',
             'selectedMaterial' => 'required',
+            'namaMaterialPO' => 'nullable|string|max:255',
             'quantity' => 'required|numeric|min:0.01',
             'hargaJual' => 'required|numeric|min:0',
             'tanggalOrder' => 'required|date',
@@ -434,10 +504,15 @@ class OrderCreate extends Component
                 'total_margin' => 0, // Will be calculated by model
             ]);
             
+            // Get material name for fallback
+            $material = BahanBakuKlien::find($this->selectedMaterial);
+            $namaMaterialPO = !empty($this->namaMaterialPO) ? $this->namaMaterialPO : ($material ? $material->nama : null);
+            
             // Create single order detail with auto-supplier population
             $orderDetail = OrderDetail::create([
                 'order_id' => $order->id,
                 'bahan_baku_klien_id' => $this->selectedMaterial,
+                'nama_material_po' => $namaMaterialPO,
                 'qty' => $this->quantity,
                 'satuan' => $this->satuan,
                 'harga_jual' => $this->hargaJual,
@@ -452,6 +527,14 @@ class OrderCreate extends Component
 
             // Set recommended supplier based on auto-populated data
             $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
+
+            // Persist PO winner if selected
+            if ($this->poWinnerId) {
+                \App\Models\OrderWinner::updateOrCreate(
+                    ['order_id' => $order->id],
+                    ['user_id' => $this->poWinnerId]
+                );
+            }
             
             DB::commit();
             
@@ -479,6 +562,7 @@ class OrderCreate extends Component
 
         $this->validate([
             'selectedKlienId' => 'required',
+            'namaMaterialPO' => 'nullable|string|max:255',
             'tanggalOrder' => 'required|date',
             'poNumber' => 'required|string|max:50',
             'poStartDate' => 'required|date',
@@ -539,10 +623,15 @@ class OrderCreate extends Component
             }
             $order->orderDetails()->delete();
 
+            // Get material name for fallback
+            $material = BahanBakuKlien::find($this->selectedMaterial);
+            $namaMaterialPO = !empty($this->namaMaterialPO) ? $this->namaMaterialPO : ($material ? $material->nama : null);
+            
             // Create single updated order detail
             $orderDetail = OrderDetail::create([
                 'order_id' => $order->id,
                 'bahan_baku_klien_id' => $this->selectedMaterial,
+                'nama_material_po' => $namaMaterialPO,
                 'qty' => $this->quantity,
                 'satuan' => $this->satuan,
                 'harga_jual' => $this->hargaJual,
@@ -556,6 +645,17 @@ class OrderCreate extends Component
             $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
 
             $order->calculateTotals();
+
+            // Update or create PO winner record
+            if ($this->poWinnerId) {
+                \App\Models\OrderWinner::updateOrCreate(
+                    ['order_id' => $order->id],
+                    ['user_id' => $this->poWinnerId]
+                );
+            } else {
+                // If null, remove any existing winner assignment
+                \App\Models\OrderWinner::where('order_id', $order->id)->delete();
+            }
 
             DB::commit();
 

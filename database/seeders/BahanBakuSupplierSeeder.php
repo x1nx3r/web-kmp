@@ -24,7 +24,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Giarto
             [
                 'supplier_slug' => 'pak-giarto',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3800,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -35,7 +35,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // Pak Rul
             [
                 'supplier_slug' => 'pak-rul',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 4700,
                 'satuan' => 'Kg',
                 'stok' => 200000, // 200 ton = 200,000 Kg
@@ -46,7 +46,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Solikin
             [
                 'supplier_slug' => 'pak-solikin',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 4500,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -57,7 +57,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // abah ariff
             [
                 'supplier_slug' => 'abah-ariff',
-                'nama' => 'shm',
+                'nama' => 'SHM',
                 'harga_per_satuan' => 7100,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -68,7 +68,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Hasan
             [
                 'supplier_slug' => 'pak-hasan',
-                'nama' => 'bone meal',
+                'nama' => 'Bone Meal',
                 'harga_per_satuan' => 3500,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -79,7 +79,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Widodo (multiple products)
             [
                 'supplier_slug' => 'pak-widodo',
-                'nama' => 'pkd',
+                'nama' => 'PKD',
                 'harga_per_satuan' => 3700,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -88,7 +88,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-widodo',
-                'nama' => 'pkm',
+                'nama' => 'PKM',
                 'harga_per_satuan' => 2200,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -97,7 +97,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-widodo',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3550,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -108,7 +108,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Heri
             [
                 'supplier_slug' => 'pak-heri',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3600,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -119,7 +119,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Wawan
             [
                 'supplier_slug' => 'pak-wawan',
-                'nama' => 'mie kuning',
+                'nama' => 'Mie Kuning',
                 'harga_per_satuan' => 5200,
                 'satuan' => 'Kg',
                 'stok' => 60000, // 60 ton = 60,000 Kg
@@ -130,7 +130,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Kusnadi
             [
                 'supplier_slug' => 'pak-kusnadi',
-                'nama' => 'mie merah',
+                'nama' => 'Mie Merah',
                 'harga_per_satuan' => 4650,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -141,7 +141,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Adit (multiple products)
             [
                 'supplier_slug' => 'pak-adit-nganjuk',
-                'nama' => 'corn germ',
+                'nama' => 'Corn Gem',
                 'harga_per_satuan' => 6450,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -150,7 +150,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-adit-nganjuk',
-                'nama' => 'cgm',
+                'nama' => 'CGM',
                 'harga_per_satuan' => 9000,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -159,7 +159,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-adit-nganjuk',
-                'nama' => 'pkd',
+                'nama' => 'PKD',
                 'harga_per_satuan' => 3700,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -168,7 +168,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-adit-nganjuk',
-                'nama' => 'cgf',
+                'nama' => 'CGF',
                 'harga_per_satuan' => 3500,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -179,7 +179,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Toni
             [
                 'supplier_slug' => 'pak-toni',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 4700,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -190,8 +190,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // bu Hadiah
             [
                 'supplier_slug' => 'bu-hadiah',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
                 'created_at' => now(),
@@ -201,7 +201,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Fitra
             [
                 'supplier_slug' => 'pak-fitra',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3900,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -212,8 +212,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Yuda (PT. Sorini)
             [
                 'supplier_slug' => 'pak-yuda-pt-sorini',
-                'nama' => 'corn germ',
-                'harga_per_satuan' => null,
+                'nama' => 'Corn Gem',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -223,8 +223,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Wandi
             [
                 'supplier_slug' => 'pak-wandi',
-                'nama' => 'biskuit',
-                'harga_per_satuan' => null,
+                'nama' => 'Tepung Biskuit',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
                 'created_at' => now(),
@@ -234,8 +234,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // bu Lestari
             [
                 'supplier_slug' => 'bu-lestari',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -245,8 +245,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Yohannes
             [
                 'supplier_slug' => 'pak-yohannes',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -256,8 +256,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // ibu Anis
             [
                 'supplier_slug' => 'ibu-anis',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
                 'created_at' => now(),
@@ -267,8 +267,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // bu Ulil CV Sumber Pangan (multiple products)
             [
                 'supplier_slug' => 'bu-ulil-cv-sumber-pangan',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -276,8 +276,8 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'bu-ulil-cv-sumber-pangan',
-                'nama' => 'kebi',
-                'harga_per_satuan' => null,
+                'nama' => 'Kebi',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -287,8 +287,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // Pak Haris
             [
                 'supplier_slug' => 'pak-haris',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -298,8 +298,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Ade
             [
                 'supplier_slug' => 'pak-ade',
-                'nama' => 'cgf',
-                'harga_per_satuan' => null,
+                'nama' => 'CGF',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
                 'created_at' => now(),
@@ -308,8 +308,8 @@ class BahanBakuSupplierSeeder extends Seeder
             
             // pak Iwan (multiple products)
             [
-                'supplier_slug' => 'pak-iwan',
-                'nama' => 'cfm',
+                'supplier_slug' => 'pak-iwan-krian',
+                'nama' => 'CFM/FTM',
                 'harga_per_satuan' => 6400,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -317,8 +317,8 @@ class BahanBakuSupplierSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'supplier_slug' => 'pak-iwan',
-                'nama' => 'bone meal',
+                'supplier_slug' => 'pak-iwan-krian',
+                'nama' => 'Bone Meal',
                 'harga_per_satuan' => 3400,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -329,7 +329,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Benny
             [
                 'supplier_slug' => 'pak-benny',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3600,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -351,7 +351,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // Ibu Silvia PT Garuda Perkasa Jaya (multiple products)
             [
                 'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
-                'nama' => 'fish meal 60%',
+                'nama' => 'Fish Meal',
                 'harga_per_satuan' => 17700,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -360,7 +360,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
-                'nama' => 'mbm 50%',
+                'nama' => 'MBM (Meat Bone Meal)',
                 'harga_per_satuan' => 7800,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -369,7 +369,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
-                'nama' => 'pmm 65%',
+                'nama' => 'Poultry Meal',
                 'harga_per_satuan' => 14900,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -378,7 +378,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'ibu-silvia-pt-garuda-perkasa-jaya',
-                'nama' => 'pmm 60%',
+                'nama' => 'Poultry Meal',
                 'harga_per_satuan' => 14100,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -389,8 +389,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Rudi (multiple products)
             [
                 'supplier_slug' => 'pak-rudi',
-                'nama' => 'pkm',
-                'harga_per_satuan' => null,
+                'nama' => 'PKM',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -398,7 +398,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-rudi',
-                'nama' => 'cpo',
+                'nama' => 'CPO',
                 'harga_per_satuan' => 15850, // 15.85 * 1000 untuk konversi ke per Kg
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -409,8 +409,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Lutfi
             [
                 'supplier_slug' => 'pak-lutfi',
-                'nama' => 'biji batu',
-                'harga_per_satuan' => null,
+                'nama' => 'Biji Batu',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 200000, // 200 ton = 200,000 Kg
                 'created_at' => now(),
@@ -420,8 +420,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Daniel PT Miwon
             [
                 'supplier_slug' => 'pak-daniel-pt-miwon',
-                'nama' => 'corn germ',
-                'harga_per_satuan' => null,
+                'nama' => 'Corn Gem',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -431,7 +431,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Korun PT Bungasari
             [
                 'supplier_slug' => 'pak-korun-pt-bungasari',
-                'nama' => 'tepung industri',
+                'nama' => 'Tepung Industri',
                 'harga_per_satuan' => 5100,
                 'satuan' => 'Kg',
                 'stok' => 400000, // 400 ton = 400,000 Kg
@@ -442,7 +442,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // abah Julio
             [
                 'supplier_slug' => 'abah-julio',
-                'nama' => 'molases',
+                'nama' => 'Molases',
                 'harga_per_satuan' => 1400,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -453,8 +453,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // abah Zainal
             [
                 'supplier_slug' => 'abah-zainal',
-                'nama' => 'cfm',
-                'harga_per_satuan' => null,
+                'nama' => 'CFM/FTM',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -464,8 +464,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Darsono
             [
                 'supplier_slug' => 'pak-darsono',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -475,8 +475,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // ibu Taslima
             [
                 'supplier_slug' => 'ibu-taslima',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -486,8 +486,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Tris
             [
                 'supplier_slug' => 'pak-tris',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -497,8 +497,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // ibu Romtini
             [
                 'supplier_slug' => 'ibu-romtini',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -508,8 +508,8 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Fani (multiple products)
             [
                 'supplier_slug' => 'pak-fani',
-                'nama' => 'cfm',
-                'harga_per_satuan' => null,
+                'nama' => 'CFM/FTM',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
                 'created_at' => now(),
@@ -517,7 +517,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-fani',
-                'nama' => 'bone meal',
+                'nama' => 'Bone Meal',
                 'harga_per_satuan' => 3700,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -528,7 +528,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Pri
             [
                 'supplier_slug' => 'pak-pri',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 4700,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -539,7 +539,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak San
             [
                 'supplier_slug' => 'pak-san',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 4550,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -550,7 +550,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Iman
             [
                 'supplier_slug' => 'pak-iman',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3900,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -561,7 +561,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Wahyu
             [
                 'supplier_slug' => 'pak-wahyu',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3700,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -572,7 +572,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Bambang (multiple products)
             [
                 'supplier_slug' => 'pak-bambang',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 4350,
                 'satuan' => 'Kg',
                 'stok' => 150000, // 150 ton = 150,000 Kg
@@ -581,7 +581,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-bambang',
-                'nama' => 'gaplek meal',
+                'nama' => 'Tepung Gaplek',
                 'harga_per_satuan' => 4000,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -592,7 +592,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Ali
             [
                 'supplier_slug' => 'pak-ali',
-                'nama' => 'gaplek meal',
+                'nama' => 'Tepung Gaplek',
                 'harga_per_satuan' => 4000,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -603,7 +603,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Adit (Prambong) - multiple products
             [
                 'supplier_slug' => 'pak-adit-prambong',
-                'nama' => 'kebi',
+                'nama' => 'Kebi',
                 'harga_per_satuan' => 5200,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -612,8 +612,8 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-adit-prambong',
-                'nama' => 'katul',
-                'harga_per_satuan' => null,
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -623,7 +623,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // ibu Hilma
             [
                 'supplier_slug' => 'ibu-hilma',
-                'nama' => 'tepung batu',
+                'nama' => 'Tepung Batu',
                 'harga_per_satuan' => 1100,
                 'satuan' => 'Kg',
                 'stok' => 200000, // 200 ton = 200,000 Kg
@@ -634,7 +634,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Yamin
             [
                 'supplier_slug' => 'pak-yamin',
-                'nama' => 'bone meal',
+                'nama' => 'Bone Meal',
                 'harga_per_satuan' => 3550,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -645,7 +645,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Alim
             [
                 'supplier_slug' => 'pak-alim',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 5200,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -656,7 +656,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Aldy
             [
                 'supplier_slug' => 'pak-aldy',
-                'nama' => 'biskuit',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3850,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -667,7 +667,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Ridho
             [
                 'supplier_slug' => 'pak-ridho',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 5300,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -678,7 +678,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Budi
             [
                 'supplier_slug' => 'pak-budi',
-                'nama' => 'cfm',
+                'nama' => 'CFM/FTM',
                 'harga_per_satuan' => 6800,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -689,18 +689,18 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Heru
             [
                 'supplier_slug' => 'pak-heru',
-                'nama' => 'cfm',
-                'harga_per_satuan' => null,
+                'nama' => 'CFM/FTM',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             
-            // pak Adit (Karawang)
+            // pak Adi (Karawang)
             [
-                'supplier_slug' => 'pak-adit-karawang',
-                'nama' => 'biskuit',
+                'supplier_slug' => 'pak-adi-karawang',
+                'nama' => 'Tepung Biskuit',
                 'harga_per_satuan' => 3900,
                 'satuan' => 'Kg',
                 'stok' => 50000, // 50 ton = 50,000 Kg
@@ -711,7 +711,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // abah Mashuri (multiple products)
             [
                 'supplier_slug' => 'abah-mashuri',
-                'nama' => 'cfm',
+                'nama' => 'CFM/FTM',
                 'harga_per_satuan' => 6600,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -720,7 +720,7 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'abah-mashuri',
-                'nama' => 'bone meal',
+                'nama' => 'Bone Meal',
                 'harga_per_satuan' => 3550,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -731,7 +731,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Abi (multiple products)
             [
                 'supplier_slug' => 'pak-abi',
-                'nama' => 'gaplek meal',
+                'nama' => 'Tepung Gaplek',
                 'harga_per_satuan' => 4000,
                 'satuan' => 'Kg',
                 'stok' => 200000, // 200 ton = 200,000 Kg
@@ -740,8 +740,8 @@ class BahanBakuSupplierSeeder extends Seeder
             ],
             [
                 'supplier_slug' => 'pak-abi',
-                'nama' => 'gaplek chip',
-                'harga_per_satuan' => null,
+                'nama' => 'Gaplek Chip',
+                'harga_per_satuan' => 0,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
                 'created_at' => now(),
@@ -751,7 +751,7 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Wahyudi
             [
                 'supplier_slug' => 'pak-wahyudi',
-                'nama' => 'katul',
+                'nama' => 'Katul',
                 'harga_per_satuan' => 5200,
                 'satuan' => 'Kg',
                 'stok' => 100000, // 100 ton = 100,000 Kg
@@ -762,13 +762,209 @@ class BahanBakuSupplierSeeder extends Seeder
             // pak Nafar
             [
                 'supplier_slug' => 'pak-nafar',
-                'nama' => 'shm',
+                'nama' => 'SHM',
                 'harga_per_satuan' => 7000,
                 'satuan' => 'Kg',
                 'stok' => 30000, // 30 ton = 30,000 Kg
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            
+            // pak Heri (Gresik)
+            [
+                'supplier_slug' => 'pak-heri',
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Teguh
+            [
+                'supplier_slug' => 'teguh',
+                'nama' => 'Garam',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Febri
+            [
+                'supplier_slug' => 'febri',
+                'nama' => 'Garam',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Rini
+            [
+                'supplier_slug' => 'rini',
+                'nama' => 'Tepung Biskuit',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Yayuk
+            [
+                'supplier_slug' => 'yayuk',
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // pak Dani
+            [
+                'supplier_slug' => 'pak-dani',
+                'nama' => 'Tepung Biskuit',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Rokidin
+            [
+                'supplier_slug' => 'rokidin',
+                'nama' => 'Tepung Biskuit',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Iwan (Jombang)
+            [
+                'supplier_slug' => 'iwan-jombang',
+                'nama' => 'CFM/FTM',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Hardian
+            [
+                'supplier_slug' => 'hardian',
+                'nama' => 'CFM/FTM',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Eddy
+            [
+                'supplier_slug' => 'eddy',
+                'nama' => 'CFM/FTM',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Sutris
+            [
+                'supplier_slug' => 'sutris',
+                'nama' => 'CFM/FTM',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Aris
+            [
+                'supplier_slug' => 'aris',
+                'nama' => 'Gaplek Chip',
+                'harga_per_satuan' => 3900,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Yudi
+            [
+                'supplier_slug' => 'yudi',
+                'nama' => 'Gaplek Chip',
+                'harga_per_satuan' => 3900,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Ladi
+            [
+                'supplier_slug' => 'ladi',
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Yunus
+            [
+                'supplier_slug' => 'yunus',
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Siswanto (multiple products)
+            [
+                'supplier_slug' => 'siswanto',
+                'nama' => 'Katul',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 100000, // 100 ton = 100,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'siswanto',
+                'nama' => 'Kebi',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'supplier_slug' => 'siswanto',
+                'nama' => 'Menir',
+                'harga_per_satuan' => 0,
+                'satuan' => 'Kg',
+                'stok' => 50000, // 50 ton = 50,000 Kg
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+            // Heri (Gresik) - already added above as pak-heri
         ];
 
         // Create bahan baku supplier records

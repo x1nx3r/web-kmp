@@ -28,13 +28,13 @@ class DatabaseSeeder extends Seeder
             KontakKlienSeeder::class, // Contact persons for clients
             BahanBakuKlienSeeder::class, // Now creates client-specific materials with pricing
             BahanBakuSupplierSeeder::class,
-            CompanySettingSeeder::class,
+            // CompanySettingSeeder::class,
             // PengirimanAccountingSeeder::class, // Old seeder
             // ApprovalAccountingSeeder::class, // New comprehensive seeder with items
             // PengirimanAccountingSeeder::class,
-            PenawaranSeeder::class, // Penawaran with multi-supplier support
+            // PenawaranSeeder::class, // Penawaran with multi-supplier support
             // OrderSeeder::class, // Removed - incompatible with new multi-supplier order system
-            EnhancedOrderSeeder::class, // New multi-supplier order system with auto-population
+            // EnhancedOrderSeeder::class, // New multi-supplier order system with auto-population
         ]);
     }
 }

@@ -35,16 +35,6 @@
     </div>
 
     <div class="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
-        {{-- Debug Info (Remove in production) --}}
-        @if(config('app.debug'))
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm">
-                <strong>Debug Mode:</strong> 
-                isEditing = {{ $isEditing ? 'TRUE' : 'FALSE' }} | 
-                editingOrderId = {{ $editingOrderId ?? 'NULL' }} | 
-                editingOrderNumber = {{ $editingOrderNumber ?? 'NULL' }}
-            </div>
-        @endif
-        
         {{-- Main Content Layout - More Symmetrical --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             {{-- Left Section - Client & Order Info --}}

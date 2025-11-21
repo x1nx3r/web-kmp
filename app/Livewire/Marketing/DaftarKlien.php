@@ -19,6 +19,8 @@ class DaftarKlien extends Component
     public $location = '';
     public $sort = 'nama';
     public $direction = 'asc';
+    // Livewire pagination page (explicitly declared to avoid Livewire trying to set a non-existing property)
+    public $page = 1;
 
     // UI state
     public $openGroups = [];

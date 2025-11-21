@@ -101,6 +101,12 @@ class DaftarKlien extends Component
 
         $kliens = $query->paginate(10);
 
+        // Guard against out-of-range page numbers (e.g., ?page=999) which can cause unexpected states
+        if ($kliens->currentPage() > $kliens->lastPage() && $kliens->lastPage() > 0) {
+            $this->gotoPage($kliens->lastPage());
+            $kliens = $query->paginate(10);
+        }
+
         // Get available locations
         $availableLocations = Klien::query()
             ->whereNotNull('cabang')

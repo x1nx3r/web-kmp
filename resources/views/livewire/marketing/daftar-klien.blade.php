@@ -302,7 +302,13 @@
                         @foreach($kliens as $index => $klien)
                             <tr class="hover:bg-gray-50 border-b border-gray-200">
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                    {{ $kliens->firstItem() + $index }}
+                                    @php
+                                        $start = $kliens->firstItem();
+                                        if (is_null($start)) {
+                                            $start = ($kliens->currentPage() - 1) * $kliens->perPage() + 1;
+                                        }
+                                    @endphp
+                                    {{ $start + $loop->index }}
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm font-semibold text-gray-900">{{ $klien->nama }}</div>
@@ -354,6 +360,7 @@
                             </tr>
                         @endforeach
                     </tbody>
+                </table>
             </div>
 
             {{-- Pagination --}}

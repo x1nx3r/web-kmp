@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: kmp_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-kmp_db}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root_password}
+      MYSQL_USER: ${DB_USERNAME:-kmp_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-kmp_password}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    networks:
+      - kmp_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Laravel Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kmp_app
+    restart: unless-stopped
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-kmp_db}
+      DB_USERNAME: ${DB_USERNAME:-kmp_user}
+      DB_PASSWORD: ${DB_PASSWORD:-kmp_password}
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    ports:
+      - "${APP_PORT:-8000}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - kmp_network
+
+  # PHPMyAdmin (Optional - untuk management database)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: kmp_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME:-kmp_user}
+      PMA_PASSWORD: ${DB_PASSWORD:-kmp_password}
+      UPLOAD_LIMIT: 100M
+    ports:
+      - "${PHPMYADMIN_PORT:-8080}:80"
+    depends_on:
+      - mysql
+    networks:
+      - kmp_network
+
+networks:
+  kmp_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local

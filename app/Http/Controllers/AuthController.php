@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
 
@@ -19,6 +20,21 @@ class AuthController extends Controller
     }
 
     /**
+     * Verify Cloudflare Turnstile token
+     */
+    private function verifyTurnstile($token)
+    {
+        $response = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+            'secret' => config('services.turnstile.secret_key'),
+            'response' => $token,
+        ]);
+
+        $result = $response->json();
+        
+        return $result['success'] ?? false;
+    }
+
+    /**
      * Handle login request
      */
     public function login(Request $request)
@@ -26,7 +42,19 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|string',
             'password' => 'required|string',
+            'cf-turnstile-response' => 'required',
+        ], [
+            'cf-turnstile-response.required' => 'Mohon verifikasi bahwa Anda bukan robot.',
         ]);
+
+        // Verify Turnstile CAPTCHA
+        $turnstileToken = $request->input('cf-turnstile-response');
+        if (!$this->verifyTurnstile($turnstileToken)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Verifikasi CAPTCHA gagal. Silakan coba lagi.'
+            ], 422);
+        }
 
         $credentials = $request->only('email', 'password');
         

@@ -1,0 +1,62 @@
+# Docker ignore file for KMP Laravel Application
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.backup
+.env.production
+.env.docker
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Laravel
+/vendor
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/storage/logs/*.log
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/debugbar/*
+
+# Build files
+/public/build
+/public/mix-manifest.json
+
+# Testing
+.phpunit.result.cache
+/tests/Browser/screenshots
+/tests/Browser/console
+
+# Documentation
+*.md
+!DOCKER_DEPLOYMENT.md
+
+# Deployment scripts
+deploy.sh
+deploy.bat
+
+# Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Misc
+*.log
+npm-debug.log
+yarn-error.log

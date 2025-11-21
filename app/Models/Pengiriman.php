@@ -100,6 +100,14 @@ class Pengiriman extends Model
     }
 
     /**
+     * Relasi ke Supplier Evaluation
+     */
+    public function supplierEvaluation()
+    {
+        return $this->hasOne(SupplierEvaluation::class);
+    }
+
+    /**
      * Relasi ke Invoice Penagihan
      */
     public function invoicePenagihan()

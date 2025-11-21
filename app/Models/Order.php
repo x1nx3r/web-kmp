@@ -131,6 +131,14 @@ class Order extends Model
     }
 
     /**
+     * Relasi ke Pengiriman melalui PurchaseOrder
+     */
+    public function pengiriman()
+    {
+        return $this->hasMany(Pengiriman::class, 'purchase_order_id');
+    }
+
+    /**
      * Scopes
      */
     public function scopeActive($query)

@@ -70,6 +70,27 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/complete', [OrderController::class, 'complete'])->name('orders.complete');
         Route::post('/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     });
+    
+    // Evaluasi Supplier routes
+    Route::get('/pengiriman/{pengiriman}/evaluasi', function(App\Models\Pengiriman $pengiriman) {
+        return view('procurement.evaluate-supplier', ['pengiriman' => $pengiriman]);
+    })->name('pengiriman.evaluasi');
+
+    Route::get('/pengiriman/{pengiriman}/review', function(App\Models\Pengiriman $pengiriman) {
+        $pengiriman->load([
+            'details.bahanBakuSupplier.supplier',
+            'purchasing',
+        ]);
+        
+        $evaluation = App\Models\SupplierEvaluation::where('pengiriman_id', $pengiriman->id)
+            ->with(['details', 'evaluator', 'supplier'])
+            ->first();
+            
+        $evaluationDetails = $evaluation ? $evaluation->details->groupBy('kriteria') : collect();
+        $criteriaStructure = App\Models\SupplierEvaluation::getCriteriaStructure();
+        
+        return view('procurement.view-evaluation-static', compact('pengiriman', 'evaluation', 'evaluationDetails', 'criteriaStructure'));
+    })->name('pengiriman.review');
 
     // Penawaran routes
     Route::get('/penawaran', function() {

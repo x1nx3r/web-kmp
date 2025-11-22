@@ -131,10 +131,10 @@ class PengirimanController extends Controller
     
     private function getWeeklyStats($weekStart, $weekEnd)
     {
-        $dateField = 'tanggal_kirim';
+        $dateField = 'pengiriman.tanggal_kirim';
         $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
         if (!$testQuery) {
-            $dateField = 'created_at';
+            $dateField = 'pengiriman.created_at';
         }
         
         // Hanya tampilkan pengiriman dengan status berhasil
@@ -194,10 +194,10 @@ class PengirimanController extends Controller
     
     private function getYearlyHargaStats($year)
     {
-        $dateField = 'tanggal_kirim';
+        $dateField = 'pengiriman.tanggal_kirim';
         $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
         if (!$testQuery) {
-            $dateField = 'created_at';
+            $dateField = 'pengiriman.created_at';
         }
         
         // Hanya tampilkan pengiriman dengan status berhasil
@@ -225,11 +225,11 @@ class PengirimanController extends Controller
     {
         $totalPengiriman = Pengiriman::count();
         
-        $dateField = 'tanggal_kirim';
+        $dateField = 'pengiriman.tanggal_kirim';
         
         $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
         if (!$testQuery) {
-            $dateField = 'created_at';
+            $dateField = 'pengiriman.created_at';
         }
         
         // Get monthly data for the specified year - ONLY status 'berhasil'

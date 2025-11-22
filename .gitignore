@@ -26,3 +26,4 @@ public
 composer.lock
 composer.json
 storage
+config

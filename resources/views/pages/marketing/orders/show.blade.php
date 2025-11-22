@@ -83,93 +83,93 @@
 <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
-        <div class="px-6 py-6">
-            <div class="flex items-center justify-between">
+        <div class="px-4 sm:px-6 py-4 sm:py-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
                         <i class="fas fa-eye text-blue-600 text-lg"></i>
                     </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Detail Order PO {{ $order->po_number ?? $order->no_order }}</h1>
+                    <div className="min-w-0">
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-900 truncate">Detail Order PO {{ $order->po_number ?? $order->no_order }}</h1>
                         <nav class="text-sm text-gray-600">
                             <a href="{{ route('orders.index') }}" class="hover:text-blue-600">Order</a>
                             <span class="mx-2">/</span>
-                            <span>{{ $order->po_number ?? $order->no_order }}</span>
+                            <span class="truncate">{{ $order->po_number ?? $order->no_order }}</span>
                         </nav>
                     </div>
                 </div>
-                <div class="flex space-x-3">
+                <div class="flex flex-wrap gap-2 sm:space-x-3">
                     @if($order->status === 'draft')
-                        <a href="{{ route('orders.edit', $order->id) }}" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors">
-                            <i class="fas fa-edit mr-2"></i>
-                            Edit
+                        <a href="{{ route('orders.edit', $order->id) }}" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors text-center">
+                            <i class="fas fa-edit mr-1 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Edit</span>
                         </a>
-                        <form action="{{ route('orders.confirm', $order->id) }}" method="POST" class="inline">
+                        <form action="{{ route('orders.confirm', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors" 
                                     onclick="return confirm('Konfirmasi order ini?')">
-                                <i class="fas fa-check mr-2"></i>
-                                Konfirmasi
+                                <i class="fas fa-check mr-1 sm:mr-2"></i>
+                                <span class="hidden sm:inline">Konfirmasi</span>
                             </button>
                         </form>
                     @elseif($order->status === 'dikonfirmasi')
-                        <form action="{{ route('orders.start-processing', $order->id) }}" method="POST" class="inline">
+                        <form action="{{ route('orders.start-processing', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors" 
                                     onclick="return confirm('Mulai proses order ini?')">
-                                <i class="fas fa-play mr-2"></i>
-                                Mulai Proses
+                                <i class="fas fa-play mr-1 sm:mr-2"></i>
+                                <span class="hidden sm:inline">Mulai Proses</span>
                             </button>
                         </form>
                     @elseif(in_array($order->status, ['diproses', 'sebagian_dikirim']))
-                        <form action="{{ route('orders.complete', $order->id) }}" method="POST" class="inline">
+                        <form action="{{ route('orders.complete', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors" 
                                     onclick="return confirm('Selesaikan order ini?')">
-                                <i class="fas fa-check-circle mr-2"></i>
-                                Selesaikan
+                                <i class="fas fa-check-circle mr-1 sm:mr-2"></i>
+                                <span class="hidden sm:inline">Selesaikan</span>
                             </button>
                         </form>
                     @endif
                     
                     @if(!in_array($order->status, ['selesai', 'dibatalkan']))
-                        <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="inline">
+                        <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors" 
                                     onclick="return confirm('Batalkan order ini?')">
-                                <i class="fas fa-times mr-2"></i>
-                                Batalkan
+                                <i class="fas fa-times mr-1 sm:mr-2"></i>
+                                <span class="hidden sm:inline">Batalkan</span>
                             </button>
                         </form>
                     @endif
                     
-                    <a href="{{ route('orders.index') }}" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                        <i class="fas fa-arrow-left mr-2"></i>
-                        Kembali
+                    <a href="{{ route('orders.index') }}" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm text-center">
+                        <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
+                        <span class="hidden sm:inline">Kembali</span>
                     </a>
                 </div>
             </div>
         </div>
     </div>
 
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
         <!-- Price Analysis Chart - Full Width -->
-        <div class="mb-6">
+        <div class="mb-4 sm:mb-6">
             <x-order.price-analysis :order="$order" :chartsData="$chartsData" />
         </div>
 
-        <div class="flex flex-col lg:flex-row gap-6">
+        <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
             <!-- Order Info -->
-            <div class="flex-1 lg:flex-[2] space-y-6">
+            <div class="flex-1 lg:flex-[2] space-y-4 sm:space-y-6">
                 <!-- Basic Info Card -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                            <i class="fas fa-info-circle text-blue-600 mr-3"></i>
+                    <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                        <h3 class="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-info-circle text-blue-600 mr-2 sm:mr-3 text-sm sm:text-base"></i>
                             Informasi Order
                         </h3>
                     </div>
-                    <div class="p-6">
+                    <div class="p-4 sm:p-6">
                         <div class="flex flex-col md:flex-row gap-6">
                             <div class="flex-1 space-y-3">
                                 <div class="flex justify-between">
@@ -214,6 +214,15 @@
                                     <span class="text-sm font-medium text-gray-500">Dibuat Oleh:</span>
                                     <span class="text-sm text-gray-900">{{ $order->creator->name }}</span>
                                 </div>
+                                @if($order->winner)
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-500">PO Winner:</span>
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-trophy text-yellow-500 text-sm"></i>
+                                            <span class="text-sm font-semibold text-yellow-700">{{ $order->winner->user->nama ?? $order->winner->user->name }}</span>
+                                        </div>
+                                    </div>
+                                @endif
                                 <div class="flex justify-between">
                                     <span class="text-sm font-medium text-gray-500">Dibuat:</span>
                                     <span class="text-sm text-gray-900">{{ $order->created_at->format('d M Y H:i') }}</span>
@@ -256,9 +265,9 @@
 
                 <!-- Order Details Card -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                            <i class="fas fa-list text-blue-600 mr-3"></i>
+                    <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                        <h3 class="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-list text-blue-600 mr-2 sm:mr-3 text-sm sm:text-base"></i>
                             Detail Order ({{ $order->orderDetails->count() }} item)
                         </h3>
                     </div>
@@ -403,48 +412,249 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Review Pengiriman Card -->
+                @php
+                    $successfulShipments = $order->pengiriman()->where('status', 'berhasil')->with(['details.bahanBakuSupplier.supplier.picPurchasing', 'purchasing'])->get();
+                @endphp
+                
+                @if($successfulShipments->count() > 0)
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                        <h3 class="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                            <i class="fas fa-star text-yellow-500 mr-2 sm:mr-3 text-sm sm:text-base"></i>
+                            Review Pengiriman
+                            <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                {{ $successfulShipments->count() }} pengiriman berhasil
+                            </span>
+                        </h3>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Pengiriman</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIC Purchasing</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Qty</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($successfulShipments as $shipment)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    <div>
+                                                        <div class="text-sm font-medium text-gray-900">{{ $shipment->no_pengiriman }}</div>
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                            <i class="fas fa-check-circle mr-1"></i>
+                                                            Berhasil
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-900">{{ $shipment->tanggal_kirim->format('d M Y') }}</div>
+                                                @if($shipment->purchasing)
+                                                    <div class="text-xs text-gray-500">{{ $shipment->purchasing->name }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                @php
+                                                    $picList = $shipment->details
+                                                        ->pluck('bahanBakuSupplier.supplier.picPurchasing')
+                                                        ->filter()
+                                                        ->unique('id');
+                                                @endphp
+                                                @if($picList->isNotEmpty())
+                                                    <div class="text-sm space-y-1">
+                                                        @foreach($picList as $pic)
+                                                            <div class="text-gray-900">
+                                                                <i class="fas fa-user-circle text-blue-500 text-xs mr-1"></i>
+                                                                {{ $pic->nama }}
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <span class="text-sm text-gray-400">-</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {{ number_format($shipment->total_qty_kirim, 0, ',', '.') }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                                Rp {{ number_format($shipment->total_harga_kirim, 0, ',', '.') }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                                @if($shipment->rating)
+                                                    <div class="flex items-center justify-center text-yellow-500">
+                                                        @for($i = 1; $i <= 5; $i++)
+                                                            <i class="fas fa-star {{ $i <= $shipment->rating ? '' : 'opacity-30' }} text-xs"></i>
+                                                        @endfor
+                                                    </div>
+                                                    <div class="text-xs font-semibold text-gray-700 mt-1">{{ $shipment->rating }}/5</div>
+                                                @else
+                                                    <span class="text-xs text-gray-400">Belum direview</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                                @if(!$shipment->rating)
+                                                    <a href="{{ route('pengiriman.evaluasi', $shipment->id) }}" 
+                                                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">
+                                                        <i class="fas fa-star mr-1"></i>
+                                                        Lakukan Review
+                                                    </a>
+                                                @else
+                                                    <a href="{{ route('pengiriman.review', $shipment->id) }}" 
+                                                       class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors">
+                                                        <i class="fas fa-eye mr-1"></i>
+                                                        Lihat Review
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        @if($shipment->ulasan)
+                                            <tr class="bg-blue-50">
+                                                <td colspan="7" class="px-6 py-3">
+                                                    <div class="text-sm text-gray-700 italic">
+                                                        <i class="fas fa-quote-left text-blue-400 mr-2"></i>
+                                                        {{ $shipment->ulasan }}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endif
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    @if($successfulShipments->where('rating', null)->count() > 0)
+                        <div class="px-4 sm:px-6 py-4 bg-yellow-50 border-t border-yellow-200">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-yellow-600 mt-0.5 mr-3"></i>
+                                <div>
+                                    <p class="text-sm font-medium text-yellow-800">
+                                        Ada {{ $successfulShipments->where('rating', null)->count() }} pengiriman yang belum direview
+                                    </p>
+                                    <p class="text-xs text-yellow-700 mt-1">
+                                        Review membantu meningkatkan kualitas layanan pengiriman
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
+                @endif
             </div>
 
             <!-- Summary Sidebar -->
-            <div class="w-full xl:w-1/3 min-w-0 space-y-6">
-                <!-- Financial Summary -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                            <i class="fas fa-calculator text-blue-600 mr-3"></i>
-                            Ringkasan Keuangan
-                        </h3>
+            <div class="w-full lg:w-80 xl:w-96 flex-shrink-0 space-y-4 sm:space-y-6">
+                <!-- Ringkasan Keuangan & Timeline - Side by Side -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
+                    <!-- Financial Summary -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-3 py-2 border-b border-gray-200">
+                            <h3 class="text-sm font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-calculator text-blue-600 mr-2 text-xs"></i>
+                                Ringkasan Keuangan
+                            </h3>
+                        </div>
+                        <div class="p-3 space-y-2">
+                            <!-- Total Harga Supplier -->
+                            <div>
+                                <div class="text-xs font-medium text-gray-500 mb-0.5">Total Harga Supplier:</div>
+                                <div class="text-xs font-bold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</div>
+                            </div>
+                            
+                            <!-- Total Harga Jual -->
+                            <div>
+                                <div class="text-xs font-medium text-gray-500 mb-0.5">Total Harga Jual:</div>
+                                <div class="text-xs font-bold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</div>
+                            </div>
+                            
+                            <hr class="border-gray-200">
+                            
+                            <!-- Outstanding Qty -->
+                            <div>
+                                <div class="text-xs font-medium text-gray-500 mb-0.5">Outstanding Qty:</div>
+                                <div class="text-xs font-semibold text-gray-900">{{ $outstandingDisplay ?: '0' }}</div>
+                            </div>
+                            
+                            <!-- Outstanding Amount -->
+                            <div>
+                                <div class="text-xs font-medium text-gray-500 mb-0.5">Outstanding Amount:</div>
+                                <div class="text-xs font-semibold text-gray-900">Rp {{ number_format($outstandingAmount > 0 ? $outstandingAmount : $totalSelling, 0, ',', '.') }}</div>
+                            </div>
+                            
+                            <hr class="border-gray-200">
+                            
+                            <!-- Total Margin -->
+                            <div class="pt-1">
+                                <div class="text-xs font-semibold text-gray-900 mb-0.5">Total Margin:</div>
+                                <div class="text-base font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                                </div>
+                                <div class="text-xs {{ $marginPercentage >= 20 ? 'text-green-600' : ($marginPercentage >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                    {{ number_format($marginPercentage, 2, ',', '.') }}%
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="p-6 space-y-4">
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-600">Total Harga Supplier:</span>
-                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</span>
+
+                    <!-- Timeline -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-3 py-2 border-b border-gray-200">
+                            <h3 class="text-sm font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-history text-blue-600 mr-2 text-xs"></i>
+                                Timeline
+                            </h3>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-600">Total Harga Jual:</span>
-                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</span>
-                        </div>
-                        <hr class="border-gray-200">
-                        <div class="flex justify-between">
-                            <span class="text-sm font-medium text-gray-700">Outstanding Qty:</span>
-                            <span class="text-sm font-semibold text-gray-900">{{ $outstandingDisplay ?: '0' }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm font-medium text-gray-700">Outstanding Amount:</span>
-                            <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($outstandingAmount > 0 ? $outstandingAmount : $totalSelling, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm font-medium text-gray-700">Total Margin:</span>
-                            <span class="text-sm font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                Rp {{ number_format($totalMargin, 0, ',', '.') }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm font-medium text-gray-700">Persentase Margin:</span>
-                            <span class="text-sm font-bold {{ $marginPercentage >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ number_format($marginPercentage, 2, ',', '.') }}%
-                            </span>
+                        <div class="p-3">
+                            <div class="timeline space-y-3">
+                                <div class="timeline-item flex items-start space-x-2">
+                                    <div class="timeline-marker w-2.5 h-2.5 bg-blue-600 rounded-full mt-1"></div>
+                                    <div class="timeline-content flex-1">
+                                        <h4 class="text-xs font-medium text-gray-900">Order Dibuat</h4>
+                                        <p class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
+                                    </div>
+                                </div>
+                                
+                                @if($order->dikonfirmasi_at)
+                                    <div class="timeline-item flex items-start space-x-2">
+                                        <div class="timeline-marker w-2.5 h-2.5 bg-cyan-600 rounded-full mt-1"></div>
+                                        <div class="timeline-content flex-1">
+                                            <h4 class="text-xs font-medium text-gray-900">Dikonfirmasi</h4>
+                                            <p class="text-xs text-gray-500">{{ $order->dikonfirmasi_at->format('d M Y, H:i') }}</p>
+                                        </div>
+                                    </div>
+                                @endif
+                                
+                                @if($order->selesai_at)
+                                    <div class="timeline-item flex items-start space-x-2">
+                                        <div class="timeline-marker w-2.5 h-2.5 bg-green-600 rounded-full mt-1"></div>
+                                        <div class="timeline-content flex-1">
+                                            <h4 class="text-xs font-medium text-gray-900">Selesai</h4>
+                                            <p class="text-xs text-gray-500">{{ $order->selesai_at->format('d M Y, H:i') }}</p>
+                                        </div>
+                                    </div>
+                                @elseif($order->dibatalkan_at)
+                                    <div class="timeline-item flex items-start space-x-2">
+                                        <div class="timeline-marker w-2.5 h-2.5 bg-red-600 rounded-full mt-1"></div>
+                                        <div class="timeline-content flex-1">
+                                            <h4 class="text-xs font-medium text-gray-900">Dibatalkan</h4>
+                                            <p class="text-xs text-gray-500">{{ $order->dibatalkan_at->format('d M Y, H:i') }}</p>
+                                            @if($order->alasan_pembatalan)
+                                                <p class="text-xs text-red-600 mt-1">{{ $order->alasan_pembatalan }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -452,13 +662,13 @@
                 <!-- Progress Summary -->
                 @if($order->orderDetails->where('status', '!=', 'menunggu')->count() > 0)
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                                <i class="fas fa-shipping-fast text-blue-600 mr-3"></i>
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <h3 class="text-base font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-shipping-fast text-blue-600 mr-2 text-sm"></i>
                                 Progress Pengiriman
                             </h3>
                         </div>
-                        <div class="p-6">
+                        <div class="p-4">
                             @php
                                 $statusCounts = $order->orderDetails->groupBy('status')->map->count();
                                 $totalItems = $order->orderDetails->count();
@@ -493,58 +703,6 @@
                         </div>
                     </div>
                 @endif
-
-                <!-- Timeline -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                            <i class="fas fa-history text-blue-600 mr-3"></i>
-                            Timeline
-                        </h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="timeline space-y-4">
-                            <div class="timeline-item flex items-start space-x-3">
-                                <div class="timeline-marker w-3 h-3 bg-blue-600 rounded-full mt-1.5"></div>
-                                <div class="timeline-content">
-                                    <h4 class="text-sm font-medium text-gray-900">Order Dibuat</h4>
-                                    <p class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
-                                </div>
-                            </div>
-                            
-                            @if($order->dikonfirmasi_at)
-                                <div class="timeline-item flex items-start space-x-3">
-                                    <div class="timeline-marker w-3 h-3 bg-cyan-600 rounded-full mt-1.5"></div>
-                                    <div class="timeline-content">
-                                        <h4 class="text-sm font-medium text-gray-900">Dikonfirmasi</h4>
-                                        <p class="text-xs text-gray-500">{{ $order->dikonfirmasi_at->format('d M Y, H:i') }}</p>
-                                    </div>
-                                </div>
-                            @endif
-                            
-                            @if($order->selesai_at)
-                                <div class="timeline-item flex items-start space-x-3">
-                                    <div class="timeline-marker w-3 h-3 bg-green-600 rounded-full mt-1.5"></div>
-                                    <div class="timeline-content">
-                                        <h4 class="text-sm font-medium text-gray-900">Selesai</h4>
-                                        <p class="text-xs text-gray-500">{{ $order->selesai_at->format('d M Y, H:i') }}</p>
-                                    </div>
-                                </div>
-                            @elseif($order->dibatalkan_at)
-                                <div class="timeline-item flex items-start space-x-3">
-                                    <div class="timeline-marker w-3 h-3 bg-red-600 rounded-full mt-1.5"></div>
-                                    <div class="timeline-content">
-                                        <h4 class="text-sm font-medium text-gray-900">Dibatalkan</h4>
-                                        <p class="text-xs text-gray-500">{{ $order->dibatalkan_at->format('d M Y, H:i') }}</p>
-                                        @if($order->alasan_pembatalan)
-                                            <p class="text-xs text-red-600 mt-1">{{ $order->alasan_pembatalan }}</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

@@ -159,18 +159,21 @@ class OmsetController extends Controller
         
         // Handle AJAX request for Marketing
         if ($request->ajax() && $request->get('ajax') === 'marketing') {
-            $omsetMarketingQuery = Order::select('created_by', DB::raw('SUM(total_amount) as total'))
-                ->with('creator:id,nama')
-                ->groupBy('created_by');
+            // Query based on order_winner table
+            $omsetMarketingQuery = DB::table('orders')
+                ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
+                ->join('users', 'order_winners.user_id', '=', 'users.id')
+                ->select('order_winners.user_id', 'users.nama', DB::raw('SUM(orders.total_amount) as total'))
+                ->groupBy('order_winners.user_id', 'users.nama');
             
             // Apply filter for marketing
             if ($periode === 'tahun_ini') {
-                $omsetMarketingQuery->whereYear('tanggal_order', Carbon::now()->year);
+                $omsetMarketingQuery->whereYear('orders.tanggal_order', Carbon::now()->year);
             } elseif ($periode === 'bulan_ini') {
-                $omsetMarketingQuery->whereYear('tanggal_order', Carbon::now()->year)
-                    ->whereMonth('tanggal_order', Carbon::now()->month);
+                $omsetMarketingQuery->whereYear('orders.tanggal_order', Carbon::now()->year)
+                    ->whereMonth('orders.tanggal_order', Carbon::now()->month);
             } elseif ($periode === 'custom' && $request->filled(['start_date_marketing', 'end_date_marketing'])) {
-                $omsetMarketingQuery->whereBetween('tanggal_order', [
+                $omsetMarketingQuery->whereBetween('orders.tanggal_order', [
                     $request->start_date_marketing,
                     $request->end_date_marketing
                 ]);
@@ -180,10 +183,12 @@ class OmsetController extends Controller
             
             $data = $omsetMarketing->map(function($item) {
                 return [
-                    'nama' => $item->creator ? $item->creator->nama : 'Unknown',
-                    'total' => $item->total
+                    'nama' => $item->nama ?? 'Unknown',
+                    'total' => floatval($item->total ?? 0)
                 ];
-            });
+            })->filter(function($item) {
+                return $item['total'] > 0;
+            })->values();
             
             return response()->json($data);
         }
@@ -224,25 +229,39 @@ class OmsetController extends Controller
             return response()->json($data);
         }
         
-        // Omset Marketing by PIC (from Order)
-        $omsetMarketingQuery = Order::select('created_by', DB::raw('SUM(total_amount) as total'))
-            ->with('creator:id,nama')
-            ->groupBy('created_by');
+        // Omset Marketing by PIC (from Order Winners)
+        // Query based on order_winner table
+        $omsetMarketingQuery = DB::table('orders')
+            ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
+            ->join('users', 'order_winners.user_id', '=', 'users.id')
+            ->select('order_winners.user_id', 'users.nama', DB::raw('SUM(orders.total_amount) as total'))
+            ->groupBy('order_winners.user_id', 'users.nama');
         
         // Apply filter for marketing
         if ($periode === 'tahun_ini') {
-            $omsetMarketingQuery->whereYear('tanggal_order', Carbon::now()->year);
+            $omsetMarketingQuery->whereYear('orders.tanggal_order', Carbon::now()->year);
         } elseif ($periode === 'bulan_ini') {
-            $omsetMarketingQuery->whereYear('tanggal_order', Carbon::now()->year)
-                ->whereMonth('tanggal_order', Carbon::now()->month);
+            $omsetMarketingQuery->whereYear('orders.tanggal_order', Carbon::now()->year)
+                ->whereMonth('orders.tanggal_order', Carbon::now()->month);
         } elseif ($periode === 'custom' && $request->filled(['start_date_marketing', 'end_date_marketing'])) {
-            $omsetMarketingQuery->whereBetween('tanggal_order', [
+            $omsetMarketingQuery->whereBetween('orders.tanggal_order', [
                 $request->start_date_marketing,
                 $request->end_date_marketing
             ]);
         }
         
         $omsetMarketing = $omsetMarketingQuery->get();
+        
+        // Transform data to collection for blade
+        $omsetMarketing = $omsetMarketing->map(function($item) {
+            return (object)[
+                'user_id' => $item->user_id,
+                'creator' => (object)['nama' => $item->nama],
+                'total' => floatval($item->total ?? 0)
+            ];
+        })->filter(function($item) {
+            return $item->total > 0;
+        })->values();
         
         // Omset Procurement by PIC (from InvoicePenagihan with pengiriman status 'berhasil')
         $omsetProcurementQuery = InvoicePenagihan::select('pengiriman.purchasing_id', DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))

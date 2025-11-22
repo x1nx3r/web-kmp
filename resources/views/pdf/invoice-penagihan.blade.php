@@ -278,13 +278,18 @@
                 <div class="customer-section" style="margin: 0;">
                     <div class="customer-label">Kepada Yth:</div>
                     <div class="customer-name">{{ $pengiriman->purchaseOrder->klien->nama ?? $invoice->customer_name }}</div>
-                    @if($pengiriman->purchaseOrder->klien->cabang)
+                    {{-- @if($pengiriman->purchaseOrder->klien->cabang)
                         <div style="font-size: 10pt; margin-top: 5px;">
                             <strong>Plant:</strong> {{ $pengiriman->purchaseOrder->klien->cabang }}
                         </div>
+                    @endif --}}
+                    @if($pengiriman->purchaseOrder->klien->alamat_lengkap)
+                        <div style="font-size: 9pt; margin-top: 3px; line-height: 1.4;">
+                            {{ $pengiriman->purchaseOrder->klien->alamat_lengkap }}
+                        </div>
                     @endif
                     @if($pengiriman->purchaseOrder->klien->contactPerson)
-                        <div class="customer-phone">Contact: {{ $pengiriman->purchaseOrder->klien->contactPerson->nama }}</div>
+                        <div class="customer-phone" style="margin-top: 5px;">Contact: {{ $pengiriman->purchaseOrder->klien->contactPerson->nama }}</div>
                         <div class="customer-phone">Telp: {{ $pengiriman->purchaseOrder->klien->contactPerson->nomor_hp }}</div>
                     @endif
                 </div>

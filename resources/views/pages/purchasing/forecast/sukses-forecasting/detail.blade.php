@@ -20,8 +20,6 @@
 <script>
 // Function to open detail modal for sukses
 function openDetailModalSukses(forecastId) {
-    console.log('Opening detail modal for sukses forecast ID:', forecastId);
-    
     // Show loading state
     const modal = document.getElementById('detailForecastModalSukses');
     const content = document.getElementById('detailContentSukses');
@@ -63,7 +61,6 @@ function openDetailModalSukses(forecastId) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         content.innerHTML = `
             <div class="text-center py-8">
                 <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-3"></i>

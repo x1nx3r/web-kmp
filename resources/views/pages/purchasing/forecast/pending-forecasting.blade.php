@@ -473,7 +473,6 @@ function submitSearchPending() {
 
 // Apply filters function for server-side filtering
 function applyFiltersPending() {
-    console.log('applyFiltersPending called');
     const currentParams = new URLSearchParams(window.location.search);
     
     // Get filter values
@@ -484,16 +483,6 @@ function applyFiltersPending() {
     const sortQty = document.getElementById('sortQtyPending').value;
     const sortDate = document.getElementById('sortDatePending').value;
     const sortHariKirim = document.getElementById('sortHariKirimPending').value;
-    
-    console.log('Filter values:', {
-        searchValue,
-        dateRange,
-        filterPurchasing,
-        sortAmount,
-        sortQty,
-        sortDate,
-        sortHariKirim
-    });
     
     // Preserve current tab
     currentParams.set('tab', 'pending');
@@ -524,7 +513,6 @@ function applyFiltersPending() {
     currentParams.delete('page_pending');
     
     const newUrl = '/procurement/forecasting?' + currentParams.toString();
-    console.log('Navigating to:', newUrl);
     
     // Navigate to new URL
     window.location.href = newUrl;
@@ -648,54 +636,45 @@ function toggleForecastList(poId) {
 
 // Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded - initializing filters');
-    
     // Set filter values from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     
     // Set search value
     const searchValue = urlParams.get('search_pending');
     if (searchValue) {
-        console.log('Setting search value:', searchValue);
         document.getElementById('searchInputPending').value = searchValue;
     }
     
     // Set date range filter
     const dateRange = urlParams.get('date_range');
     if (dateRange) {
-        console.log('Setting date range:', dateRange);
         document.getElementById('dateRangeFilter').value = dateRange;
     }
     
     // Set purchasing filter
     const filterPurchasing = urlParams.get('filter_purchasing_pending');
     if (filterPurchasing) {
-        console.log('Setting filter purchasing:', filterPurchasing);
         document.getElementById('filterPurchasingPending').value = filterPurchasing;
     }
     
     // Set sort filters
     const sortAmount = urlParams.get('sort_amount_pending');
     if (sortAmount) {
-        console.log('Setting sort amount:', sortAmount);
         document.getElementById('sortAmountPending').value = sortAmount;
     }
     
     const sortQty = urlParams.get('sort_qty_pending');
     if (sortQty) {
-        console.log('Setting sort qty:', sortQty);
         document.getElementById('sortQtyPending').value = sortQty;
     }
     
     const sortDate = urlParams.get('sort_date_pending');
     if (sortDate) {
-        console.log('Setting sort date:', sortDate);
         document.getElementById('sortDatePending').value = sortDate;
     }
     
     const sortHariKirim = urlParams.get('sort_hari_kirim');
     if (sortHariKirim) {
-        console.log('Setting sort hari kirim:', sortHariKirim);
         document.getElementById('sortHariKirimPending').value = sortHariKirim;
     }
     
@@ -717,8 +696,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    console.log('Filter initialization complete');
 });
 </script>
 

@@ -372,7 +372,8 @@ class PengirimanController extends Controller
                 'purchasing', 
                 'forecast',
                 'pengirimanDetails.bahanBakuSupplier',
-                'pengirimanDetails.bahanBakuSupplier.supplier'
+                'pengirimanDetails.bahanBakuSupplier.supplier',
+                'pengirimanDetails.orderDetail'  // Add orderDetail to get harga_jual for margin calculation
             ])->findOrFail($id);
 
             Log::info("Pengiriman loaded with " . $pengiriman->pengirimanDetails->count() . " details");

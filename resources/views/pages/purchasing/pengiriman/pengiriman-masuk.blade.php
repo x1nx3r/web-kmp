@@ -429,19 +429,12 @@ function submitSearchMasuk() {
 
 // Apply filters function for server-side filtering
 function applyFiltersMasuk() {
-    console.log('applyFiltersMasuk called');
     const currentParams = new URLSearchParams(window.location.search);
     
     // Get filter values
     const searchValue = document.getElementById('searchInputMasuk').value;
     const filterPurchasing = document.getElementById('filterPurchasing').value;
     const sortDate = document.getElementById('sortDateMasuk').value;
-    
-    console.log('Filter values:', {
-        searchValue,
-        filterPurchasing,
-        sortDate
-    });
     
     // Preserve current tab
     currentParams.set('tab', 'pengiriman-masuk');
@@ -460,7 +453,6 @@ function applyFiltersMasuk() {
     currentParams.delete('masuk_page');
     
     const newUrl = '/procurement/pengiriman?' + currentParams.toString();
-    console.log('Navigating to:', newUrl);
     
     // Navigate to new URL
     window.location.href = newUrl;
@@ -635,6 +627,11 @@ function openAksiModal(pengirimanId, noPengiriman, status) {
         .then(response => response.text())
         .then(html => {
             modalContent.innerHTML = html;
+            
+            // Initialize modal setelah content loaded
+            if (typeof initializePengirimanModal === 'function') {
+                initializePengirimanModal();
+            }
         })
         .catch(error => {
             console.error('Error:', error);
@@ -688,32 +685,20 @@ function openBatalModal() {
         return;
     }
     
-    console.log('Loading batal modal for pengiriman ID:', pengirimanId);
-    
     // Load batal modal content with pengiriman_id parameter
     fetch(`/procurement/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
-    .then(response => {
-        console.log('Batal modal response status:', response.status);
-        return response.text();
-    })
+    .then(response => response.text())
     .then(html => {
-        console.log('Batal modal HTML received, length:', html.length);
-        
         // Create and show batal modal
         const modalContainer = document.createElement('div');
         modalContainer.innerHTML = html;
         document.body.appendChild(modalContainer);
         
-        console.log('Batal modal container added to body');
-        
         // Find and show the modal
         const batalModal = modalContainer.querySelector('#batalModal');
         if (batalModal) {
-            console.log('Batal modal found, showing...');
             // Make sure modal is visible
             batalModal.style.display = 'flex';
-        } else {
-            console.error('Batal modal not found in HTML');
         }
     })
     .catch(error => {
@@ -737,145 +722,304 @@ function updateHariKirim() {
     const hariKirimField = document.getElementById('hari_kirim');
     
     if (!deliveryDate || !hariKirimField) {
-        console.log('Tanggal kirim atau hari kirim field tidak ditemukan');
         return;
     }
     
     if (deliveryDate.value) {
         const targetDate = new Date(deliveryDate.value);
-        console.log('Calculating day for date:', deliveryDate.value, targetDate);
         
         // Array nama hari dalam bahasa Indonesia
         const hariIndonesia = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         const namaHari = hariIndonesia[targetDate.getDay()];
         
-        console.log('Setting hari kirim to:', namaHari);
         hariKirimField.value = namaHari;
     } else {
         hariKirimField.value = '';
     }
 }
 
-// Hitung subtotal untuk detail pengiriman (global function)
-function calculateSubtotal(index) {
-    console.log('calculateSubtotal called for index:', index);
+// ===================================================================
+// PENGIRIMAN MODAL FUNCTIONS - Global functions for detail modal
+// ===================================================================
+
+// Open batal modal
+function openBatalModal() {
+    const pengirimanId = document.querySelector('input[name="pengiriman_id"]').value;
     
+    // Load batal modal content with pengiriman_id parameter
+    fetch(`/procurement/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
+    .then(response => response.text())
+    .then(html => {
+        // Create and show batal modal
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = html;
+        document.body.appendChild(modalContainer);
+        
+        // Find and show the modal
+        const batalModal = modalContainer.querySelector('#batalModal');
+        if (batalModal) {
+            // Make sure modal is visible
+            batalModal.style.display = 'flex';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading batal modal:', error);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Gagal memuat modal pembatalan: ' + error.message,
+                icon: 'error',
+                confirmButtonColor: '#EF4444'
+            });
+        } else {
+            alert('Gagal memuat modal pembatalan: ' + error.message);
+        }
+    });
+}
+
+// Update hari kirim berdasarkan tanggal
+function updateHariKirim() {
+    const deliveryDate = document.getElementById('tanggal_kirim').value;
+    if (deliveryDate) {
+        const targetDate = new Date(deliveryDate);
+        
+        // Array nama hari dalam bahasa Indonesia
+        const hariIndonesia = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const namaHari = hariIndonesia[targetDate.getDay()];
+        
+        document.getElementById('hari_kirim').value = namaHari;
+    } else {
+        document.getElementById('hari_kirim').value = '';
+    }
+}
+
+// Hitung subtotal untuk setiap row
+function calculateSubtotal(index) {
     const qtyInput = document.querySelector(`input[name="details[${index}][qty_kirim]"]`);
     const hargaInput = document.querySelector(`input[name="details[${index}][harga_satuan]"]`);
     const totalInput = document.querySelector(`input[name="details[${index}][total_harga]"]`);
+    const rowElement = document.querySelector(`.detail-item[data-index="${index}"]`);
     
-    if (!qtyInput || !hargaInput || !totalInput) {
-        console.error('Input elements not found for index:', index);
+    if (qtyInput && hargaInput && totalInput && rowElement) {
+        const qty = parseFloat(qtyInput.value) || 0;
+        const hargaBeli = parseFloat(hargaInput.value) || 0;
+        const hargaJual = parseFloat(rowElement.getAttribute('data-harga-jual')) || 0;
+        
+        // Calculate total harga beli
+        const totalHargaBeli = qty * hargaBeli;
+        
+        // Update total input
+        totalInput.value = totalHargaBeli.toFixed(2);
+        
+        // Update display di bawahnya
+        const totalDisplay = totalInput.parentElement.querySelector('.text-xs.text-gray-500');
+        if (totalDisplay) {
+            totalDisplay.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHargaBeli);
+        }
+        
+        // Update totals keseluruhan
+        updateTotals();
+    }
+}
+
+// Update total keseluruhan (with margin calculation)
+function updateTotals() {
+    let totalQty = 0;
+    let totalHargaBeli = 0;
+    let totalHargaJual = 0;
+    
+    const detailItems = document.querySelectorAll('.detail-item');
+    
+    detailItems.forEach((item) => {
+        const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');
+        const hargaBeliInput = item.querySelector('input[name*="[harga_satuan]"]');
+        const hargaJualAttr = item.getAttribute('data-harga-jual');
+        
+        const qty = parseFloat(qtyInput?.value) || 0;
+        const hargaBeli = parseFloat(hargaBeliInput?.value) || 0;
+        const hargaJual = parseFloat(hargaJualAttr) || 0;
+        
+        totalQty += qty;
+        totalHargaBeli += (qty * hargaBeli);
+        totalHargaJual += (qty * hargaJual);
+    });
+    
+    // Calculate total margin
+    const totalMargin = totalHargaJual - totalHargaBeli;
+    const marginPercentage = totalHargaBeli > 0 ? ((totalMargin / totalHargaBeli) * 100) : 0;
+    
+    // Update tampilan summary
+    const totalQtyEl = document.getElementById('totalQtyKirim');
+    const totalHargaBeliEl = document.getElementById('totalHargaBeli');
+    const totalHargaJualEl = document.getElementById('totalHargaJual');
+    const totalMarginEl = document.getElementById('totalMargin');
+    const marginPercentageEl = document.getElementById('marginPercentage');
+    
+    if (totalQtyEl) {
+        totalQtyEl.textContent = new Intl.NumberFormat('id-ID', { 
+            minimumFractionDigits: 0, 
+            maximumFractionDigits: 2 
+        }).format(totalQty) + ' kg';
+    }
+    
+    if (totalHargaBeliEl) {
+        totalHargaBeliEl.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHargaBeli);
+    }
+    
+    if (totalHargaJualEl) {
+        totalHargaJualEl.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHargaJual);
+    }
+    
+    if (totalMarginEl) {
+        totalMarginEl.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalMargin);
+        // Change color based on margin
+        if (totalMargin >= 0) {
+            totalMarginEl.classList.remove('text-red-600');
+            totalMarginEl.classList.add('text-green-600');
+        } else {
+            totalMarginEl.classList.remove('text-green-600');
+            totalMarginEl.classList.add('text-red-600');
+        }
+    }
+    
+    if (marginPercentageEl) {
+        marginPercentageEl.textContent = new Intl.NumberFormat('id-ID', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(marginPercentage) + '%';
+        // Change color based on margin
+        if (totalMargin >= 0) {
+            marginPercentageEl.classList.remove('text-red-500');
+            marginPercentageEl.classList.add('text-green-500');
+        } else {
+            marginPercentageEl.classList.remove('text-green-500');
+            marginPercentageEl.classList.add('text-red-500');
+        }
+    }
+    
+    // Update hidden dan display inputs (for backward compatibility)
+    const totalQtyHidden = document.getElementById('total_qty_kirim');
+    const totalHargaHidden = document.getElementById('total_harga_kirim');
+    const totalQtyDisplay = document.getElementById('total_qty_kirim_display');
+    const totalHargaDisplay = document.getElementById('total_harga_kirim_display');
+    
+    if (totalQtyHidden) totalQtyHidden.value = totalQty;
+    if (totalHargaHidden) totalHargaHidden.value = totalHargaBeli;
+    if (totalQtyDisplay) totalQtyDisplay.value = new Intl.NumberFormat('id-ID').format(totalQty) + ' kg';
+    if (totalHargaDisplay) totalHargaDisplay.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHargaBeli);
+}
+
+// Submit pengiriman
+function submitPengiriman() {
+    const form = document.getElementById('pengirimanForm');
+    
+    // Validasi form
+    if (!form.checkValidity()) {
+        form.reportValidity();
         return;
     }
     
-    const qty = parseFloat(qtyInput.value) || 0;
-    const harga = parseFloat(hargaInput.value) || 0;
-    const total = qty * harga;
-    
-    console.log('Calculation:', { qty, harga, total });
-    
-    // Update total input
-    totalInput.value = total.toFixed(2);
-    
-    // Update display format di div sebelahnya jika ada
-    const totalDisplay = totalInput.parentElement.querySelector('.text-gray-500');
-    if (totalDisplay) {
-        totalDisplay.textContent = 'Rp ' + total.toLocaleString('id-ID');
+    // Validasi tanggal kirim
+    const tanggalKirim = document.getElementById('tanggal_kirim').value;
+    if (!tanggalKirim) {
+        Swal.fire({
+            title: 'Validation Error!',
+            text: 'Tanggal kirim harus diisi',
+            icon: 'warning',
+            confirmButtonColor: '#EF4444'
+        });
+        return;
     }
     
-    // Update total keseluruhan
-    updateTotals();
-}
-
-// Update total keseluruhan (global function)
-function updateTotals() {
-    let totalQty = 0;
-    let totalHarga = 0;
+    // Validasi minimal 1 detail dengan qty > 0
+    const qtyInputs = document.querySelectorAll('.qty-input');
+    let hasValidQty = false;
     
-    const detailItems = document.querySelectorAll('.detail-item');
-    console.log('Found detail items:', detailItems.length);
-    
-    detailItems.forEach((item, idx) => {
-        const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');
-        const totalInput = item.querySelector('input[name*="[total_harga]"]');
-        
-        if (qtyInput && totalInput) {
-            const qty = parseFloat(qtyInput.value) || 0;
-            const total = parseFloat(totalInput.value) || 0;
-            
-            totalQty += qty;
-            totalHarga += total;
-            
-            console.log(`Item ${idx}:`, { qty, total });
+    qtyInputs.forEach(input => {
+        if (parseFloat(input.value) > 0) {
+            hasValidQty = true;
         }
     });
     
-    console.log('Total calculation:', { totalQty, totalHarga });
-    
-    // Update tampilan summary
-    const totalQtyDisplay = document.getElementById('totalQtyKirim');
-    const totalHargaDisplay = document.getElementById('totalHargaKirim');
-    
-    if (totalQtyDisplay) {
-        totalQtyDisplay.textContent = totalQty.toLocaleString('id-ID') + ' kg';
+    if (!hasValidQty) {
+        Swal.fire({
+            title: 'Validation Error!',
+            text: 'Minimal harus ada 1 item dengan quantity > 0',
+            icon: 'warning',
+            confirmButtonColor: '#EF4444'
+        });
+        return;
     }
     
-    if (totalHargaDisplay) {
-        totalHargaDisplay.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID');
-    }
-    
-    // Update hidden inputs untuk form submission
-    const totalQtyHidden = document.getElementById('total_qty_kirim');
-    const totalHargaHidden = document.getElementById('total_harga_kirim');
-    const totalQtyDisplayField = document.getElementById('total_qty_kirim_display');
-    const totalHargaDisplayField = document.getElementById('total_harga_kirim_display');
-    
-    if (totalQtyHidden) totalQtyHidden.value = totalQty;
-    if (totalHargaHidden) totalHargaHidden.value = totalHarga;
-    if (totalQtyDisplayField) totalQtyDisplayField.value = totalQty.toLocaleString('id-ID') + ' kg';
-    if (totalHargaDisplayField) totalHargaDisplayField.value = 'Rp ' + totalHarga.toLocaleString('id-ID');
+    // Konfirmasi submit
+    Swal.fire({
+        title: 'Konfirmasi Pengajuan',
+        html: 'Apakah Anda yakin ingin mengajukan verifikasi pengiriman ini?<br><small class="text-gray-600">Nomor pengiriman akan di-generate otomatis</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#EF4444',
+        confirmButtonText: 'Ya, Ajukan!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Submit form menggunakan fungsi global
+            if (typeof submitForm === 'function') {
+                submitForm('pengirimanForm', 'Mengajukan pengiriman...');
+            } else {
+                // Fallback jika fungsi global tidak ada
+                form.submit();
+            }
+        }
+    });
 }
 
-// Test modal functions (global function for debugging)
-function testModalFunctions() {
-    console.log('Testing modal functions...');
-    
-    // Test updateHariKirim
-    const tanggalKirim = document.getElementById('tanggal_kirim');
-    if (tanggalKirim) {
-        console.log('Tanggal kirim field found:', tanggalKirim.value);
-        updateHariKirim();
-    } else {
-        console.log('Tanggal kirim field not found');
-    }
-    
-    // Test calculateSubtotal
-    const firstDetail = document.querySelector('.detail-item');
-    if (firstDetail) {
-        const index = firstDetail.getAttribute('data-index');
-        console.log('Testing calculateSubtotal with index:', index);
-        if (index !== null) {
+// Initialize pengiriman modal (called after AJAX load)
+window.initializePengirimanModal = function() {
+    // Calculate initial subtotals
+    document.querySelectorAll('.detail-item').forEach((item) => {
+        const index = item.getAttribute('data-index');
+        if (index !== null && index !== undefined) {
             calculateSubtotal(parseInt(index));
         }
-    } else {
-        console.log('No detail items found');
-    }
+    });
     
-    // Test updateTotals
+    // Initial hari kirim update
+    updateHariKirim();
+    
+    // Update overall totals
     updateTotals();
+    
+    // Initialize catatan counter
+    const catatanTextarea = document.getElementById('catatan_pengiriman');
+    if (catatanTextarea) {
+        // Set up event listener untuk real-time counter update
+        catatanTextarea.addEventListener('input', updateCatatanCounter);
+        catatanTextarea.addEventListener('keyup', updateCatatanCounter);
+        
+        // Initialize counter
+        if (typeof updateCatatanCounter === 'function') {
+            updateCatatanCounter();
+        }
+        
+        // Auto-resize textarea based on content
+        catatanTextarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
 }
 
-// Note: submitPengiriman function is defined later in this file to avoid duplication
+// ===================================================================
+// END OF PENGIRIMAN MODAL FUNCTIONS
+// ===================================================================
 
 // Show submit confirmation modal (global function)
 function showSubmitModal(formData) {
     const pengirimanId = formData.get('pengiriman_id');
-    console.log('Loading submit modal for pengiriman ID:', pengirimanId);
     
     // Store formData immediately
     window.globalSubmissionData = formData;
-    console.log('Stored formData in showSubmitModal:', window.globalSubmissionData);
     
     // Load submit modal content
     fetch(`/procurement/pengiriman/submit-modal?pengiriman_id=${pengirimanId}`)
@@ -922,8 +1066,6 @@ function showSubmitModal(formData) {
 
 // Populate modal summary (global function)  
 function populateModalSummary(formData, modalElement) {
-    console.log('Populating modal summary with formData');
-    
     // Basic info
     const setPengiriman = modalElement.querySelector('#summary-no-pengiriman');
     if (setPengiriman) {
@@ -1006,7 +1148,6 @@ function populateModalSummary(formData, modalElement) {
     
     // Store formData for submission
     window.globalSubmissionData = formData;
-    console.log('Stored globalSubmissionData:', window.globalSubmissionData);
 }
 
 // Close submit modal
@@ -1031,18 +1172,12 @@ function closeSubmitModal() {
 
 // Confirm submit
 function confirmSubmit() {
-    console.log('confirmSubmit called');
-    console.log('window.globalSubmissionData:', window.globalSubmissionData);
-    
     const dataToSubmit = window.globalSubmissionData;
     
     if (!dataToSubmit) {
-        console.error('No submission data available');
         alert('Data tidak tersedia. Silakan coba lagi.');
         return;
     }
-    
-    console.log('Data to submit:', dataToSubmit);
     
     // Submit to backend
     fetch('/procurement/pengiriman/submit', {
@@ -1243,11 +1378,8 @@ function showBatalSuccessNotification(message, noPengiriman) {
 
 // Submit pengiriman (global function)
 function submitPengiriman() {
-    console.log('submitPengiriman called');
-    
     const form = document.getElementById('pengirimanForm');
     if (!form) {
-        console.error('Form pengirimanForm not found');
         alert('Form tidak ditemukan');
         return;
     }
@@ -1297,8 +1429,6 @@ function submitPengiriman() {
     formData.append('total_qty_kirim', totalQty);
     formData.append('total_harga_kirim', totalHarga);
     
-    console.log('Form data prepared:', { totalQty, totalHarga });
-    
     // Show loading
     if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -1322,7 +1452,6 @@ function submitPengiriman() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log('Pengiriman submitted successfully');
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: 'Berhasil!',

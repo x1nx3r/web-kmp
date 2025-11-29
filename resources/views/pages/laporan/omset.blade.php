@@ -289,10 +289,10 @@
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-semibold text-gray-900 truncate">
-                                        {{ $item->klien ? $item->klien->nama : 'Unknown' }}
+                                        {{ $item->nama ?? 'Unknown' }}
                                     </p>
                                     <p class="text-xs text-gray-500">
-                                        {{ $item->klien && $item->klien->cabang ? $item->klien->cabang : '-' }}
+                                        {{ $item->cabang ?? '-' }}
                                     </p>
                                 </div>
                             </div>

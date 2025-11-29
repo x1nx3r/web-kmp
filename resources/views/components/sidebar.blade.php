@@ -26,7 +26,7 @@
 
             <!-- Laporan -->
             <li>
-                <a href="{{ route('laporan.pengiriman') }}" class="flex items-center space-x-3 {{ request()->routeIs('laporan.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                <a href="{{ route('laporan.po') }}" class="flex items-center space-x-3 {{ request()->routeIs('laporan.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <i class="fas fa-chart-bar w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('laporan.*') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Laporan</span>
                 </a>
@@ -216,7 +216,7 @@
 
             <!-- Laporan -->
             <li>
-                <a href="{{ route('laporan.pengiriman') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('laporan.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                <a href="{{ route('laporan.po') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('laporan.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <i class="fas fa-chart-bar w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('laporan.*') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Laporan</span>
                 </a>

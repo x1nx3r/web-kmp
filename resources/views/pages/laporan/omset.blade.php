@@ -244,7 +244,7 @@
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                     <i class="fas fa-trophy text-yellow-500 mr-2"></i>
-                    Top 10 Klien
+                    Daftar Klien (Berdasarkan Omset)
                 </h3>
             </div>
             <div class="w-48">
@@ -319,7 +319,7 @@
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                     <i class="fas fa-award text-orange-500 mr-2"></i>
-                    Top 10 Supplier
+                    Daftar Supplier (Berdasarkan Omset)
                 </h3>
             </div>
             <div class="w-48">

@@ -71,7 +71,6 @@ class OmsetController extends Controller
             }
             
             $topKlien = $topKlienQuery->orderBy('total', 'desc')
-                ->limit(10)
                 ->get();
             
             $data = $topKlien->map(function($item) {
@@ -118,7 +117,6 @@ class OmsetController extends Controller
             }
             
             $topSupplier = $topSupplierQuery->orderBy('total', 'desc')
-                ->limit(10)
                 ->get();
             
             $data = $topSupplier->map(function($item) {
@@ -391,7 +389,6 @@ class OmsetController extends Controller
         }
         
         $topKlien = $topKlienQuery->orderBy('total', 'desc')
-            ->limit(10)
             ->get();
         
         // Get Top Supplier data
@@ -424,7 +421,6 @@ class OmsetController extends Controller
         }
         
         $topSupplier = $topSupplierQuery->orderBy('total', 'desc')
-            ->limit(10)
             ->get();
         
         return view('pages.laporan.omset', compact(

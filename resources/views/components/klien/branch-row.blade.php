@@ -9,10 +9,10 @@
         </div>
     </td>
     <td class="px-4 py-3 text-sm text-gray-600">
-        @if($klien->no_hp)
+        @if($klien->phone)
             <div class="flex items-center">
                 <i class="fas fa-phone text-blue-500 mr-2"></i>
-                <a href="tel:{{ $klien->no_hp }}" class="text-blue-600 hover:text-blue-800">{{ $klien->no_hp }}</a>
+                    <a href="tel:{{ $klien->phone }}" class="text-blue-600 hover:text-blue-800">{{ $klien->phone }}</a>
             </div>
         @else
             <span class="text-gray-400 italic">Tidak ada kontak</span>
@@ -36,7 +36,7 @@
             </button>
             <button 
                 type="button"
-                @click="editBranch({{ $klien->id }}, '{{ $klien->nama }}', '{{ $klien->cabang }}', '{{ $klien->no_hp }}')"
+                    @click="editBranch({{ $klien->id }}, '{{ $klien->nama }}', '{{ $klien->cabang }}', '{{ $klien->phone }}')"
                 class="px-3 py-1 bg-green-500 text-white rounded-md text-xs hover:bg-green-600 transition-colors duration-200"
                 title="Edit Cabang"
             >

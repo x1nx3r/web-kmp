@@ -1,6 +1,14 @@
 {{-- Meta tags untuk CSRF --}}
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
+@php
+    // Define user role access for this modal
+    $currentUser = Auth::user();
+    $isPIC = $pengiriman->purchasing_id === $currentUser->id;
+    $canManagePengiriman = in_array($currentUser->role, ['direktur', 'manager_purchasing', 'staff_purchasing']);
+    $canEdit = $canManagePengiriman && ($currentUser->role !== 'staff_purchasing' || $isPIC);
+@endphp
+
 {{-- Modal Header - Sticky & Responsive --}}
 <div class="sticky top-0 z-10 flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-blue-600 rounded-t-xl">
     <div class="flex items-center space-x-2 sm:space-x-4">
@@ -155,9 +163,9 @@
                                name="tanggal_kirim" 
                                id="tanggal_kirim"
                                value="{{ old('tanggal_kirim', $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('Y-m-d') : '') }}"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
                                onchange="updateHariKirim()"
-                               required>
+                               {{ !$canEdit ? 'readonly' : 'required' }}>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">Hari Kirim</label>
@@ -193,7 +201,8 @@
                                name="bukti_foto_bongkar" 
                                id="bukti_foto_bongkar"
                                accept="image/*"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                               {{ !$canEdit ? 'disabled' : '' }}>
                         @if($pengiriman->bukti_foto_bongkar)
                             <div class="mt-2 space-y-1">
                                 <a href="{{ asset('storage/pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar) }}" 
@@ -301,11 +310,11 @@
                                         <input type="number" 
                                                name="details[{{ $index }}][qty_kirim]" 
                                                value="{{ old('details.' . $index . '.qty_kirim', $detail->qty_kirim ?? 0) }}"
-                                               class="qty-input w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                               class="qty-input w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}" 
                                                step="0.01" min="0" 
                                                onchange="calculateSubtotal({{ $index }})"
                                                oninput="calculateSubtotal({{ $index }})"
-                                               required>
+                                               {{ !$canEdit ? 'readonly' : 'required' }}>
                                     </td>
                                     
                                     <!-- Harga Beli - hidden on mobile -->
@@ -434,10 +443,11 @@
                     <textarea name="catatan" 
                               id="catatan_pengiriman"
                               rows="4"
-                              class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none transition-colors text-sm"
-                              placeholder="Tambahkan catatan baru atau update catatan pengiriman..."
+                              class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none transition-colors text-sm {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                              placeholder="{{ $canEdit ? 'Tambahkan catatan baru atau update catatan pengiriman...' : 'Mode lihat saja - tidak dapat mengedit catatan' }}"
                               maxlength="500"
-                              data-original-catatan="{{ $pengiriman->catatan ?? '' }}">{{ old('catatan', $pengiriman->catatan ?? '') }}</textarea>
+                              data-original-catatan="{{ $pengiriman->catatan ?? '' }}"
+                              {{ !$canEdit ? 'readonly' : '' }}>{{ old('catatan', $pengiriman->catatan ?? '') }}</textarea>
                     
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center text-xs text-gray-500 gap-2 sm:gap-0">
                         <span>
@@ -448,20 +458,22 @@
                     </div>
                     
                     {{-- Quick Actions --}}
-                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                        <button type="button" 
-                                onclick="clearCatatan()" 
-                                class="w-full sm:w-auto px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-                            <i class="fas fa-eraser mr-1"></i>
-                            Kosongkan
-                        </button>
-                        <button type="button" 
-                                onclick="resetToOriginal()" 
-                                class="w-full sm:w-auto px-3 py-1.5 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors">
-                            <i class="fas fa-undo mr-1"></i>
-                            Reset ke Asli
-                        </button>
-                    </div>
+                    @if($canEdit)
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                            <button type="button" 
+                                    onclick="clearCatatan()" 
+                                    class="w-full sm:w-auto px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                                <i class="fas fa-eraser mr-1"></i>
+                                Kosongkan
+                            </button>
+                            <button type="button" 
+                                    onclick="resetToOriginal()" 
+                                    class="w-full sm:w-auto px-3 py-1.5 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors">
+                                <i class="fas fa-undo mr-1"></i>
+                                Reset ke Asli
+                            </button>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -479,18 +491,32 @@
             <i class="fas fa-times mr-2"></i>
             Tutup
         </button>
-        <button type="button" onclick="openBatalModal()" 
-                class="w-full sm:w-auto px-4 sm:px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm">
-            <i class="fas fa-ban mr-2"></i>
-            <span class="hidden sm:inline">Jadikan Pengiriman Batal</span>
-            <span class="sm:hidden">Batalkan</span>
-        </button>
+        
+        @if($canEdit)
+            {{-- Batalkan button - Only for authorized users --}}
+            <button type="button" onclick="openBatalModal()" 
+                    class="w-full sm:w-auto px-4 sm:px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm">
+                <i class="fas fa-ban mr-2"></i>
+                <span class="hidden sm:inline">Jadikan Pengiriman Batal</span>
+                <span class="sm:hidden">Batalkan</span>
+            </button>
+        @endif
     </div>
-    <button type="button" onclick="submitPengiriman()" 
-            class="w-full sm:w-auto px-6 sm:px-8 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold shadow-md hover:shadow-lg text-sm order-1 sm:order-2">
-        <i class="fas fa-paper-plane mr-2"></i>
-        Ajukan Verifikasi
-    </button>
+    
+    @if($canEdit)
+        {{-- Ajukan Verifikasi button - Only for authorized users --}}
+        <button type="button" onclick="submitPengiriman()" 
+                class="w-full sm:w-auto px-6 sm:px-8 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold shadow-md hover:shadow-lg text-sm order-1 sm:order-2">
+            <i class="fas fa-paper-plane mr-2"></i>
+            Ajukan Verifikasi
+        </button>
+    @else
+        {{-- Read-only indicator for unauthorized users --}}
+        <div class="w-full sm:w-auto px-6 sm:px-8 py-2 bg-gray-100 text-gray-500 rounded-lg font-semibold text-sm order-1 sm:order-2 text-center border border-gray-300">
+            <i class="fas fa-lock mr-2"></i>
+            Mode Lihat Saja
+        </div>
+    @endif
 </div>
 
 {{-- SweetAlert2 CDN --}}

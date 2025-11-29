@@ -43,7 +43,7 @@
                 {{-- Horizontal Filter Layout --}}
                 <div class="flex flex-col sm:flex-row items-start sm:items-end gap-2 sm:gap-4">
                     {{-- Filter by Purchasing --}}
-                    <div class="w-full sm:w-64 flex-shrink-0">
+                    <div class="w-full sm:w-64 shrink-0">
                         <label class="block text-xs font-medium text-blue-600 mb-1">
                             <i class="fas fa-user mr-1 text-blue-500 text-xs"></i>
                             PIC Purchasing
@@ -67,7 +67,7 @@
                     </div>
 
                     {{-- Sort by Date --}}
-                    <div class="w-full sm:w-48 flex-shrink-0">
+                    <div class="w-full sm:w-48 shrink-0">
                         <label class="block text-xs font-medium text-blue-600 mb-1">
                             <i class="fas fa-sort mr-1 text-blue-500 text-xs"></i>
                             Urutkan
@@ -80,7 +80,7 @@
                     </div>
 
                     {{-- Clear Filter Button --}}
-                    <div class="w-full sm:w-auto sm:ml-auto flex-shrink-0">
+                    <div class="w-full sm:w-auto sm:ml-auto shrink-0">
                         <button onclick="clearAllFiltersMasuk()" class="w-full sm:w-auto px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap">
                             <i class="fas fa-times mr-1"></i>
                             Hapus Filter
@@ -110,6 +110,10 @@
             @php
                 // Group pengiriman by order_id (purchase_order_id field)
                 $groupedPengiriman = collect($pengirimanMasuk->items() ?? [])->groupBy('purchase_order_id');
+                
+                // Define user role access once for all items
+                $currentUser = Auth::user();
+                $canManagePengiriman = in_array($currentUser->role, ['direktur', 'manager_purchasing', 'staff_purchasing']);
             @endphp
         </div>
     </div>
@@ -122,8 +126,6 @@
             @php
                 $po = $pengirimanList->first()->order;
                 $purchasing = $pengirimanList->first()->purchasing;
-                
-
             @endphp
             {{-- Simplified PO Card --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 masuk-pengiriman-card po-card" 
@@ -150,79 +152,132 @@
                         
                         <div class="flex items-center space-x-3">
                             <div class="text-right">
-                                <p class="text-xs text-gray-500">{{ $pengirimanList->count() }} pengiriman</p>
+                                <p class="text-xs text-gray-500">{{ $pengirimanList->count() }} {{ $pengirimanList->count() == 1 ? 'pengiriman' : 'pengiriman' }}</p>
                                 @php $totalHarga = $pengirimanList->sum('total_harga_kirim'); @endphp
                                 @if($totalHarga > 0)
                                     <p class="text-sm font-semibold text-green-600">Rp {{ number_format($totalHarga, 0, ',', '.') }}</p>
                                 @endif
                             </div>
-                            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs flex items-center" onclick="togglePengirimanList('po-{{ $poId }}')">
-                                <i class="fas fa-chevron-right pengiriman-icon" id="icon-po-{{ $poId }}"></i>
-                                <span class="ml-1" id="text-po-{{ $poId }}">Tampilkan</span>
-                            </button>
                         </div>
                     </div>
                 </div>
 
-                {{-- Simplified Pengiriman List --}}
-                <div class="border-t border-gray-200 pengiriman-list" id="pengiriman-list-po-{{ $poId }}" style="display: none;">
+                {{-- Simplified Pengiriman List - Auto Show --}}
+                <div class="border-t border-gray-200 pengiriman-list" id="pengiriman-list-po-{{ $poId }}">
                     <div class="p-3">
                         <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                             <i class="fas fa-truck text-blue-600 mr-2"></i>
                             Daftar Pengiriman ({{ $pengirimanList->count() }})
                         </h4>
                         
-                        <div class="space-y-2">
+                        <div class="divide-y divide-gray-200">
                             @foreach($pengirimanList as $pengiriman)
-                                <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors" 
+                                <div class="py-3 hover:bg-gray-50 transition-colors px-2 -mx-2 rounded" 
                                      data-pengiriman-no="{{ strtolower($pengiriman->no_pengiriman ?? '') }}"
-                                     data-purchasing="{{ strtolower($purchasing->nama ?? '') }}"
+                                     data-purchasing="{{ strtolower($pengiriman->purchasing->nama ?? '') }}"
                                      data-qty="{{ $pengiriman->total_qty_kirim ?? 0 }}"
                                      data-amount="{{ $pengiriman->total_harga_kirim ?? 0 }}"
                                      data-date="{{ $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('Y-m-d') : '' }}"
                                      data-status="{{ $pengiriman->status ?? '' }}">
                                     
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex-1">
-                                            <div class="flex items-center space-x-2">
-                                                <div class="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                                    <i class="fas fa-shipping-fast text-white text-xs"></i>
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        {{-- Info Section --}}
+                                        <div class="flex-1 min-w-0 space-y-2">
+                                            {{-- Row 1: No Pengiriman & Status --}}
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-2 h-2 bg-blue-500 rounded-full shrink-0"></div>
+                                                    <span class="text-sm font-semibold text-gray-900">{{ $pengiriman->no_pengiriman }}</span>
                                                 </div>
-                                                <span class="text-sm font-medium text-gray-900">{{ $pengiriman->no_pengiriman }}</span>
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                @php
+                                                    $statusColors = [
+                                                        'pending' => 'bg-yellow-100 text-yellow-800',
+                                                        'menunggu verifikasi' => 'bg-blue-100 text-blue-800',
+                                                        'berhasil' => 'bg-green-100 text-green-800',
+                                                        'revisi' => 'bg-red-100 text-red-800',
+                                                    ];
+                                                    $statusColor = $statusColors[strtolower($pengiriman->status)] ?? 'bg-gray-100 text-gray-800';
+                                                @endphp
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $statusColor }}">
+                                                    @if(strtolower($pengiriman->status) == 'pending')
+                                                        <i class="fas fa-clock mr-1"></i>
+                                                    @elseif(strtolower($pengiriman->status) == 'menunggu verifikasi')
+                                                        <i class="fas fa-hourglass-half mr-1"></i>
+                                                    @elseif(strtolower($pengiriman->status) == 'berhasil')
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                    @elseif(strtolower($pengiriman->status) == 'revisi')
+                                                        <i class="fas fa-undo mr-1"></i>
+                                                    @endif
                                                     {{ ucfirst($pengiriman->status) }}
                                                 </span>
                                             </div>
-                                            <div class="flex items-center space-x-4 mt-1 text-xs text-gray-500">
-                                                @if($purchasing && $purchasing->nama)
-                                                    <span><i class="fas fa-user mr-1"></i>{{ $purchasing->nama }}</span>
+                                            
+                                            {{-- Row 2: Detail Info --}}
+                                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+                                                @if($pengiriman->purchasing && $pengiriman->purchasing->nama)
+                                                    <span class="flex items-center gap-1">
+                                                        <i class="fas fa-user text-blue-600"></i>
+                                                        <span class="truncate max-w-[150px]">{{ $pengiriman->purchasing->nama }}</span>
+                                                    </span>
                                                 @endif
                                                 @if($pengiriman->tanggal_kirim)
-                                                    <span><i class="fas fa-calendar mr-1"></i>{{ $pengiriman->tanggal_kirim->format('d M Y') }}</span>
+                                                    <span class="flex items-center gap-1">
+                                                        <i class="fas fa-calendar text-blue-600"></i>
+                                                        {{ $pengiriman->tanggal_kirim->format('d M Y') }}
+                                                    </span>
                                                 @endif
                                                 @if($pengiriman->total_qty_kirim && $pengiriman->total_qty_kirim > 0)
-                                                    <span><i class="fas fa-weight mr-1"></i>{{ number_format($pengiriman->total_qty_kirim, 0, ',', '.') }} kg</span>
+                                                    <span class="flex items-center gap-1">
+                                                        <i class="fas fa-weight text-blue-600"></i>
+                                                        {{ number_format($pengiriman->total_qty_kirim, 0, ',', '.') }} kg
+                                                    </span>
                                                 @endif
                                                 @if($pengiriman->total_harga_kirim && $pengiriman->total_harga_kirim > 0)
-                                                    <span><i class="fas fa-money-bill mr-1"></i>Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</span>
+                                                    <span class="flex items-center gap-1 font-medium text-green-700">
+                                                        <i class="fas fa-money-bill-wave"></i>
+                                                        Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}
+                                                    </span>
                                                 @endif
                                             </div>
+                                            
+                                           
                                         </div>
-                                                          <div class="flex space-x-2">
-                            <button onclick="openAksiModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}', '{{ $pengiriman->status }}')" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs flex items-center transition-all duration-200" 
-                                    title="Aksi Pengiriman">
-                                <i class="fas fa-cog mr-1"></i>
-                                Aksi Pengiriman
-                            </button>
-                        </div>
+                                        
+                                        {{-- Action Button Section --}}
+                                        <div class="flex flex-col sm:flex-row gap-2 sm:w-auto w-full">
+                                            @php
+                                                // Check if user is PIC for this pengiriman (for Staff Purchasing)
+                                                $isPIC = $pengiriman->purchasing_id === $currentUser->id;
+                                                $canEdit = $canManagePengiriman && ($currentUser->role !== 'staff_purchasing' || $isPIC);
+                                            @endphp
+                                            
+                                            @if($canEdit)
+                                                {{-- Button for authorized users (Direktur, Manager, or PIC Staff) --}}
+                                                <button onclick="openAksiModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}', '{{ $pengiriman->status }}')" 
+                                                        class="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center transition-all duration-200 w-full sm:w-auto whitespace-nowrap shadow-sm hover:shadow" 
+                                                        title="Aksi Pengiriman">
+                                                    <i class="fas fa-cog mr-1.5"></i>
+                                                    Aksi
+                                                </button>
+                                            @elseif($canManagePengiriman && !$isPIC)
+                                                {{-- Button for Staff Purchasing who are NOT PIC: View Only --}}
+                                                <button onclick="openAksiModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}', '{{ $pengiriman->status }}')" 
+                                                        class="bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center transition-all duration-200 w-full sm:w-auto whitespace-nowrap shadow-sm hover:shadow" 
+                                                        title="Lihat Detail">
+                                                    <i class="fas fa-eye mr-1.5"></i>
+                                                    Lihat
+                                                </button>
+                                            @else
+                                                {{-- Button for other roles: Disabled --}}
+                                                <button disabled
+                                                        class="bg-gray-400 text-gray-200 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center cursor-not-allowed opacity-60 w-full sm:w-auto whitespace-nowrap" 
+                                                        title="Akses Terbatas">
+                                                    <i class="fas fa-lock mr-1.5"></i>
+                                                    Terbatas
+                                                </button>
+                                            @endif
+                                        </div>
                                     </div>
-                                    
-                                    @if($pengiriman->catatan)
-                                        <div class="mt-2 pt-2 border-t border-gray-200">
-                                            <p class="text-xs text-gray-600"><i class="fas fa-sticky-note mr-1"></i>{{ $pengiriman->catatan }}</p>
-                                        </div>
-                                    @endif
                                 </div>
                             @endforeach
                         </div>
@@ -573,27 +628,6 @@ function updatePengirimanStatus(id, status, catatan = null) {
     });
 }
 
-// Toggle pengiriman list visibility
-function togglePengirimanList(poId) {
-    const pengirimanList = document.getElementById('pengiriman-list-' + poId);
-    const icon = document.getElementById('icon-' + poId);
-    const text = document.getElementById('text-' + poId);
-    
-    if (pengirimanList.style.display === 'none') {
-        // Show pengiriman list
-        pengirimanList.style.display = 'block';
-        icon.classList.remove('fa-chevron-right');
-        icon.classList.add('fa-chevron-down');
-        if (text) text.textContent = 'Sembunyikan';
-    } else {
-        // Hide pengiriman list
-        pengirimanList.style.display = 'none';
-        icon.classList.remove('fa-chevron-down');
-        icon.classList.add('fa-chevron-right');
-        if (text) text.textContent = 'Tampilkan';
-    }
-}
-
 // Global variables untuk menyimpan state
 window.currentPengirimanId = null;
 window.currentNoKirim = null;
@@ -742,57 +776,6 @@ function updateHariKirim() {
 // PENGIRIMAN MODAL FUNCTIONS - Global functions for detail modal
 // ===================================================================
 
-// Open batal modal
-function openBatalModal() {
-    const pengirimanId = document.querySelector('input[name="pengiriman_id"]').value;
-    
-    // Load batal modal content with pengiriman_id parameter
-    fetch(`/procurement/pengiriman/batal-modal?pengiriman_id=${pengirimanId}`)
-    .then(response => response.text())
-    .then(html => {
-        // Create and show batal modal
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = html;
-        document.body.appendChild(modalContainer);
-        
-        // Find and show the modal
-        const batalModal = modalContainer.querySelector('#batalModal');
-        if (batalModal) {
-            // Make sure modal is visible
-            batalModal.style.display = 'flex';
-        }
-    })
-    .catch(error => {
-        console.error('Error loading batal modal:', error);
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Gagal memuat modal pembatalan: ' + error.message,
-                icon: 'error',
-                confirmButtonColor: '#EF4444'
-            });
-        } else {
-            alert('Gagal memuat modal pembatalan: ' + error.message);
-        }
-    });
-}
-
-// Update hari kirim berdasarkan tanggal
-function updateHariKirim() {
-    const deliveryDate = document.getElementById('tanggal_kirim').value;
-    if (deliveryDate) {
-        const targetDate = new Date(deliveryDate);
-        
-        // Array nama hari dalam bahasa Indonesia
-        const hariIndonesia = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const namaHari = hariIndonesia[targetDate.getDay()];
-        
-        document.getElementById('hari_kirim').value = namaHari;
-    } else {
-        document.getElementById('hari_kirim').value = '';
-    }
-}
-
 // Hitung subtotal untuk setiap row
 function calculateSubtotal(index) {
     const qtyInput = document.querySelector(`input[name="details[${index}][qty_kirim]"]`);
@@ -907,71 +890,6 @@ function updateTotals() {
     if (totalHargaHidden) totalHargaHidden.value = totalHargaBeli;
     if (totalQtyDisplay) totalQtyDisplay.value = new Intl.NumberFormat('id-ID').format(totalQty) + ' kg';
     if (totalHargaDisplay) totalHargaDisplay.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHargaBeli);
-}
-
-// Submit pengiriman
-function submitPengiriman() {
-    const form = document.getElementById('pengirimanForm');
-    
-    // Validasi form
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-    
-    // Validasi tanggal kirim
-    const tanggalKirim = document.getElementById('tanggal_kirim').value;
-    if (!tanggalKirim) {
-        Swal.fire({
-            title: 'Validation Error!',
-            text: 'Tanggal kirim harus diisi',
-            icon: 'warning',
-            confirmButtonColor: '#EF4444'
-        });
-        return;
-    }
-    
-    // Validasi minimal 1 detail dengan qty > 0
-    const qtyInputs = document.querySelectorAll('.qty-input');
-    let hasValidQty = false;
-    
-    qtyInputs.forEach(input => {
-        if (parseFloat(input.value) > 0) {
-            hasValidQty = true;
-        }
-    });
-    
-    if (!hasValidQty) {
-        Swal.fire({
-            title: 'Validation Error!',
-            text: 'Minimal harus ada 1 item dengan quantity > 0',
-            icon: 'warning',
-            confirmButtonColor: '#EF4444'
-        });
-        return;
-    }
-    
-    // Konfirmasi submit
-    Swal.fire({
-        title: 'Konfirmasi Pengajuan',
-        html: 'Apakah Anda yakin ingin mengajukan verifikasi pengiriman ini?<br><small class="text-gray-600">Nomor pengiriman akan di-generate otomatis</small>',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10B981',
-        cancelButtonColor: '#EF4444',
-        confirmButtonText: 'Ya, Ajukan!',
-        cancelButtonText: 'Batal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Submit form menggunakan fungsi global
-            if (typeof submitForm === 'function') {
-                submitForm('pengirimanForm', 'Mengajukan pengiriman...');
-            } else {
-                // Fallback jika fungsi global tidak ada
-                form.submit();
-            }
-        }
-    });
 }
 
 // Initialize pengiriman modal (called after AJAX load)

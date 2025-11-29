@@ -165,13 +165,25 @@
             <button type="button" onclick="closeVerifikasiModal()" 
                     class="w-full sm:w-auto px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-medium text-sm">
                 <i class="fas fa-times mr-2"></i>
-                Batal
+                Tutup
             </button>
-            <button type="button" onclick="submitVerifikasiPengiriman()" 
-                    class="w-full sm:w-auto px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 font-medium text-sm">
-                <i class="fas fa-check-circle mr-2"></i>
-                Verifikasi Pengiriman
-            </button>
+            @php
+                $currentUser = Auth::user();
+                $canVerify = in_array($currentUser->role, ['direktur', 'manager_purchasing']);
+            @endphp
+            
+            @if($canVerify)
+                <button type="button" onclick="submitVerifikasiPengiriman()" 
+                        class="w-full sm:w-auto px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 font-medium text-sm">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Verifikasi Pengiriman
+                </button>
+            @else
+                <div class="w-full sm:w-auto px-6 py-2.5 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed text-sm font-medium text-center" title="Hanya Direktur dan Manager Purchasing yang dapat memverifikasi">
+                    <i class="fas fa-lock mr-2"></i>
+                    Akses Terbatas
+                </div>
+            @endif
         </div>
     </div>
 </div>

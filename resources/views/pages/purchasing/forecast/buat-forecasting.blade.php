@@ -1,5 +1,6 @@
 {{-- Tab Buat Forecasting --}}
 <div class="space-y-6">
+  
     {{-- Search and Filter Section --}}
     <div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-6 mb-3 sm:mb-6">
         <div class="space-y-3 sm:space-y-6">
@@ -290,12 +291,14 @@
                                                 <p class="text-xs text-gray-500">Total Harga</p>
                                                 <p class="text-sm font-bold text-yellow-700">Rp {{ number_format($detail->total_harga ?? 0, 0, ',', '.') }}</p>
                                             </div>
+                                            @if(in_array(Auth::user()->role, ['direktur', 'manager_purchasing', 'staff_purchasing']))
                                             <button type="button" 
                                                     onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->qty ?? 0 }}, {{ $po->id }}, '{{ $po->po_number ?? 'N/A' }}')"
                                                     class="flex-shrink-0 px-3 py-2 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm">
                                                 <i class="fas fa-chart-bar mr-1"></i>
                                                 <span>Buat Forecast</span>
                                             </button>
+                                            @endif
                                         </div>
                                     </div>
                                 @empty
@@ -332,12 +335,14 @@
                                                     </span>
                                                 </div>
                                             </div>
+                                            @if(in_array(Auth::user()->role, ['direktur', 'manager_purchasing', 'staff_purchasing']))
                                             <button type="button" 
                                                     onclick="openForecastModal({{ $detail->id }}, '{{ $detail->bahanBakuKlien->nama ?? 'N/A' }}', {{ $detail->qty ?? 0 }}, {{ $po->id }}, '{{ $po->po_number ?? 'N/A' }}')"
                                                     class="flex-shrink-0 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm">
                                                     <i class="fas fa-chart-bar mr-2"></i>
                                                     Buat Forecast
                                             </button>
+                                            @endif
                                         </div>
                                     </div>
                                 @empty

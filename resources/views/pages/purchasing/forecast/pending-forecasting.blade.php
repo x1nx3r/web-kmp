@@ -278,6 +278,7 @@
                                                         'po_number' => $poNumber,
                                                         'klien' => $klienNama . $klienCabang,
                                                         'pic_purchasing' => optional($forecast->purchasing)->nama ?? 'Tidak ada PIC',
+                                                        'pic_purchasing_id' => $forecast->purchasing_id,
                                                         'tanggal_forecast' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A',
                                                         'status' => ucfirst($forecast->status ?? 'Pending'),
                                                         'total_qty' => number_format($forecast->total_qty_forecast ?? 0, 0, ',', '.'),

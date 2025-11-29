@@ -437,6 +437,17 @@ class ForecastingController extends Controller
 
     public function createForecast(Request $request)
     {
+        // Authorization: Only direktur, manager_purchasing, and staff_purchasing can create forecasting
+        $user = Auth::user();
+        $allowedRoles = ['direktur', 'manager_purchasing', 'staff_purchasing'];
+        
+        if (!in_array($user->role, $allowedRoles)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk membuat forecasting. Hanya direktur dan tim purchasing yang dapat membuat forecasting.'
+            ], 403);
+        }
+
         // Log untuk debugging (dimatikan untuk performa)
         // Log::info('Request received:', $request->all());
         
@@ -809,6 +820,31 @@ class ForecastingController extends Controller
     {
         Log::info("kirimForecast called with ID: {$id}");
         
+        // Authorization: Only direktur, manager_purchasing, and PIC Purchasing can process forecast to pengiriman
+        $user = Auth::user();
+        
+        // First, get the forecast to check PIC
+        $forecastCheck = Forecast::select('id', 'purchasing_id')->find($id);
+        
+        if (!$forecastCheck) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forecast tidak ditemukan'
+            ], 404);
+        }
+        
+        // Check authorization
+        $canProcess = $user->role === 'direktur' || 
+                      $user->role === 'manager_purchasing' ||
+                      ($user->id == $forecastCheck->purchasing_id);
+        
+        if (!$canProcess) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk memproses forecast ini menjadi pengiriman. Hanya direktur, manager purchasing, dan PIC Purchasing yang dapat memproses forecast.'
+            ], 403);
+        }
+        
         try {
             // Set shorter timeout for this operation
             DB::statement('SET SESSION innodb_lock_wait_timeout = 10');
@@ -1046,6 +1082,31 @@ class ForecastingController extends Controller
     {
         Log::info("batalkanForecast called with ID: {$id}");
         Log::info("Request data: " . json_encode($request->all()));
+        
+        // Authorization: Only direktur, manager_purchasing, and PIC Purchasing can cancel forecast
+        $user = Auth::user();
+        
+        // First, get the forecast to check PIC
+        $forecastCheck = Forecast::select('id', 'purchasing_id')->find($id);
+        
+        if (!$forecastCheck) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forecast tidak ditemukan'
+            ], 404);
+        }
+        
+        // Check authorization
+        $canCancel = $user->role === 'direktur' || 
+                     $user->role === 'manager_purchasing' ||
+                     ($user->id == $forecastCheck->purchasing_id);
+        
+        if (!$canCancel) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk membatalkan forecast ini. Hanya direktur, manager purchasing, dan PIC Purchasing yang dapat membatalkan forecast.'
+            ], 403);
+        }
         
         // Quick database connectivity test
         try {

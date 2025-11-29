@@ -32,6 +32,8 @@ class DetailPenagihan extends Component
             'invoice',
             'pengiriman.details.bahanBakuSupplier',
             'pengiriman.details.purchaseOrderBahanBaku.bahanBakuKlien',
+            'pengiriman.details.purchaseOrderBahanBaku', // Tambahan untuk harga_jual
+            'pengiriman.details.orderDetail', // Tambahan untuk harga_jual
             'pengiriman.purchaseOrder.orderDetails.orderSuppliers.supplier',
             'histories.user'
         ])->findOrFail($this->approvalId);
@@ -85,20 +87,25 @@ class DetailPenagihan extends Component
     {
         // Calculate financial summary from order
         $order = $this->pengiriman->purchaseOrder ?? null;
-        $totalSupplierCost = 0;
+        
+        // Refresh pengiriman data untuk memastikan nilai terbaru
+        $this->pengiriman->refresh();
+        
+        // Ambil total harga supplier (beli) dari total_harga_kirim pengiriman
+        $totalSupplierCost = floatval($this->pengiriman->total_harga_kirim ?? 0);
         $totalSelling = 0;
         $totalMargin = 0;
         $marginPercentage = 0;
 
-        if ($order && $order->orderDetails) {
-            foreach ($order->orderDetails as $detail) {
-                // Get best supplier price
-                $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first();
-                if ($bestSupplier) {
-                    $totalSupplierCost += ($bestSupplier->harga_supplier ?? 0) * $detail->qty;
+        // Hitung total harga jual berdasarkan qty kirim × harga jual
+        if ($this->pengiriman->details) {
+            foreach ($this->pengiriman->details as $detail) {
+                // Ambil harga jual dari order detail
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                if ($orderDetail && $orderDetail->harga_jual) {
+                    // Total = qty kirim × harga jual
+                    $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
                 }
-                // Total selling price
-                $totalSelling += $detail->total_harga;
             }
             
             $totalMargin = $totalSelling - $totalSupplierCost;

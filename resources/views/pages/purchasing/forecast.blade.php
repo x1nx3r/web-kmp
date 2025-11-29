@@ -6,7 +6,15 @@
 <x-welcome-banner title="Forecasting" subtitle="Rencanakan Pengiriman Disini" icon="fas fa-chart-bar" />
 {{-- Breadcrumb --}}
 <div id="dynamicBreadcrumb">
-    {{-- Default breadcrumb, akan diupdate via JavaScript --}}
+    {{-- Default breadcrumb, akan di// Function to initialize tab based on URL parameter
+function initializeTabFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let activeTab = urlParams.get('tab') || 'buat-forecasting';
+    
+    console.log('Initializing tab from URL:', activeTab);
+    console.log('Current URL params:', Object.fromEntries(urlParams));
+    
+    // ...existing code...ript --}}
     <x-breadcrumb :items="[
     ['title' => 'Purchasing', 'url' => '#'],
     'Forecasting'
@@ -292,7 +300,10 @@ function handlePagination(pageUrl) {
 // Function to initialize tab based on URL parameter
 function initializeTabFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
-    const activeTab = urlParams.get('tab') || 'buat-forecasting';
+    let activeTab = urlParams.get('tab') || 'buat-forecasting';
+    
+    // Note: All users can view "buat-forecasting" tab in read-only mode
+    // Role check for action buttons is handled in the blade template
     
     console.log('Initializing tab from URL:', activeTab);
     console.log('Current URL params:', Object.fromEntries(urlParams));

@@ -338,8 +338,6 @@ function applyFiltersSukses() {
 
 // Function to open detail modal (clean version)
 function openDetailModal(forecastId) {
-    console.log('Opening detail modal for forecast ID:', forecastId);
-    
     // Show loading state
     const modal = document.getElementById('detailForecastModal');
     const content = document.getElementById('detailContent');
@@ -375,7 +373,6 @@ function openDetailModal(forecastId) {
         }
     })
     .catch(error => {
-        console.error('Error loading forecast detail:', error);
         content.innerHTML = `
             <div class="text-center py-8">
                 <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>

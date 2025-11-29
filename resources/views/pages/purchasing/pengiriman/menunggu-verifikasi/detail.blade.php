@@ -406,31 +406,39 @@
         </div>
     @endif
     
+    @php
+        $currentUser = Auth::user();
+        $canVerifyRevise = in_array($currentUser->role, ['direktur', 'manager_purchasing']);
+    @endphp
+    
     <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-4 space-y-2 space-y-reverse sm:space-y-0">
         <button type="button" onclick="closeAksiVerifikasiModal()" 
                 class="w-full sm:w-auto px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 font-medium">
             <i class="fas fa-times mr-2"></i>
             Tutup
         </button>
-        <button type="button" onclick="openRevisiModalFromDetail()" 
-                class="w-full sm:w-auto px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200 font-medium">
-            <i class="fas fa-edit mr-2"></i>
-            Revisi
-        </button>
-        @if($pengiriman->foto_tanda_terima)
-            <button type="button" onclick="openVerifikasiModalFromDetail()" 
-                    class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 font-medium">
-                <i class="fas fa-check-circle mr-2"></i>
-                Verifikasi
+        
+        @if($canVerifyRevise)
+            <button type="button" onclick="openRevisiModalFromDetail()" 
+                    class="w-full sm:w-auto px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200 font-medium">
+                <i class="fas fa-edit mr-2"></i>
+                Revisi
             </button>
-        @else
-            <button type="button" 
-                    disabled
-                    title="Foto tanda terima diperlukan untuk verifikasi"
-                    class="w-full sm:w-auto px-6 py-3 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed transition-all duration-200 font-medium">
-                <i class="fas fa-check-circle mr-2"></i>
-                Verifikasi
-            </button>
+            @if($pengiriman->foto_tanda_terima)
+                <button type="button" onclick="openVerifikasiModalFromDetail()" 
+                        class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 font-medium">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Verifikasi
+                </button>
+            @else
+                <button type="button" 
+                        disabled
+                        title="Foto tanda terima diperlukan untuk verifikasi"
+                        class="w-full sm:w-auto px-6 py-3 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed transition-all duration-200 font-medium">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Verifikasi
+                </button>
+            @endif
         @endif
     </div>
 </div>

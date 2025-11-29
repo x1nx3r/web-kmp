@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class PengirimanController extends Controller
@@ -372,7 +373,8 @@ class PengirimanController extends Controller
                 'purchasing', 
                 'forecast',
                 'pengirimanDetails.bahanBakuSupplier',
-                'pengirimanDetails.bahanBakuSupplier.supplier'
+                'pengirimanDetails.bahanBakuSupplier.supplier',
+                'pengirimanDetails.orderDetail'  // Add orderDetail to get harga_jual for margin calculation
             ])->findOrFail($id);
 
             Log::info("Pengiriman loaded with " . $pengiriman->pengirimanDetails->count() . " details");
@@ -442,6 +444,26 @@ class PengirimanController extends Controller
      */
     public function submitPengiriman(Request $request)
     {
+        // Check user role authorization - Only Direktur, Manager Purchasing, and Staff Purchasing can submit
+        $user = Auth::user();
+        if (!in_array($user->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk mengajukan verifikasi pengiriman. Hanya Direktur, Manager Purchasing, dan Staff Purchasing yang dapat melakukan aksi ini.'
+            ], 403);
+        }
+        
+        // For Staff Purchasing, ensure they are the PIC
+        if ($user->role === 'staff_purchasing') {
+            $pengiriman = Pengiriman::find($request->pengiriman_id);
+            if ($pengiriman && $pengiriman->purchasing_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda hanya dapat mengajukan verifikasi untuk pengiriman yang Anda tangani sebagai PIC.'
+                ], 403);
+            }
+        }
+        
         try {
             // Validate request
             $validatedData = $request->validate([
@@ -644,6 +666,26 @@ class PengirimanController extends Controller
      */
     public function batalPengiriman(Request $request)
     {
+        // Check user role authorization - Only Direktur, Manager Purchasing, and Staff Purchasing can cancel
+        $user = Auth::user();
+        if (!in_array($user->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk membatalkan pengiriman. Hanya Direktur, Manager Purchasing, dan Staff Purchasing yang dapat melakukan aksi ini.'
+            ], 403);
+        }
+        
+        // For Staff Purchasing, ensure they are the PIC
+        if ($user->role === 'staff_purchasing') {
+            $pengiriman = Pengiriman::find($request->pengiriman_id);
+            if ($pengiriman && $pengiriman->purchasing_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda hanya dapat membatalkan pengiriman yang Anda tangani sebagai PIC.'
+                ], 403);
+            }
+        }
+        
         try {
             // Validate request - only catatan is allowed to be updated
             $validatedData = $request->validate([
@@ -952,6 +994,15 @@ class PengirimanController extends Controller
      */
     public function verifikasiPengiriman($id)
     {
+        // Check user role authorization
+        $user = Auth::user();
+        if (!in_array($user->role, ['direktur', 'manager_purchasing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk memverifikasi pengiriman. Hanya Direktur dan Manager Purchasing yang dapat melakukan verifikasi.'
+            ], 403);
+        }
+        
         try {
             Log::info("Starting verifikasi pengiriman for ID: {$id}");
             
@@ -1062,6 +1113,15 @@ class PengirimanController extends Controller
      */
     public function revisiPengiriman(Request $request, $id)
     {
+        // Check user role authorization
+        $user = Auth::user();
+        if (!in_array($user->role, ['direktur', 'manager_purchasing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk merevisi pengiriman. Hanya Direktur dan Manager Purchasing yang dapat melakukan revisi.'
+            ], 403);
+        }
+        
         try {
             $request->validate([
                 'catatan' => 'required|string|max:1000',
@@ -1220,6 +1280,26 @@ class PengirimanController extends Controller
      */
     public function uploadFotoTandaTerima(Request $request, $id)
     {
+        // Check user role authorization - Only Direktur, Manager Purchasing, and Staff Purchasing can upload
+        $user = Auth::user();
+        if (!in_array($user->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk mengupload foto tanda terima. Hanya Direktur, Manager Purchasing, dan Staff Purchasing yang dapat melakukan aksi ini.'
+            ], 403);
+        }
+        
+        // For Staff Purchasing, ensure they are the PIC
+        if ($user->role === 'staff_purchasing') {
+            $pengiriman = Pengiriman::where('status', 'menunggu_verifikasi')->find($id);
+            if ($pengiriman && $pengiriman->purchasing_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda hanya dapat mengupload foto tanda terima untuk pengiriman yang Anda tangani sebagai PIC.'
+                ], 403);
+            }
+        }
+        
         try {
             // Validate
             $request->validate([

@@ -154,7 +154,7 @@
             <div class="flex items-center space-x-4 text-sm">
                 @php
                     $totalForecasts = $pendingForecasts->total();
-                    $totalPOs = collect($pendingForecasts->items())->groupBy('order_id')->count();
+                    $totalPOs = collect($pendingForecasts->items())->groupBy('purchase_order_id')->count();
                     $totalAmount = collect($pendingForecasts->items())->sum('total_harga_forecast');
                 @endphp
                 <div class="text-center">
@@ -180,21 +180,30 @@
         </div>
     </div>
 
-    {{-- Simplified PO Cards with Forecasts --}}
+    {{-- PO Cards with Forecast Dropdown --}}
     <div class="space-y-2">
         @php
-            // Group forecasts by order_id
-            $groupedForecasts = collect($pendingForecasts->items())->groupBy('order_id');
+            // Group forecasts by purchase_order_id from forecasts table
+            $groupedForecasts = collect($pendingForecasts->items())->groupBy('purchase_order_id');
         @endphp
 
-        @forelse($groupedForecasts as $poId => $forecasts)
+        @forelse($groupedForecasts as $purchaseOrderId => $forecasts)
             @php
-                $po = $forecasts->first()->order;
+                // Get PO from first forecast's order relationship
+                $firstForecast = $forecasts->first();
+                $po = $firstForecast ? $firstForecast->order : null;
+                // Use purchase_order_id as unique identifier for toggle
+                $uniqueId = 'po-' . $purchaseOrderId;
+                
+                // Get PO details safely
+                $poNumber = $po ? ($po->po_number ?? 'N/A') : 'N/A';
+                $klienNama = $po && $po->klien ? $po->klien->nama : 'N/A';
+                $klienCabang = $po && $po->klien && $po->klien->cabang ? ' - ' . $po->klien->cabang : '';
             @endphp
-            {{-- Simplified PO Card --}}
+            {{-- PO Card with Dropdown --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 pending-forecast-card po-card" 
-                 data-no-po="{{ strtolower($po->po_number ?? '') }}" 
-                 data-klien="{{ strtolower((optional($po->klien)->nama ?? '') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : '')) }}" 
+                 data-no-po="{{ strtolower($poNumber) }}" 
+                 data-klien="{{ strtolower($klienNama . $klienCabang) }}" 
                  data-forecasts="{{ $forecasts->count() }}">
                 
                 <div class="p-4">
@@ -205,8 +214,8 @@
                                 <i class="fas fa-file-alt text-white text-xs"></i>
                             </div>
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900">{{ $po->po_number ?? 'N/A' }}</h3>
-                                <p class="text-xs text-gray-500">{{ (optional($po->klien)->nama ?? 'N/A') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : '') }}</p>
+                                <h3 class="text-sm font-semibold text-gray-900">{{ $poNumber }}</h3>
+                                <p class="text-xs text-gray-500">{{ $klienNama . $klienCabang }}</p>
                             </div>
                         </div>
                         
@@ -215,16 +224,16 @@
                                 <p class="text-xs text-gray-500">{{ $forecasts->count() }} forecast</p>
                                 <p class="text-sm font-semibold text-green-600">Rp {{ number_format($forecasts->sum('total_harga_forecast'), 0, ',', '.') }}</p>
                             </div>
-                            <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs flex items-center" onclick="toggleForecastList('po-{{ $poId }}')">
-                                <i class="fas fa-chevron-right forecast-icon" id="icon-po-{{ $poId }}"></i>
-                                <span class="ml-1" id="text-po-{{ $poId }}">Detail</span>
+                            <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs flex items-center transition-colors" onclick="toggleForecastList('{{ $uniqueId }}')">
+                                <i class="fas fa-chevron-right forecast-icon" id="icon-{{ $uniqueId }}"></i>
+                                <span class="ml-1" id="text-{{ $uniqueId }}">Detail</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {{-- Simplified Forecasts List --}}
-                <div class="border-t border-gray-200 forecast-list" id="forecast-list-po-{{ $poId }}">
+                {{-- Forecasts List (Dropdown) --}}
+                <div class="border-t border-gray-200 forecast-list" id="forecast-list-{{ $uniqueId }}" style="display: none;">
                     <div class="p-3">
                         <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                             <i class="fas fa-chart-line text-yellow-600 mr-2"></i>
@@ -235,10 +244,10 @@
                             @foreach($forecasts as $forecast)
                                 <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors" 
                                      data-forecast-no="{{ strtolower($forecast->no_forecast ?? '') }}"
-                                     data-purchasing="{{ strtolower(optional($forecast->purchasing)->name ?? '') }}"
+                                     data-purchasing="{{ strtolower(optional($forecast->purchasing)->nama ?? '') }}"
                                      data-qty="{{ $forecast->total_qty_forecast ?? 0 }}"
                                      data-amount="{{ $forecast->total_harga_forecast ?? 0 }}"
-                                     data-hari-kirim="{{ $forecast->hari_kirim_forecast ?? 0 }}"
+                                     data-hari-kirim="{{ $forecast->hari_kirim_forecast ?? '' }}"
                                      data-date="{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('Y-m-d') : '' }}"
                                      data-status="{{ $forecast->status ?? '' }}">
                                     
@@ -251,7 +260,7 @@
                                                 </span>
                                             </div>
                                             <div class="flex items-center space-x-4 mt-1 text-xs text-gray-500">
-                                                <span><i class="fas fa-boxes mr-1"></i>{{ number_format($forecast->total_qty_forecast ?? 0, 0, ',', '.') }}</span>
+                                                <span><i class="fas fa-boxes mr-1"></i>{{ number_format($forecast->total_qty_forecast ?? 0, 0, ',', '.') }} Kg</span>
                                                 <span><i class="fas fa-money-bill-wave mr-1"></i>Rp {{ number_format($forecast->total_harga_forecast ?? 0, 0, ',', '.') }}</span>
                                                 <span><i class="fas fa-calendar mr-1"></i>{{ $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A' }}</span>
                                                 <span><i class="fas fa-truck mr-1"></i>{{ $forecast->hari_kirim_forecast ?? 'N/A' }}</span>
@@ -266,9 +275,10 @@
                                                     onclick="openForecastDetailModal({{ json_encode([
                                                         'id' => $forecast->id,
                                                         'no_forecast' => $forecast->no_forecast,
-                                                        'po_number' => $po->po_number ?? 'N/A',
-                                                        'klien' => (optional($po->klien)->nama ?? 'N/A') . (optional($po->klien)->cabang ? ' - ' . optional($po->klien)->cabang : ''),
+                                                        'po_number' => $poNumber,
+                                                        'klien' => $klienNama . $klienCabang,
                                                         'pic_purchasing' => optional($forecast->purchasing)->nama ?? 'Tidak ada PIC',
+                                                        'pic_purchasing_id' => $forecast->purchasing_id,
                                                         'tanggal_forecast' => $forecast->tanggal_forecast ? $forecast->tanggal_forecast->format('d/m/Y') : 'N/A',
                                                         'status' => ucfirst($forecast->status ?? 'Pending'),
                                                         'total_qty' => number_format($forecast->total_qty_forecast ?? 0, 0, ',', '.'),
@@ -305,16 +315,16 @@
                     </div>    
                 </div>
             </div>
-            @empty
-                <div class="text-center py-12 text-gray-500">
-                    <i class="fas fa-clock text-gray-300 text-4xl mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">Tidak ada Forecast Pending</h3>
-                    <p>Belum ada forecast dengan status pending.</p>
-                </div>
-            @endforelse
-        </div>
+        @empty
+            <div class="text-center py-12 text-gray-500">
+                <i class="fas fa-clock text-gray-300 text-4xl mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Tidak ada Forecast Pending</h3>
+                <p>Belum ada forecast dengan status pending.</p>
+            </div>
+        @endforelse
+    </div>
         
-        {{-- Pagination --}}
+    {{-- Pagination --}}
         @if($pendingForecasts->hasPages())
             <div class="bg-white rounded-lg shadow-sm border p-4 mt-6">
                 <div class="flex flex-col sm:flex-row items-center justify-between">
@@ -464,7 +474,6 @@ function submitSearchPending() {
 
 // Apply filters function for server-side filtering
 function applyFiltersPending() {
-    console.log('applyFiltersPending called');
     const currentParams = new URLSearchParams(window.location.search);
     
     // Get filter values
@@ -475,16 +484,6 @@ function applyFiltersPending() {
     const sortQty = document.getElementById('sortQtyPending').value;
     const sortDate = document.getElementById('sortDatePending').value;
     const sortHariKirim = document.getElementById('sortHariKirimPending').value;
-    
-    console.log('Filter values:', {
-        searchValue,
-        dateRange,
-        filterPurchasing,
-        sortAmount,
-        sortQty,
-        sortDate,
-        sortHariKirim
-    });
     
     // Preserve current tab
     currentParams.set('tab', 'pending');
@@ -515,7 +514,6 @@ function applyFiltersPending() {
     currentParams.delete('page_pending');
     
     const newUrl = '/procurement/forecasting?' + currentParams.toString();
-    console.log('Navigating to:', newUrl);
     
     // Navigate to new URL
     window.location.href = newUrl;
@@ -639,54 +637,45 @@ function toggleForecastList(poId) {
 
 // Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded - initializing filters');
-    
     // Set filter values from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     
     // Set search value
     const searchValue = urlParams.get('search_pending');
     if (searchValue) {
-        console.log('Setting search value:', searchValue);
         document.getElementById('searchInputPending').value = searchValue;
     }
     
     // Set date range filter
     const dateRange = urlParams.get('date_range');
     if (dateRange) {
-        console.log('Setting date range:', dateRange);
         document.getElementById('dateRangeFilter').value = dateRange;
     }
     
     // Set purchasing filter
     const filterPurchasing = urlParams.get('filter_purchasing_pending');
     if (filterPurchasing) {
-        console.log('Setting filter purchasing:', filterPurchasing);
         document.getElementById('filterPurchasingPending').value = filterPurchasing;
     }
     
     // Set sort filters
     const sortAmount = urlParams.get('sort_amount_pending');
     if (sortAmount) {
-        console.log('Setting sort amount:', sortAmount);
         document.getElementById('sortAmountPending').value = sortAmount;
     }
     
     const sortQty = urlParams.get('sort_qty_pending');
     if (sortQty) {
-        console.log('Setting sort qty:', sortQty);
         document.getElementById('sortQtyPending').value = sortQty;
     }
     
     const sortDate = urlParams.get('sort_date_pending');
     if (sortDate) {
-        console.log('Setting sort date:', sortDate);
         document.getElementById('sortDatePending').value = sortDate;
     }
     
     const sortHariKirim = urlParams.get('sort_hari_kirim');
     if (sortHariKirim) {
-        console.log('Setting sort hari kirim:', sortHariKirim);
         document.getElementById('sortHariKirimPending').value = sortHariKirim;
     }
     
@@ -708,8 +697,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    console.log('Filter initialization complete');
 });
 </script>
 

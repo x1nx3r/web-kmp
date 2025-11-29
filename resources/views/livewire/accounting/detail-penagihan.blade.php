@@ -113,7 +113,7 @@
                                     <hr class="border-gray-200">
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Total Harga Supplier:</span>
-                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</span>
+                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Total Harga Jual:</span>
@@ -156,8 +156,19 @@
                                     <p class="font-semibold text-gray-900">{{ number_format($pengiriman->total_qty_kirim, 2, ',', '.') }} kg</p>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-600">Total Harga</p>
+                                    <p class="text-sm text-gray-600">Total Harga Beli</p>
                                     <p class="font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Total Harga Jual</p>
+                                    <p class="font-semibold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Margin</p>
+                                    <p class="font-semibold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                                        <span class="text-xs">({{ number_format($marginPercentage, 2, ',', '.') }}%)</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>

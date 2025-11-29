@@ -139,8 +139,6 @@ if (typeof currentPengirimanForecastData === 'undefined') {
 
 // Open pengiriman modal
 function openPengirimanModal(forecastData) {
-    console.log('Opening pengiriman modal with data:', forecastData);
-    
     const modal = document.getElementById('pengirimanModal');
     
     // Ensure modal is attached to body to avoid container issues
@@ -164,8 +162,6 @@ function openPengirimanModal(forecastData) {
 // Populate pengiriman modal with forecast data
 function populatePengirimanModal(data) {
     try {
-        console.log('Populating pengiriman modal with data:', data);
-        
         // Set hidden forecast ID
         document.getElementById('pengirimanForecastId').value = data.id || '';
         
@@ -184,15 +180,7 @@ function populatePengirimanModal(data) {
         // Handle total harga - the data comes as formatted string from controller
         document.getElementById('pengirimanTotalHarga').textContent = data.total_harga || 'Rp 0';
         
-        console.log('Pengiriman modal populated with:', {
-            no_forecast: data.no_forecast,
-            klien: data.klien,
-            total_qty: data.total_qty,
-            total_harga: data.total_harga
-        });
-        
     } catch (error) {
-        console.error('Error populating pengiriman modal:', error);
         showPengirimanToast('Gagal memuat data forecast', 'error');
     }
 }
@@ -246,7 +234,6 @@ function submitPengiriman() {
     
     // Check if required elements exist
     if (!submitBtn) {
-        console.error('Submit button not found');
         showPengirimanToast('Terjadi kesalahan pada form. Silakan refresh halaman.', 'error');
         return;
     }
@@ -270,11 +257,6 @@ function submitPengiriman() {
         return;
     }
     
-    console.log('Submitting pengiriman:', {
-        forecast_id: currentPengirimanForecastData?.id,
-        no_forecast: currentPengirimanForecastData?.no_forecast
-    });
-    
     // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (!csrfToken) {
@@ -289,15 +271,6 @@ function submitPengiriman() {
     
     // Show immediate feedback
     showPengirimanToast('Memproses pengiriman forecast...', 'warning');
-    
-    console.log('Starting fetch request to:', `/procurement/forecasting/${currentPengirimanForecastData?.id}/kirim`);
-    console.log('Request payload:', {
-        _token: csrfToken,
-        forecast_id: currentPengirimanForecastData?.id
-    });
-    
-    // Simple fetch request
-    console.log('Making fetch request now...');
     
     // Add a manual timeout using Promise.race
     const timeoutPromise = new Promise((_, reject) => {
@@ -316,21 +289,13 @@ function submitPengiriman() {
     // Race between fetch and timeout
     Promise.race([fetchPromise, timeoutPromise])
     .then(response => {
-        console.log('Response received:', response);
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        console.log('About to parse JSON response...');
         return response.json();
     })
     .then(data => {
-        console.log('JSON parsed successfully, response data:', data);
-        console.log('Success response received:', data);
-        
         // Reset UI elements
         resetPengirimanFormState(submitBtn, loadingOverlay, originalText);
         
@@ -359,15 +324,6 @@ function submitPengiriman() {
         }
     })
     .catch(error => {
-        console.error('Error submitting pengiriman:', {
-            error: error,
-            errorName: error.name,
-            errorMessage: error.message,
-            errorStack: error.stack,
-            forecastId: currentPengirimanForecastData?.id,
-            url: `/procurement/forecasting/${currentPengirimanForecastData?.id}/kirim`
-        });
-        
         // Reset UI elements
         resetPengirimanFormState(submitBtn, loadingOverlay, originalText);
         

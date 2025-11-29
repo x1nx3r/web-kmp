@@ -27,12 +27,12 @@ class PengirimanController extends Controller
         $purchasing = $request->get('purchasing');
         $search = $request->get('search');
         
-        // Calculate weekly statistics (Tuesday to Monday)
+        // Calculate weekly statistics (Monday 00:01 to Sunday 23:59)
         $today = now();
-        if ($today->dayOfWeek === Carbon::TUESDAY) {
+        if ($today->dayOfWeek === Carbon::MONDAY) {
             $weekStart = $today->copy()->startOfDay();
         } else {
-            $weekStart = $today->copy()->previous(Carbon::TUESDAY)->startOfDay();
+            $weekStart = $today->copy()->previous(Carbon::MONDAY)->startOfDay();
         }
         $weekEnd = $weekStart->copy()->addDays(6)->endOfDay();
         
@@ -164,8 +164,8 @@ class PengirimanController extends Controller
             'total_pengiriman' => $weeklyData->total_pengiriman ?? 0,
             'total_tonase' => $weeklyData->total_tonase ?? 0,
             'total_harga' => $weeklyData->total_harga ?? 0,
-            'week_start' => $weekStart->format('d M Y') . ' (Selasa)',
-            'week_end' => $weekEnd->format('d M Y') . ' (Senin)'
+            'week_start' => $weekStart->format('d M Y') . ' (Senin)',
+            'week_end' => $weekEnd->format('d M Y') . ' (Minggu)'
         ];
     }
     

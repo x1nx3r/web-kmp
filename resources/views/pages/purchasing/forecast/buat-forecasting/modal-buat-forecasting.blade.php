@@ -338,6 +338,27 @@ function formatNumber(num, decimals = 2) {
 
 // Open forecast modal
 async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseOrderId, noPO) {
+    // Check user role authorization
+    @php
+        $userRole = Auth::user()->role ?? '';
+        $allowedRoles = ['direktur', 'manager_purchasing', 'staff_purchasing'];
+        $canCreateForecast = in_array($userRole, $allowedRoles);
+    @endphp
+    
+    @if(!$canCreateForecast)
+        // Show unauthorized message
+        if (typeof showUniversalModal === 'function') {
+            showUniversalModal(
+                'Akses Ditolak',
+                'Anda tidak memiliki akses untuk membuat forecasting. Hanya direktur dan tim purchasing yang dapat membuat forecasting.',
+                'warning'
+            );
+        } else {
+            alert('Anda tidak memiliki akses untuk membuat forecasting. Hanya direktur dan tim purchasing yang dapat membuat forecasting.');
+        }
+        return;
+    @endif
+    
     console.log('Opening forecast modal with params:', {
         orderDetailId,
         bahanBakuNama,

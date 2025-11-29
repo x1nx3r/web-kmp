@@ -152,7 +152,6 @@ class OrderCreate extends Component
             $query->where(function ($q) {
                 $q->where("nama", "like", "%" . $this->klienSearch . "%")
                     ->orWhere("cabang", "like", "%" . $this->klienSearch . "%")
-                    ->orWhere("no_hp", "like", "%" . $this->klienSearch . "%");
             });
         }
 

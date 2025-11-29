@@ -37,9 +37,7 @@ COPY . .
 RUN npm install && npm run build
 
 # Create and fix runtime directories for Laravel
-RUN mkdir -p storage/framework/{cache,sessions,views} \
-    && mkdir -p bootstrap/cache \
-    && chown -R unit:unit storage bootstrap/cache \
+RUN chown -R unit:unit storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 COPY unit.json /docker-entrypoint.d/unit.json

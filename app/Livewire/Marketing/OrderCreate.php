@@ -12,6 +12,7 @@ use App\Services\AuthFallbackService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -147,11 +148,27 @@ class OrderCreate extends Component
     {
         $query = Klien::with("bahanBakuKliens");
 
-        // Apply search filter
+        // Apply search filter (safe against legacy removed `no_hp` column)
         if ($this->klienSearch) {
-            $query->where(function ($q) {
-                $q->where("nama", "like", "%" . $this->klienSearch . "%")
-                    ->orWhere("cabang", "like", "%" . $this->klienSearch . "%")
+            $search = $this->klienSearch;
+            $query->where(function ($q) use ($search) {
+                $q->where("nama", "like", "%" . $search . "%")
+                    ->orWhere("cabang", "like", "%" . $search . "%");
+
+                // If the legacy column still exists, include it in the search.
+                try {
+                    if (Schema::hasColumn('kliens', 'no_hp')) {
+                        $q->orWhere('no_hp', 'like', '%' . $search . '%');
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore schema inspection errors and continue — safer than failing the request.
+                }
+
+                // Also search related contact person fields (new canonical place for phone)
+                $q->orWhereHas('contactPerson', function ($sub) use ($search) {
+                    $sub->where('nama', 'like', '%' . $search . '%')
+                        ->orWhere('nomor_hp', 'like', '%' . $search . '%');
+                });
             });
         }
 

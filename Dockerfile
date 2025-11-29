@@ -16,19 +16,31 @@ RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
-# Node 20
+# Install Node.js 20.x (LTS)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
+# Verify Node.js and npm installation
+RUN node --version && npm --version
+
 WORKDIR /var/www/html
 
+# Install composer deps WITHOUT scripts (skips artisan)
 COPY composer.json composer.lock package*.json ./
 RUN composer install --no-dev --no-scripts \
     --optimize-autoloader --no-interaction --prefer-dist
 
+# Now copy the full project
 COPY . .
 
+# Build the assets
 RUN npm install && npm run build
+
+# Create and fix runtime directories for Laravel
+RUN mkdir -p storage/framework/{cache,sessions,views} \
+    && mkdir -p bootstrap/cache \
+    && chown -R unit:unit storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 COPY unit.json /docker-entrypoint.d/unit.json
 

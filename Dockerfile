@@ -38,5 +38,5 @@ RUN chmod +x /fix-perms.sh
 
 EXPOSE 8000
 
-ENTRYPOINT ["/fix-perms.sh"]
+ENTRYPOINT ["/fixperms.sh"]
 CMD ["unitd", "--no-daemon"]

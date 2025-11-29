@@ -85,7 +85,7 @@ class PengirimanExport implements
             'Bahan Baku PO', 
             'Nama Pabrik',
             'QTY Forecasting',
-            'Harga Beli',
+            'Harga Jual',
             'Total Harga Forecasting',
             'QTY Pengiriman',
             'Total Harga Pengiriman',
@@ -114,9 +114,9 @@ class PengirimanExport implements
                 return optional(optional($detail->bahanBakuSupplier)->supplier)->nama ?? 'N/A';
             })->unique()->implode(', ');
 
-            // Harga beli dari pengiriman details (harga_satuan)
+            // Harga jual dari order details
             $hargaJual = $pengirimanDetails->map(function($detail) {
-                return (float)($detail->harga_satuan ?? 0);
+                return (float)(optional($detail->orderDetail)->harga_jual ?? 0);
             })->sum();
 
             // Untuk status 'berhasil', tidak tampilkan catatan
@@ -283,6 +283,7 @@ class PengirimanExport implements
             'order.klien', 
             'forecast.forecastDetails.bahanBakuSupplier.supplier',
             'pengirimanDetails.bahanBakuSupplier.supplier.picPurchasing',
+            'pengirimanDetails.orderDetail',  // Tambahkan relasi order detail untuk harga jual
             'invoicePenagihan'  // Tambahkan relasi invoice penagihan
         ])->whereBetween('tanggal_kirim', [$this->startDate, $this->endDate]);
 
@@ -320,7 +321,7 @@ class PengirimanExport implements
             'E' => 40,  // Bahan Baku PO
             'F' => 35,  // Nama Pabrik
             'G' => 18,  // QTY Forecasting
-            'H' => 20,  // Harga Beli
+            'H' => 20,  // Harga Jual
             'I' => 22,  // Total Harga Forecasting
             'J' => 18,  // QTY Pengiriman
             'K' => 22,  // Total Harga Pengiriman

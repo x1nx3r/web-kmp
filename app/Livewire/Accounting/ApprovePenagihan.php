@@ -41,6 +41,8 @@ class ApprovePenagihan extends Component
             'invoice',
             'pengiriman.pengirimanDetails.bahanBakuSupplier',
             'pengiriman.pengirimanDetails.purchaseOrderBahanBaku.bahanBakuKlien',
+            'pengiriman.pengirimanDetails.purchaseOrderBahanBaku', // Tambahan untuk harga_jual
+            'pengiriman.pengirimanDetails.orderDetail', // Tambahan untuk harga_jual
             'pengiriman.purchaseOrder.klien',
             'pengiriman.purchaseOrder.orderDetails.orderSuppliers.supplier',
             'histories' => function($query) {
@@ -186,6 +188,17 @@ class ApprovePenagihan extends Component
 
         DB::beginTransaction();
         try {
+            // Hitung total harga jual
+            $totalSelling = 0;
+            if ($this->pengiriman->pengirimanDetails) {
+                foreach ($this->pengiriman->pengirimanDetails as $detail) {
+                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                    if ($orderDetail && $orderDetail->harga_jual) {
+                        $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+                    }
+                }
+            }
+
             // Update refraksi values - bisa null/0 untuk tidak ada refraksi
             $refraksiValue = floatval($this->refraksiForm['value'] ?? 0);
 
@@ -196,14 +209,16 @@ class ApprovePenagihan extends Component
                 $this->invoice->refraksi_amount = 0;
                 $this->invoice->qty_before_refraksi = $this->pengiriman->total_qty_kirim;
                 $this->invoice->qty_after_refraksi = $this->pengiriman->total_qty_kirim;
-                $this->invoice->subtotal = $this->pengiriman->total_harga_kirim;
+                $this->invoice->amount_before_refraksi = $totalSelling; // Harga jual sebelum refraksi
+                $this->invoice->amount_after_refraksi = $totalSelling; // Harga jual setelah refraksi (sama karena tidak ada refraksi)
+                $this->invoice->subtotal = $totalSelling; // Gunakan total harga jual
             } else {
                 $this->invoice->refraksi_type = $this->refraksiForm['type'];
                 $this->invoice->refraksi_value = $refraksiValue;
 
                 // Recalculate refraksi
                 $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
-                $amountBeforeRefraksi = $this->pengiriman->total_harga_kirim;
+                $amountBeforeRefraksi = $totalSelling; // Gunakan total harga jual
                 $qtyAfterRefraksi = $qtyBeforeRefraksi;
                 $refraksiAmount = 0;
                 $subtotal = $amountBeforeRefraksi;
@@ -229,6 +244,8 @@ class ApprovePenagihan extends Component
                 $this->invoice->refraksi_amount = $refraksiAmount;
                 $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
                 $this->invoice->qty_after_refraksi = $qtyAfterRefraksi;
+                $this->invoice->amount_before_refraksi = $amountBeforeRefraksi; // Harga jual sebelum refraksi
+                $this->invoice->amount_after_refraksi = $subtotal; // Harga jual setelah refraksi
                 $this->invoice->subtotal = $subtotal;
             }
 
@@ -324,20 +341,25 @@ class ApprovePenagihan extends Component
     {
         // Calculate financial summary from order
         $order = $this->pengiriman->purchaseOrder ?? null;
-        $totalSupplierCost = 0;
+        
+        // Refresh pengiriman data untuk memastikan nilai terbaru
+        $this->pengiriman->refresh();
+        
+        // Ambil total harga supplier (beli) dari total_harga_kirim pengiriman
+        $totalSupplierCost = floatval($this->pengiriman->total_harga_kirim ?? 0);
         $totalSelling = 0;
         $totalMargin = 0;
         $marginPercentage = 0;
 
-        if ($order && $order->orderDetails) {
-            foreach ($order->orderDetails as $detail) {
-                // Get best supplier price
-                $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first();
-                if ($bestSupplier) {
-                    $totalSupplierCost += ($bestSupplier->harga_supplier ?? 0) * $detail->qty;
+        // Hitung total harga jual berdasarkan qty kirim × harga jual
+        if ($this->pengiriman->pengirimanDetails) {
+            foreach ($this->pengiriman->pengirimanDetails as $detail) {
+                // Ambil harga jual dari order detail
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                if ($orderDetail && $orderDetail->harga_jual) {
+                    // Total = qty kirim × harga jual
+                    $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
                 }
-                // Total selling price
-                $totalSelling += $detail->total_harga;
             }
             
             $totalMargin = $totalSelling - $totalSupplierCost;

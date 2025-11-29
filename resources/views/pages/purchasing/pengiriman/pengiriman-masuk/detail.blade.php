@@ -54,7 +54,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Total Qty PO</label>
                     <input type="text" 
-                           value="{{ $pengiriman->order->total_qty ?  number_format($pengiriman->order->total_qty, 0, ',', '.') . ' KG': '-' }}" 
+                           value="{{ $pengiriman->order && $pengiriman->order->orderDetails ? number_format($pengiriman->order->orderDetails->sum('qty'), 0, ',', '.') . ' KG' : '-' }}" 
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-medium cursor-not-allowed" 
                            readonly>
                 </div>

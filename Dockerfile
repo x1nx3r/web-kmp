@@ -33,8 +33,8 @@ RUN npm install && npm run build
 COPY unit.json /docker-entrypoint.d/unit.json
 
 # Runtime entrypoint wrapper
-COPY fix-perms.sh /fix-perms.sh
-RUN chmod +x /fix-perms.sh
+COPY fixperms.sh /fixperms.sh
+RUN chmod +x /fixperms.sh
 
 EXPOSE 8000
 

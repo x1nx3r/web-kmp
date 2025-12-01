@@ -197,18 +197,29 @@
                             </h5>
                             <p class="text-sm text-gray-600 mb-6">Pilih tindakan yang akan dilakukan pada forecast ini:</p>
                             
-                            <div class="flex flex-col sm:flex-row gap-4">
+                            <div class="flex flex-col sm:flex-row gap-4" id="forecastActionButtons">
+                                {{-- Buttons will be dynamically shown/hidden based on user role and PIC --}}
                                 <button type="button" onclick="changeToPengiriman()" 
-                                        class="flex-1 px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center justify-center font-medium border border-green-600">
+                                        id="btnPengiriman"
+                                        class="flex-1 px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center justify-center font-medium border border-green-600"
+                                        style="display: none;">
                                     <i class="fas fa-truck mr-3"></i>
                                     <span>Ubah ke Pengiriman</span>
                                 </button>
                                 
                                 <button type="button" onclick="changeToPengirimanBatal()" 
-                                        class="flex-1 px-6 py-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center justify-center font-medium border border-red-600">
+                                        id="btnBatalPengiriman"
+                                        class="flex-1 px-6 py-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center justify-center font-medium border border-red-600"
+                                        style="display: none;">
                                     <i class="fas fa-times-circle mr-3"></i>
                                     <span>Pengiriman Batal</span>
                                 </button>
+                            </div>
+                            
+                            {{-- Access Denied Message --}}
+                            <div id="accessDeniedMessage" class="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg border border-gray-200" style="display: none;">
+                                <i class="fas fa-lock mr-2"></i>
+                                Hanya direktur, manager purchasing, dan PIC Purchasing yang dapat mengubah status forecast ini.
                             </div>
                             
                             {{-- Additional Info --}}
@@ -270,6 +281,37 @@
 </div>
 
 <script>
+// Current user data for authorization checks
+const currentUser = {
+    id: {{ Auth::id() }},
+    role: '{{ Auth::user()->role }}'
+};
+
+// Check if user can perform actions on forecast (pengiriman/batal)
+function checkForecastAuthorization(forecastData) {
+    const btnPengiriman = document.getElementById('btnPengiriman');
+    const btnBatalPengiriman = document.getElementById('btnBatalPengiriman');
+    const accessDeniedMessage = document.getElementById('accessDeniedMessage');
+    
+    // Authorization logic:
+    // Only direktur, manager_purchasing, or PIC Purchasing can change status to pengiriman or batal
+    const canModify = currentUser.role === 'direktur' || 
+                      currentUser.role === 'manager_purchasing' ||
+                      (forecastData.pic_purchasing_id && forecastData.pic_purchasing_id == currentUser.id);
+    
+    if (canModify) {
+        // Show action buttons
+        if (btnPengiriman) btnPengiriman.style.display = 'flex';
+        if (btnBatalPengiriman) btnBatalPengiriman.style.display = 'flex';
+        if (accessDeniedMessage) accessDeniedMessage.style.display = 'none';
+    } else {
+        // Hide action buttons and show access denied message
+        if (btnPengiriman) btnPengiriman.style.display = 'none';
+        if (btnBatalPengiriman) btnBatalPengiriman.style.display = 'none';
+        if (accessDeniedMessage) accessDeniedMessage.style.display = 'block';
+    }
+}
+
 // Global variable to store current forecast data
 let currentForecastData = null;
 
@@ -343,6 +385,9 @@ function populateForecastModal(data) {
         
         // Populate forecast details if available
         populateForecastDetails(data.details || []);
+        
+        // Check authorization and show/hide action buttons
+        checkForecastAuthorization(data);
         
         // Show content and hide loading
         document.getElementById('forecastModalLoading').classList.add('hidden');

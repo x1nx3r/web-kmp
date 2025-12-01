@@ -200,7 +200,6 @@ class Pengiriman extends Model
     {
         $this->total_qty_kirim = $this->pengirimanDetails()->sum('qty_kirim');
         $this->total_harga_kirim = $this->pengirimanDetails()->sum('total_harga');
-        $this->total_qty_sisa = $this->pengirimanDetails()->sum('qty_sisa');
         $this->save();
     }
 

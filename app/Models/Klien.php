@@ -31,11 +31,22 @@ class Klien extends Model
         // Group OR conditions to avoid clobbering other where clauses when combined
         return $query->where(function ($q) use ($search) {
             $q->where('nama', 'like', '%' . $search . '%')
-              ->orWhere('cabang', 'like', '%' . $search . '%')
-              ->orWhereHas('contactPerson', function ($contactQuery) use ($search) {
-                  $contactQuery->where('nama', 'like', '%' . $search . '%')
-                              ->orWhere('nomor_hp', 'like', '%' . $search . '%');
-              });
+              ->orWhere('cabang', 'like', '%' . $search . '%');
+
+            // If the 'no_hp' column still exists on the kliens table (legacy), include it in search.
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('kliens', 'no_hp')) {
+                    $q->orWhere('no_hp', 'like', '%' . $search . '%');
+                }
+            } catch (\Throwable $e) {
+                // If the schema cannot be inspected for any reason, skip direct column search.
+            }
+
+            // Also search via related contact person (preferred place for phone numbers)
+            $q->orWhereHas('contactPerson', function ($contactQuery) use ($search) {
+                $contactQuery->where('nama', 'like', '%' . $search . '%')
+                             ->orWhere('nomor_hp', 'like', '%' . $search . '%');
+            });
         });
     }
 
@@ -67,5 +78,23 @@ class Klien extends Model
     public function penawaran()
     {
         return $this->hasMany(Penawaran::class);
+    }
+
+    /**
+     * Convenience accessor to get a phone number for the client.
+     * Prefers contactPerson.nomor_hp (the new canonical place) and falls
+     * back to the legacy kliens.no_hp column if present.
+     *
+     * Usage: $klien->phone
+     */
+    public function getPhoneAttribute()
+    {
+        // If contact person relation is loaded and has a phone, use it
+        if ($this->relationLoaded('contactPerson') && $this->contactPerson && !empty($this->contactPerson->nomor_hp)) {
+            return $this->contactPerson->nomor_hp;
+        }
+
+        // Fallback to the legacy column if present on the model
+        return $this->attributes['no_hp'] ?? null;
     }
 }

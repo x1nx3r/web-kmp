@@ -57,10 +57,10 @@
                                     {{ $klien->cabang }}
                                 </p>
                             @endif
-                            @if($klien->no_hp)
+                            @if($klien->phone)
                                 <p class="text-sm text-gray-500 flex items-center">
                                     <i class="fas fa-phone mr-1"></i>
-                                    {{ $klien->no_hp }}
+                                    {{ $klien->phone }}
                                 </p>
                             @endif
                         </div>

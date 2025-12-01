@@ -15,7 +15,7 @@
                     Bahan Baku - {{ $klien->cabang ?? 'Cabang' }}
                 </h5>
                 <p class="text-xs text-gray-600 mt-1">
-                    {{ $klien->no_hp ? 'Kontak: ' . $klien->no_hp : 'Tidak ada kontak' }} • 
+                    {{ $klien->phone ? 'Kontak: ' . $klien->phone : 'Tidak ada kontak' }} • 
                     {{ $clientMaterials->count() }} material approved
                 </p>
             </div>

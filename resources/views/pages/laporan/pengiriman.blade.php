@@ -24,7 +24,7 @@
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
                 <p class="text-xs sm:text-sm font-medium text-green-700 truncate">Tonase Minggu Ini</p>
                 <p class="text-xl sm:text-2xl font-bold text-green-900">{{ number_format($weeklyStats['total_tonase']) . ' Kg' }}</p>
-                <p class="text-xs text-green-600">Reset Selasa 00:00</p>
+                <p class="text-xs text-green-600">Senin 00:01 - Minggu 23:59</p>
             </div>
         </div>
     </div>
@@ -64,7 +64,7 @@
                 <i class="fas fa-money-bill-wave text-lg sm:text-2xl"></i>
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-emerald-700 truncate">Harga Beli Minggu Ini</p>
+                <p class="text-xs sm:text-sm font-medium text-emerald-700 truncate">Harga Jual Minggu Ini</p>
                 <p class="text-xl sm:text-2xl font-bold text-emerald-900">Rp {{ number_format($weeklyStats['total_harga'], 0, ',', '.') }}</p>
                 <p class="text-xs text-emerald-600 truncate">{{ $weeklyStats['week_start'] }} - {{ $weeklyStats['week_end'] }}</p>
             </div>
@@ -77,7 +77,7 @@
                 <i class="fas fa-chart-line text-lg sm:text-2xl"></i>
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-teal-700 truncate">Harga Beli Tahun {{ $yearlyHargaStats['year'] }}</p>
+                <p class="text-xs sm:text-sm font-medium text-teal-700 truncate">Harga Jual Tahun {{ $yearlyHargaStats['year'] }}</p>
                 <p class="text-xl sm:text-2xl font-bold text-teal-900">Rp {{ number_format($yearlyHargaStats['total_harga_tahun'], 0, ',', '.') }}</p>
                 <p class="text-xs text-teal-600">Total keseluruhan tahun</p>
             </div>

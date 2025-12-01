@@ -149,9 +149,11 @@
         </div>
         Daftar Supplier
     </h2>
-    <a href="{{ route('supplier.create') }}" class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-semibold text-sm">
-        <i class="fas fa-plus mr-2"></i>Tambah Supplier
-    </a>
+    @if(in_array(auth()->user()->role, ['direktur', 'manager_purchasing', 'staff_purchasing']))
+        <a href="{{ route('supplier.create') }}" class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-semibold text-sm">
+            <i class="fas fa-plus mr-2"></i>Tambah Supplier
+        </a>
+    @endif
 </div>
 
 {{-- Supplier List --}}
@@ -234,12 +236,31 @@
                         
                         <div class="flex items-center space-x-2">
                             <span class="text-xs text-gray-500">{{ $supplier->updated_at->format('d/m/Y') }}</span>
-                            <a href="{{ route('supplier.edit', $supplier->slug) }}" class="w-6 h-6 flex items-center justify-center text-yellow-600 bg-yellow-50 rounded hover:bg-yellow-100 transition-colors" title="Edit">
-                                <i class="fas fa-edit text-xs"></i>
-                            </a>
-                            <button type="button" class="w-6 h-6 flex items-center justify-center text-red-600 bg-red-50 rounded" onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')">
-                                <i class="fas fa-trash text-xs"></i>
-                            </button>
+                            @php
+                                $canEdit = false;
+                                $canDelete = false;
+                                $user = auth()->user();
+                                
+                                if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
+                                    $canEdit = true;
+                                    $canDelete = true;
+                                } elseif ($user->role === 'staff_purchasing' && $supplier->pic_purchasing_id === $user->id) {
+                                    $canEdit = true;
+                                    $canDelete = true;
+                                }
+                            @endphp
+                            
+                            @if($canEdit)
+                                <a href="{{ route('supplier.edit', $supplier->slug) }}" class="w-6 h-6 flex items-center justify-center text-yellow-600 bg-yellow-50 rounded hover:bg-yellow-100 transition-colors" title="Edit">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </a>
+                            @endif
+                            
+                            @if($canDelete)
+                                <button type="button" class="w-6 h-6 flex items-center justify-center text-red-600 bg-red-50 rounded" onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -356,18 +377,36 @@
 
                             {{-- Edit & Delete --}}
                             <div class="flex items-center gap-2">
-                                <a href="{{ route('supplier.edit', $supplier->slug) }}" 
-                                   class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:text-white bg-yellow-50 hover:bg-yellow-600 rounded-lg transition-colors" 
-                                   title="Edit">
-                                    <i class="fas fa-edit text-xs"></i>
-                                </a>
+                                @php
+                                    $canEdit = false;
+                                    $canDelete = false;
+                                    $user = auth()->user();
+                                    
+                                    if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
+                                        $canEdit = true;
+                                        $canDelete = true;
+                                    } elseif ($user->role === 'staff_purchasing' && $supplier->pic_purchasing_id === $user->id) {
+                                        $canEdit = true;
+                                        $canDelete = true;
+                                    }
+                                @endphp
                                 
-                                <button type="button" 
-                                        class="w-8 h-8 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-colors" 
-                                        onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')"
-                                        title="Hapus">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
+                                @if($canEdit)
+                                    <a href="{{ route('supplier.edit', $supplier->slug) }}" 
+                                       class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:text-white bg-yellow-50 hover:bg-yellow-600 rounded-lg transition-colors" 
+                                       title="Edit">
+                                        <i class="fas fa-edit text-xs"></i>
+                                    </a>
+                                @endif
+                                
+                                @if($canDelete)
+                                    <button type="button" 
+                                            class="w-8 h-8 flex items-center justify-center text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg transition-colors" 
+                                            onclick="openDeleteModal('{{ $supplier->slug }}', '{{ $supplier->nama }}')"
+                                            title="Hapus">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </div>

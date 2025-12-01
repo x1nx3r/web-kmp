@@ -149,7 +149,7 @@
             </li>
             @endif
 
-            <!-- Verifikasi Proyek -->
+            {{-- Verifikasi Proyek - Coming Soon
             <li>
                 <a href="#" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
                     <i class="fas fa-check-double w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
@@ -157,6 +157,7 @@
                     <span class="bg-green-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">5</span>
                 </a>
             </li>
+            --}}
         </ul>
     </nav>
 
@@ -215,8 +216,8 @@
 
             <!-- Laporan -->
             <li>
-                <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
-                    <i class="fas fa-file-alt w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                <a href="{{ route('laporan.po') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('laporan.*') ? 'text-green-800 bg-green-200' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                    <i class="fas fa-chart-bar w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('laporan.*') ? 'text-green-600' : '' }}"></i>
                     <span class="font-medium">Laporan</span>
                 </a>
             </li>
@@ -262,9 +263,9 @@
 
             <!-- Purchasing Dropdown -->
             <li>
-                <button onclick="toggleMobileDropdown('purchasing')" class="flex items-center justify-between w-full {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleMobileDropdown('purchasing')" class="flex items-center justify-between w-full {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') || request()->routeIs('purchasing.pengiriman.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') ? 'text-green-600' : '' }}"></i>
+                        <i class="fas fa-shopping-cart w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('supplier.*') || request()->routeIs('forecasting.*') || request()->routeIs('purchasing.pengiriman.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Procurement</span>
                     </div>
                     <i id="mobile-purchasing-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -279,8 +280,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-shipping-fast w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('purchasing.pengiriman.index') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('purchasing.pengiriman.*') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-shipping-fast w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('purchasing.pengiriman.*') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Pengiriman</span>
                         </a>
                     </li>
@@ -296,9 +297,9 @@
 
             <!-- Keuangan Dropdown -->
             <li>
-                <button onclick="toggleMobileDropdown('keuangan')" class="flex items-center justify-between w-full text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
+                <button onclick="toggleMobileDropdown('keuangan')" class="flex items-center justify-between w-full {{ request()->routeIs('accounting.*') ? 'text-green-800 bg-green-50' : 'text-gray-800 hover:text-green-800' }} rounded-xl px-4 py-3 transition-all group">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-coins w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                        <i class="fas fa-coins w-5 text-lg group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.*') ? 'text-green-600' : '' }}"></i>
                         <span class="font-medium">Accounting</span>
                     </div>
                     <i id="mobile-keuangan-chevron" class="fas fa-chevron-down text-sm transition-transform duration-300"></i>
@@ -307,15 +308,21 @@
                 <!-- Submenu -->
                 <ul id="mobile-keuangan-menu" class="mt-2 ml-6 space-y-1 hidden">
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-check-circle w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('accounting.approval-pembayaran') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('accounting.approval-pembayaran') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-money-check-alt w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.approval-pembayaran') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Approval Pembayaran</span>
                         </a>
                     </li>
                     <li>
-                        <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-700 hover:text-green-800 rounded-lg px-4 py-2 text-sm transition-all group">
-                            <i class="fas fa-receipt w-4 text-sm group-hover:scale-110 transition-transform duration-300"></i>
+                        <a href="{{ route('accounting.approval-penagihan') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('accounting.approval-penagihan') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-file-invoice-dollar w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.approval-penagihan') ? 'text-green-600' : '' }}"></i>
                             <span class="font-medium">Approval Penagihan</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('accounting.catatan-piutang') }}" onclick="closeMobileMenu()" class="flex items-center space-x-3 {{ request()->routeIs('accounting.catatan-piutang') ? 'text-green-800 bg-green-50' : 'text-gray-700 hover:text-green-800' }} rounded-lg px-4 py-2 text-sm transition-all group">
+                            <i class="fas fa-file-invoice w-4 text-sm group-hover:scale-110 transition-transform duration-300 {{ request()->routeIs('accounting.catatan-piutang') ? 'text-green-600' : '' }}"></i>
+                            <span class="font-medium">Catatan Piutang</span>
                         </a>
                     </li>
                 </ul>
@@ -331,13 +338,14 @@
             </li>
             @endif
 
-            <!-- Verifikasi Proyek -->
+            {{-- Verifikasi Proyek - Coming Soon
             <li>
                 <a href="#" onclick="closeMobileMenu()" class="flex items-center space-x-3 text-gray-800 hover:text-green-800 rounded-xl px-4 py-3 transition-all group">
                     <i class="fas fa-check-double w-5 text-lg group-hover:scale-110 transition-transform duration-300"></i>
                     <span class="font-medium">Verifikasi Proyek</span>
                 </a>
             </li>
+            --}}
         </ul>
 
         <!-- Mobile Bottom Menu -->

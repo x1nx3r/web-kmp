@@ -1,92 +1,49 @@
-## Multi-stage Dockerfile (node builder + php-apache production image)
+FROM unit:1.34.1-php8.3
 
-## Single-stage: install Node and Composer into the Apache PHP image (faster to iterate for your workflow)
+RUN apt update && apt install -y \
+    curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libssl-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pcntl opcache pdo pdo_mysql intl zip gd exif ftp bcmath \
+    && pecl install redis \
+    && docker-php-ext-enable redis
 
-FROM php:8.2-apache
+RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
+    && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "opcache.jit_buffer_size=256M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "upload_max_filesize=64M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "post_max_size=64M" >> /usr/local/etc/php/conf.d/custom.ini
 
-# Set working directory
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+# Install Node.js 20.x (LTS)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Verify Node.js and npm installation
+RUN node --version && npm --version
+
 WORKDIR /var/www/html
 
-# Noninteractive APT
-ENV DEBIAN_FRONTEND=noninteractive
+# Install composer deps WITHOUT scripts (skips artisan)
+COPY composer.json composer.lock package*.json ./
+RUN composer install --no-dev --no-scripts \
+    --optimize-autoloader --no-interaction --prefer-dist
 
-# Install system dependencies, GD dependencies and PHP extensions (use BuildKit cache)
-RUN --mount=type=cache,target=/var/cache/apt/archives \
-    --mount=type=cache,target=/var/lib/apt/lists \
-    apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    libzip-dev \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpq-dev \
-    ca-certificates \
-    gnupg \
-    # Expose port 80 for Apache
-    EXPOSE 80
+# Now copy the full project
+COPY . .
 
-# Use BuildKit cache mounts for apt to speed repeated builds (requires BuildKit)
-ENV DEBIAN_FRONTEND=noninteractive
-RUN --mount=type=cache,target=/var/cache/apt/archives \
-    --mount=type=cache,target=/var/lib/apt/lists \
-    apt-get update -yq \
-    && apt-get install -y --no-install-recommends \
-        git \
-        curl \
-        libpng-dev \
-        libonig-dev \
-        libxml2-dev \
-        libzip-dev \
-        zip \
-        unzip \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+# Build the assets
+RUN npm install && npm run build
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+# Create and fix runtime directories for Laravel
+RUN mkdir -p storage/framework/{cache,sessions,views} \
+    && mkdir -p bootstrap/cache \
+    && chown -R unit:unit storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
+COPY unit.json /docker-entrypoint.d/unit.json
 
-# Pin Composer to major version 2 for reproducibility
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+EXPOSE 8000
 
-# Speed up builds by copying only dependency manifests first so layers cache when source changes
-COPY composer.json composer.lock /var/www/html/
-ENV COMPOSER_ALLOW_SUPERUSER=1
-WORKDIR /var/www/html
-RUN --mount=type=cache,target=/root/.composer/cache \
-    composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
-
-# Copy application files and set ownership (this happens after deps are installed to keep cache)
-COPY --chown=www-data:www-data . /var/www/html
-
-# Copy built frontend assets from node-builder
-# Adjust this path if your build outputs to a different directory
-COPY --from=node-builder /app/public /var/www/html/public
-
-# Configure Apache DocumentRoot to Laravel's public directory
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
-    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# Create necessary directories and set permissions
-RUN mkdir -p /var/www/html/storage/logs \
-        /var/www/html/storage/framework/sessions \
-        /var/www/html/storage/framework/views \
-        /var/www/html/storage/framework/cache \
-        /var/www/html/bootstrap/cache \
-    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-
-
-# Expose port 80
-EXPOSE 80
-
-# Start Apache server
-CMD ["apache2-foreground"]
+CMD ["unitd", "--no-daemon"]

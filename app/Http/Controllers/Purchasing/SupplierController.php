@@ -8,6 +8,7 @@ use App\Models\RiwayatHargaBahanBaku;
 use App\Models\Pengiriman; // Import Pengiriman model
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -88,6 +89,11 @@ class SupplierController extends Controller
      */
     public function create()
     {
+        // Only direktur, manager_purchasing, and staff_purchasing can create
+        if (!in_array(Auth::user()->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
+            abort(403, 'Anda tidak memiliki akses untuk menambah supplier.');
+        }
+
         // Get purchasing users for PIC dropdown
         $purchasingUsers = \App\Models\User::whereIn('role', ['direktur','manager_purchasing', 'staff_purchasing'])
             ->orderBy('nama')
@@ -101,6 +107,11 @@ class SupplierController extends Controller
      */
     public function store(Request $request)
     {
+        // Only direktur, manager_purchasing, and staff_purchasing can create
+        if (!in_array(Auth::user()->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
+            abort(403, 'Anda tidak memiliki akses untuk menambah supplier.');
+        }
+
         // Validation
         $request->validate([
             'nama' => 'required|string|max:255',
@@ -189,6 +200,22 @@ class SupplierController extends Controller
 
     public function edit(Supplier $supplier)
     {
+        // Authorization check
+        $user = Auth::user();
+        $canEdit = false;
+
+        if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
+            // Direktur and manager_purchasing can edit all suppliers
+            $canEdit = true;
+        } elseif ($user->role === 'staff_purchasing') {
+            // Staff_purchasing can only edit suppliers where they are PIC
+            $canEdit = $supplier->pic_purchasing_id === $user->id;
+        }
+
+        if (!$canEdit) {
+            abort(403, 'Anda tidak memiliki akses untuk mengedit supplier ini.');
+        }
+
         // Get purchasing users for PIC dropdown
         $purchasingUsers = \App\Models\User::whereIn('role', ['direktur','manager_purchasing', 'staff_purchasing'])
             ->get();
@@ -198,6 +225,23 @@ class SupplierController extends Controller
 
     public function update(Request $request, Supplier $supplier)
     {
+        // Authorization check
+        $user = Auth::user();
+        $canEdit = false;
+
+        if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
+            // Direktur and manager_purchasing can edit all suppliers
+            $canEdit = true;
+        } elseif ($user->role === 'staff_purchasing') {
+            // Staff_purchasing can only edit suppliers where they are PIC
+            $canEdit = $supplier->pic_purchasing_id === $user->id;
+        }
+
+        if (!$canEdit) {
+            return redirect()->route('supplier.index')
+                ->with('error', 'Anda tidak memiliki akses untuk mengedit supplier ini.');
+        }
+
         // Debug logging
         Log::info('Supplier Update Request', [
             'supplier_id' => $supplier->id,
@@ -330,6 +374,23 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
+        // Authorization check
+        $user = Auth::user();
+        $canDelete = false;
+
+        if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
+            // Direktur and manager_purchasing can delete all suppliers
+            $canDelete = true;
+        } elseif ($user->role === 'staff_purchasing') {
+            // Staff_purchasing can only delete suppliers where they are PIC
+            $canDelete = $supplier->pic_purchasing_id === $user->id;
+        }
+
+        if (!$canDelete) {
+            return redirect()->route('supplier.index')
+                ->with('error', 'Anda tidak memiliki akses untuk menghapus supplier ini.');
+        }
+
         try {
             DB::beginTransaction();
 

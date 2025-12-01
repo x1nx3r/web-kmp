@@ -150,13 +150,25 @@
             <button type="button" onclick="closeRevisiModal()" 
                     class="w-full sm:w-auto px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 font-medium text-sm">
                 <i class="fas fa-times mr-2"></i>
-                Batal
+                Tutup
             </button>
-            <button type="button" onclick="submitRevisiPengiriman()" 
-                    class="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all duration-200 font-medium text-sm">
-                <i class="fas fa-edit mr-2"></i>
-                Revisi Pengiriman
-            </button>
+            @php
+                $currentUser = Auth::user();
+                $canRevise = in_array($currentUser->role, ['direktur', 'manager_purchasing']);
+            @endphp
+            
+            @if($canRevise)
+                <button type="button" onclick="submitRevisiPengiriman()" 
+                        class="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all duration-200 font-medium text-sm">
+                    <i class="fas fa-edit mr-2"></i>
+                    Revisi Pengiriman
+                </button>
+            @else
+                <div class="w-full sm:w-auto px-6 py-2.5 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed text-sm font-medium text-center" title="Hanya Direktur dan Manager Purchasing yang dapat merevisi">
+                    <i class="fas fa-lock mr-2"></i>
+                    Akses Terbatas
+                </div>
+            @endif
         </div>
     </div>
 </div>

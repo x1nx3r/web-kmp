@@ -8,6 +8,7 @@ use App\Models\BahanBakuKlien;
 use App\Models\Order;
 use App\Models\InvoicePenagihan;
 use App\Models\Pengiriman;
+use App\Models\TargetOmset;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -19,29 +20,132 @@ class OmsetController extends Controller
         $title = 'Omset';
         $activeTab = 'omset';
         
+        // Get selected year for target analysis (default: current year)
+        $selectedYearTarget = $request->get('tahun_target', Carbon::now()->year);
+        
+        // Get all available years from target_omset table (tahun yang sudah ada target)
+        $availableYearsTarget = TargetOmset::orderBy('tahun', 'desc')
+            ->pluck('tahun')
+            ->toArray();
+        
+        // Jika belum ada data target sama sekali, tampilkan tahun ini sebagai default
+        if (empty($availableYearsTarget)) {
+            $availableYearsTarget = [Carbon::now()->year];
+        }
+        
+        // Jika tahun yang dipilih belum ada targetnya, set ke tahun terbaru yang ada target
+        if (!in_array($selectedYearTarget, $availableYearsTarget)) {
+            $selectedYearTarget = $availableYearsTarget[0] ?? Carbon::now()->year;
+        }
+        
         // Calculate Total Omset (all time) - using amount_after_refraksi from invoice_penagihan
         $totalOmset = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Calculate Omset Tahun Ini (current year)
+        // Calculate Omset untuk tahun yang dipilih - GUNAKAN created_at dari invoice_penagihan
         $omsetTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
-            ->whereYear('pengiriman.updated_at', Carbon::now()->year)
+            ->whereYear('invoice_penagihan.created_at', $selectedYearTarget)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Calculate Omset Bulan Ini (current month)
+        // Calculate Omset Bulan Ini - GUNAKAN created_at dari invoice_penagihan
         $omsetBulanIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
-            ->whereYear('pengiriman.updated_at', Carbon::now()->year)
-            ->whereMonth('pengiriman.updated_at', Carbon::now()->month)
+            ->whereYear('invoice_penagihan.created_at', $selectedYearTarget)
+            ->whereMonth('invoice_penagihan.created_at', Carbon::now()->month)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Get Target Omset for selected year
+        $targetOmset = TargetOmset::getTargetForYear($selectedYearTarget);
+        
+        $targetTahunan = $targetOmset->target_tahunan ?? 0;
+        $targetBulanan = $targetOmset->target_bulanan ?? 0;
+        $targetMingguan = $targetOmset->target_mingguan ?? 0;
+        
+        // Calculate Omset Minggu Ini (current week) - GUNAKAN created_at dari invoice_penagihan
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $endOfWeek = Carbon::now()->endOfWeek();
+        $omsetMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->where('pengiriman.status', 'berhasil')
+            ->whereBetween('invoice_penagihan.created_at', [$startOfWeek, $endOfWeek])
+            ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Calculate Progress Percentages
+        $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
+        $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
+        $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
+        
+        // Calculate Monthly Breakdown dengan detail mingguan
+        $rekapBulanan = [];
+        for ($bulan = 1; $bulan <= 12; $bulan++) {
+            // Omset total bulan - GUNAKAN created_at dari invoice_penagihan
+            $omsetBulan = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->where('pengiriman.status', 'berhasil')
+                ->whereYear('invoice_penagihan.created_at', $selectedYearTarget)
+                ->whereMonth('invoice_penagihan.created_at', $bulan)
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            $progressBulanIni = $targetBulanan > 0 ? ($omsetBulan / $targetBulanan) * 100 : 0;
+            $selisih = $omsetBulan - $targetBulanan;
+            
+            // Calculate weekly breakdown for this month - GUNAKAN KALENDER SEBENARNYA
+            $mingguanDetail = [];
+            $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
+            $endDate = $startDate->copy()->endOfMonth();
+            $totalDaysInMonth = $startDate->daysInMonth;
+            
+            // Bagi bulan berdasarkan jumlah hari sebenarnya, bukan asumsi 4 minggu
+            // Setiap minggu adalah 7 hari, jadi bisa ada 4-5 minggu per bulan
+            $minggu = 1;
+            $currentDate = $startDate->copy();
+            
+            while ($currentDate <= $endDate) {
+                $weekStart = $currentDate->copy();
+                $weekEnd = $currentDate->copy()->addDays(6)->min($endDate);
+                
+                $omsetMinggu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->where('pengiriman.status', 'berhasil')
+                    ->whereBetween('invoice_penagihan.created_at', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                
+                $progressMingguIni = $targetMingguan > 0 ? ($omsetMinggu / $targetMingguan) * 100 : 0;
+                
+                $mingguanDetail[$minggu] = [
+                    'omset' => $omsetMinggu,
+                    'progress' => $progressMingguIni,
+                    'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
+                ];
+                
+                $minggu++;
+                $currentDate->addDays(7);
+            }
+            
+            $rekapBulanan[$bulan] = [
+                'realisasi' => $omsetBulan,
+                'progress' => $progressBulanIni,
+                'selisih' => $selisih,
+                'mingguan' => $mingguanDetail
+            ];
+        }
         
         // Get filter periode (default: all)
         $periode = $request->get('periode_marketing', 'all');
         $periodeProcurement = $request->get('periode_procurement', 'all');
         $periodeKlien = $request->get('periode_klien', 'all');
         $periodeSupplier = $request->get('periode_supplier', 'all');
+        
+        // Handle AJAX request for Get Target by Year
+        if ($request->ajax() && $request->get('ajax') === 'get_target') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $targetOmsetData = TargetOmset::getTargetForYear($tahun);
+            
+            return response()->json([
+                'target_tahunan' => $targetOmsetData->target_tahunan ?? 0,
+                'target_bulanan' => $targetOmsetData->target_bulanan ?? 0,
+                'target_mingguan' => $targetOmsetData->target_mingguan ?? 0,
+            ]);
+        }
         
         // Handle AJAX request for Top Klien
         if ($request->ajax() && $request->get('ajax') === 'top_klien') {
@@ -429,6 +533,16 @@ class OmsetController extends Controller
             'totalOmset',
             'omsetTahunIni',
             'omsetBulanIni',
+            'omsetMingguIni',
+            'targetTahunan',
+            'targetBulanan',
+            'targetMingguan',
+            'progressMinggu',
+            'progressBulan',
+            'progressTahun',
+            'rekapBulanan',
+            'selectedYearTarget',
+            'availableYearsTarget',
             'omsetMarketing',
             'omsetProcurement',
             'periode',
@@ -443,6 +557,71 @@ class OmsetController extends Controller
             'topKlien',
             'topSupplier'
         ));
+    }
+    
+    public function setTarget(Request $request)
+    {
+        try {
+            $request->validate([
+                'target_tahunan' => 'required|numeric|min:0',
+                'tahun' => 'required|integer|min:2020|max:2100'
+            ]);
+            
+            $targetTahunan = $request->target_tahunan;
+            $tahun = $request->tahun;
+            $createdBy = session('nama_user') ?? 'System';
+            
+            TargetOmset::setTarget($tahun, $targetTahunan, $createdBy);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Target omset berhasil disimpan'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getTargetByYear(Request $request)
+    {
+        try {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $target = TargetOmset::getTargetForYear($tahun);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $target
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getAvailableYears()
+    {
+        try {
+            // Get tahun-tahun yang sudah ada target
+            $yearsWithTarget = TargetOmset::orderBy('tahun', 'desc')
+                ->pluck('tahun')
+                ->toArray();
+            
+            return response()->json([
+                'success' => true,
+                'years_with_target' => $yearsWithTarget,
+                'current_year' => Carbon::now()->year
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
     
     public function export(Request $request)

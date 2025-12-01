@@ -167,6 +167,9 @@
     </div>
 </div>
 
+{{-- Include Target Analysis Section --}}
+@include('pages.laporan.partials.target_analysis')
+
 {{-- Proyek Per Bulan Chart --}}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     {{-- Card 1: Proyek Per Bulan --}}

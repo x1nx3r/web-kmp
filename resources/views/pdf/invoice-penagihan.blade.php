@@ -278,13 +278,18 @@
                 <div class="customer-section" style="margin: 0;">
                     <div class="customer-label">Kepada Yth:</div>
                     <div class="customer-name">{{ $pengiriman->purchaseOrder->klien->nama ?? $invoice->customer_name }}</div>
-                    @if($pengiriman->purchaseOrder->klien->cabang)
+                    {{-- @if($pengiriman->purchaseOrder->klien->cabang)
                         <div style="font-size: 10pt; margin-top: 5px;">
                             <strong>Plant:</strong> {{ $pengiriman->purchaseOrder->klien->cabang }}
                         </div>
+                    @endif --}}
+                    @if($pengiriman->purchaseOrder->klien->alamat_lengkap)
+                        <div style="font-size: 9pt; margin-top: 3px; line-height: 1.4;">
+                            {{ $pengiriman->purchaseOrder->klien->alamat_lengkap }}
+                        </div>
                     @endif
                     @if($pengiriman->purchaseOrder->klien->contactPerson)
-                        <div class="customer-phone">Contact: {{ $pengiriman->purchaseOrder->klien->contactPerson->nama }}</div>
+                        <div class="customer-phone" style="margin-top: 5px;">Contact: {{ $pengiriman->purchaseOrder->klien->contactPerson->nama }}</div>
                         <div class="customer-phone">Telp: {{ $pengiriman->purchaseOrder->klien->contactPerson->nomor_hp }}</div>
                     @endif
                 </div>
@@ -397,12 +402,21 @@
 
     {{-- Payment Information --}}
     <div class="payment-section">
-        <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong>MSF</strong></div>
-        <div>
-            Transfer <strong>Via Mandiri</strong><br>
-            a/n <strong class="bank-account">PT KAMIL MAJU PERSADA</strong><br>
-            No. Rek : <strong class="bank-account">141-00809998883</strong>
-        </div>
+        @if($invoice->bank_name)
+            <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong>Transfer</strong></div>
+            <div>
+                Transfer <strong>Via {{ $invoice->bank_name }}</strong><br>
+                a/n <strong class="bank-account">{{ $invoice->bank_account_name }}</strong><br>
+                No. Rek : <strong class="bank-account">{{ $invoice->bank_account_number }}</strong>
+            </div>
+        @else
+            <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong>Transfer</strong></div>
+            <div>
+                Transfer <strong>Via Bank Mandiri</strong><br>
+                a/n <strong class="bank-account">PT. KAMIL MAJU PERSADA</strong><br>
+                No. Rek : <strong class="bank-account">1680002439046</strong>
+            </div>
+        @endif
     </div>
 
     {{-- Footer Thank You --}}

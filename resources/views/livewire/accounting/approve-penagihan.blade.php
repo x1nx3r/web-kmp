@@ -74,6 +74,54 @@
                                         <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
+
+                                {{-- Bank Selection --}}
+                                @if($approval->status !== 'completed' && $approval->status !== 'rejected')
+                                    <div class="col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                                            <i class="fas fa-university text-blue-600 mr-1"></i>
+                                            Pilih Bank untuk Invoice
+                                        </label>
+                                        <div class="space-y-3">
+                                            @foreach($bankOptions as $key => $bank)
+                                                <label class="flex items-start p-3 border-2 rounded-lg cursor-pointer transition-all {{ $selectedBank === $key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300' }}">
+                                                    <input
+                                                        type="radio"
+                                                        wire:model="selectedBank"
+                                                        value="{{ $key }}"
+                                                        class="mt-1 text-blue-600 focus:ring-blue-500"
+                                                    >
+                                                    <div class="ml-3 flex-1">
+                                                        <p class="font-semibold text-gray-900">{{ $bank['name'] }}</p>
+                                                        <p class="text-sm text-gray-600">{{ $bank['account_number'] }}</p>
+                                                        <p class="text-xs text-gray-500">a/n {{ $bank['account_name'] }}</p>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        <button
+                                            wire:click="updateBankSelection"
+                                            class="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                                        >
+                                            <i class="fas fa-check mr-2"></i>
+                                            Simpan Pilihan Bank
+                                        </button>
+                                    </div>
+                                @else
+                                    {{-- Display selected bank info --}}
+                                    @if($invoice->bank_name)
+                                        <div class="col-span-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                            <p class="text-xs text-gray-600 mb-2">
+                                                <i class="fas fa-university mr-1"></i>
+                                                Bank Terpilih
+                                            </p>
+                                            <p class="font-semibold text-gray-900">{{ $invoice->bank_name }}</p>
+                                            <p class="text-sm text-gray-600">{{ $invoice->bank_account_number }}</p>
+                                            <p class="text-xs text-gray-500">a/n {{ $invoice->bank_account_name }}</p>
+                                        </div>
+                                    @endif
+                                @endif
+
                                 <div>
                                     <p class="text-sm text-gray-600">Tanggal Invoice</p>
                                     <p class="font-semibold text-gray-900">{{ $invoice->invoice_date->format('d M Y') }}</p>
@@ -81,10 +129,6 @@
                                 <div>
                                     <p class="text-sm text-gray-600">Jatuh Tempo</p>
                                     <p class="font-semibold text-gray-900">{{ $invoice->due_date->format('d M Y') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Status Pembayaran</p>
-                                    <p class="font-semibold text-gray-900">{{ ucfirst($invoice->payment_status) }}</p>
                                 </div>
                                 <div class="col-span-2">
                                     <p class="text-sm text-gray-600">Customer</p>

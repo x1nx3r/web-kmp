@@ -80,10 +80,14 @@
                                     <p class="font-semibold text-gray-900">{{ $invoice->due_date->format('d M Y') }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-600">Status Pembayaran</p>
-                                    <span class="px-2 py-1 text-xs rounded-full {{ $invoice->payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
-                                        {{ ucfirst($invoice->payment_status) }}
-                                    </span>
+                                    <p class="text-sm text-gray-600">Bank Transfer</p>
+                                    @if($invoice->bank_name)
+                                        <p class="font-semibold text-gray-900">{{ $invoice->bank_name }}</p>
+                                        <p class="text-xs text-gray-600">{{ $invoice->bank_account_number }}</p>
+                                        <p class="text-xs text-gray-500">a/n {{ $invoice->bank_account_name }}</p>
+                                    @else
+                                        <p class="text-sm text-gray-400 italic">Belum dipilih</p>
+                                    @endif
                                 </div>
                                 <div class="col-span-2">
                                     <p class="text-sm text-gray-600">Customer</p>

@@ -18,6 +18,21 @@ class ApprovePenagihan extends Component
     public $approvalHistory;
     public $notes = '';
 
+    // Bank selection
+    public $selectedBank = 'mandiri';
+    public $bankOptions = [
+        'mandiri' => [
+            'name' => 'Bank Mandiri',
+            'account_number' => '1680002439046',
+            'account_name' => 'PT. KAMIL MAJU PERSADA',
+        ],
+        'bca' => [
+            'name' => 'BCA',
+            'account_number' => '429-3468888',
+            'account_name' => 'PT KAMIL MAJU PERSADA',
+        ],
+    ];
+
     // Refraksi form
     public $refraksiForm = [
         'type' => 'qty',
@@ -63,6 +78,42 @@ class ApprovePenagihan extends Component
         $this->invoiceDate = $this->invoice->invoice_date?->format('Y-m-d');
         $this->dueDate = $this->invoice->due_date?->format('Y-m-d');
         $this->invoiceNumber = $this->invoice->invoice_number ?? '';
+
+        // Load bank selection - default to mandiri if not set
+        if ($this->invoice->bank_name) {
+            // Try to find matching bank key
+            foreach ($this->bankOptions as $key => $bank) {
+                if ($bank['name'] === $this->invoice->bank_name) {
+                    $this->selectedBank = $key;
+                    break;
+                }
+            }
+        } else {
+            $this->selectedBank = 'mandiri';
+        }
+    }
+
+    public function updateBankSelection()
+    {
+        $this->validate([
+            'selectedBank' => 'required|in:mandiri,bca',
+        ]);
+
+        try {
+            $bankInfo = $this->bankOptions[$this->selectedBank];
+
+            $this->invoice->update([
+                'bank_name' => $bankInfo['name'],
+                'bank_account_number' => $bankInfo['account_number'],
+                'bank_account_name' => $bankInfo['account_name'],
+            ]);
+
+            $this->loadApproval();
+
+            session()->flash('message', 'Bank berhasil diupdate');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengupdate bank: ' . $e->getMessage());
+        }
     }
 
     public function approve()
@@ -71,6 +122,12 @@ class ApprovePenagihan extends Component
 
         if (!$this->approval) {
             session()->flash('error', 'Data approval tidak ditemukan');
+            return;
+        }
+
+        // Validate bank selection
+        if (!$this->invoice->bank_name) {
+            session()->flash('error', 'Silakan pilih bank terlebih dahulu sebelum approve');
             return;
         }
 
@@ -339,7 +396,7 @@ class ApprovePenagihan extends Component
                 // Total selling price
                 $totalSelling += $detail->total_harga;
             }
-            
+
             $totalMargin = $totalSelling - $totalSupplierCost;
             $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
         }

@@ -100,8 +100,7 @@ class Penawaran extends Component
         if ($this->klienSearch) {
             $query->where(function ($q) {
                 $q->where("nama", "like", "%" . $this->klienSearch . "%")
-                    ->orWhere("cabang", "like", "%" . $this->klienSearch . "%")
-                    ->orWhere("no_hp", "like", "%" . $this->klienSearch . "%");
+                    ->orWhere("cabang", "like", "%" . $this->klienSearch . "%");
             });
         }
 

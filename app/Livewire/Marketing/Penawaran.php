@@ -10,6 +10,7 @@ use App\Models\BahanBakuSupplier;
 use App\Models\Penawaran as PenawaranModel;
 use App\Models\PenawaranDetail;
 use App\Models\PenawaranAlternativeSupplier;
+use App\Services\NotificationService;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
@@ -922,6 +923,11 @@ class Penawaran extends Component
                 "nomor_penawaran" => $penawaran->nomor_penawaran,
                 "status" => $penawaran->status,
             ]);
+
+            // Send notification to direktur when submitting for verification
+            if ($status === "menunggu_verifikasi") {
+                NotificationService::notifyPenawaranSubmitted($penawaran);
+            }
 
             // Success message
             $statusText = $status === "draft" ? "draft" : "verifikasi";

@@ -162,7 +162,7 @@ class NotificationService
             "icon" => "times-circle",
             "icon_bg" => "bg-red-100",
             "icon_color" => "text-red-600",
-            "url" => "/marketing/riwayat-penawaran",
+            "url" => "/marketing/penawaran",
             "penawaran_id" => $penawaran->id,
             "nomor_penawaran" => $penawaran->nomor_penawaran,
             "reason" => $reason,

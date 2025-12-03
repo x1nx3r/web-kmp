@@ -232,6 +232,10 @@ Route::middleware(["auth"])->group(function () {
         Route::post("/cancel", [OrderController::class, "cancel"])->name(
             "orders.cancel",
         );
+        Route::post("/consult-direktur", [
+            OrderController::class,
+            "consultDirektur",
+        ])->name("orders.consult-direktur");
     });
 
     // Evaluasi Supplier routes

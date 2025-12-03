@@ -13,7 +13,9 @@ use App\Models\RiwayatHargaKlien;
 use App\Models\RiwayatHargaBahanBaku;
 use App\Models\OrderDetail;
 use App\Services\AuthFallbackService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
@@ -525,12 +527,12 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        if (!in_array($order->status, ["diproses", "sebagian_dikirim"])) {
+        if ($order->status !== "diproses") {
             return redirect()
                 ->back()
                 ->with(
                     "error",
-                    "Order harus dalam status diproses atau sebagian dikirim untuk dapat diselesaikan.",
+                    "Order harus dalam status diproses untuk dapat diselesaikan.",
                 );
         }
 
@@ -559,5 +561,51 @@ class OrderController extends Controller
         return redirect()
             ->back()
             ->with("success", "Order berhasil dibatalkan.");
+    }
+
+    /**
+     * Send consultation request to Direktur about order fulfillment
+     */
+    public function consultDirektur(Request $request, string $id)
+    {
+        $order = Order::with(["creator", "klien", "orderDetails"])->findOrFail(
+            $id,
+        );
+
+        // Only allow consultation for orders in 'diproses' status
+        if ($order->status !== "diproses") {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Konsultasi hanya dapat dilakukan untuk order yang sedang diproses.",
+                );
+        }
+
+        $user = Auth::user();
+        $note = $request->input("catatan", null);
+
+        // Send notification to all Direktur
+        $notificationCount = NotificationService::notifyDirekturOrderConsultation(
+            $order,
+            $user,
+            $note,
+        );
+
+        if ($notificationCount > 0) {
+            return redirect()
+                ->back()
+                ->with(
+                    "success",
+                    "Konsultasi berhasil dikirim ke Direktur ({$notificationCount} notifikasi terkirim).",
+                );
+        }
+
+        return redirect()
+            ->back()
+            ->with(
+                "error",
+                "Gagal mengirim konsultasi. Tidak ada Direktur aktif ditemukan.",
+            );
     }
 }

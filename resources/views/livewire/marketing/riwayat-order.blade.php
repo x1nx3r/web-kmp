@@ -73,17 +73,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600">Sebagian Dikirim</p>
-                        <p class="text-2xl font-bold text-purple-600">{{ number_format($statusCounts['sebagian_dikirim']) }}</p>
-                    </div>
-                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-shipping-fast text-purple-600 text-xl"></i>
-                    </div>
-                </div>
-            </div>
+
 
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center justify-between">
@@ -141,7 +131,6 @@
                         <option value="draft">Draft ({{ $statusCounts['draft'] }})</option>
                         <option value="dikonfirmasi">Dikonfirmasi ({{ $statusCounts['dikonfirmasi'] }})</option>
                         <option value="diproses">Diproses ({{ $statusCounts['diproses'] }})</option>
-                        <option value="sebagian_dikirim">Sebagian Dikirim ({{ $statusCounts['sebagian_dikirim'] }})</option>
                         <option value="selesai">Selesai ({{ $statusCounts['selesai'] }})</option>
                         <option value="dibatalkan">Dibatalkan ({{ $statusCounts['dibatalkan'] }})</option>
                     </select>
@@ -292,7 +281,7 @@
                                     Rp {{ number_format($order->total_amount, 0, ',', '.') }}
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1">
-                                    {{ $order->total_items }} item{{ $order->total_items > 1 ? 's' : '' }} | 
+                                    {{ $order->total_items }} item{{ $order->total_items > 1 ? 's' : '' }} |
                                     {{ number_format($order->total_qty, 0) }} total qty
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1">
@@ -378,7 +367,7 @@
                                             <div>
                                                 <div class="font-medium text-gray-900">{{ $detail->bahanBakuKlien->nama }}</div>
                                                 <div class="text-sm text-gray-600">
-                                                    {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} × 
+                                                    {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
                                                     Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}
                                                 </div>
                                             </div>
@@ -414,8 +403,8 @@
                                                     <div>
                                                         <h5 class="font-semibold text-gray-900">{{ $detail->bahanBakuKlien->nama }}</h5>
                                                         <div class="text-sm text-gray-600">
-                                                            {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} × 
-                                                            Rp {{ number_format($detail->harga_jual, 0, ',', '.') }} = 
+                                                            {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
+                                                            Rp {{ number_format($detail->harga_jual, 0, ',', '.') }} =
                                                             <span class="font-semibold text-gray-900">Rp {{ number_format($detail->total_amount, 0, ',', '.') }}</span>
                                                         </div>
                                                     </div>
@@ -438,7 +427,7 @@
                                             <div class="p-4">
                                                 <div class="space-y-3">
                                                     @foreach($detail->orderSuppliers->sortBy('price_rank') as $orderSupplier)
-                                                        <div class="flex items-center justify-between p-3 rounded-lg border 
+                                                        <div class="flex items-center justify-between p-3 rounded-lg border
                                                             {{ $orderSupplier->is_recommended ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white' }}">
                                                             <div class="flex items-center">
                                                                 @if($orderSupplier->is_recommended)
@@ -463,7 +452,7 @@
                                                                         </span>
                                                                     </div>
                                                                     <div class="text-sm text-gray-600">
-                                                                        {{ $orderSupplier->supplier->alamat }} | 
+                                                                        {{ $orderSupplier->supplier->alamat }} |
                                                                         Material: {{ $orderSupplier->bahanBakuSupplier->nama ?? 'N/A' }}
                                                                         @if($orderSupplier->supplier->picPurchasing)
                                                                             | PIC: {{ $orderSupplier->supplier->picPurchasing->nama }}
@@ -542,7 +531,7 @@
                                         <i class="fas fa-play mr-1"></i>
                                         Mulai Proses
                                     </button>
-                                @elseif(in_array($order->status, ['diproses', 'sebagian_dikirim']))
+                                @elseif($order->status === 'diproses')
                                     <button
                                         wire:click="completeOrder({{ $order->id }})"
                                         class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"

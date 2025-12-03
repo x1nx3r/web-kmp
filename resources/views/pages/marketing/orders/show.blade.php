@@ -123,7 +123,7 @@
                                 <span class="hidden sm:inline">Mulai Proses</span>
                             </button>
                         </form>
-                    @elseif(in_array($order->status, ['diproses', 'sebagian_dikirim']))
+                    @elseif($order->status === 'diproses')
                         <form action="{{ route('orders.complete', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
                             <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -132,6 +132,18 @@
                                 <span class="hidden sm:inline">Selesaikan</span>
                             </button>
                         </form>
+                        {{-- Konsultasi Direktur button - shown when order is nearing fulfillment --}}
+                        @php
+                            $fulfillmentPct = $order->getFulfillmentPercentage();
+                        @endphp
+                        @if($fulfillmentPct >= 95 && $fulfillmentPct <= 105)
+                            <button type="button"
+                                    onclick="openConsultModal()"
+                                    class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                <i class="fas fa-question-circle mr-1 sm:mr-2"></i>
+                                <span class="hidden sm:inline">Konsultasi Direktur</span>
+                            </button>
+                        @endif
                     @endif
 
                     @if(!in_array($order->status, ['selesai', 'dibatalkan']))
@@ -676,31 +688,41 @@
                                 $totalItems = $order->orderDetails->count();
                             @endphp
 
+                            @php
+                                $fulfillmentPercent = $order->getFulfillmentPercentage();
+                                $shippedQty = $order->getShippedQty();
+                            @endphp
+
                             <div class="space-y-3">
-                                @foreach(['menunggu' => 'Menunggu', 'diproses' => 'Diproses', 'sebagian_dikirim' => 'Sebagian Dikirim', 'selesai' => 'Selesai'] as $status => $label)
-                                    @if(isset($statusCounts[$status]))
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">{{ $label }}:</span>
-                                            <div class="flex items-center space-x-2">
-                                                <span class="text-sm font-semibold text-gray-900">{{ $statusCounts[$status] }}</span>
-                                                @include('components.order.detail-status-badge', ['status' => $status])
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endforeach
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Total Order:</span>
+                                    <span class="text-sm font-semibold text-gray-900">{{ number_format($order->total_qty, 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Sudah Dikirim:</span>
+                                    <span class="text-sm font-semibold text-green-600">{{ number_format($shippedQty, 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Sisa:</span>
+                                    <span class="text-sm font-semibold text-orange-600">{{ number_format(max(0, $order->total_qty - $shippedQty), 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}</span>
+                                </div>
                             </div>
 
                             <hr class="my-4 border-gray-200">
                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                @php
-                                    $completePercentage = ($statusCounts['selesai'] ?? 0) / $totalItems * 100;
-                                    $partialPercentage = ($statusCounts['sebagian_dikirim'] ?? 0) / $totalItems * 100;
-                                @endphp
-                                <div class="bg-green-600 h-2 rounded-full" style="width: {{ $completePercentage }}%"></div>
-                                <div class="bg-yellow-500 h-2 rounded-full" style="width: {{ $partialPercentage }}%"></div>
+                                <div class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: {{ min(100, $fulfillmentPercent) }}%"></div>
                             </div>
                             <p class="text-xs text-gray-500 mt-2">
-                                {{ number_format($completePercentage + $partialPercentage, 1) }}% progress
+                                {{ number_format($fulfillmentPercent, 1) }}% terpenuhi
+                                @if($fulfillmentPercent >= 95 && $fulfillmentPercent <= 105 && $order->status === 'diproses')
+                                    <span class="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                                        <i class="fas fa-exclamation-circle mr-1"></i>Mendekati target
+                                    </span>
+                                @elseif($fulfillmentPercent > 105)
+                                    <span class="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>Melebihi target
+                                    </span>
+                                @endif
                             </p>
                         </div>
                     </div>
@@ -709,4 +731,105 @@
         </div>
     </div>
 </div>
+
+{{-- Konsultasi Direktur Modal --}}
+@if($order->status === 'diproses')
+<div id="consultModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeConsultModal()"></div>
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-question-circle text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Konsultasi Direktur</h3>
+                        <p class="text-sm text-gray-600">Minta saran mengenai order ini</p>
+                    </div>
+                </div>
+            </div>
+
+            <form action="{{ route('orders.consult-direktur', $order->id) }}" method="POST">
+                @csrf
+                <div class="p-6">
+                    {{-- Order Info Summary --}}
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">No. PO:</span>
+                                <span class="font-medium text-gray-900 ml-1">{{ $order->po_number ?? $order->no_order }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Klien:</span>
+                                <span class="font-medium text-gray-900 ml-1">{{ $order->klien->nama ?? '-' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Fulfillment:</span>
+                                <span class="font-medium {{ $order->getFulfillmentPercentage() > 100 ? 'text-red-600' : 'text-green-600' }} ml-1">
+                                    {{ number_format($order->getFulfillmentPercentage(), 1) }}%
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Sisa:</span>
+                                <span class="font-medium text-orange-600 ml-1">
+                                    {{ number_format(max(0, $order->total_qty - $order->getShippedQty()), 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Note Input --}}
+                    <div>
+                        <label for="catatan" class="block text-sm font-medium text-gray-700 mb-2">
+                            Catatan untuk Direktur (opsional)
+                        </label>
+                        <textarea
+                            name="catatan"
+                            id="catatan"
+                            rows="3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            placeholder="Jelaskan situasi atau pertanyaan Anda..."
+                        ></textarea>
+                    </div>
+
+                    <p class="mt-3 text-xs text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Notifikasi akan dikirim ke semua Direktur aktif untuk meminta saran.
+                    </p>
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50 rounded-b-xl">
+                    <button type="button" onclick="closeConsultModal()" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium">
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Kirim Konsultasi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openConsultModal() {
+        document.getElementById('consultModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeConsultModal() {
+        document.getElementById('consultModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeConsultModal();
+        }
+    });
+</script>
+@endif
 @endsection

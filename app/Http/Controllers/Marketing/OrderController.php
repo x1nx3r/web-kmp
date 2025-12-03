@@ -480,11 +480,38 @@ class OrderController extends Controller
     }
 
     /**
+     * Check if current user can manage the order.
+     * Only order creator, marketing users, or direktur can manage orders.
+     */
+    private function canManageOrder(Order $order): bool
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        $isOrderCreator = $order->created_by === $user->id;
+        $isMarketing = $user->isMarketing();
+        $isDirektur = $user->isDirektur();
+
+        return $isOrderCreator || $isMarketing || $isDirektur;
+    }
+
+    /**
      * Confirm an order (change status from draft to dikonfirmasi)
      */
     public function confirm(string $id)
     {
         $order = Order::findOrFail($id);
+
+        if (!$this->canManageOrder($order)) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Anda tidak memiliki akses untuk mengkonfirmasi order ini.",
+                );
+        }
 
         if ($order->status !== "draft") {
             return redirect()
@@ -506,6 +533,15 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
+        if (!$this->canManageOrder($order)) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Anda tidak memiliki akses untuk memproses order ini.",
+                );
+        }
+
         if ($order->status !== "dikonfirmasi") {
             return redirect()
                 ->back()
@@ -526,6 +562,15 @@ class OrderController extends Controller
     public function complete(string $id)
     {
         $order = Order::findOrFail($id);
+
+        if (!$this->canManageOrder($order)) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Anda tidak memiliki akses untuk menyelesaikan order ini.",
+                );
+        }
 
         if ($order->status !== "diproses") {
             return redirect()
@@ -550,6 +595,15 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
+        if (!$this->canManageOrder($order)) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Anda tidak memiliki akses untuk membatalkan order ini.",
+                );
+        }
+
         if (in_array($order->status, ["selesai", "dibatalkan"])) {
             return redirect()
                 ->back()
@@ -572,6 +626,22 @@ class OrderController extends Controller
             $id,
         );
 
+        $user = Auth::user();
+
+        // Authorization: Only order creator or marketing users can request consultation
+        // (Direktur don't consult themselves, so exclude them here)
+        $isOrderCreator = $order->created_by === $user->id;
+        $isMarketing = $user->isMarketing();
+
+        if (!$isOrderCreator && !$isMarketing) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Anda tidak memiliki akses untuk mengajukan konsultasi order ini.",
+                );
+        }
+
         // Only allow consultation for orders in 'diproses' status
         if ($order->status !== "diproses") {
             return redirect()
@@ -582,7 +652,6 @@ class OrderController extends Controller
                 );
         }
 
-        $user = Auth::user();
         $note = $request->input("catatan", null);
 
         // Send notification to all Direktur

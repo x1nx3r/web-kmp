@@ -197,6 +197,98 @@ Route::middleware(["auth"])->group(function () {
         ]);
     })->name("notifications.test");
 
+    // Test route for order fulfillment notification (95-105% threshold)
+    // Usage: /notifications/test-order-fulfillment/{order_id}
+    // This simulates the notification that would be sent when an order reaches 95-105% fulfillment
+    Route::get("/notifications/test-order-fulfillment/{order}", function (
+        \App\Models\Order $order,
+    ) {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(["error" => "Not authenticated"], 401);
+        }
+
+        // Calculate current fulfillment
+        $fulfillmentPercentage = $order->getFulfillmentPercentage();
+        $shippedQty = $order->getShippedQty();
+        $isNearingFulfillment = $order->isNearingFulfillment();
+
+        // Send notification to order creator
+        $notificationId = \App\Services\Notifications\OrderNotificationService::notifyNearingFulfillment(
+            $order,
+            $fulfillmentPercentage,
+            null, // No pengiriman for test
+        );
+
+        return response()->json([
+            "success" => $notificationId !== null,
+            "notification_id" => $notificationId,
+            "order" => [
+                "id" => $order->id,
+                "no_order" => $order->no_order,
+                "po_number" => $order->po_number,
+                "status" => $order->status,
+                "total_qty" => $order->total_qty,
+                "shipped_qty" => $shippedQty,
+                "fulfillment_percentage" => $fulfillmentPercentage,
+                "is_nearing_fulfillment" => $isNearingFulfillment,
+            ],
+            "recipient" => [
+                "id" => $order->creator?->id,
+                "name" => $order->creator?->nama,
+            ],
+            "threshold" => [
+                "min" =>
+                    \App\Services\Notifications\OrderNotificationService::FULFILLMENT_THRESHOLD_MIN,
+                "max" =>
+                    \App\Services\Notifications\OrderNotificationService::FULFILLMENT_THRESHOLD_MAX,
+            ],
+        ]);
+    })->name("notifications.test-order-fulfillment");
+
+    // Test route for direktur consultation notification
+    // Usage: /notifications/test-direktur-consultation/{order_id}?note=your+message
+    Route::get("/notifications/test-direktur-consultation/{order}", function (
+        \App\Models\Order $order,
+        \Illuminate\Http\Request $request,
+    ) {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(["error" => "Not authenticated"], 401);
+        }
+
+        $note = $request->get("note", "Test konsultasi dari " . $user->nama);
+
+        // Send notification to all direktur
+        $count = \App\Services\Notifications\OrderNotificationService::notifyDirekturConsultation(
+            $order,
+            $user,
+            $note,
+        );
+
+        // Get list of direktur who received the notification
+        $direkturs = \App\Models\User::where("role", "direktur")
+            ->where("status", "aktif")
+            ->get(["id", "nama", "email"]);
+
+        return response()->json([
+            "success" => $count > 0,
+            "notifications_sent" => $count,
+            "order" => [
+                "id" => $order->id,
+                "no_order" => $order->no_order,
+                "po_number" => $order->po_number,
+                "fulfillment_percentage" => $order->getFulfillmentPercentage(),
+            ],
+            "requested_by" => [
+                "id" => $user->id,
+                "name" => $user->nama,
+            ],
+            "note" => $note,
+            "direkturs" => $direkturs,
+        ]);
+    })->name("notifications.test-direktur-consultation");
+
     // Kontak Klien routes
     Route::get("/kontak-klien/{klien}", function ($klien) {
         return view("pages.marketing.daftar-kontak-livewire", compact("klien"));

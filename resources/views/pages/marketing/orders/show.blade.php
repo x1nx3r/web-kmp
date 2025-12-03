@@ -100,8 +100,15 @@
                         </nav>
                     </div>
                 </div>
+                @php
+                    $currentUser = auth()->user();
+                    $isOrderCreator = $currentUser && $order->created_by === $currentUser->id;
+                    $isMarketing = $currentUser && $currentUser->isMarketing();
+                    $isDirektur = $currentUser && $currentUser->isDirektur();
+                    $canManageOrder = $isOrderCreator || $isMarketing || $isDirektur;
+                @endphp
                 <div class="flex flex-wrap gap-2 sm:space-x-3">
-                    @if($order->status === 'draft')
+                    @if($order->status === 'draft' && $canManageOrder)
                         <a href="{{ route('orders.edit', $order->id) }}" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors text-center">
                             <i class="fas fa-edit mr-1 sm:mr-2"></i>
                             <span class="hidden sm:inline">Edit</span>
@@ -114,7 +121,7 @@
                                 <span class="hidden sm:inline">Konfirmasi</span>
                             </button>
                         </form>
-                    @elseif($order->status === 'dikonfirmasi')
+                    @elseif($order->status === 'dikonfirmasi' && $canManageOrder)
                         <form action="{{ route('orders.start-processing', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
                             <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -123,7 +130,7 @@
                                 <span class="hidden sm:inline">Mulai Proses</span>
                             </button>
                         </form>
-                    @elseif($order->status === 'diproses')
+                    @elseif($order->status === 'diproses' && $canManageOrder)
                         <form action="{{ route('orders.complete', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
                             <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -133,10 +140,12 @@
                             </button>
                         </form>
                         {{-- Konsultasi Direktur button - shown when order is nearing fulfillment --}}
+                        {{-- Only the order creator or marketing users can request consultation --}}
                         @php
                             $fulfillmentPct = $order->getFulfillmentPercentage();
+                            $canConsultDirektur = $isOrderCreator || $isMarketing;
                         @endphp
-                        @if($fulfillmentPct >= 95 && $fulfillmentPct <= 105)
+                        @if($fulfillmentPct >= 95 && $fulfillmentPct <= 105 && $canConsultDirektur)
                             <button type="button"
                                     onclick="openConsultModal()"
                                     class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
@@ -146,7 +155,7 @@
                         @endif
                     @endif
 
-                    @if(!in_array($order->status, ['selesai', 'dibatalkan']))
+                    @if(!in_array($order->status, ['selesai', 'dibatalkan']) && $canManageOrder)
                         <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
                             <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"

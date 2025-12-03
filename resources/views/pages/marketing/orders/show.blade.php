@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Detail Order - Kamil Maju Persada')
+
 @section('content')
 @php
     $outstandingSummary = [];
@@ -106,7 +108,7 @@
                         </a>
                         <form action="{{ route('orders.confirm', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Konfirmasi order ini?')">
                                 <i class="fas fa-check mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Konfirmasi</span>
@@ -115,7 +117,7 @@
                     @elseif($order->status === 'dikonfirmasi')
                         <form action="{{ route('orders.start-processing', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Mulai proses order ini?')">
                                 <i class="fas fa-play mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Mulai Proses</span>
@@ -124,25 +126,25 @@
                     @elseif(in_array($order->status, ['diproses', 'sebagian_dikirim']))
                         <form action="{{ route('orders.complete', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Selesaikan order ini?')">
                                 <i class="fas fa-check-circle mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Selesaikan</span>
                             </button>
                         </form>
                     @endif
-                    
+
                     @if(!in_array($order->status, ['selesai', 'dibatalkan']))
                         <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Batalkan order ini?')">
                                 <i class="fas fa-times mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Batalkan</span>
                             </button>
                         </form>
                     @endif
-                    
+
                     <a href="{{ route('orders.index') }}" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm text-center">
                         <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
                         <span class="hidden sm:inline">Kembali</span>
@@ -241,7 +243,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         @if($order->catatan)
                             <div class="mt-6 p-4 bg-gray-50 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-700 mb-2">Catatan:</h4>
@@ -338,7 +340,7 @@
                                                 @include('components.order.detail-status-badge', ['status' => $detail->status])
                                             </td>
                                         </tr>
-                                        
+
                                         {{-- Expandable supplier details --}}
                                         @if($detail->orderSuppliers->count() > 1)
                                             <tr class="bg-gray-50">
@@ -365,7 +367,7 @@
                                                                                 @endif
                                                                             </div>
                                                                             <div class="text-xs text-gray-500">
-                                                                                Rank #{{ $orderSupplier->price_rank }} | 
+                                                                                Rank #{{ $orderSupplier->price_rank }} |
                                                                                 {{ $orderSupplier->supplier->alamat ?? 'No address' }}
                                                                                 @if($orderSupplier->supplier->picPurchasing)
                                                                                     | PIC: {{ $orderSupplier->supplier->picPurchasing->nama }}
@@ -417,7 +419,7 @@
                 @php
                     $successfulShipments = $order->pengiriman()->where('status', 'berhasil')->with(['details.bahanBakuSupplier.supplier.picPurchasing', 'purchasing'])->get();
                 @endphp
-                
+
                 @if($successfulShipments->count() > 0)
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
@@ -503,13 +505,13 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                                 @if(!$shipment->rating)
-                                                    <a href="{{ route('pengiriman.evaluasi', $shipment->id) }}" 
+                                                    <a href="{{ route('pengiriman.evaluasi', $shipment->id) }}"
                                                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">
                                                         <i class="fas fa-star mr-1"></i>
                                                         Lakukan Review
                                                     </a>
                                                 @else
-                                                    <a href="{{ route('pengiriman.review', $shipment->id) }}" 
+                                                    <a href="{{ route('pengiriman.review', $shipment->id) }}"
                                                        class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors">
                                                         <i class="fas fa-eye mr-1"></i>
                                                         Lihat Review
@@ -532,7 +534,7 @@
                             </table>
                         </div>
                     </div>
-                    
+
                     @if($successfulShipments->where('rating', null)->count() > 0)
                         <div class="px-4 sm:px-6 py-4 bg-yellow-50 border-t border-yellow-200">
                             <div class="flex items-start">
@@ -570,29 +572,29 @@
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Total Harga Supplier:</div>
                                 <div class="text-xs font-bold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</div>
                             </div>
-                            
+
                             <!-- Total Harga Jual -->
                             <div>
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Total Harga Jual:</div>
                                 <div class="text-xs font-bold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</div>
                             </div>
-                            
+
                             <hr class="border-gray-200">
-                            
+
                             <!-- Outstanding Qty -->
                             <div>
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Outstanding Qty:</div>
                                 <div class="text-xs font-semibold text-gray-900">{{ $outstandingDisplay ?: '0' }}</div>
                             </div>
-                            
+
                             <!-- Outstanding Amount -->
                             <div>
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Outstanding Amount:</div>
                                 <div class="text-xs font-semibold text-gray-900">Rp {{ number_format($outstandingAmount > 0 ? $outstandingAmount : $totalSelling, 0, ',', '.') }}</div>
                             </div>
-                            
+
                             <hr class="border-gray-200">
-                            
+
                             <!-- Total Margin -->
                             <div class="pt-1">
                                 <div class="text-xs font-semibold text-gray-900 mb-0.5">Total Margin:</div>
@@ -623,7 +625,7 @@
                                         <p class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
                                     </div>
                                 </div>
-                                
+
                                 @if($order->dikonfirmasi_at)
                                     <div class="timeline-item flex items-start space-x-2">
                                         <div class="timeline-marker w-2.5 h-2.5 bg-cyan-600 rounded-full mt-1"></div>
@@ -633,7 +635,7 @@
                                         </div>
                                     </div>
                                 @endif
-                                
+
                                 @if($order->selesai_at)
                                     <div class="timeline-item flex items-start space-x-2">
                                         <div class="timeline-marker w-2.5 h-2.5 bg-green-600 rounded-full mt-1"></div>
@@ -673,7 +675,7 @@
                                 $statusCounts = $order->orderDetails->groupBy('status')->map->count();
                                 $totalItems = $order->orderDetails->count();
                             @endphp
-                            
+
                             <div class="space-y-3">
                                 @foreach(['menunggu' => 'Menunggu', 'diproses' => 'Diproses', 'sebagian_dikirim' => 'Sebagian Dikirim', 'selesai' => 'Selesai'] as $status => $label)
                                     @if(isset($statusCounts[$status]))
@@ -687,7 +689,7 @@
                                     @endif
                                 @endforeach
                             </div>
-                            
+
                             <hr class="my-4 border-gray-200">
                             <div class="w-full bg-gray-200 rounded-full h-2">
                                 @php

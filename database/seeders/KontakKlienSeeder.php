@@ -14,10 +14,10 @@ class KontakKlienSeeder extends Seeder
     public function run(): void
     {
         $contacts = [
-            // PT Central Proteina
+            // PT. Central Proteina Prima
             [
                 'nama' => 'Pak Ichwan',
-                'klien_nama' => 'PT Central Proteina',
+                'klien_nama' => 'PT Central Proteina Prima',
                 'nomor_hp' => '08983999513',
                 'jabatan' => 'Manager Procurement',
                 'catatan' => 'Semua Bahan Baku - CPP Sepanjang dan CPP Dupak',
@@ -26,7 +26,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Azhar',
-                'klien_nama' => 'PT Central Proteina',
+                'klien_nama' => 'PT Central Proteina Prima',
                 'nomor_hp' => '0895622177789',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Bahan Baku Shrimp Head Meal - CPP Dupak',
@@ -35,7 +35,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Nisa',
-                'klien_nama' => 'PT Central Proteina',
+                'klien_nama' => 'PT Central Proteina Prima',
                 'nomor_hp' => '085746889233',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Bahan Baku Molases - CPP Sepanjang',
@@ -44,7 +44,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Sandi',
-                'klien_nama' => 'PT Central Proteina',
+                'klien_nama' => 'PT Central Proteina Prima',
                 'nomor_hp' => '089529640923',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Bahan Baku PKM, Kopra - CPP Sepanjang',
@@ -52,10 +52,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Charoen Pokpahand Indonesia  
+            // PT Charoen Pokphand Indonesia (CPI/CP)
             [
                 'nama' => 'Pak Aken',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '082262677767',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Katul - CPI Krian',
@@ -64,7 +64,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Heru',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '081331636276',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'CFM - CPI Krian',
@@ -73,7 +73,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Rery',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '082257449421',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Biskuit - CPI Krian',
@@ -82,7 +82,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Agung',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '08125248622',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - CPI Sepanjang',
@@ -91,7 +91,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Arif',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '08157710930',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Katul - CPI Jawa Tengah',
@@ -100,7 +100,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Soni',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '08122801907',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'CFM - CPI Jawa Tengah',
@@ -109,7 +109,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Juergen',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '081388886977',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'CGM - CPI Head Office',
@@ -118,7 +118,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Dani',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '082134479628',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'CGM - CPI Head Office',
@@ -127,7 +127,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Dickson',
-                'klien_nama' => 'PT Charoen Pokpahand Indonesia',
+                'klien_nama' => 'PT Charoen Pokphand Indonesia (CPI/CP)',
                 'nomor_hp' => '0895404967880',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'CGM - CPI Head Office',
@@ -135,10 +135,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Sreya Sewu
+            // PT Sreeya Sewu Indonesia
             [
                 'nama' => 'Pak Agus',
-                'klien_nama' => 'PT Sreya Sewu',
+                'klien_nama' => 'PT Sreeya Sewu Indonesia',
                 'nomor_hp' => '085294153435',
                 'jabatan' => 'Manager Purchasing',
                 'catatan' => 'Semua Bahan Baku - Sreeya Balaraja',
@@ -147,7 +147,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Sherly',
-                'klien_nama' => 'PT Sreya Sewu',
+                'klien_nama' => 'PT Sreeya Sewu Indonesia',
                 'nomor_hp' => '085811781885',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Molases - Sreeya Wonoayu',
@@ -156,7 +156,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Uki',
-                'klien_nama' => 'PT Sreya Sewu',
+                'klien_nama' => 'PT Sreeya Sewu Indonesia',
                 'nomor_hp' => '085649711422',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Sreeya Wonoayu',
@@ -164,10 +164,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT. Dinamika Megatama Citra
+            // PT Dinamika Megatama Citra (DMC)
             [
                 'nama' => 'Bu Christin',
-                'klien_nama' => 'PT. Dinamika Megatama Citra',
+                'klien_nama' => 'PT Dinamika Megatama Citra (DMC)',
                 'nomor_hp' => '081331220131',
                 'jabatan' => 'Manager Purchasing',
                 'catatan' => 'Semua Bahan Baku - DMC Ngoro',
@@ -176,7 +176,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Santi',
-                'klien_nama' => 'PT. Dinamika Megatama Citra',
+                'klien_nama' => 'PT Dinamika Megatama Citra (DMC)',
                 'nomor_hp' => '085334631883',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - DMC Ngoro',
@@ -185,7 +185,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Tira',
-                'klien_nama' => 'PT. Dinamika Megatama Citra',
+                'klien_nama' => 'PT Dinamika Megatama Citra (DMC)',
                 'nomor_hp' => '081130789368',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Staf - DMC Ngoro',
@@ -193,10 +193,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Wonokoyo
+            // PT. Wonokoyo Jaya Corporindo
             [
                 'nama' => 'Pak David',
-                'klien_nama' => 'PT Wonokoyo',
+                'klien_nama' => 'PT. Wonokoyo Jaya Corporindo',
                 'nomor_hp' => '081234824620',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Wonokoyo Head Office',
@@ -205,27 +205,18 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Kenny',
-                'klien_nama' => 'PT Wonokoyo',
+                'klien_nama' => 'PT. Wonokoyo Jaya Corporindo',
                 'nomor_hp' => '081230923108',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Wonokoyo Head Office',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-            [
-                'nama' => 'Bu Ati',
-                'klien_nama' => 'PT Wonokoyo',
-                'nomor_hp' => '081807477971',
-                'jabatan' => 'Purchasing',
-                'catatan' => 'Semua Bahan Baku - Cikande',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
 
-            // PT Haida
+            // PT. Haida Agriculture Indonesia
             [
                 'nama' => 'Mr. Yan',
-                'klien_nama' => 'PT Haida',
+                'klien_nama' => 'PT. Haida Agriculture Indonesia',
                 'nomor_hp' => '08113781868',
                 'jabatan' => 'Manager Purchasing',
                 'catatan' => 'Semua Bahan Baku - Haida Lampung',
@@ -234,7 +225,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Ariski',
-                'klien_nama' => 'PT Haida',
+                'klien_nama' => 'PT. Haida Agriculture Indonesia',
                 'nomor_hp' => '08113785868',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Haida Pasuruan',
@@ -243,7 +234,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Hendry',
-                'klien_nama' => 'PT Haida',
+                'klien_nama' => 'PT. Haida Agriculture Indonesia',
                 'nomor_hp' => '081232162521',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Biskuit - Haida Pasuruan',
@@ -251,10 +242,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT East Hope
+            // PT East Hope Agriculture Indonesia
             [
                 'nama' => 'Bu Naely',
-                'klien_nama' => 'PT East Hope',
+                'klien_nama' => 'PT East Hope Agriculture Indonesia',
                 'nomor_hp' => '082232333255',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Mie Merah, Gaplek - East Hope Ngoro',
@@ -262,10 +253,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT New Hope
+            // PT. New Hope Jawa Timur
             [
                 'nama' => 'Bu Ria',
-                'klien_nama' => 'PT New Hope',
+                'klien_nama' => 'PT. New Hope Jawa Timur',
                 'nomor_hp' => '085748144034',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - New Hope Mojosari',
@@ -274,7 +265,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Ms. Hu',
-                'klien_nama' => 'PT New Hope',
+                'klien_nama' => 'PT. New Hope Jawa Timur',
                 'nomor_hp' => '082272418432',
                 'jabatan' => 'Manager Purchasing',
                 'catatan' => 'Semua Bahan Baku - New Hope Kletek',
@@ -283,7 +274,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Rizki',
-                'klien_nama' => 'PT New Hope',
+                'klien_nama' => 'PT. New Hope Jawa Timur',
                 'nomor_hp' => '081230204013',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - New Hope Kletek',
@@ -291,10 +282,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Mulia Harvest
+            // PT Mulia Harvest Agritech
             [
                 'nama' => 'Bu Tri',
-                'klien_nama' => 'PT Mulia Harvest',
+                'klien_nama' => 'PT Mulia Harvest Agritech',
                 'nomor_hp' => '082227348090',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Grobogan',
@@ -302,10 +293,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Sido Agung Farm
+            // PT Sidoagung Farm
             [
                 'nama' => 'Bu Antin',
-                'klien_nama' => 'PT Sido Agung Farm',
+                'klien_nama' => 'PT Sidoagung Farm',
                 'nomor_hp' => '08112896872',
                 'jabatan' => 'Manager Purchasing',
                 'catatan' => 'Semua Bahan Baku - Magelang',
@@ -314,7 +305,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Rima',
-                'klien_nama' => 'PT Sido Agung Farm',
+                'klien_nama' => 'PT Sidoagung Farm',
                 'nomor_hp' => '08112650542',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Magelang',
@@ -322,10 +313,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Cargill
+            // PT. Cargill Indonesia
             [
                 'nama' => 'Bu Mucha',
-                'klien_nama' => 'PT Cargill',
+                'klien_nama' => 'PT. Cargill Indonesia',
                 'nomor_hp' => '081285939668',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Katul - Head Office',
@@ -344,10 +335,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Gold Coin
+            // PT Gold Coin Indonesia
             [
                 'nama' => 'Pak Femmy',
-                'klien_nama' => 'PT Gold Coin',
+                'klien_nama' => 'PT Gold Coin Indonesia',
                 'nomor_hp' => '085932614343',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Surabaya',
@@ -355,10 +346,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Matahari Sakti
+            // PT. Matahari Sakti
             [
                 'nama' => 'Pak Yohni',
-                'klien_nama' => 'PT Matahari Sakti',
+                'klien_nama' => 'PT. Matahari Sakti',
                 'nomor_hp' => '0816528838',
                 'jabatan' => 'Manager Purchasing',
                 'catatan' => 'Semua Bahan Baku - Surabaya',
@@ -367,7 +358,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Tyo',
-                'klien_nama' => 'PT Matahari Sakti',
+                'klien_nama' => 'PT. Matahari Sakti',
                 'nomor_hp' => '0816518638',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Surabaya',
@@ -375,10 +366,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT. Malindo
+            // PT Malindo Feedmill Tbk
             [
                 'nama' => 'Bu Dwi',
-                'klien_nama' => 'PT. Malindo',
+                'klien_nama' => 'PT Malindo Feedmill Tbk',
                 'nomor_hp' => '081333004520',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Malindo Gresik',
@@ -387,7 +378,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Ashar',
-                'klien_nama' => 'PT. Malindo',
+                'klien_nama' => 'PT Malindo Feedmill Tbk',
                 'nomor_hp' => '082245644311',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Biskuit - Malindo Gorobogan',
@@ -395,10 +386,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // CJ Feed
+            // PT Cheil Jedang Indonesia (CJ)
             [
                 'nama' => 'Bu Widi',
-                'klien_nama' => 'CJ Feed',
+                'klien_nama' => 'PT Cheil Jedang Indonesia (CJ)',
                 'nomor_hp' => '082113168292',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'CFM, Biskuit - CJ Head Office',
@@ -407,7 +398,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Rizqi',
-                'klien_nama' => 'CJ Feed',
+                'klien_nama' => 'PT Cheil Jedang Indonesia (CJ)',
                 'nomor_hp' => '08992040530',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Katul - CJ Head Office',
@@ -416,7 +407,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Rizki',
-                'klien_nama' => 'CJ Feed',
+                'klien_nama' => 'PT Cheil Jedang Indonesia (CJ)',
                 'nomor_hp' => '085741886294',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Gaplek - CJ Batang',
@@ -425,7 +416,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Aris',
-                'klien_nama' => 'CJ Feed',
+                'klien_nama' => 'PT Cheil Jedang Indonesia (CJ)',
                 'nomor_hp' => '08998786100',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Biskuit - CJ Serang',
@@ -434,7 +425,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Bu Alfisya',
-                'klien_nama' => 'CJ Feed',
+                'klien_nama' => 'PT Cheil Jedang Indonesia (CJ)',
                 'nomor_hp' => '081231278920',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Bone Meal - CJ Head Office',
@@ -443,7 +434,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Iqbal',
-                'klien_nama' => 'CJ Feed',
+                'klien_nama' => 'PT Cheil Jedang Indonesia (CJ)',
                 'nomor_hp' => '085218928939',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - CJ Jombang',
@@ -452,7 +443,7 @@ class KontakKlienSeeder extends Seeder
             ],
             [
                 'nama' => 'Pak Ibnu',
-                'klien_nama' => 'CJ Feed',
+                'klien_nama' => 'PT Cheil Jedang Indonesia (CJ)',
                 'nomor_hp' => '085645756825',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - CJ Serang',
@@ -471,10 +462,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Japfa
+            // PT Japfa Comfeed Indonesia
             [
                 'nama' => 'Pak William',
-                'klien_nama' => 'PT Japfa',
+                'klien_nama' => 'PT Japfa Comfeed Indonesia',
                 'nomor_hp' => '087853274453',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Sidoarjo',
@@ -482,10 +473,10 @@ class KontakKlienSeeder extends Seeder
                 'updated_at' => now(),
             ],
 
-            // PT Thai Union
+            // PT Thai Union Kharisma Lestari
             [
                 'nama' => 'Bu Shantika',
-                'klien_nama' => 'PT Thai Union',
+                'klien_nama' => 'PT Thai Union Kharisma Lestari',
                 'nomor_hp' => '0811355442',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Fish Meal, Katul - Lamongan',
@@ -542,6 +533,17 @@ class KontakKlienSeeder extends Seeder
                 'nomor_hp' => '082132725300',
                 'jabatan' => 'Purchasing',
                 'catatan' => 'Semua Bahan Baku - Tulungagung',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+
+            // PT Wonokoyo Jaya Kusuma
+            [
+                'nama' => 'Bu Ati',
+                'klien_nama' => 'PT Wonokoyo Jaya Kusuma',
+                'nomor_hp' => '081807477971',
+                'jabatan' => 'Purchasing',
+                'catatan' => 'Semua Bahan Baku - Cikande',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

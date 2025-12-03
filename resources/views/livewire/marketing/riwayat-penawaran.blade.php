@@ -229,7 +229,7 @@
                                                                         +{{ $detail->alternativeSuppliers->count() - 1 }} more
                                                                     </span>
                                                                 </div>
-                                                                <button 
+                                                                <button
                                                                     onclick="toggleSuppliers({{ $detail->id }})"
                                                                     class="text-blue-600 hover:text-blue-800 text-xs ml-2 flex items-center"
                                                                 >
@@ -238,7 +238,7 @@
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                        
+
                                                         {{-- Expanded view (hidden by default) --}}
                                                         <div class="supplier-expanded hidden">
                                                             <div class="space-y-1">
@@ -276,7 +276,7 @@
                                                                     @endif
                                                                 @endforeach
                                                             </div>
-                                                            <button 
+                                                            <button
                                                                 onclick="toggleSuppliers({{ $detail->id }})"
                                                                 class="text-blue-600 hover:text-blue-800 text-xs mt-2 flex items-center"
                                                             >
@@ -336,7 +336,7 @@
                             {{-- Action Buttons --}}
                             <div class="flex items-center space-x-2">
                                 {{-- View Detail --}}
-                                <button 
+                                <button
                                     wire:click="viewDetail({{ $penawaran->id }})"
                                     class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors text-sm font-medium"
                                     title="Lihat Detail"
@@ -346,7 +346,7 @@
 
                                 {{-- Edit (only for draft) --}}
                                 @if($penawaran->status === 'draft')
-                                    <a 
+                                    <a
                                         href="{{ route('penawaran.edit', $penawaran->id) }}"
                                         class="px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition-colors text-sm font-medium"
                                         title="Edit Penawaran"
@@ -356,7 +356,7 @@
                                 @endif
 
                                 {{-- Duplicate --}}
-                                <button 
+                                <button
                                     wire:click="duplicate({{ $penawaran->id }})"
                                     class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors text-sm font-medium"
                                     title="Duplikat Penawaran"
@@ -364,26 +364,37 @@
                                     <i class="fas fa-copy"></i>
                                 </button>
 
-                                {{-- Approve (only for pending) --}}
+                                {{-- Approve/Reject (only for pending and only for direktur) --}}
                                 @if($penawaran->status === 'menunggu_verifikasi')
-                                    <button 
-                                        wire:click="approve({{ $penawaran->id }})"
-                                        class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors text-sm font-medium"
-                                        title="Setujui Penawaran"
-                                    >
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button 
-                                        wire:click="confirmReject({{ $penawaran->id }})"
-                                        class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
-                                        title="Tolak Penawaran"
-                                    >
-                                        <i class="fas fa-times"></i>
-                                    </button>
+                                    @if($canVerify)
+                                        <button
+                                            wire:click="approve({{ $penawaran->id }})"
+                                            class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors text-sm font-medium"
+                                            title="Setujui Penawaran"
+                                        >
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button
+                                            wire:click="confirmReject({{ $penawaran->id }})"
+                                            class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
+                                            title="Tolak Penawaran"
+                                        >
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    @else
+                                        {{-- Show waiting indicator for non-direktur users --}}
+                                        <span
+                                            class="px-3 py-2 bg-yellow-50 text-yellow-700 rounded-lg text-sm font-medium inline-flex items-center"
+                                            title="Menunggu verifikasi dari Direktur"
+                                        >
+                                            <i class="fas fa-hourglass-half mr-1"></i>
+                                            Menunggu Direktur
+                                        </span>
+                                    @endif
                                 @endif
 
                                 {{-- Delete --}}
-                                <button 
+                                <button
                                     wire:click="confirmDelete({{ $penawaran->id }})"
                                     class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
                                     title="Hapus Penawaran"
@@ -448,7 +459,7 @@
                                 <h3 class="text-xl font-semibold text-gray-900">Detail Penawaran</h3>
                                 <p class="text-sm text-gray-600 mt-1">{{ $selectedPenawaran->nomor_penawaran }}</p>
                             </div>
-                            <button 
+                            <button
                                 wire:click="closeDetailModal"
                                 class="text-gray-400 hover:text-gray-600 transition-colors"
                             >
@@ -506,6 +517,7 @@
                                         <tr>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Bahan Baku</th>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Qty</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Harga Klien</th>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">All Suppliers</th>
                                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Best Margin</th>
                                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Subtotal</th>
@@ -516,6 +528,11 @@
                                             <tr>
                                                 <td class="px-3 py-2">{{ $detail->nama_material }}</td>
                                                 <td class="px-3 py-2">{{ number_format($detail->quantity) }} {{ $detail->satuan }}</td>
+                                                <td class="px-3 py-2">
+                                                    <span class="text-green-700 font-medium">
+                                                        Rp {{ number_format($detail->harga_klien, 0, ',', '.') }}
+                                                    </span>
+                                                </td>
                                                 <td class="px-3 py-2">
                                                     @if($detail->alternativeSuppliers && $detail->alternativeSuppliers->count())
                                                         <div class="space-y-1">
@@ -621,7 +638,7 @@
                     <div class="p-6">
                         <p class="text-gray-700">
                             @if($selectedPenawaran->status === 'draft')
-                                Apakah Anda yakin ingin <strong class="text-red-600">menghapus permanen</strong> penawaran ini? 
+                                Apakah Anda yakin ingin <strong class="text-red-600">menghapus permanen</strong> penawaran ini?
                                 Data yang dihapus tidak dapat dikembalikan.
                             @else
                                 Apakah Anda yakin ingin <strong class="text-orange-600">mengarsipkan</strong> penawaran ini?
@@ -727,10 +744,10 @@
 function toggleSuppliers(detailId) {
     const section = document.querySelector(`[data-detail-id="${detailId}"]`);
     if (!section) return;
-    
+
     const collapsed = section.querySelector('.supplier-collapsed');
     const expanded = section.querySelector('.supplier-expanded');
-    
+
     if (collapsed.style.display === 'none') {
         // Currently expanded, collapse it
         collapsed.style.display = 'block';

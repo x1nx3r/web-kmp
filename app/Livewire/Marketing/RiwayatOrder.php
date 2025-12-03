@@ -18,7 +18,7 @@ class RiwayatOrder extends Component
     public $statusFilter = "";
     public $klienFilter = "";
     public $priorityFilter = "";
-    public $sortBy = "tanggal_desc";
+    public $sortBy = "priority_desc";
     public $perPage = 10;
 
     // UI State
@@ -31,7 +31,7 @@ class RiwayatOrder extends Component
         "statusFilter" => ["except" => ""],
         "klienFilter" => ["except" => ""],
         "priorityFilter" => ["except" => ""],
-        "sortBy" => ["except" => "tanggal_desc"],
+        "sortBy" => ["except" => "priority_desc"],
     ];
 
     public function updatingSearch()
@@ -190,6 +190,22 @@ class RiwayatOrder extends Component
             })
             ->when($this->sortBy, function (Builder $query) {
                 switch ($this->sortBy) {
+                    case "priority_desc":
+                        // Sort by priority: mendesak > tinggi > normal > rendah
+                        $query
+                            ->orderByRaw(
+                                "FIELD(priority, 'mendesak', 'tinggi', 'normal', 'rendah')",
+                            )
+                            ->orderBy("tanggal_order", "desc");
+                        break;
+                    case "priority_asc":
+                        // Sort by priority: rendah > normal > tinggi > mendesak
+                        $query
+                            ->orderByRaw(
+                                "FIELD(priority, 'rendah', 'normal', 'tinggi', 'mendesak')",
+                            )
+                            ->orderBy("tanggal_order", "desc");
+                        break;
                     case "tanggal_desc":
                         $query->orderBy("tanggal_order", "desc");
                         break;
@@ -209,7 +225,12 @@ class RiwayatOrder extends Component
                         $query->orderBy("status", "desc");
                         break;
                     default:
-                        $query->orderBy("created_at", "desc");
+                        // Default to priority desc
+                        $query
+                            ->orderByRaw(
+                                "FIELD(priority, 'mendesak', 'tinggi', 'normal', 'rendah')",
+                            )
+                            ->orderBy("tanggal_order", "desc");
                 }
             })
             ->paginate($this->perPage);

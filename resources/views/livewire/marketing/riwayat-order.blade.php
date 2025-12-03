@@ -181,6 +181,8 @@
                         wire:model.live="sortBy"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
+                        <option value="priority_desc">Prioritas (Tertinggi)</option>
+                        <option value="priority_asc">Prioritas (Terendah)</option>
                         <option value="tanggal_desc">Tanggal (Terbaru)</option>
                         <option value="tanggal_asc">Tanggal (Terlama)</option>
                         <option value="total_desc">Total (Tertinggi)</option>
@@ -192,7 +194,7 @@
             </div>
 
             {{-- Clear Filters --}}
-            @if($search || $statusFilter || $klienFilter || $priorityFilter || $sortBy !== 'tanggal_desc')
+            @if($search || $statusFilter || $klienFilter || $priorityFilter || $sortBy !== 'priority_desc')
                 <div class="mt-4 pt-4 border-t border-gray-200">
                     <button
                         wire:click="clearFilters"

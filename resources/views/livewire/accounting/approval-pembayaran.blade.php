@@ -38,28 +38,22 @@
 
     <div class="bg-white border-b border-gray-200 mb-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <nav class="flex" aria-label="Breadcrumb">
-                    <ol class="flex items-center space-x-4">
+            <div class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <nav aria-label="Breadcrumb" class="w-full">
+                    <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
                         <li>
-                            <div>
-                                <a href="{{ route('dashboard') }}" class="text-gray-400 hover:text-gray-500">
-                                    <i class="fas fa-home"></i>
-                                    <span class="sr-only">Home</span>
-                                </a>
-                            </div>
+                            <a href="{{ route('dashboard') }}" class="flex items-center text-gray-400 hover:text-gray-500">
+                                <i class="fas fa-home"></i>
+                                <span class="sr-only">Home</span>
+                            </a>
                         </li>
-                        <li>
-                            <div class="flex items-center">
-                                <i class="fas fa-chevron-right text-gray-300 mr-4"></i>
-                                <span class="text-gray-500 text-sm">Accounting</span>
-                            </div>
+                        <li class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-300 mx-2"></i>
+                            <span>Accounting</span>
                         </li>
-                        <li>
-                            <div class="flex items-center">
-                                <i class="fas fa-chevron-right text-gray-300 mr-4"></i>
-                                <span class="text-gray-900 text-sm font-medium">Approval Pembayaran</span>
-                            </div>
+                        <li class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-300 mx-2"></i>
+                            <span class="text-gray-900 font-medium">Approval Pembayaran</span>
                         </li>
                     </ol>
                 </nav>

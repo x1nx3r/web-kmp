@@ -76,7 +76,7 @@
                                 </div>
 
                                 {{-- Bank Selection --}}
-                                @if($approval->status !== 'completed' && $approval->status !== 'rejected')
+                                @if($canManage && $approval->status !== 'completed' && $approval->status !== 'rejected')
                                     <div class="col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                         <label class="block text-sm font-medium text-gray-700 mb-3">
                                             <i class="fas fa-university text-blue-600 mr-1"></i>
@@ -84,28 +84,38 @@
                                         </label>
                                         <div class="space-y-3">
                                             @foreach($bankOptions as $key => $bank)
-                                                <label class="flex items-start p-3 border-2 rounded-lg cursor-pointer transition-all {{ $selectedBank === $key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300' }}">
+                                                <label class="flex items-start p-3 border-2 rounded-lg cursor-pointer transition-all {{ $selectedBank === $key ? 'border-blue-600 bg-blue-100 shadow-md' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50' }}">
                                                     <input
                                                         type="radio"
-                                                        wire:model="selectedBank"
+                                                        name="bank_selection"
+                                                        wire:model.live="selectedBank"
                                                         value="{{ $key }}"
-                                                        class="mt-1 text-blue-600 focus:ring-blue-500"
+                                                        {{ $selectedBank === $key ? 'checked' : '' }}
+                                                        class="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500"
                                                     >
                                                     <div class="ml-3 flex-1">
-                                                        <p class="font-semibold text-gray-900">{{ $bank['name'] }}</p>
-                                                        <p class="text-sm text-gray-600">{{ $bank['account_number'] }}</p>
-                                                        <p class="text-xs text-gray-500">a/n {{ $bank['account_name'] }}</p>
+                                                        <div class="flex items-center justify-between">
+                                                            <p class="font-semibold {{ $selectedBank === $key ? 'text-blue-900' : 'text-gray-900' }}">
+                                                                {{ $bank['name'] }}
+                                                            </p>
+                                                            @if($selectedBank === $key)
+                                                                <span class="ml-2 px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded-full">
+                                                                    <i class="fas fa-check mr-1"></i>Dipilih
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                        <p class="text-sm {{ $selectedBank === $key ? 'text-blue-800' : 'text-gray-600' }}">{{ $bank['account_number'] }}</p>
+                                                        <p class="text-xs {{ $selectedBank === $key ? 'text-blue-700' : 'text-gray-500' }}">a/n {{ $bank['account_name'] }}</p>
                                                     </div>
                                                 </label>
                                             @endforeach
                                         </div>
-                                        <button
-                                            wire:click="updateBankSelection"
-                                            class="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                                        >
-                                            <i class="fas fa-check mr-2"></i>
-                                            Simpan Pilihan Bank
-                                        </button>
+                                        <div class="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                                            <p class="text-xs text-green-800 flex items-center">
+                                                <i class="fas fa-check-circle mr-2"></i>
+                                                <span>Perubahan bank akan tersimpan otomatis</span>
+                                            </p>
+                                        </div>
                                     </div>
                                 @else
                                     {{-- Display selected bank info --}}
@@ -223,7 +233,7 @@
                             </h3>
 
                             {{-- Invoice Date Section --}}
-                            @if($approval->status !== 'completed' && $approval->status !== 'rejected')
+                            @if($canManage && $approval->status !== 'completed' && $approval->status !== 'rejected')
                                 <div class="mb-4 p-4 bg-white rounded-lg border border-blue-300">
                                     <h4 class="text-sm font-semibold text-gray-700 mb-3">
                                         <i class="fas fa-calendar mr-1"></i>
@@ -303,7 +313,7 @@
                             @endif
 
                             {{-- Edit Refraksi Form - Only if not completed --}}
-                            @if($approval->status !== 'completed' && $approval->status !== 'rejected')
+                            @if($canManage && $approval->status !== 'completed' && $approval->status !== 'rejected')
                                 <div class="mb-4 p-4 bg-white rounded-lg border border-yellow-300">
                                     <h4 class="text-sm font-semibold text-gray-700 mb-3">
                                         <i class="fas fa-edit mr-1"></i>
@@ -355,7 +365,7 @@
                     {{-- Right Column - Approval Status & Actions --}}
                     <div class="space-y-6">
                         {{-- Notes Input - Only if not completed --}}
-                        @if($approval->status !== 'completed' && $approval->status !== 'rejected')
+                        @if($canManage && $approval->status !== 'completed' && $approval->status !== 'rejected')
                             <div class="bg-white rounded-lg border border-gray-200 p-6">
                                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Catatan</h3>
                                 <textarea wire:model="notes" rows="4"

@@ -121,13 +121,16 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jatuh Tempo</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hari Terlambat</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Bayar</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($piutangs as $piutang)
                         @php
-                            $hariTerlambat = \Carbon\Carbon::parse($piutang->due_date)->diffInDays(now());
+                            $hariTerlambat = (int) \Carbon\Carbon::parse($piutang->due_date)->diffInDays(now());
+                            $totalPaid = $piutang->pembayaranPabrik->sum('jumlah_bayar');
+                            $sisaPiutang = $piutang->total_amount - $totalPaid;
                         @endphp
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -158,16 +161,40 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($piutang->total_amount, 0, ',', '.') }}</div>
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if($sisaPiutang <= 0)
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i>Lunas
+                                    </span>
+                                @elseif($totalPaid > 0)
+                                    <div>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            <i class="fas fa-clock mr-1"></i>Cicilan
+                                        </span>
+                                        <p class="text-xs text-gray-600 mt-1">Sisa: Rp {{ number_format($sisaPiutang, 0, ',', '.') }}</p>
+                                    </div>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                        <i class="fas fa-times-circle mr-1"></i>Belum Bayar
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <button wire:click="openDetailModal({{ $piutang->id }})"
-                                    class="text-purple-600 hover:text-purple-900" title="Detail">
-                                    <i class="fas fa-eye"></i>
-                                </button>
+                                <div class="flex items-center justify-center space-x-2">
+                                    <button wire:click="openDetailModal({{ $piutang->id }})"
+                                        class="text-purple-600 hover:text-purple-900" title="Detail">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button wire:click="openPembayaranModal({{ $piutang->id }})"
+                                        class="text-green-600 hover:text-green-900" title="Catat Pembayaran">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center">
+                            <td colspan="9" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
                                     <p class="text-gray-500 text-sm">Tidak ada invoice yang melewati jatuh tempo</p>
@@ -205,7 +232,7 @@
             {{-- Modal Body --}}
             <div class="p-6 space-y-6">
                 @php
-                    $hariTerlambat = \Carbon\Carbon::parse($detailPiutang->due_date)->diffInDays(now());
+                    $hariTerlambat = (int) \Carbon\Carbon::parse($detailPiutang->due_date)->diffInDays(now());
                 @endphp
 
                 <!-- Warning Terlambat -->
@@ -379,6 +406,80 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Riwayat Pembayaran -->
+                @if($detailPiutang->pembayaranPabrik && $detailPiutang->pembayaranPabrik->count() > 0)
+                <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-5 border border-green-200 shadow-sm">
+                    <h4 class="font-semibold text-gray-900 mb-4 flex items-center text-lg">
+                        <i class="fas fa-history mr-2 text-green-600"></i>
+                        Riwayat Pembayaran
+                    </h4>
+                    <div class="space-y-3">
+                        @php
+                            $totalPaid = $detailPiutang->pembayaranPabrik->sum('jumlah_bayar');
+                            $sisa = $detailPiutang->total_amount - $totalPaid;
+                        @endphp
+
+                        <!-- Summary Pembayaran -->
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-white rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-600">Total Invoice</p>
+                                <p class="text-lg font-bold text-blue-900">Rp {{ number_format($detailPiutang->total_amount, 0, ',', '.') }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-600">Terbayar</p>
+                                <p class="text-lg font-bold text-green-900">Rp {{ number_format($totalPaid, 0, ',', '.') }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-600">Sisa</p>
+                                <p class="text-lg font-bold text-orange-900">Rp {{ number_format($sisa, 0, ',', '.') }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Detail Pembayaran -->
+                        @foreach($detailPiutang->pembayaranPabrik as $pembayaran)
+                        <div class="bg-white rounded-lg p-4 border border-green-200">
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-600">No Pembayaran:</span>
+                                    <p class="text-gray-900 font-semibold">{{ $pembayaran->no_pembayaran }}</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Tanggal:</span>
+                                    <p class="text-gray-900">{{ $pembayaran->tanggal_bayar->format('d M Y') }}</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Jumlah:</span>
+                                    <p class="text-green-900 font-bold">Rp {{ number_format($pembayaran->jumlah_bayar, 0, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Metode:</span>
+                                    <p class="text-gray-900 capitalize">{{ $pembayaran->metode_pembayaran }}</p>
+                                </div>
+                                @if($pembayaran->catatan)
+                                <div class="col-span-2">
+                                    <span class="font-medium text-gray-600">Catatan:</span>
+                                    <p class="text-gray-700 text-sm">{{ $pembayaran->catatan }}</p>
+                                </div>
+                                @endif
+                                @if($pembayaran->bukti_pembayaran)
+                                <div class="col-span-2">
+                                    <a href="{{ Storage::url($pembayaran->bukti_pembayaran) }}" target="_blank"
+                                        class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                        <i class="fas fa-file-download mr-2"></i>
+                                        Lihat Bukti Pembayaran
+                                    </a>
+                                </div>
+                                @endif
+                                <div class="col-span-2 text-xs text-gray-500">
+                                    Dicatat oleh: {{ $pembayaran->creator->nama ?? 'System' }} pada {{ $pembayaran->created_at->format('d/m/Y H:i') }}
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </div>
 
             {{-- Modal Footer --}}
@@ -387,6 +488,131 @@
                     <i class="fas fa-times mr-2"></i>Tutup
                 </button>
             </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Pembayaran Modal --}}
+    @if($showPembayaranModal && $selectedPiutang)
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {{-- Modal Header --}}
+            <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between rounded-t-xl">
+                <h3 class="text-xl font-bold text-white flex items-center">
+                    <i class="fas fa-money-bill-wave mr-2"></i>
+                    Catat Pembayaran Invoice
+                </h3>
+                <button wire:click="closePembayaranModal" class="text-white hover:text-gray-200 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            {{-- Modal Body --}}
+            <form wire:submit.prevent="savePembayaran" class="p-6">
+                <!-- Invoice Info -->
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 mb-6 border border-blue-200">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <label class="font-medium text-gray-600">No Invoice:</label>
+                            <p class="text-gray-900 font-semibold">{{ $selectedPiutang->invoice_number }}</p>
+                        </div>
+                        <div>
+                            <label class="font-medium text-gray-600">Klien:</label>
+                            <p class="text-gray-900">{{ $selectedPiutang->pengiriman->klien->nama ?? $selectedPiutang->customer_name }}</p>
+                        </div>
+                        <div>
+                            <label class="font-medium text-gray-600">Total Invoice:</label>
+                            <p class="text-lg font-bold text-blue-900">Rp {{ number_format($selectedPiutang->total_amount, 0, ',', '.') }}</p>
+                        </div>
+                        <div>
+                            <label class="font-medium text-gray-600">Jatuh Tempo:</label>
+                            <p class="text-gray-900">{{ $selectedPiutang->due_date->format('d M Y') }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Fields -->
+                <div class="space-y-5">
+                    <!-- Tanggal Bayar -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Tanggal Pembayaran <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" wire:model="tanggal_bayar"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        @error('tanggal_bayar') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <!-- Jumlah Bayar -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Jumlah Pembayaran <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">Rp</span>
+                            <input type="number" step="0.01" wire:model="jumlah_bayar"
+                                placeholder="0.00"
+                                max="{{ $selectedPiutang->total_amount }}"
+                                class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Maksimal: Rp {{ number_format($selectedPiutang->total_amount, 0, ',', '.') }}
+                        </p>
+                        @error('jumlah_bayar') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <!-- Metode Pembayaran -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Metode Pembayaran <span class="text-red-500">*</span>
+                        </label>
+                        <select wire:model="metode_pembayaran"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">Pilih Metode</option>
+                            <option value="tunai">💵 Tunai</option>
+                            <option value="transfer">🏦 Transfer Bank</option>
+                            <option value="cek">📄 Cek</option>
+                            <option value="giro">📋 Giro</option>
+                        </select>
+                        @error('metode_pembayaran') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <!-- Catatan -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Pembayaran</label>
+                        <textarea wire:model="catatan_pembayaran" rows="3"
+                            placeholder="Masukkan catatan pembayaran..."
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"></textarea>
+                        @error('catatan_pembayaran') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <!-- Bukti Pembayaran -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Bukti Pembayaran</label>
+                        <input type="file" wire:model="bukti_pembayaran"
+                            accept=".jpg,.jpeg,.png,.pdf"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                        <p class="text-xs text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Format: JPG, JPEG, PNG, PDF (Max: 5MB)
+                        </p>
+                        @error('bukti_pembayaran') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                {{-- Modal Footer --}}
+                <div class="flex justify-end space-x-3 mt-6 pt-5 border-t border-gray-200">
+                    <button type="button" wire:click="closePembayaranModal"
+                        class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+                        <i class="fas fa-times mr-2"></i>Batal
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-md font-medium">
+                        <i class="fas fa-check mr-2"></i>Simpan Pembayaran
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
     @endif

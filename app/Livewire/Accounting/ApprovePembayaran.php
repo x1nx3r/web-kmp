@@ -24,6 +24,7 @@ class ApprovePembayaran extends Component
     public $approvalHistory;
     public $notes = '';
     public $buktiPembayaran;
+    public $canManage = false;
 
     // Piutang form
     public $piutangForm = [
@@ -41,6 +42,7 @@ class ApprovePembayaran extends Component
     public function mount($approvalId)
     {
         $this->approvalId = $approvalId;
+        $this->canManage = in_array(Auth::user()->role, ['staff_accounting', 'manager_accounting', 'direktur', 'superadmin']);
         $this->loadApproval();
     }
 
@@ -81,6 +83,10 @@ class ApprovePembayaran extends Component
 
         if (!$this->approval) {
             session()->flash('error', 'Data approval tidak ditemukan');
+            return;
+        }
+
+        if (!$this->ensureCanManage()) {
             return;
         }
 
@@ -186,6 +192,10 @@ class ApprovePembayaran extends Component
             return;
         }
 
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         if (empty($this->notes)) {
             session()->flash('error', 'Catatan penolakan harus diisi');
             return;
@@ -225,6 +235,10 @@ class ApprovePembayaran extends Component
 
     public function updatePiutang()
     {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         if (!$this->approval) {
             session()->flash('error', 'Data approval tidak ditemukan');
             return;
@@ -280,6 +294,10 @@ class ApprovePembayaran extends Component
 
     public function updateRefraksi()
     {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         if (!$this->approval) {
             session()->flash('error', 'Data approval tidak ditemukan');
             return;
@@ -444,6 +462,16 @@ class ApprovePembayaran extends Component
             'invoice_id' => $invoice->id,
             'status' => 'pending',
         ]);
+    }
+
+    protected function ensureCanManage(): bool
+    {
+        if (!$this->canManage) {
+            session()->flash('error', 'Anda tidak memiliki akses untuk melakukan aksi ini');
+            return false;
+        }
+
+        return true;
     }
 
     private function getUserRole($user)

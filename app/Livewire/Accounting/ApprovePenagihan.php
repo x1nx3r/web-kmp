@@ -18,6 +18,8 @@ class ApprovePenagihan extends Component
     public $approvalHistory;
     public $notes = '';
 
+    public $canManage = false;
+
     // Bank selection
     public $selectedBank = 'mandiri';
     public $bankOptions = [
@@ -47,7 +49,13 @@ class ApprovePenagihan extends Component
     public function mount($approvalId)
     {
         $this->approvalId = $approvalId;
+        $this->canManage = in_array(Auth::user()->role, ['staff_accounting', 'manager_accounting', 'direktur', 'superadmin']);
         $this->loadApproval();
+    }
+
+    public function updatedSelectedBank($value)
+    {
+        $this->updateBankSelection();
     }
 
     public function loadApproval()
@@ -97,6 +105,10 @@ class ApprovePenagihan extends Component
 
     public function updateBankSelection()
     {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         $this->validate([
             'selectedBank' => 'required|in:mandiri,bca',
         ]);
@@ -124,6 +136,10 @@ class ApprovePenagihan extends Component
 
         if (!$this->approval) {
             session()->flash('error', 'Data approval tidak ditemukan');
+            return;
+        }
+
+        if (!$this->ensureCanManage()) {
             return;
         }
 
@@ -198,6 +214,10 @@ class ApprovePenagihan extends Component
             return;
         }
 
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         if (empty($this->notes)) {
             session()->flash('error', 'Catatan penolakan harus diisi');
             return;
@@ -238,6 +258,10 @@ class ApprovePenagihan extends Component
 
     public function updateRefraksi()
     {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         if (!$this->invoice) {
             session()->flash('error', 'Data invoice tidak ditemukan');
             return;
@@ -322,6 +346,10 @@ class ApprovePenagihan extends Component
 
     public function updateInvoiceNumber()
     {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         if (!$this->invoice) {
             session()->flash('error', 'Data invoice tidak ditemukan');
             return;
@@ -349,6 +377,10 @@ class ApprovePenagihan extends Component
 
     public function updateInvoiceDates()
     {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
         if (!$this->invoice) {
             session()->flash('error', 'Data invoice tidak ditemukan');
             return;
@@ -379,6 +411,16 @@ class ApprovePenagihan extends Component
         }
     }
 
+    protected function ensureCanManage(): bool
+    {
+        if (!$this->canManage) {
+            session()->flash('error', 'Anda tidak memiliki akses untuk melakukan aksi ini');
+            return false;
+        }
+
+        return true;
+    }
+
     private function getUserRole($user)
     {
         if ($user->role === 'manager_accounting') {
@@ -398,10 +440,10 @@ class ApprovePenagihan extends Component
     {
         // Calculate financial summary from order
         $order = $this->pengiriman->purchaseOrder ?? null;
-        
+
         // Refresh pengiriman data untuk memastikan nilai terbaru
         $this->pengiriman->refresh();
-        
+
         // Ambil total harga supplier (beli) dari total_harga_kirim pengiriman
         $totalSupplierCost = floatval($this->pengiriman->total_harga_kirim ?? 0);
         $totalSelling = 0;

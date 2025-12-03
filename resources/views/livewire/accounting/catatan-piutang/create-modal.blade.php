@@ -57,8 +57,16 @@
                         </label>
                         <div class="relative">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
-                            <input type="number" step="0.01" wire:model="jumlah_piutang" placeholder="0.00" class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <input
+                                type="text"
+                                id="jumlah_piutang_display"
+                                placeholder="0"
+                                class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                oninput="formatCurrencyInput(this, 'jumlah_piutang_hidden')"
+                                onblur="syncToLivewire('jumlah_piutang_hidden')"
+                            >
                         </div>
+                        <input type="hidden" wire:model.defer="jumlah_piutang" id="jumlah_piutang_hidden">
                         @error('jumlah_piutang') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
@@ -84,3 +92,33 @@
     </div>
     @endif
 </div>
+
+<script>
+function formatCurrencyInput(displayInput, hiddenInputId) {
+    // Get the raw value and remove all non-digit characters
+    let value = displayInput.value.replace(/[^0-9]/g, '');
+
+    // Update hidden input with raw numeric value
+    let hiddenInput = document.getElementById(hiddenInputId);
+    if (hiddenInput) {
+        hiddenInput.value = value;
+        // Dispatch input event to trigger Livewire update
+        hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Format for display with thousand separators
+    if (value) {
+        displayInput.value = parseInt(value).toLocaleString('id-ID');
+    } else {
+        displayInput.value = '';
+    }
+}
+
+function syncToLivewire(hiddenInputId) {
+    let hiddenInput = document.getElementById(hiddenInputId);
+    if (hiddenInput) {
+        // Trigger Livewire update on blur
+        hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+</script>

@@ -21,34 +21,26 @@
     {{-- Navigation Breadcrumb --}}
     <div class="bg-white border-b border-gray-200 mb-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <nav class="flex" aria-label="Breadcrumb">
-                    <ol class="flex items-center space-x-4">
+            <div class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <nav aria-label="Breadcrumb" class="w-full">
+                    <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
                         <li>
-                            <div>
-                                <a href="{{ route('dashboard') }}" class="text-gray-400 hover:text-gray-500">
-                                    <i class="fas fa-home"></i>
-                                    <span class="sr-only">Home</span>
-                                </a>
-                            </div>
+                            <a href="{{ route('dashboard') }}" class="flex items-center text-gray-400 hover:text-gray-500">
+                                <i class="fas fa-home"></i>
+                                <span class="sr-only">Home</span>
+                            </a>
                         </li>
-                        <li>
-                            <div class="flex items-center">
-                                <i class="fas fa-chevron-right text-gray-300 mr-4"></i>
-                                <span class="text-gray-500 text-sm">Accounting</span>
-                            </div>
+                        <li class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-300 mx-2"></i>
+                            <span>Accounting</span>
                         </li>
-                        <li>
-                            <div class="flex items-center">
-                                <i class="fas fa-chevron-right text-gray-300 mr-4"></i>
-                                <a href="{{ route('accounting.approval-pembayaran') }}" class="text-gray-500 hover:text-gray-700 text-sm">Approval Pembayaran</a>
-                            </div>
+                        <li class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-300 mx-2"></i>
+                            <a href="{{ route('accounting.approval-pembayaran') }}" class="text-gray-500 hover:text-gray-700">Approval Pembayaran</a>
                         </li>
-                        <li>
-                            <div class="flex items-center">
-                                <i class="fas fa-chevron-right text-gray-300 mr-4"></i>
-                                <span class="text-gray-900 text-sm font-medium">Approve</span>
-                            </div>
+                        <li class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-300 mx-2"></i>
+                            <span class="text-gray-900 font-medium">Approve</span>
                         </li>
                     </ol>
                 </nav>
@@ -454,6 +446,7 @@
                             @endif
 
                             {{-- Edit Piutang Form --}}
+                            @if($canManage && $approval->status === 'pending')
                             <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
                                 <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                                     <i class="fas fa-edit text-indigo-600 mr-2"></i>
@@ -464,6 +457,7 @@
                                     $piutangList = $supplier ? \App\Models\CatatanPiutang::where('supplier_id', $supplier->id)
                                         ->where('status', '!=', 'lunas')
                                         ->where('sisa_piutang', '>', 0)
+                                        ->orderBy('tanggal_piutang', 'asc') // Piutang terlama dulu (FIFO)
                                         ->with('supplier')
                                         ->get() : collect();
                                 @endphp
@@ -476,11 +470,11 @@
                                                 <span class="text-blue-600">({{ $supplier->nama }})</span>
                                             @endif
                                         </label>
-                                        <select wire:model="piutangForm.catatan_piutang_id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                                        <select wire:model.live="piutangForm.catatan_piutang_id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">-- Tidak ada pemotongan piutang --</option>
-                                            @foreach($piutangList as $piutang)
+                                            @foreach($piutangList as $index => $piutang)
                                                 <option value="{{ $piutang->id }}">
-                                                    Piutang #{{ $piutang->id }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}
+                                                    {{ $index === 0 ? '⭐ ' : '' }}{{ \Carbon\Carbon::parse($piutang->tanggal_piutang)->format('d/m/Y') }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}{{ $index === 0 ? ' (Terlama)' : '' }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -488,6 +482,11 @@
                                             <p class="text-xs text-gray-500 mt-1">
                                                 <i class="fas fa-info-circle mr-1"></i>
                                                 Supplier ini tidak memiliki piutang aktif
+                                            </p>
+                                        @elseif(!$piutangList->isEmpty())
+                                            <p class="text-xs text-blue-600 mt-1">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Piutang diurutkan dari yang terlama (sistem FIFO - First In First Out)
                                             </p>
                                         @endif
                                     </div>
@@ -514,14 +513,19 @@
                                             <label class="block text-xs font-medium text-gray-700 mb-2">
                                                 Jumlah Pemotongan <span class="text-red-500">*</span>
                                             </label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                wire:model="piutangForm.amount"
-                                                max="{{ $selectedPiutang->sisa_piutang ?? 0 }}"
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="Masukkan jumlah pemotongan"
-                                            >
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-medium">Rp</span>
+                                                <input
+                                                    type="text"
+                                                    id="piutang_amount_display"
+                                                    value="{{ number_format($piutangForm['amount'] ?? 0, 0, ',', '.') }}"
+                                                    class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="0"
+                                                    oninput="formatCurrencyPiutang(this, 'piutang_amount_hidden')"
+                                                    onblur="autoSavePiutang()"
+                                                >
+                                            </div>
+                                            <input type="hidden" wire:model.defer="piutangForm.amount" id="piutang_amount_hidden">
                                             <p class="text-xs text-gray-500 mt-1">
                                                 <i class="fas fa-info-circle mr-1"></i>
                                                 Maksimal: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 0, ',', '.') }}
@@ -549,17 +553,14 @@
                                     </p>
                                 </div>
 
-                                <div class="flex justify-end mt-4">
-                                    <button
-                                        type="button"
-                                        wire:click="updatePiutang"
-                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center"
-                                    >
-                                        <i class="fas fa-save mr-2"></i>
-                                        Simpan Pemotongan Piutang
-                                    </button>
+                                <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                                    <p class="text-xs text-green-800 flex items-center">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        <span>Perubahan akan tersimpan otomatis saat Anda selesai mengetik</span>
+                                    </p>
                                 </div>
                             </div>
+                            @endif
                         </div>
                     </div>
 
@@ -599,6 +600,7 @@
                             @endif
 
                             {{-- Edit Refraksi Form --}}
+                            @if($canManage && $approval->status === 'pending')
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                 <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                                     <i class="fas fa-edit text-yellow-600 mr-2"></i>
@@ -624,14 +626,23 @@
                                                 <span class="text-gray-500">(Total potongan dalam Rp)</span>
                                             @endif
                                         </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            wire:model="refraksiForm.value"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
-                                            placeholder="{{ $refraksiForm['type'] === 'qty' ? 'Contoh: 2.5 atau 0' : ($refraksiForm['type'] === 'rupiah' ? 'Contoh: 1000 atau 0' : 'Contoh: 50000 atau 0') }}"
-                                        >
+                                        <div class="relative">
+                                            @if($refraksiForm['type'] === 'qty')
+                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-medium">%</span>
+                                            @elseif($refraksiForm['type'] === 'rupiah' || $refraksiForm['type'] === 'lainnya')
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-medium">Rp</span>
+                                            @endif
+                                            <input
+                                                type="text"
+                                                id="refraksi_value_display"
+                                                value="{{ number_format($refraksiForm['value'] ?? 0, $refraksiForm['type'] === 'qty' ? 2 : 0, ',', '.') }}"
+                                                class="w-full {{ $refraksiForm['type'] === 'qty' ? 'pr-8' : 'pl-9' }} px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
+                                                placeholder="0"
+                                                oninput="formatCurrencyRefraksi(this, 'refraksi_value_hidden', '{{ $refraksiForm['type'] }}')"
+                                                onblur="autoSaveRefraksi()"
+                                            >
+                                        </div>
+                                        <input type="hidden" wire:model.defer="refraksiForm.value" id="refraksi_value_hidden">
                                     </div>
                                 </div>
 
@@ -651,14 +662,14 @@
                                     </p>
                                 </div>
 
-                                <button
-                                    wire:click="updateRefraksi"
-                                    class="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                                >
-                                    <i class="fas fa-save mr-2"></i>
-                                    Update Refraksi
-                                </button>
+                                <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                                    <p class="text-xs text-green-800 flex items-center">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        <span>Perubahan akan tersimpan otomatis saat Anda selesai mengetik</span>
+                                    </p>
+                                </div>
                             </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -750,18 +761,24 @@
                                 </div>
 
                                 {{-- Notes --}}
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
-                                    <textarea
-                                        wire:model="notes"
-                                        rows="3"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
-                                        placeholder="Tambahkan catatan untuk approval..."
-                                    ></textarea>
-                                </div>
+                                @if($canManage && $approval->status === 'pending')
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
+                                        <textarea
+                                            wire:model="notes"
+                                            rows="3"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
+                                            placeholder="Tambahkan catatan untuk approval..."
+                                        ></textarea>
+                                    </div>
+                                @elseif(!$canManage)
+                                    <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
+                                        Hanya tim accounting yang dapat menambahkan catatan approval.
+                                    </div>
+                                @endif
 
                                 {{-- Upload Bukti Pembayaran (Wajib untuk semua anggota keuangan) --}}
-                                @if($approval->status === 'pending')
+                                @if($canManage && $approval->status === 'pending')
                                     <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                         <label class="flex items-center text-sm font-semibold text-gray-900 mb-2">
                                             <i class="fas fa-file-upload text-blue-600 mr-2"></i>
@@ -774,7 +791,7 @@
                                         <input
                                             type="file"
                                             wire:model="buktiPembayaran"
-                                            accept="image/jpeg,image/jpg,image/png,application/pdf"
+                                            accept=".jpg,.jpeg,.png,.pdf"
                                             class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
                                         >
 
@@ -808,11 +825,26 @@
                                                 Bukti pembayaran wajib diupload untuk menyelesaikan approval.
                                             </p>
                                         </div>
+                                    @elseif($approval->bukti_pembayaran)
+                                        <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <label class="flex items-center text-sm font-semibold text-gray-900 mb-2">
+                                                <i class="fas fa-file text-blue-600 mr-2"></i>
+                                                Bukti Pembayaran
+                                            </label>
+                                            <a
+                                                href="{{ Storage::url($approval->bukti_pembayaran) }}"
+                                                target="_blank"
+                                                class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+                                            >
+                                                <i class="fas fa-download mr-2"></i>
+                                                Lihat Bukti Pembayaran
+                                            </a>
+                                        </div>
                                     </div>
                                 @endif
 
                                 {{-- Action Buttons --}}
-                                @if($approval->status !== 'completed' && $approval->status !== 'rejected')
+                                @if($canManage && $approval->status === 'pending')
                                     <div class="space-y-3">
                                         <button
                                             wire:click="approve"
@@ -831,16 +863,23 @@
                                             Reject
                                         </button>
                                     </div>
-                                @else
+                                @elseif(!$canManage && $approval->status === 'pending')
+                                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        Approval hanya dapat dilakukan oleh tim accounting (Staff Accounting, Manager Accounting, Direktur, atau Superadmin).
+                                    </div>
+                                @elseif($approval->status === 'completed')
                                     <div class="text-center py-4">
                                         <p class="text-sm text-gray-500">
-                                            @if($approval->status === 'completed')
-                                                <i class="fas fa-check-circle text-green-500 text-2xl mb-2"></i>
-                                                <br>Approval sudah selesai
-                                            @else
-                                                <i class="fas fa-times-circle text-red-500 text-2xl mb-2"></i>
-                                                <br>Approval ditolak
-                                            @endif
+                                            <i class="fas fa-check-circle text-green-500 text-2xl mb-2"></i>
+                                            <br>Approval sudah selesai
+                                        </p>
+                                    </div>
+                                @elseif($approval->status === 'rejected')
+                                    <div class="text-center py-4">
+                                        <p class="text-sm text-gray-500">
+                                            <i class="fas fa-times-circle text-red-500 text-2xl mb-2"></i>
+                                            <br>Approval ditolak
                                         </p>
                                     </div>
                                 @endif
@@ -870,4 +909,110 @@
             document.body.removeChild(link);
         };
     }
+
+    // Format currency for piutang amount
+    function formatCurrencyPiutang(displayInput, hiddenInputId) {
+        let value = displayInput.value.replace(/[^0-9]/g, '');
+
+        let hiddenInput = document.getElementById(hiddenInputId);
+        if (hiddenInput) {
+            hiddenInput.value = value;
+            hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        if (value) {
+            displayInput.value = parseInt(value).toLocaleString('id-ID');
+        } else {
+            displayInput.value = '';
+        }
+    }
+
+    // Format currency for refraksi value
+    function formatCurrencyRefraksi(displayInput, hiddenInputId, type) {
+        let value = displayInput.value.replace(/[^0-9.,]/g, '');
+
+        // For qty type, allow decimals
+        if (type === 'qty') {
+            // Replace comma with dot for decimal
+            value = value.replace(',', '.');
+            // Keep only first dot
+            let parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+
+            let hiddenInput = document.getElementById(hiddenInputId);
+            if (hiddenInput) {
+                hiddenInput.value = value;
+                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            displayInput.value = value;
+        } else {
+            // For rupiah and lainnya, remove all non-digits
+            value = value.replace(/[^0-9]/g, '');
+
+            let hiddenInput = document.getElementById(hiddenInputId);
+            if (hiddenInput) {
+                hiddenInput.value = value;
+                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            if (value) {
+                displayInput.value = parseInt(value).toLocaleString('id-ID');
+            } else {
+                displayInput.value = '';
+            }
+        }
+    }
+
+    // Auto-save piutang
+    let piutangSaveTimeout;
+    function autoSavePiutang() {
+        clearTimeout(piutangSaveTimeout);
+        piutangSaveTimeout = setTimeout(function() {
+            @this.call('updatePiutang');
+        }, 500);
+    }
+
+    // Auto-save refraksi
+    let refraksiSaveTimeout;
+    function autoSaveRefraksi() {
+        clearTimeout(refraksiSaveTimeout);
+        refraksiSaveTimeout = setTimeout(function() {
+            @this.call('updateRefraksi');
+        }, 500);
+    }
+
+    // Listen for Livewire updates to refresh display values
+    document.addEventListener('livewire:initialized', () => {
+        Livewire.hook('morph.updated', ({ el, component }) => {
+            // Update piutang display when Livewire updates
+            const piutangDisplay = document.getElementById('piutang_amount_display');
+            const piutangHidden = document.getElementById('piutang_amount_hidden');
+            if (piutangDisplay && piutangHidden && piutangHidden.value) {
+                const value = piutangHidden.value.replace(/[^0-9]/g, '');
+                if (value) {
+                    piutangDisplay.value = parseInt(value).toLocaleString('id-ID');
+                }
+            }
+
+            // Update refraksi display when Livewire updates
+            const refraksiDisplay = document.getElementById('refraksi_value_display');
+            const refraksiHidden = document.getElementById('refraksi_value_hidden');
+            if (refraksiDisplay && refraksiHidden && refraksiHidden.value) {
+                const refraksiType = @this.get('refraksiForm.type');
+                const value = refraksiHidden.value;
+
+                if (refraksiType === 'qty') {
+                    refraksiDisplay.value = value;
+                } else {
+                    const numValue = value.replace(/[^0-9]/g, '');
+                    if (numValue) {
+                        refraksiDisplay.value = parseInt(numValue).toLocaleString('id-ID');
+                    }
+                }
+            }
+        });
+    });
 </script>

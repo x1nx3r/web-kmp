@@ -11,7 +11,7 @@
             {{-- Left Section - Client & Material Selection --}}
             <div class="xl:col-span-1 space-y-6">
                 {{-- Client Selection --}}
-                <x-penawaran.client-selector 
+                <x-penawaran.client-selector
                     :kliens="$kliens"
                     :selectedKlien="$selectedKlien"
                     :selectedKlienCabang="$selectedKlienCabang"
@@ -22,7 +22,7 @@
                 />
 
                 {{-- Selected Materials --}}
-                <x-penawaran.materials-list 
+                <x-penawaran.materials-list
                     :selectedMaterials="$selectedMaterials"
                     :selectedKlien="$selectedKlien"
                     :selectedKlienCabang="$selectedKlienCabang"
@@ -32,7 +32,7 @@
             {{-- Right Section - Analysis Table --}}
             <div class="xl:col-span-2">
                 {{-- Detailed Analysis Table --}}
-                <x-penawaran.analysis-table 
+                <x-penawaran.analysis-table
                     :marginAnalysis="$marginAnalysis"
                     :selectedSuppliers="$selectedSuppliers"
                     :totalRevenue="$totalRevenue"
@@ -42,7 +42,7 @@
                 />
 
                 {{-- Summary Review Section --}}
-                <x-penawaran.summary 
+                <x-penawaran.summary
                     :selectedMaterials="$selectedMaterials"
                     :selectedKlien="$selectedKlien"
                     :selectedKlienCabang="$selectedKlienCabang"
@@ -54,7 +54,7 @@
                 />
 
                 {{-- Action Buttons --}}
-                <x-penawaran.action-buttons 
+                <x-penawaran.action-buttons
                     :selectedMaterials="$selectedMaterials"
                     :editMode="$editMode"
                 />
@@ -63,7 +63,7 @@
     </div>
 
     {{-- Add Material Modal --}}
-    <x-penawaran.add-material-modal 
+    <x-penawaran.add-material-modal
         :showAddMaterialModal="$showAddMaterialModal"
         :availableMaterials="$availableMaterials"
         :currentMaterial="$currentMaterial"
@@ -84,43 +84,60 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     console.log('✅ Chart.js version:', Chart.version || 'unknown');
-    
+
     // Global date constants for chart system
     const today = new Date();
     const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
     const todayFormatted = today.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }); // "24 Okt" format
-    
+
+    // Generate 30-day date frame (from 30 days ago to today)
+    function generate30DayFrame() {
+        const dates = [];
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            dates.push({
+                dateString: date.toISOString().split('T')[0],
+                formatted: date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+            });
+        }
+        return dates;
+    }
+
+    const thirtyDayFrame = generate30DayFrame();
+    const thirtyDayLabels = thirtyDayFrame.map(d => d.formatted);
+
     // Material tab system state
     let activeMaterialIndex = 0;
     let materialsData = [];
     let materialCharts = {}; // Store chart instances per material
-    
+
     // Chart state management
     let lastUpdateTime = 0;
-    
+
     // Function to interpolate missing data points for smoother lines with backward extrapolation
     function interpolateData(priceHistory, allDates) {
         if (!priceHistory || priceHistory.length === 0) return [];
-        
+
         const result = [];
         const historyMap = new Map();
-        
+
         // Create a map of existing data points
         priceHistory.forEach(point => {
             historyMap.set(point.formatted_tanggal, point);
         });
-        
+
         // Sort all dates chronologically
         const sortedDates = [...allDates].sort((a, b) => {
             if (a === todayFormatted) return 1; // Today always last
             if (b === todayFormatted) return -1;
             return new Date(a + ', 2025') - new Date(b + ', 2025');
         });
-        
+
         // Find first and last actual data points for extrapolation bounds
         let firstActualPrice = null;
         let lastActualPrice = null;
-        
+
         // Get first actual price
         for (const date of sortedDates) {
             if (historyMap.has(date)) {
@@ -128,8 +145,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             }
         }
-        
-        // Get last actual price  
+
+        // Get last actual price
         for (let i = sortedDates.length - 1; i >= 0; i--) {
             const date = sortedDates[i];
             if (historyMap.has(date) && !historyMap.get(date).extrapolated) {
@@ -137,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             }
         }
-        
+
         sortedDates.forEach((date, index) => {
             if (historyMap.has(date)) {
                 // We have actual data for this date
@@ -146,11 +163,11 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Need to interpolate/extrapolate this date
                 let interpolatedPrice = null;
-                
+
                 // Find surrounding actual data points
                 let prevPrice = null;
                 let nextPrice = null;
-                
+
                 // Look backwards for previous actual price
                 for (let i = index - 1; i >= 0; i--) {
                     if (historyMap.has(sortedDates[i]) && !historyMap.get(sortedDates[i]).extrapolated) {
@@ -158,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         break;
                     }
                 }
-                
+
                 // Look forwards for next actual price
                 for (let i = index + 1; i < sortedDates.length; i++) {
                     if (historyMap.has(sortedDates[i]) && !historyMap.get(sortedDates[i]).extrapolated) {
@@ -166,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         break;
                     }
                 }
-                
+
                 // Determine interpolation strategy
                 if (prevPrice !== null && nextPrice !== null) {
                     // Interpolate between two known points
@@ -181,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Fallback to first actual price if available
                     interpolatedPrice = firstActualPrice;
                 }
-                
+
                 if (interpolatedPrice !== null) {
                     result.push({
                         tanggal: date,
@@ -192,80 +209,80 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         return result;
     }
-    
+
     // Function to create material tabs
     function createMaterialTabs(materials) {
         console.log('📊 Creating material tabs for:', materials.length, 'materials');
         const tabsContainer = document.getElementById('material-tabs-container');
         const emptyState = document.getElementById('charts-empty-state');
         const contentContainer = document.getElementById('tab-content-container');
-        
+
         if (!tabsContainer) return;
-        
+
         tabsContainer.innerHTML = '';
-        
+
         if (materials.length === 0) {
             // Show empty state
             tabsContainer.innerHTML = '<div class="flex-shrink-0 px-4 py-2 text-sm text-gray-500 italic">No materials selected</div>';
             if (emptyState) emptyState.classList.remove('hidden');
             return;
         }
-        
+
         // Hide empty state
         if (emptyState) emptyState.classList.add('hidden');
-        
+
         // Clear any existing content in the container
         if (contentContainer) {
             contentContainer.querySelectorAll('.material-content').forEach(content => {
                 content.remove();
             });
         }
-        
+
         // Create tabs for each material
         materials.forEach((material, index) => {
             const tab = document.createElement('div');
             // Always set first tab as active when creating tabs
             const isActive = index === 0;
             tab.className = `material-tab flex-shrink-0 px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
-                isActive ? 
-                'bg-white text-blue-600 shadow-sm border border-blue-200' : 
+                isActive ?
+                'bg-white text-blue-600 shadow-sm border border-blue-200' :
                 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`;
-            
+
             // Tab content with material name and margin
             const marginPercent = material.margin_percent ? material.margin_percent.toFixed(1) : '0.0';
-            const marginColor = material.margin_percent > 20 ? 'text-green-600' : 
+            const marginColor = material.margin_percent > 20 ? 'text-green-600' :
                                material.margin_percent > 10 ? 'text-yellow-600' : 'text-red-600';
-            
+
             tab.innerHTML = `
                 <div class="flex items-center space-x-2">
                     <span>${material.nama}</span>
                     <span class="text-xs ${marginColor} font-semibold">${marginPercent}%</span>
                 </div>
             `;
-            
+
             tab.onclick = () => switchToMaterialTab(index);
             tabsContainer.appendChild(tab);
         });
-        
+
         console.log('📊 Material tabs created, first tab marked as active');
     }
-    
+
     // Function to switch between material tabs
     function switchToMaterialTab(index) {
         console.log('🔄 Switching to material tab:', index, 'of', materialsData.length);
-        
+
         // Validate index
         if (!materialsData || index < 0 || index >= materialsData.length) {
             console.error('Invalid material index:', index);
             return;
         }
-        
+
         activeMaterialIndex = index;
-        
+
         // Update tab appearance
         document.querySelectorAll('.material-tab').forEach((tab, i) => {
             if (i === index) {
@@ -274,40 +291,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 tab.className = 'material-tab flex-shrink-0 px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer text-gray-600 hover:text-gray-900 hover:bg-gray-50';
             }
         });
-        
+
         // Show the content for this material
         showMaterialContent(index);
-        
+
         console.log('✅ Switched to material tab:', materialsData[index]?.nama);
     }
-    
+
     // Function to show content for specific material
     function showMaterialContent(index) {
         console.log('📋 Showing material content for index:', index);
         const contentContainer = document.getElementById('tab-content-container');
         const emptyState = document.getElementById('charts-empty-state');
-        
+
         if (!contentContainer) {
             console.error('Content container not found');
             return;
         }
-        
+
         if (!materialsData[index]) {
             console.error('Material data not found for index:', index);
             return;
         }
-        
+
         // Hide empty state
         if (emptyState) emptyState.classList.add('hidden');
-        
+
         // Create unique content area for this material
         const materialId = `material-${index}`;
-        
+
         // Hide all other material contents
         contentContainer.querySelectorAll('.material-content').forEach(content => {
             content.classList.add('hidden');
         });
-        
+
         // Check if content already exists
         let materialContent = document.getElementById(materialId);
         if (!materialContent) {
@@ -320,19 +337,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show existing content
             materialContent.classList.remove('hidden');
         }
-        
+
         // Create or update charts for this material
         setTimeout(() => {
             createMaterialCharts(materialsData[index], index);
         }, 10); // Small delay to ensure DOM is ready
     }
-    
+
     // Function to create material content HTML
     function createMaterialContent(materialData, index) {
         const materialContent = document.createElement('div');
         materialContent.id = `material-${index}`;
         materialContent.className = 'material-content';
-        
+
         materialContent.innerHTML = `
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Client Chart -->
@@ -380,22 +397,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         `;
-        
+
         return materialContent;
     }
-    
+
     // Function to create charts for specific material
     function createMaterialCharts(materialData, index) {
         console.log('📈 Creating charts for material:', materialData.nama);
-        
+
         const clientCanvas = document.getElementById(`client-chart-${index}`);
         const supplierCanvas = document.getElementById(`supplier-chart-${index}`);
-        
+
         if (!clientCanvas || !supplierCanvas) {
             console.error('Canvas elements not found for material:', index);
             return;
         }
-        
+
         // Destroy existing charts if they exist
         if (materialCharts[index]) {
             if (materialCharts[index].clientChart) {
@@ -405,23 +422,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 materialCharts[index].supplierChart.destroy();
             }
         }
-        
+
         // ===== SYNCHRONIZED AXIS CALCULATION =====
         // Collect ALL prices from both client and supplier data for this material
         const allPrices = [];
-        
+
         // Collect client prices
         if (materialData.klien_price_history && materialData.klien_price_history.length > 0) {
             materialData.klien_price_history.forEach(point => {
                 if (point.harga) allPrices.push(point.harga);
             });
         }
-        
+
         // Include custom prices if set
         if (materialData.is_custom_price && materialData.custom_price && materialData.custom_price > 0) {
             allPrices.push(parseFloat(materialData.custom_price));
         }
-        
+
         // Collect supplier prices
         if (materialData.supplier_options && materialData.supplier_options.length > 0) {
             materialData.supplier_options.forEach(supplier => {
@@ -432,43 +449,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        
+
         // Calculate synchronized y-axis range
         let yAxisMin = 0;
         let yAxisMax = 100000; // Default fallback
-        
+
         if (allPrices.length > 0) {
             const minPrice = Math.min(...allPrices);
             const maxPrice = Math.max(...allPrices);
-            
+
             // Add 10% padding for visual breathing room
             const padding = (maxPrice - minPrice) * 0.1;
-            
+
             // Calculate range with padding
             let calculatedMin = minPrice - padding;
             let calculatedMax = maxPrice + padding;
-            
+
             // Round to nice numbers based on price magnitude
             const roundingFactor = maxPrice < 100000 ? 1000 : 10000;
-            
+
             yAxisMin = Math.floor(calculatedMin / roundingFactor) * roundingFactor;
             yAxisMax = Math.ceil(calculatedMax / roundingFactor) * roundingFactor;
-            
+
             // Ensure yMin is not negative
             yAxisMin = Math.max(0, yAxisMin);
         }
-        
+
         console.log(`📊 Synchronized Y-axis for ${materialData.nama}:`, { yAxisMin, yAxisMax, totalPrices: allPrices.length });
-        
+
         // Function to extrapolate data to today
         function extrapolateToToday(priceHistory, datasetName) {
             if (!priceHistory || priceHistory.length === 0) return [];
-            
+
             // Sort by date to ensure proper order
             const sortedHistory = [...priceHistory].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
             const lastEntry = sortedHistory[sortedHistory.length - 1];
             const lastDate = new Date(lastEntry.tanggal);
-            
+
             // If last entry is not today, extrapolate
             if (lastDate.toISOString().split('T')[0] !== todayString) {
                 const extrapolatedEntry = {
@@ -479,39 +496,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 sortedHistory.push(extrapolatedEntry);
             }
-            
+
             return sortedHistory;
         }
-        
+
         // ===== END SYNCHRONIZED AXIS CALCULATION =====
-        
+
         // Create client chart with synchronized axes
         const clientChart = createClientChart(clientCanvas, materialData, index, { yAxisMin, yAxisMax, todayFormatted, extrapolateToToday });
-        
+
         // Create supplier chart with synchronized axes
         const supplierChart = createSupplierChart(supplierCanvas, materialData, index, { yAxisMin, yAxisMax, todayFormatted, extrapolateToToday });
-        
+
         // Store chart instances
         materialCharts[index] = {
             clientChart: clientChart,
             supplierChart: supplierChart
         };
     }
-    
+
     // Function to create client price chart
     function createClientChart(canvas, materialData, materialIndex, axisConfig) {
         const { yAxisMin, yAxisMax, todayFormatted, extrapolateToToday } = axisConfig;
-        
+
         // Get and extrapolate client price history
         let priceHistory = extrapolateToToday(materialData.klien_price_history || [], materialData.nama);
-        
+
         // Add custom price as today's data point if available
         if (materialData.is_custom_price && materialData.custom_price && materialData.custom_price > 0) {
             // Remove any existing today point to avoid duplicates
-            priceHistory = priceHistory.filter(point => 
+            priceHistory = priceHistory.filter(point =>
                 !(point.formatted_tanggal === todayFormatted || point.is_custom)
             );
-            
+
             // Add custom price as today's point
             const customPoint = {
                 tanggal: new Date().toISOString().split('T')[0],
@@ -519,38 +536,79 @@ document.addEventListener('DOMContentLoaded', function() {
                 formatted_tanggal: todayFormatted,
                 is_custom: true
             };
-            
+
             priceHistory.push(customPoint);
         }
-        
+
         // Sort by date to maintain chronological order with today at the end
         priceHistory.sort((a, b) => {
             const dateA = new Date(a.tanggal);
             const dateB = new Date(b.tanggal);
             return dateA - dateB;
         });
-        
+
+        // Create price map for 30-day frame lookup
+        const priceMap = new Map();
+        priceHistory.forEach(point => {
+            priceMap.set(point.formatted_tanggal, point);
+        });
+
+        // Find the first known price for backward extrapolation
+        // Use custom_price or klien_price as fallback for the entire line if no history
+        let firstKnownPrice = materialData.custom_price ? parseFloat(materialData.custom_price) :
+                              (materialData.klien_price ? parseFloat(materialData.klien_price) : null);
+        for (const day of thirtyDayFrame) {
+            if (priceMap.has(day.formatted)) {
+                firstKnownPrice = priceMap.get(day.formatted).harga;
+                break;
+            }
+        }
+
+        // Map data to 30-day frame with forward-fill and backward extrapolation
+        let lastKnownPrice = null;
+        let lastKnownPoint = null;
+        const chartData = thirtyDayFrame.map(day => {
+            if (priceMap.has(day.formatted)) {
+                lastKnownPoint = priceMap.get(day.formatted);
+                lastKnownPrice = lastKnownPoint.harga;
+                return lastKnownPoint;
+            } else if (lastKnownPrice !== null) {
+                // Forward fill
+                return { harga: lastKnownPrice, formatted_tanggal: day.formatted, interpolated: true };
+            } else if (firstKnownPrice !== null) {
+                // Backward extrapolation - use first known price
+                return { harga: firstKnownPrice, formatted_tanggal: day.formatted, interpolated: true };
+            }
+            return { harga: null, formatted_tanggal: day.formatted };
+        });
+
         const data = {
-            labels: priceHistory.map(point => point.formatted_tanggal),
+            labels: thirtyDayLabels,
             datasets: [{
                 label: `${materialData.nama} Client Price`,
-                data: priceHistory.map(point => point.harga),
+                data: chartData.map(point => point.harga),
                 borderColor: 'rgb(59, 130, 246)',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 borderWidth: 3,
                 fill: false,
                 tension: 0.4,
-                pointRadius: priceHistory.map(point => point.is_custom ? 8 : point.extrapolated ? 6 : 4),
-                pointBackgroundColor: priceHistory.map(point => {
+                pointRadius: chartData.map(point => {
+                    if (point.is_custom) return 8;
+                    if (point.interpolated || point.harga === null) return 0;
+                    if (point.extrapolated) return 6;
+                    return 4;
+                }),
+                pointBackgroundColor: chartData.map(point => {
                     if (point.is_custom) return 'rgb(34, 197, 94)'; // Green for custom
                     if (point.extrapolated) return 'rgb(239, 68, 68)'; // Red for extrapolated
                     return 'rgb(59, 130, 246)'; // Blue for historical
                 }),
+                spanGaps: true,
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2
             }]
         };
-        
+
         const chart = new Chart(canvas, {
             type: 'line',
             data: data,
@@ -575,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (point?.is_custom) suffix = ' (Custom Price)';
                                 else if (point?.extrapolated) suffix = ' (Today - Extrapolated)';
                                 else if (context.label === todayFormatted) suffix = ' (Today)';
-                                
+
                                 return 'Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y) + suffix;
                             }
                         }
@@ -584,8 +642,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 scales: {
                     x: {
                         grid: { color: 'rgba(156, 163, 175, 0.1)' },
-                        ticks: { 
-                            color: 'rgb(107, 114, 128)', 
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
                             maxTicksLimit: 8,
                             autoSkip: true,
                             maxRotation: 0,
@@ -601,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         min: yAxisMin,
                         max: yAxisMax,
                         grid: { color: 'rgba(156, 163, 175, 0.1)' },
-                        ticks: { 
+                        ticks: {
                             color: 'rgb(107, 114, 128)',
                             callback: function(value) {
                                 return 'Rp ' + (value / 1000) + 'k';
@@ -611,133 +669,97 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         // Create external legend for client chart
         createExternalLegend(chart, `client-legend-${materialIndex}`);
-        
+
         return chart;
     }
-    
+
     // Function to create supplier price chart
     function createSupplierChart(canvas, materialData, materialIndex, axisConfig) {
         const { yAxisMin, yAxisMax, todayFormatted, extrapolateToToday } = axisConfig;
         const suppliers = materialData.supplier_options || [];
-        
+
         const datasets = suppliers.map((supplier, index) => {
             const colors = [
                 { border: 'rgb(16, 185, 129)', bg: 'rgba(16, 185, 129, 0.1)' }, // Green
-                { border: 'rgb(249, 115, 22)', bg: 'rgba(249, 115, 22, 0.1)' }, // Orange  
+                { border: 'rgb(249, 115, 22)', bg: 'rgba(249, 115, 22, 0.1)' }, // Orange
                 { border: 'rgb(139, 92, 246)', bg: 'rgba(139, 92, 246, 0.1)' }, // Purple
                 { border: 'rgb(236, 72, 153)', bg: 'rgba(236, 72, 153, 0.1)' }, // Pink
                 { border: 'rgb(14, 165, 233)', bg: 'rgba(14, 165, 233, 0.1)' }  // Sky Blue
             ];
-            const color = colors[index % colors.length];
-            
-            // Extrapolate supplier data to today
-            const extendedHistory = extrapolateToToday(supplier.price_history || [], `${materialData.nama} - ${supplier.supplier_name}`);
-            
+            const color = supplier.is_best ? colors[0] : colors[index % colors.length];
+
+            // Get and sort price history
+            let priceHistory = supplier.price_history || [];
+            priceHistory.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+            // Create price map for 30-day frame lookup
+            const priceMap = new Map();
+            priceHistory.forEach(point => {
+                priceMap.set(point.formatted_tanggal, point);
+            });
+
+            // Find the first known price for backward extrapolation
+            // Use supplier price as fallback for the entire line if no history
+            let firstKnownPrice = supplier.price ? parseFloat(supplier.price) : null;
+            for (const day of thirtyDayFrame) {
+                if (priceMap.has(day.formatted)) {
+                    firstKnownPrice = priceMap.get(day.formatted).harga;
+                    break;
+                }
+            }
+
+            // Map data to 30-day frame with forward-fill and backward extrapolation
+            let lastKnownPrice = null;
+            let lastKnownPoint = null;
+            const chartData = thirtyDayFrame.map(day => {
+                if (priceMap.has(day.formatted)) {
+                    lastKnownPoint = priceMap.get(day.formatted);
+                    lastKnownPrice = lastKnownPoint.harga;
+                    return lastKnownPoint;
+                } else if (lastKnownPrice !== null) {
+                    // Forward fill
+                    return { harga: lastKnownPrice, formatted_tanggal: day.formatted, interpolated: true };
+                } else if (firstKnownPrice !== null) {
+                    // Backward extrapolation - use first known price
+                    return { harga: firstKnownPrice, formatted_tanggal: day.formatted, interpolated: true };
+                }
+                return { harga: null, formatted_tanggal: day.formatted };
+            });
+
             return {
-                label: supplier.supplier_name + 
+                label: supplier.supplier_name +
                        (supplier.pic_name ? ` (PIC: ${supplier.pic_name})` : '') +
                        (supplier.is_best ? ' (Best)' : ''),
-                data: extendedHistory.map(point => point.harga),
-                borderColor: supplier.is_best ? colors[0].border : color.border,
-                backgroundColor: supplier.is_best ? colors[0].bg : color.bg,
+                data: chartData.map(point => point.harga),
+                borderColor: color.border,
+                backgroundColor: color.bg,
                 borderWidth: supplier.is_best ? 3 : 2,
                 borderDash: supplier.is_best ? [] : [5, 5],
                 fill: false,
                 tension: 0.4,
-                pointRadius: extendedHistory.map(point => {
-                    if (supplier.is_best) return point.extrapolated ? 6 : 5;
-                    return point.extrapolated ? 5 : 4;
+                pointRadius: chartData.map(point => {
+                    if (point.interpolated || point.harga === null) return 0;
+                    if (supplier.is_best) return 5;
+                    return 4;
                 }),
-                pointBackgroundColor: extendedHistory.map(point => {
-                    if (point.extrapolated) return 'rgb(239, 68, 68)'; // Red for extrapolated
-                    return supplier.is_best ? colors[0].border : color.border;
+                pointBackgroundColor: chartData.map(point => {
+                    return color.border;
                 }),
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
-                // Store the extended history for tooltip access
-                extendedHistory: extendedHistory
+                spanGaps: true,
+                chartData: chartData
             };
         });
-        
-        // Get all unique dates from all suppliers, ensuring today is included and no future dates
-        const allDates = new Set();
-        datasets.forEach(dataset => {
-            dataset.extendedHistory.forEach(point => {
-                // Only include dates that are today or in the past
-                const pointDate = new Date(point.tanggal);
-                const todayDate = new Date(todayString);
-                
-                if (pointDate <= todayDate) {
-                    allDates.add(point.formatted_tanggal);
-                }
-            });
-        });
-        
-        // Ensure today is always included
-        allDates.add(todayFormatted);
-        
-        // Convert to array and sort chronologically, ensuring today is rightmost
-        const sortedDates = Array.from(allDates).sort((a, b) => {
-            // Handle today's date specially to ensure it's always rightmost
-            if (a === todayFormatted && b !== todayFormatted) return 1;
-            if (b === todayFormatted && a !== todayFormatted) return -1;
-            if (a === todayFormatted && b === todayFormatted) return 0;
-            
-            // For other dates, parse them properly for chronological sorting
-            const dateA = new Date(a + ', 2025'); // Convert "Oct 24" to "Oct 24, 2025"
-            const dateB = new Date(b + ', 2025');
-            return dateA - dateB;
-        });
-        
-        // Now interpolate data for each supplier to fill gaps
-        const interpolatedDatasets = datasets.map(dataset => {
-            const interpolatedHistory = interpolateData(dataset.extendedHistory, sortedDates);
-            return {
-                ...dataset,
-                extendedHistory: interpolatedHistory
-            };
-        });
-        
-        // Transform data for Chart.js format using interpolated datasets
-        const transformedDatasets = interpolatedDatasets.map(dataset => ({
-            ...dataset,
-            data: sortedDates.map(date => {
-                const point = dataset.extendedHistory.find(p => p.formatted_tanggal === date);
-                return point ? point.harga : null;
-            }),
-            // Improve line connection
-            spanGaps: true, // Connect lines across null values
-            stepped: false, // Smooth lines, not stepped
-            // Update point styling for the transformed data
-            pointBackgroundColor: sortedDates.map(date => {
-                const point = dataset.extendedHistory.find(p => p.formatted_tanggal === date);
-                if (point?.interpolated) return 'transparent'; // Hide interpolated points
-                if (point?.extrapolated) return 'rgb(239, 68, 68)'; // Red for extrapolated
-                return dataset.borderColor;
-            }),
-            pointRadius: sortedDates.map(date => {
-                const point = dataset.extendedHistory.find(p => p.formatted_tanggal === date);
-                const isExtrapolated = point?.extrapolated;
-                const isInterpolated = point?.interpolated;
-                const isBest = dataset.label.includes('(Best)');
-                
-                // Hide interpolated points (make them invisible)
-                if (isInterpolated) return 0;
-                
-                // Show actual data points and today's extrapolated point
-                if (isBest) return isExtrapolated ? 6 : 5;
-                return isExtrapolated ? 5 : 4;
-            })
-        }));
-        
+
         const chart = new Chart(canvas, {
             type: 'line',
             data: {
-                labels: sortedDates,
-                datasets: transformedDatasets
+                labels: thirtyDayLabels,
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -755,16 +777,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
-                                const dataset = interpolatedDatasets[context.datasetIndex];
-                                const date = sortedDates[context.dataIndex];
-                                const point = dataset.extendedHistory.find(p => p.formatted_tanggal === date);
-                                
+                                const dataset = datasets[context.datasetIndex];
+                                const point = dataset.chartData[context.dataIndex];
+
                                 let suffix = '';
-                                if (point?.extrapolated) suffix = ' (Today - Extrapolated)';
-                                else if (point?.interpolated) suffix = ' (Interpolated)';
-                                else if (date === todayFormatted) suffix = ' (Today)';
-                                
-                                return context.dataset.label + ': Rp ' + 
+                                if (point?.interpolated) suffix = ' (Extrapolated)';
+
+                                return context.dataset.label + ': Rp ' +
                                        new Intl.NumberFormat('id-ID').format(context.parsed.y) + suffix;
                             },
                             afterLabel: function(context) {
@@ -779,8 +798,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 scales: {
                     x: {
                         grid: { color: 'rgba(156, 163, 175, 0.1)' },
-                        ticks: { 
-                            color: 'rgb(107, 114, 128)', 
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
                             maxTicksLimit: 8,
                             callback: function(value, index) {
                                 const label = this.getLabelForValue(value);
@@ -792,7 +811,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         min: yAxisMin,
                         max: yAxisMax,
                         grid: { color: 'rgba(156, 163, 175, 0.1)' },
-                        ticks: { 
+                        ticks: {
                             color: 'rgb(107, 114, 128)',
                             callback: function(value) {
                                 return 'Rp ' + (value / 1000) + 'k';
@@ -802,67 +821,67 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         // Create external legend for supplier chart
         createExternalLegend(chart, `supplier-legend-${materialIndex}`);
-        
+
         return chart;
     }
-    
+
     // Function to create external clickable legend
     function createExternalLegend(chart, legendContainerId) {
         const legendContainer = document.getElementById(legendContainerId);
         if (!legendContainer) return;
-        
+
         // Clear existing legend
         legendContainer.innerHTML = '';
-        
+
         chart.data.datasets.forEach((dataset, datasetIndex) => {
             const legendItem = document.createElement('div');
             legendItem.className = 'flex items-center space-x-2 px-3 py-2 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-all';
-            
+
             // Determine if dataset is visible
             const isVisible = chart.isDatasetVisible(datasetIndex);
             if (!isVisible) {
                 legendItem.classList.add('opacity-50');
             }
-            
+
             // Create color indicator
             const colorBox = document.createElement('div');
             colorBox.className = 'w-3 h-3 rounded-sm flex-shrink-0';
             colorBox.style.backgroundColor = dataset.borderColor;
-            
+
             // Create label
             const label = document.createElement('span');
             label.className = 'text-xs font-medium text-gray-700 truncate';
             label.textContent = dataset.label;
-            
+
             legendItem.appendChild(colorBox);
             legendItem.appendChild(label);
-            
+
             // Add click handler for show/hide
             legendItem.addEventListener('click', () => {
                 const meta = chart.getDatasetMeta(datasetIndex);
                 meta.hidden = meta.hidden === null ? !chart.data.datasets[datasetIndex].hidden : null;
-                
+
                 // Update legend item appearance
                 if (meta.hidden) {
                     legendItem.classList.add('opacity-50');
                 } else {
                     legendItem.classList.remove('opacity-50');
                 }
-                
+
                 chart.update('none'); // Update without animation for better performance
             });
-            
+
             legendContainer.appendChild(legendItem);
         });
     }
-    
+
     // Main function to update charts with new data
     function updateCharts(dynamicData = null) {
         console.log('🚀 updateCharts() called with material tab system');
-        
+
         // Prevent rapid successive updates
         const now = Date.now();
         if (now - lastUpdateTime < 50) {
@@ -873,10 +892,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Use dynamic data from event if available, otherwise use server-side data
         const analysisData = dynamicData || @json($marginAnalysis);
-        
+
         console.log('📊 Analysis data received:', analysisData);
         console.log('📊 Data length:', analysisData ? analysisData.length : 0);
-        
+
         if (!analysisData || analysisData.length === 0) {
             console.log('📊 No data available - showing empty state');
             materialsData = [];
@@ -884,23 +903,23 @@ document.addEventListener('DOMContentLoaded', function() {
             createMaterialTabs([]);
             return;
         }
-        
+
         // Store materials data
         materialsData = analysisData;
-        
+
         // Reset to first material for new data
         activeMaterialIndex = 0;
-        
-        // Create tabs 
+
+        // Create tabs
         createMaterialTabs(analysisData);
-        
+
         // Show first material by default with a small delay to ensure DOM is ready
         if (analysisData.length > 0) {
             setTimeout(() => {
                 switchToMaterialTab(0);
             }, 10);
         }
-        
+
         console.log('✅ Material tab system updated successfully');
     }
 
@@ -917,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateCharts(newData);
         }, 100);
     });
-    
+
     // Listen for chart data updates (for custom prices)
     window.addEventListener('chart-data-updated', function(event) {
         console.log('chart-data-updated event received');

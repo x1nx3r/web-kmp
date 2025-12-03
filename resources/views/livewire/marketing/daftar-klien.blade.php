@@ -1,7 +1,7 @@
 <div class="relative">
     {{-- Global Loading Overlay --}}
-    <div 
-        wire:loading 
+    <div
+        wire:loading
         wire:target="search,location,sort,sortBy,clearSearch,clearFilters"
         class="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center"
         style="display: none;"
@@ -72,7 +72,7 @@
                 @endif
             </div>
         </div>
-        
+
         {{-- Filter Controls --}}
         <div class="p-6">
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -96,7 +96,7 @@
                             wire:model.live.debounce.500ms="search"
                             placeholder="Cari nama perusahaan, plant, atau nomor HP..."
                             class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm
-                                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                                    transition-all duration-200 bg-gray-50 focus:bg-white
                                    disabled:opacity-50 disabled:cursor-not-allowed"
                             wire:loading.attr="disabled"
@@ -130,7 +130,7 @@
                         <select
                             wire:model.live="location"
                             class="block w-full px-3 py-3 border border-gray-300 rounded-lg text-sm
-                                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                                    transition-colors duration-200 bg-gray-50 focus:bg-white
                                    appearance-none cursor-pointer"
                         >
@@ -157,46 +157,23 @@
                         <i class="fas fa-sort mr-1 text-gray-400"></i>
                         Urutkan
                     </label>
-                    <div class="flex space-x-2">
-                        <div class="flex-1 relative">
-                            <select
-                                wire:model.live="sort"
-                                class="block w-full px-3 py-3 border border-gray-300 rounded-lg text-sm
-                                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-                                       transition-colors duration-200 bg-gray-50 focus:bg-white
-                                       appearance-none cursor-pointer pr-8"
-                            >
-                                <option value="nama">Nama</option>
-                                <option value="cabang_count">Jumlah Plant</option>
-                                <option value="lokasi">Lokasi</option>
-                                <option value="updated_at">Terakhir Update</option>
-                            </select>
-                            <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
-                            </div>
-                        </div>
-                        
-                        <button
-                            wire:click="sortBy('{{ $sort }}')"
-                            class="flex-shrink-0 px-3 py-3 border border-gray-300 rounded-lg 
-                                   hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                   transition-all duration-200 group"
-                            title="Toggle arah pengurutan ({{ $direction === 'asc' ? 'A→Z' : 'Z→A' }})"
+                    <div class="relative">
+                        <select
+                            wire:model.live="sort"
+                            class="block w-full px-3 py-3 border border-gray-300 rounded-lg text-sm
+                                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                   transition-colors duration-200 bg-gray-50 focus:bg-white
+                                   appearance-none cursor-pointer pr-8"
                         >
-                            <i class="fas fa-sort-{{ $direction === 'asc' ? 'up' : 'down' }} 
-                                      text-gray-500 group-hover:text-blue-600 transition-colors duration-200"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="mt-1 text-xs text-gray-500">
-                        <i class="fas fa-{{ $direction === 'asc' ? 'sort-alpha-up' : 'sort-alpha-down' }} mr-1"></i>
-                        {{ $direction === 'asc' ? 'A → Z' : 'Z → A' }}
-                        @if($sort !== 'nama')
-                            • {{ 
-                                $sort === 'cabang_count' ? 'Jumlah Plant' :
-                                ($sort === 'lokasi' ? 'Lokasi' : 'Terakhir Update')
-                            }}
-                        @endif
+                            <option value="nama">Nama</option>
+                            <option value="lokasi">Lokasi</option>
+                            <option value="orders_count_desc">PO Paling Sering</option>
+                            <option value="orders_count_asc">PO Paling Jarang</option>
+                            <option value="updated_at">Terakhir Update</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -214,7 +191,7 @@
                 </h2>
                 <p class="text-gray-600 mt-1">Kelola data klien dan plant perusahaan</p>
             </div>
-            
+
             <div class="flex items-center space-x-4">
                 {{-- Stats Summary --}}
                 <div class="flex items-center space-x-4 text-sm">
@@ -233,13 +210,13 @@
                         </div>
                     @endif
                 </div>
-                
+
                 {{-- Add Client Button --}}
                 <button
                     wire:click="openCompanyModal"
-                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 
-                           text-white text-sm font-medium rounded-lg shadow-sm 
-                           transition-colors duration-200 focus:outline-none focus:ring-2 
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700
+                           text-white text-sm font-medium rounded-lg shadow-sm
+                           transition-colors duration-200 focus:outline-none focus:ring-2
                            focus:ring-offset-2 focus:ring-blue-500"
                 >
                     <i class="fas fa-plus mr-2"></i>

@@ -15,10 +15,10 @@ class DaftarKlien extends Component
     use WithPagination;
 
     // Search and filters
-    public $search = '';
-    public $location = '';
-    public $sort = 'nama';
-    public $direction = 'asc';
+    public $search = "";
+    public $location = "";
+    public $sort = "nama";
+    public $direction = "asc";
     // Livewire pagination page (explicitly declared to avoid Livewire trying to set a non-existing property)
     public $page = 1;
 
@@ -35,35 +35,35 @@ class DaftarKlien extends Component
 
     // Form data
     public $companyForm = [
-        'nama' => '',
+        "nama" => "",
     ];
 
     public $branchForm = [
-        'id' => null,
-        'company_type' => 'existing',
-        'company_nama' => '',
-        'cabang' => '',
-        'alamat_lengkap' => '',
-        'contact_person_id' => '',
+        "id" => null,
+        "company_type" => "existing",
+        "company_nama" => "",
+        "cabang" => "",
+        "alamat_lengkap" => "",
+        "contact_person_id" => "",
     ];
 
     public $availableContacts;
 
     // Confirmation modal
     public $confirmModal = [
-        'title' => '',
-        'message' => '',
-        'warning' => '',
-        'confirmText' => 'Hapus',
-        'action' => null,
+        "title" => "",
+        "message" => "",
+        "warning" => "",
+        "confirmText" => "Hapus",
+        "action" => null,
     ];
 
     protected $queryString = [
-        'search' => ['except' => ''],
-        'location' => ['except' => ''],
-        'sort' => ['except' => 'nama'],
-        'direction' => ['except' => 'asc'],
-        'page' => ['except' => 1],
+        "search" => ["except" => ""],
+        "location" => ["except" => ""],
+        "sort" => ["except" => "nama"],
+        "direction" => ["except" => "asc"],
+        "page" => ["except" => 1],
     ];
 
     public function mount()
@@ -76,13 +76,16 @@ class DaftarKlien extends Component
     {
         $query = Klien::query()
             ->with([
-                'contactPerson',
-                'bahanBakuKliens' => function($query) {
-                    $query->with(['riwayatHarga' => function($q) {
-                        $q->latest('tanggal_perubahan')->take(1);
-                    }]);
-                }
-            ]);
+                "contactPerson",
+                "bahanBakuKliens" => function ($query) {
+                    $query->with([
+                        "riwayatHarga" => function ($q) {
+                            $q->latest("tanggal_perubahan")->take(1);
+                        },
+                    ]);
+                },
+            ])
+            ->withCount("orders");
 
         // Apply search
         if ($this->search) {
@@ -91,30 +94,44 @@ class DaftarKlien extends Component
 
         // Apply location filter
         if ($this->location) {
-            $query->where('cabang', 'like', '%' . $this->location . '%');
+            $query->where("cabang", "like", "%" . $this->location . "%");
         }
 
         // Apply sorting
-        if ($this->sort === 'lokasi') {
-            $query->orderBy('cabang', $this->direction);
+        if ($this->sort === "lokasi") {
+            $query->orderBy("cabang", $this->direction);
+        } elseif ($this->sort === "orders_count_desc") {
+            // PO Paling Sering - most orders first (fixed descending)
+            $query->orderBy("orders_count", "desc");
+        } elseif ($this->sort === "orders_count_asc") {
+            // PO Paling Jarang - least orders first (fixed ascending)
+            $query->orderBy("orders_count", "asc");
+        } elseif ($this->sort === "updated_at") {
+            $query->orderBy("updated_at", $this->direction);
         } else {
-            $query->orderBy($this->sort === 'updated_at' ? 'updated_at' : 'nama', $this->direction);
+            $query->orderBy("nama", $this->direction);
         }
 
         try {
             $kliens = $query->paginate(10);
 
             // Guard against out-of-range page numbers (e.g., ?page=999) which can cause unexpected states
-            if ($kliens->currentPage() > $kliens->lastPage() && $kliens->lastPage() > 0) {
+            if (
+                $kliens->currentPage() > $kliens->lastPage() &&
+                $kliens->lastPage() > 0
+            ) {
                 $this->gotoPage($kliens->lastPage());
                 $kliens = $query->paginate(10);
             }
         } catch (\Exception $e) {
             // Log the error for diagnostics, reset to a safe page and retry once.
-            \Log::warning('Pagination error in DaftarKlien::render - resetting page to 1', [
-                'message' => $e->getMessage(),
-                'page' => request()->query('page'),
-            ]);
+            \Log::warning(
+                "Pagination error in DaftarKlien::render - resetting page to 1",
+                [
+                    "message" => $e->getMessage(),
+                    "page" => request()->query("page"),
+                ],
+            );
 
             // Reset page and re-run pagination to return an empty/first page instead of throwing
             $this->resetPage();
@@ -128,17 +145,17 @@ class DaftarKlien extends Component
 
         // Get available locations
         $availableLocations = Klien::query()
-            ->whereNotNull('cabang')
-            ->where('cabang', '!=', '')
+            ->whereNotNull("cabang")
+            ->where("cabang", "!=", "")
             ->distinct()
-            ->orderBy('cabang')
-            ->pluck('cabang')
+            ->orderBy("cabang")
+            ->pluck("cabang")
             ->unique()
             ->values();
 
-        return view('livewire.marketing.daftar-klien', [
-            'kliens' => $kliens,
-            'availableLocations' => $availableLocations,
+        return view("livewire.marketing.daftar-klien", [
+            "kliens" => $kliens,
+            "availableLocations" => $availableLocations,
         ]);
     }
 
@@ -155,26 +172,26 @@ class DaftarKlien extends Component
     public function sortBy($field)
     {
         if ($this->sort === $field) {
-            $this->direction = $this->direction === 'asc' ? 'desc' : 'asc';
+            $this->direction = $this->direction === "asc" ? "desc" : "asc";
         } else {
             $this->sort = $field;
-            $this->direction = 'asc';
+            $this->direction = "asc";
         }
         $this->resetPage();
     }
 
     public function clearSearch()
     {
-        $this->search = '';
+        $this->search = "";
         $this->resetPage();
     }
 
     public function clearFilters()
     {
-        $this->search = '';
-        $this->location = '';
-        $this->sort = 'nama';
-        $this->direction = 'asc';
+        $this->search = "";
+        $this->location = "";
+        $this->sort = "nama";
+        $this->direction = "asc";
         $this->resetPage();
     }
 
@@ -182,7 +199,10 @@ class DaftarKlien extends Component
     public function toggleGroup($groupId)
     {
         if (in_array($groupId, $this->openGroups)) {
-            $this->openGroups = array_filter($this->openGroups, fn($id) => $id !== $groupId);
+            $this->openGroups = array_filter(
+                $this->openGroups,
+                fn($id) => $id !== $groupId,
+            );
         } else {
             $this->openGroups[] = $groupId;
         }
@@ -191,7 +211,10 @@ class DaftarKlien extends Component
     public function toggleBahanBaku($detailId)
     {
         if (in_array($detailId, $this->openBahanBaku)) {
-            $this->openBahanBaku = array_filter($this->openBahanBaku, fn($id) => $id !== $detailId);
+            $this->openBahanBaku = array_filter(
+                $this->openBahanBaku,
+                fn($id) => $id !== $detailId,
+            );
         } else {
             $this->openBahanBaku[] = $detailId;
         }
@@ -215,65 +238,69 @@ class DaftarKlien extends Component
     public function resetCompanyForm()
     {
         $this->companyForm = [
-            'nama' => '',
+            "nama" => "",
         ];
     }
 
     public function editCompany($nama)
     {
         $this->editingCompany = $nama;
-        $this->companyForm['nama'] = $nama;
+        $this->companyForm["nama"] = $nama;
         $this->showCompanyModal = true;
     }
 
     public function submitCompanyForm()
     {
-        $this->validate([
-            'companyForm.nama' => 'required|string|max:255',
-        ], [
-            'companyForm.nama.required' => 'Nama perusahaan wajib diisi',
-            'companyForm.nama.max' => 'Nama perusahaan maksimal 255 karakter',
-        ]);
+        $this->validate(
+            [
+                "companyForm.nama" => "required|string|max:255",
+            ],
+            [
+                "companyForm.nama.required" => "Nama perusahaan wajib diisi",
+                "companyForm.nama.max" =>
+                    "Nama perusahaan maksimal 255 karakter",
+            ],
+        );
 
         try {
             if ($this->editingCompany) {
                 // Update company
-                $updated = Klien::where('nama', $this->editingCompany)->update([
-                    'nama' => $this->companyForm['nama'],
-                    'updated_at' => now()
+                $updated = Klien::where("nama", $this->editingCompany)->update([
+                    "nama" => $this->companyForm["nama"],
+                    "updated_at" => now(),
                 ]);
 
                 if ($updated === 0) {
-                    throw new \Exception('Perusahaan tidak ditemukan');
+                    throw new \Exception("Perusahaan tidak ditemukan");
                 }
 
-                session()->flash('message', 'Perusahaan berhasil diperbarui');
+                session()->flash("message", "Perusahaan berhasil diperbarui");
             } else {
                 // Create new company with placeholder
                 Klien::create([
-                    'nama' => $this->companyForm['nama'],
-                    'cabang' => 'Kantor Pusat',
-                    'no_hp' => null,
+                    "nama" => $this->companyForm["nama"],
+                    "cabang" => "Kantor Pusat",
+                    "no_hp" => null,
                 ]);
 
-                session()->flash('message', 'Perusahaan berhasil ditambahkan');
+                session()->flash("message", "Perusahaan berhasil ditambahkan");
             }
 
             $this->closeCompanyModal();
         } catch (\Exception $e) {
-            $this->addError('companyForm.nama', $e->getMessage());
+            $this->addError("companyForm.nama", $e->getMessage());
         }
     }
 
     public function deleteCompany($nama)
     {
         $this->confirmModal = [
-            'title' => 'Hapus Perusahaan',
-            'message' => "Anda yakin ingin menghapus perusahaan \"{$nama}\"?",
-            'warning' => 'Semua plant dari perusahaan ini akan ikut terhapus.',
-            'confirmText' => 'Hapus',
-            'action' => 'performCompanyDelete',
-            'actionParams' => [$nama],
+            "title" => "Hapus Perusahaan",
+            "message" => "Anda yakin ingin menghapus perusahaan \"{$nama}\"?",
+            "warning" => "Semua plant dari perusahaan ini akan ikut terhapus.",
+            "confirmText" => "Hapus",
+            "action" => "performCompanyDelete",
+            "actionParams" => [$nama],
         ];
         $this->showConfirmModal = true;
     }
@@ -281,15 +308,17 @@ class DaftarKlien extends Component
     public function deleteClient($id)
     {
         $klien = Klien::find($id);
-        if (!$klien) return;
+        if (!$klien) {
+            return;
+        }
 
         $this->confirmModal = [
-            'title' => 'Hapus Klien',
-            'message' => "Anda yakin ingin menghapus \"{$klien->nama} - {$klien->cabang}\"?",
-            'warning' => 'Data yang dihapus tidak dapat dikembalikan.',
-            'confirmText' => 'Hapus',
-            'action' => 'performClientDelete',
-            'actionParams' => [$id],
+            "title" => "Hapus Klien",
+            "message" => "Anda yakin ingin menghapus \"{$klien->nama} - {$klien->cabang}\"?",
+            "warning" => "Data yang dihapus tidak dapat dikembalikan.",
+            "confirmText" => "Hapus",
+            "action" => "performClientDelete",
+            "actionParams" => [$id],
         ];
         $this->showConfirmModal = true;
     }
@@ -300,13 +329,13 @@ class DaftarKlien extends Component
             $deleted = Klien::destroy($id);
 
             if ($deleted === 0) {
-                throw new \Exception('Data tidak ditemukan');
+                throw new \Exception("Data tidak ditemukan");
             }
 
-            session()->flash('message', 'Klien berhasil dihapus');
+            session()->flash("message", "Klien berhasil dihapus");
             $this->closeConfirmModal();
         } catch (\Exception $e) {
-            session()->flash('error', $e->getMessage());
+            session()->flash("error", $e->getMessage());
             $this->closeConfirmModal();
         }
     }
@@ -329,12 +358,12 @@ class DaftarKlien extends Component
     public function resetBranchForm()
     {
         $this->branchForm = [
-            'id' => null,
-            'company_type' => 'existing',
-            'company_nama' => '',
-            'cabang' => '',
-            'alamat_lengkap' => '',
-            'contact_person_id' => '',
+            "id" => null,
+            "company_type" => "existing",
+            "company_nama" => "",
+            "cabang" => "",
+            "alamat_lengkap" => "",
+            "contact_person_id" => "",
         ];
         $this->availableContacts = collect();
     }
@@ -342,15 +371,18 @@ class DaftarKlien extends Component
     public function updatedBranchFormCompanyNama()
     {
         // Reset contact person when company changes
-        $this->branchForm['contact_person_id'] = '';
+        $this->branchForm["contact_person_id"] = "";
         $this->updateAvailableContacts();
     }
 
     public function updateAvailableContacts()
     {
-        if (!empty($this->branchForm['company_nama'])) {
-            $this->availableContacts = KontakKlien::where('klien_nama', $this->branchForm['company_nama'])
-                ->orderBy('nama')
+        if (!empty($this->branchForm["company_nama"])) {
+            $this->availableContacts = KontakKlien::where(
+                "klien_nama",
+                $this->branchForm["company_nama"],
+            )
+                ->orderBy("nama")
                 ->get();
         } else {
             $this->availableContacts = collect();
@@ -362,12 +394,12 @@ class DaftarKlien extends Component
         $this->editingBranch = $id;
         $klien = Klien::findOrFail($id);
         $this->branchForm = [
-            'id' => $id,
-            'company_type' => 'existing',
-            'company_nama' => $klien->nama,
-            'cabang' => $klien->cabang,
-            'alamat_lengkap' => $klien->alamat_lengkap,
-            'contact_person_id' => $klien->contact_person_id,
+            "id" => $id,
+            "company_type" => "existing",
+            "company_nama" => $klien->nama,
+            "cabang" => $klien->cabang,
+            "alamat_lengkap" => $klien->alamat_lengkap,
+            "contact_person_id" => $klien->contact_person_id,
         ];
         $this->updateAvailableContacts();
         $this->showBranchModal = true;
@@ -376,86 +408,93 @@ class DaftarKlien extends Component
     public function submitBranchForm()
     {
         $rules = [
-            'branchForm.company_nama' => 'required|string|max:255',
-            'branchForm.cabang' => 'required|string|max:255',
-            'branchForm.alamat_lengkap' => 'nullable|string',
-            'branchForm.contact_person_id' => 'nullable|exists:kontak_klien,id',
+            "branchForm.company_nama" => "required|string|max:255",
+            "branchForm.cabang" => "required|string|max:255",
+            "branchForm.alamat_lengkap" => "nullable|string",
+            "branchForm.contact_person_id" => "nullable|exists:kontak_klien,id",
         ];
 
         if (!$this->editingBranch) {
-            $rules['branchForm.company_type'] = 'required|in:existing,new';
+            $rules["branchForm.company_type"] = "required|in:existing,new";
         }
 
         $this->validate($rules, [
-            'branchForm.company_nama.required' => $this->branchForm['company_type'] === 'existing' ? 'Perusahaan wajib dipilih' : 'Nama perusahaan wajib diisi',
-            'branchForm.cabang.required' => 'Lokasi plant wajib diisi',
+            "branchForm.company_nama.required" =>
+                $this->branchForm["company_type"] === "existing"
+                    ? "Perusahaan wajib dipilih"
+                    : "Nama perusahaan wajib diisi",
+            "branchForm.cabang.required" => "Lokasi plant wajib diisi",
         ]);
 
         try {
             $data = [
-                'nama' => $this->branchForm['company_nama'],
-                'cabang' => $this->branchForm['cabang'],
-                'alamat_lengkap' => $this->branchForm['alamat_lengkap'] ?: null,
-                'contact_person_id' => $this->branchForm['contact_person_id'],
+                "nama" => $this->branchForm["company_nama"],
+                "cabang" => $this->branchForm["cabang"],
+                "alamat_lengkap" => $this->branchForm["alamat_lengkap"] ?: null,
+                "contact_person_id" => $this->branchForm["contact_person_id"],
             ];
 
             if ($this->editingBranch) {
                 // Update existing branch
-                $klien = Klien::findOrFail($this->branchForm['id']);
+                $klien = Klien::findOrFail($this->branchForm["id"]);
 
                 // Check for duplicates excluding current record
-                $exists = Klien::where('nama', $data['nama'])
-                    ->where('cabang', $data['cabang'])
-                    ->where('id', '!=', $klien->id)
+                $exists = Klien::where("nama", $data["nama"])
+                    ->where("cabang", $data["cabang"])
+                    ->where("id", "!=", $klien->id)
                     ->exists();
 
                 if ($exists) {
-                    throw new \Exception('Cabang ini sudah terdaftar untuk perusahaan tersebut');
+                    throw new \Exception(
+                        "Cabang ini sudah terdaftar untuk perusahaan tersebut",
+                    );
                 }
 
                 $klien->update($data);
-                session()->flash('message', 'Cabang berhasil diperbarui');
+                session()->flash("message", "Cabang berhasil diperbarui");
             } else {
                 // Create new branch
-                $exists = Klien::where('nama', $data['nama'])
-                    ->where('cabang', $data['cabang'])
+                $exists = Klien::where("nama", $data["nama"])
+                    ->where("cabang", $data["cabang"])
                     ->exists();
 
                 if ($exists) {
-                    throw new \Exception('Cabang ini sudah terdaftar untuk perusahaan tersebut');
+                    throw new \Exception(
+                        "Cabang ini sudah terdaftar untuk perusahaan tersebut",
+                    );
                 }
 
                 // Check if company exists
-                $companyExists = Klien::where('nama', $data['nama'])->exists();
+                $companyExists = Klien::where("nama", $data["nama"])->exists();
 
                 if (!$companyExists) {
                     // Create placeholder first
                     Klien::create([
-                        'nama' => $data['nama'],
-                        'cabang' => 'Kantor Pusat',
-                        'contact_person_id' => null,
+                        "nama" => $data["nama"],
+                        "cabang" => "Kantor Pusat",
+                        "contact_person_id" => null,
                     ]);
                 }
 
                 Klien::create($data);
-                session()->flash('message', 'Cabang berhasil ditambahkan');
+                session()->flash("message", "Cabang berhasil ditambahkan");
             }
 
             $this->closeBranchModal();
         } catch (\Exception $e) {
-            $this->addError('branchForm.cabang', $e->getMessage());
+            $this->addError("branchForm.cabang", $e->getMessage());
         }
     }
 
     public function deleteBranch($id, $displayName)
     {
         $this->confirmModal = [
-            'title' => 'Hapus Cabang',
-            'message' => "Anda yakin ingin menghapus cabang \"{$displayName}\"?",
-            'warning' => 'Data cabang yang dihapus tidak dapat dikembalikan.',
-            'confirmText' => 'Hapus',
-            'action' => 'performBranchDelete',
-            'actionParams' => [$id],
+            "title" => "Hapus Cabang",
+            "message" => "Anda yakin ingin menghapus cabang \"{$displayName}\"?",
+            "warning" => "Data cabang yang dihapus tidak dapat dikembalikan.",
+            "confirmText" => "Hapus",
+            "action" => "performBranchDelete",
+            "actionParams" => [$id],
         ];
         $this->showConfirmModal = true;
     }
@@ -469,25 +508,25 @@ class DaftarKlien extends Component
             $klien->delete();
 
             // Check if this was the only real branch
-            $remainingRealBranches = Klien::where('nama', $companyName)
-                ->where('cabang', '!=', 'Kantor Pusat')
+            $remainingRealBranches = Klien::where("nama", $companyName)
+                ->where("cabang", "!=", "Kantor Pusat")
                 ->count();
 
             if ($remainingRealBranches === 0) {
                 // Delete placeholder too
-                Klien::where('nama', $companyName)
-                    ->where('cabang', 'Kantor Pusat')
-                    ->whereNull('contact_person_id')
+                Klien::where("nama", $companyName)
+                    ->where("cabang", "Kantor Pusat")
+                    ->whereNull("contact_person_id")
                     ->delete();
-                $message = 'Cabang dan perusahaan berhasil dihapus';
+                $message = "Cabang dan perusahaan berhasil dihapus";
             } else {
-                $message = 'Cabang berhasil dihapus';
+                $message = "Cabang berhasil dihapus";
             }
 
-            session()->flash('message', $message);
+            session()->flash("message", $message);
             $this->closeConfirmModal();
         } catch (\Exception $e) {
-            session()->flash('error', $e->getMessage());
+            session()->flash("error", $e->getMessage());
             $this->closeConfirmModal();
         }
     }
@@ -497,20 +536,20 @@ class DaftarKlien extends Component
     {
         $this->showConfirmModal = false;
         $this->confirmModal = [
-            'title' => '',
-            'message' => '',
-            'warning' => '',
-            'confirmText' => 'Hapus',
-            'action' => null,
-            'actionParams' => [],
+            "title" => "",
+            "message" => "",
+            "warning" => "",
+            "confirmText" => "Hapus",
+            "action" => null,
+            "actionParams" => [],
         ];
     }
 
     public function confirmAction()
     {
-        if ($this->confirmModal['action']) {
-            $method = $this->confirmModal['action'];
-            $params = $this->confirmModal['actionParams'] ?? [];
+        if ($this->confirmModal["action"]) {
+            $method = $this->confirmModal["action"];
+            $params = $this->confirmModal["actionParams"] ?? [];
 
             if (method_exists($this, $method)) {
                 $this->{$method}(...$params);
@@ -521,9 +560,9 @@ class DaftarKlien extends Component
     // Helper methods
     private function getUniqueCompanies()
     {
-        return Klien::distinct('nama')
-            ->orderBy('nama')
-            ->pluck('nama')
+        return Klien::distinct("nama")
+            ->orderBy("nama")
+            ->pluck("nama")
             ->toArray();
     }
 }

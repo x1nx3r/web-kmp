@@ -1,5 +1,3 @@
-@extends('layouts.app')
-
 @section('title', 'Edit Order - Kamil Maju Persada')
 
 @section('content')

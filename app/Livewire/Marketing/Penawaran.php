@@ -99,8 +99,11 @@ class Penawaran extends Component
         // Apply search filter
         if ($this->klienSearch) {
             $query->where(function ($q) {
-                $q->where("nama", "like", "%" . $this->klienSearch . "%")
-                    ->orWhere("cabang", "like", "%" . $this->klienSearch . "%");
+                $q->where(
+                    "nama",
+                    "like",
+                    "%" . $this->klienSearch . "%",
+                )->orWhere("cabang", "like", "%" . $this->klienSearch . "%");
             });
         }
 
@@ -524,7 +527,22 @@ class Penawaran extends Component
             ->where("id", $bahanBakuSupplierId)
             ->first();
 
-        if (!$supplierMaterial || !$supplierMaterial->riwayatHarga) {
+        if (!$supplierMaterial) {
+            return [];
+        }
+
+        // If no price history exists, fallback to current price in bahan_baku_supplier
+        if ($supplierMaterial->riwayatHarga->isEmpty()) {
+            if ($supplierMaterial->harga_per_satuan) {
+                return [
+                    [
+                        "tanggal" => now()->format("Y-m-d"),
+                        "harga" => (float) $supplierMaterial->harga_per_satuan,
+                        "formatted_tanggal" => now()->format("d M"),
+                        "is_fallback" => true,
+                    ],
+                ];
+            }
             return [];
         }
 
@@ -605,7 +623,22 @@ class Penawaran extends Component
             ->orderBy("harga_per_satuan", "asc")
             ->first();
 
-        if (!$supplierMaterial || !$supplierMaterial->riwayatHarga) {
+        if (!$supplierMaterial) {
+            return [];
+        }
+
+        // If no price history exists, fallback to current price in bahan_baku_supplier
+        if ($supplierMaterial->riwayatHarga->isEmpty()) {
+            if ($supplierMaterial->harga_per_satuan) {
+                return [
+                    [
+                        "tanggal" => now()->format("Y-m-d"),
+                        "harga" => (float) $supplierMaterial->harga_per_satuan,
+                        "formatted_tanggal" => now()->format("d M"),
+                        "is_fallback" => true,
+                    ],
+                ];
+            }
             return [];
         }
 
@@ -824,7 +857,9 @@ class Penawaran extends Component
                 }
 
                 // Determine the actual BahanBakuSupplier record for the selected supplier
-                $bahanBakuSupplierRecord = BahanBakuSupplier::find($selectedSupplierId);
+                $bahanBakuSupplierRecord = BahanBakuSupplier::find(
+                    $selectedSupplierId,
+                );
 
                 // Calculate financials based on the selected (best) supplier
                 $quantity = $analysis["quantity"];
@@ -832,7 +867,8 @@ class Penawaran extends Component
                 $hargaSupplier = $selectedSupplierData["price"] ?? 0;
                 $subtotalCost = $hargaSupplier * $quantity;
                 $subtotalProfit = $revenue - $subtotalCost;
-                $marginPercentage = $revenue > 0 ? ($subtotalProfit / $revenue) * 100 : 0;
+                $marginPercentage =
+                    $revenue > 0 ? ($subtotalProfit / $revenue) * 100 : 0;
 
                 // Create detail record and set the best supplier as the selected one
                 $detail = PenawaranDetail::create([
@@ -871,7 +907,8 @@ class Penawaran extends Component
                             "penawaran_detail_id" => $detail->id,
                             // Use the actual Supplier id for the uniqueness constraint
                             "supplier_id" => $altBahanBakuSupplier->supplier_id,
-                            "bahan_baku_supplier_id" => $altBahanBakuSupplier->id,
+                            "bahan_baku_supplier_id" =>
+                                $altBahanBakuSupplier->id,
                             "harga_supplier" => $supplierOption["price"],
                         ]);
                     }

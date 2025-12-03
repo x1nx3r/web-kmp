@@ -9,6 +9,7 @@ use App\Models\BahanBakuSupplier;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Services\AuthFallbackService;
+
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -594,7 +595,6 @@ class OrderCreate extends Component
 
             DB::commit();
 
-            // TODO: Integrate notification broadcast for purchasing based on priority.
             session()->flash(
                 "success",
                 "Order berhasil dibuat dengan ID: " . $order->id,

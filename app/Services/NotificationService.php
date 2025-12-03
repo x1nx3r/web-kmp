@@ -38,6 +38,7 @@ class NotificationService
     // Order types
     public const TYPE_ORDER_NEARING_FULFILLMENT = OrderNotificationService::TYPE_NEARING_FULFILLMENT;
     public const TYPE_ORDER_DIREKTUR_CONSULTATION = OrderNotificationService::TYPE_DIREKTUR_CONSULTATION;
+    public const TYPE_ORDER_PRIORITY_ESCALATED = OrderNotificationService::TYPE_PRIORITY_ESCALATED;
 
     /*
     |--------------------------------------------------------------------------
@@ -188,6 +189,38 @@ class NotificationService
             $order,
             $requestedBy,
             $note,
+        );
+    }
+
+    /**
+     * Notify marketing team when order priority is escalated.
+     */
+    public static function notifyOrderPriorityEscalated(
+        Order $order,
+        string $oldPriority,
+        string $newPriority,
+        ?User $changedBy = null,
+        ?int $daysRemaining = null,
+    ): int {
+        return OrderNotificationService::notifyPriorityEscalated(
+            $order,
+            $oldPriority,
+            $newPriority,
+            $changedBy,
+            $daysRemaining,
+        );
+    }
+
+    /**
+     * Check if a priority change is an escalation.
+     */
+    public static function isPriorityEscalation(
+        string $oldPriority,
+        string $newPriority,
+    ): bool {
+        return OrderNotificationService::isPriorityEscalation(
+            $oldPriority,
+            $newPriority,
         );
     }
 

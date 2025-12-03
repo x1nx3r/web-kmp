@@ -92,6 +92,21 @@ class Pengiriman extends Model
     }
 
     /**
+     * Relasi ke Klien melalui Purchase Order
+     */
+    public function klien()
+    {
+        return $this->hasOneThrough(
+            Klien::class,
+            Order::class,
+            'id', // Foreign key on orders table
+            'id', // Foreign key on klien table
+            'purchase_order_id', // Local key on pengiriman table
+            'klien_id' // Local key on orders table
+        );
+    }
+
+    /**
      * Relasi ke Approval Pembayaran
      */
     public function approvalPembayaran()

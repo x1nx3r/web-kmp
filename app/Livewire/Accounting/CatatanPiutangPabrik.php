@@ -4,15 +4,19 @@ namespace App\Livewire\Accounting;
 
 use App\Models\CatatanPiutangPabrik as CatatanPiutangPabrikModel;
 use App\Models\Klien;
+use App\Models\InvoicePenagihan;
+use App\Models\PembayaranPiutangPabrik;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 use Carbon\Carbon;
 
 class CatatanPiutangPabrik extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     public $search = '';
     public $klienFilter = 'all';
@@ -21,9 +25,18 @@ class CatatanPiutangPabrik extends Component
 
     // Modal states
     public $showDetailModal = false;
+    public $showPembayaranModal = false;
 
     // Detail data
     public $detailPiutang;
+    public $selectedPiutang;
+
+    // Pembayaran form
+    public $tanggal_bayar;
+    public $jumlah_bayar;
+    public $metode_pembayaran = '';
+    public $catatan_pembayaran = '';
+    public $bukti_pembayaran;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -38,7 +51,7 @@ class CatatanPiutangPabrik extends Component
     public function render()
     {
         // Get invoices from penagihan that are past due date
-        $query = \App\Models\InvoicePenagihan::with(['pengiriman.klien', 'approvalPenagihan'])
+        $query = \App\Models\InvoicePenagihan::with(['pengiriman.klien', 'approvalPenagihan', 'pembayaranPabrik'])
             ->whereHas('approvalPenagihan', function($q) {
                 $q->where('status', 'completed');
             })
@@ -73,7 +86,12 @@ class CatatanPiutangPabrik extends Component
             ->get();
 
         $totalPiutang = $allOverdueInvoices->sum('total_amount');
-        $totalDibayar = 0; // Bisa ditambahkan jika ada sistem pembayaran
+
+        // Calculate total dibayar from pembayaran records
+        $allOverdueInvoiceIds = $allOverdueInvoices->pluck('id');
+        $totalDibayar = PembayaranPiutangPabrik::whereIn('invoice_penagihan_id', $allOverdueInvoiceIds)
+            ->sum('jumlah_bayar');
+
         $totalSisa = $totalPiutang - $totalDibayar;
         $totalJatuhTempo = $allOverdueInvoices->count();
 
@@ -95,8 +113,12 @@ class CatatanPiutangPabrik extends Component
 
     public function openDetailModal($id)
     {
-        $this->detailPiutang = \App\Models\InvoicePenagihan::with(['pengiriman.klien', 'pengiriman.details', 'approvalPenagihan'])
-            ->findOrFail($id);
+        $this->detailPiutang = \App\Models\InvoicePenagihan::with([
+            'pengiriman.klien',
+            'pengiriman.details',
+            'approvalPenagihan',
+            'pembayaranPabrik.creator'
+        ])->findOrFail($id);
 
         $this->showDetailModal = true;
     }
@@ -115,5 +137,98 @@ class CatatanPiutangPabrik extends Component
     public function updatedKlienFilter()
     {
         $this->resetPage();
+    }
+
+    public function openPembayaranModal($id)
+    {
+        $this->selectedPiutang = InvoicePenagihan::with(['pengiriman.klien', 'approvalPenagihan'])
+            ->findOrFail($id);
+
+        $this->tanggal_bayar = now()->format('Y-m-d');
+        $this->jumlah_bayar = $this->selectedPiutang->total_amount;
+        $this->metode_pembayaran = '';
+        $this->catatan_pembayaran = '';
+        $this->bukti_pembayaran = null;
+
+        $this->showPembayaranModal = true;
+    }
+
+    public function closePembayaranModal()
+    {
+        $this->showPembayaranModal = false;
+        $this->selectedPiutang = null;
+        $this->resetPembayaranForm();
+    }
+
+    private function resetPembayaranForm()
+    {
+        $this->tanggal_bayar = null;
+        $this->jumlah_bayar = null;
+        $this->metode_pembayaran = '';
+        $this->catatan_pembayaran = '';
+        $this->bukti_pembayaran = null;
+    }
+
+    public function savePembayaran()
+    {
+        $this->validate([
+            'tanggal_bayar' => 'required|date',
+            'jumlah_bayar' => 'required|numeric|min:0.01|max:' . $this->selectedPiutang->total_amount,
+            'metode_pembayaran' => 'required|in:tunai,transfer,cek,giro',
+            'catatan_pembayaran' => 'nullable|string|max:500',
+            'bukti_pembayaran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $data = [
+                'invoice_penagihan_id' => $this->selectedPiutang->id,
+                'no_pembayaran' => $this->generateNoPembayaran(),
+                'tanggal_bayar' => $this->tanggal_bayar,
+                'jumlah_bayar' => $this->jumlah_bayar,
+                'metode_pembayaran' => $this->metode_pembayaran,
+                'catatan' => $this->catatan_pembayaran,
+                'created_by' => Auth::id(),
+            ];
+
+            // Upload bukti pembayaran
+            if ($this->bukti_pembayaran) {
+                $data['bukti_pembayaran'] = $this->bukti_pembayaran->store('bukti-pembayaran-pabrik', 'public');
+            }
+
+            PembayaranPiutangPabrik::create($data);
+
+            // Update payment status invoice
+            $totalPaid = PembayaranPiutangPabrik::where('invoice_penagihan_id', $this->selectedPiutang->id)
+                ->sum('jumlah_bayar') + $this->jumlah_bayar;
+
+            if ($totalPaid >= $this->selectedPiutang->total_amount) {
+                $this->selectedPiutang->update([
+                    'payment_status' => 'paid',
+                    'paid_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            session()->flash('message', 'Pembayaran berhasil dicatat');
+            $this->closePembayaranModal();
+            $this->resetPage();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menyimpan pembayaran: ' . $e->getMessage());
+        }
+    }
+
+    private function generateNoPembayaran()
+    {
+        $lastPembayaran = PembayaranPiutangPabrik::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $sequence = $lastPembayaran ? (intval(substr($lastPembayaran->no_pembayaran, -4)) + 1) : 1;
+        return 'PAY-PABRIK-' . now()->format('Ym') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }

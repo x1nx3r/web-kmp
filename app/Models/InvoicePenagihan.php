@@ -87,6 +87,14 @@ class InvoicePenagihan extends Model
     }
 
     /**
+     * Relasi ke Pembayaran Piutang Pabrik
+     */
+    public function pembayaranPabrik()
+    {
+        return $this->hasMany(PembayaranPiutangPabrik::class, 'invoice_penagihan_id');
+    }
+
+    /**
      * Generate invoice number
      */
     public static function generateInvoiceNumber()

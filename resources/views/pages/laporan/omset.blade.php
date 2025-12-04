@@ -30,12 +30,12 @@
                 <i class="fas fa-gift text-blue-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Omset Tahun Ini</p>
+                <p class="text-sm text-gray-600 mb-2">Omset Tahun Ini ({{ date('Y') }})</p>
                 <h3 class="text-2xl font-bold text-blue-600">
-                    @if($omsetTahunIni >= 1000000000)
-                        Rp {{ number_format($omsetTahunIni / 1000000000, 2, ',', '.') }} Miliar
+                    @if($omsetTahunIniSummary >= 1000000000)
+                        Rp {{ number_format($omsetTahunIniSummary / 1000000000, 2, ',', '.') }} Miliar
                     @else
-                        Rp {{ number_format($omsetTahunIni / 1000000, 2, ',', '.') }} Juta
+                        Rp {{ number_format($omsetTahunIniSummary / 1000000, 2, ',', '.') }} Juta
                     @endif
                 </h3>
             </div>
@@ -49,14 +49,17 @@
                 <i class="fas fa-calendar-alt text-green-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Omset Bulan Ini</p>
+                <p class="text-sm text-gray-600 mb-2">Omset Bulan Ini ({{ date('F Y') }})</p>
                 <h3 class="text-2xl font-bold text-green-600">
-                    Rp {{ number_format($omsetBulanIni / 1000000, 2, ',', '.') }} Juta
+                    Rp {{ number_format($omsetBulanIniSummary / 1000000, 2, ',', '.') }} Juta
                 </h3>
             </div>
         </div>
     </div>
 </div>
+
+{{-- Include Target Analysis Section --}}
+@include('pages.laporan.partials.target_analysis')
 
 {{-- Pie Charts Section --}}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -166,6 +169,8 @@
         </div>
     </div>
 </div>
+
+
 
 {{-- Proyek Per Bulan Chart --}}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

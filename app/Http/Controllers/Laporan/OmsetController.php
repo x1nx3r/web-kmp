@@ -8,6 +8,7 @@ use App\Models\BahanBakuKlien;
 use App\Models\Order;
 use App\Models\InvoicePenagihan;
 use App\Models\Pengiriman;
+use App\Models\TargetOmset;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -19,29 +20,164 @@ class OmsetController extends Controller
         $title = 'Omset';
         $activeTab = 'omset';
         
+        // Get selected year for target analysis (default: current year)
+        $selectedYearTarget = $request->get('tahun_target', Carbon::now()->year);
+        
+        // Get all available years from target_omset table (tahun yang sudah ada target)
+        $availableYearsTarget = TargetOmset::orderBy('tahun', 'desc')
+            ->pluck('tahun')
+            ->toArray();
+        
+        // Jika belum ada data target sama sekali, tampilkan tahun ini sebagai default
+        if (empty($availableYearsTarget)) {
+            $availableYearsTarget = [Carbon::now()->year];
+        }
+        
+        // Jika tahun yang dipilih belum ada targetnya, set ke tahun terbaru yang ada target
+        if (!in_array($selectedYearTarget, $availableYearsTarget)) {
+            $selectedYearTarget = $availableYearsTarget[0] ?? Carbon::now()->year;
+        }
+        
         // Calculate Total Omset (all time) - using amount_after_refraksi from invoice_penagihan
         $totalOmset = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Calculate Omset Tahun Ini (current year)
-        $omsetTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        // ========== SUMMARY CARDS (ALWAYS CURRENT/NOW) ==========
+        // Calculate Omset Tahun Ini (NOW - untuk summary card atas)
+        $omsetTahunIniSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
-            ->whereYear('pengiriman.updated_at', Carbon::now()->year)
+            ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Calculate Omset Bulan Ini (current month)
+        // Calculate Omset Bulan Ini (NOW - untuk summary card atas)
+        $omsetBulanIniSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->where('pengiriman.status', 'berhasil')
+            ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+            ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
+            ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // ========== TARGET ANALYSIS (SELECTED YEAR) ==========
+        // Calculate Omset untuk tahun yang dipilih - untuk Target Analysis Card
+        $omsetTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->where('pengiriman.status', 'berhasil')
+            ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
+            ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Calculate Omset Bulan Ini untuk selected year - untuk Target Analysis Card
         $omsetBulanIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
-            ->whereYear('pengiriman.updated_at', Carbon::now()->year)
-            ->whereMonth('pengiriman.updated_at', Carbon::now()->month)
+            ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
+            ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Get Target Omset for selected year
+        $targetOmset = TargetOmset::getTargetForYear($selectedYearTarget);
+        
+        $targetTahunan = $targetOmset->target_tahunan ?? 0;
+        $targetBulanan = $targetOmset->target_bulanan ?? 0;
+        $targetMingguan = $targetOmset->target_mingguan ?? 0;
+        
+        // Calculate Omset Minggu Ini (current week) - GUNAKAN tanggal_kirim dari pengiriman
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $endOfWeek = Carbon::now()->endOfWeek();
+        $omsetMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->where('pengiriman.status', 'berhasil')
+            ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
+            ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Calculate Progress Percentages
+        $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
+        $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
+        $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
+        
+        // Calculate Monthly Breakdown dengan detail mingguan
+        $rekapBulanan = [];
+        for ($bulan = 1; $bulan <= 12; $bulan++) {
+            // Omset total bulan - GUNAKAN tanggal_kirim dari pengiriman
+            $omsetBulan = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->where('pengiriman.status', 'berhasil')
+                ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
+                ->whereMonth('pengiriman.tanggal_kirim', $bulan)
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            $progressBulanIni = $targetBulanan > 0 ? ($omsetBulan / $targetBulanan) * 100 : 0;
+            $selisih = $omsetBulan - $targetBulanan;
+            
+            // Calculate weekly breakdown for this month - GUNAKAN KALENDER SEBENARNYA
+            $mingguanDetail = [];
+            $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
+            $endDate = $startDate->copy()->endOfMonth();
+            $totalDaysInMonth = $startDate->daysInMonth;
+            
+            // Bagi bulan berdasarkan jumlah hari sebenarnya, bukan asumsi 4 minggu
+            // Setiap minggu adalah 7 hari, jadi bisa ada 4-5 minggu per bulan
+            $minggu = 1;
+            $currentDate = $startDate->copy();
+            
+            while ($currentDate <= $endDate) {
+                $weekStart = $currentDate->copy();
+                $weekEnd = $currentDate->copy()->addDays(6)->min($endDate);
+                
+                $omsetMinggu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->where('pengiriman.status', 'berhasil')
+                    ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                
+                $progressMingguIni = $targetMingguan > 0 ? ($omsetMinggu / $targetMingguan) * 100 : 0;
+                
+                $mingguanDetail[$minggu] = [
+                    'omset' => $omsetMinggu,
+                    'progress' => $progressMingguIni,
+                    'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
+                ];
+                
+                $minggu++;
+                $currentDate->addDays(7);
+            }
+            
+            $rekapBulanan[$bulan] = [
+                'realisasi' => $omsetBulan,
+                'progress' => $progressBulanIni,
+                'selisih' => $selisih,
+                'mingguan' => $mingguanDetail
+            ];
+        }
         
         // Get filter periode (default: all)
         $periode = $request->get('periode_marketing', 'all');
         $periodeProcurement = $request->get('periode_procurement', 'all');
         $periodeKlien = $request->get('periode_klien', 'all');
         $periodeSupplier = $request->get('periode_supplier', 'all');
+        
+        // Handle AJAX request for Target Analysis (load without refresh)
+        if ($request->ajax() && $request->get('ajax') === 'target_analysis') {
+            return response()->json([
+                'selectedYearTarget' => $selectedYearTarget,
+                'targetTahunan' => $targetTahunan,
+                'targetBulanan' => $targetBulanan,
+                'targetMingguan' => $targetMingguan,
+                'omsetTahunIni' => $omsetTahunIni,
+                'omsetBulanIni' => $omsetBulanIni,
+                'omsetMingguIni' => $omsetMingguIni,
+                'progressMinggu' => $progressMinggu,
+                'progressBulan' => $progressBulan,
+                'progressTahun' => $progressTahun,
+                'rekapBulanan' => $rekapBulanan,
+            ]);
+        }
+        
+        // Handle AJAX request for Get Target by Year
+        if ($request->ajax() && $request->get('ajax') === 'get_target') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $targetOmsetData = TargetOmset::getTargetForYear($tahun);
+            
+            return response()->json([
+                'target_tahunan' => $targetOmsetData->target_tahunan ?? 0,
+                'target_bulanan' => $targetOmsetData->target_bulanan ?? 0,
+                'target_mingguan' => $targetOmsetData->target_mingguan ?? 0,
+            ]);
+        }
         
         // Handle AJAX request for Top Klien
         if ($request->ajax() && $request->get('ajax') === 'top_klien') {
@@ -59,12 +195,12 @@ class OmsetController extends Controller
             
             // Apply filter for klien
             if ($periodeKlien === 'tahun_ini') {
-                $topKlienQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+                $topKlienQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
             } elseif ($periodeKlien === 'bulan_ini') {
-                $topKlienQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                    ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+                $topKlienQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                    ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
             } elseif ($periodeKlien === 'custom' && $request->filled(['start_date_klien', 'end_date_klien'])) {
-                $topKlienQuery->whereBetween('pengiriman.updated_at', [
+                $topKlienQuery->whereBetween('pengiriman.tanggal_kirim', [
                     $request->start_date_klien,
                     $request->end_date_klien
                 ]);
@@ -105,12 +241,12 @@ class OmsetController extends Controller
             
             // Apply filter for supplier
             if ($periodeSupplier === 'tahun_ini') {
-                $topSupplierQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+                $topSupplierQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
             } elseif ($periodeSupplier === 'bulan_ini') {
-                $topSupplierQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                    ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+                $topSupplierQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                    ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
             } elseif ($periodeSupplier === 'custom' && $request->filled(['start_date_supplier', 'end_date_supplier'])) {
-                $topSupplierQuery->whereBetween('pengiriman.updated_at', [
+                $topSupplierQuery->whereBetween('pengiriman.tanggal_kirim', [
                     $request->start_date_supplier,
                     $request->end_date_supplier
                 ]);
@@ -138,15 +274,10 @@ class OmsetController extends Controller
             
             $proyekPerBulan = [];
             for ($bulan = 1; $bulan <= 12; $bulan++) {
-                // Count unique orders from successful pengiriman
-                $count = DB::table('invoice_penagihan')
-                    ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                    ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                    ->where('pengiriman.status', 'berhasil')
-                    ->whereYear('pengiriman.updated_at', $tahun)
-                    ->whereMonth('pengiriman.updated_at', $bulan)
-                    ->distinct('orders.id')
-                    ->count('orders.id');
+                // Count unique orders based on tanggal_order
+                $count = Order::whereYear('tanggal_order', $tahun)
+                    ->whereMonth('tanggal_order', $bulan)
+                    ->count();
                 $proyekPerBulan[] = $count;
             }
             
@@ -162,11 +293,10 @@ class OmsetController extends Controller
             
             $nilaiOrderPerBulan = [];
             for ($bulan = 1; $bulan <= 12; $bulan++) {
-                $total = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                    ->where('pengiriman.status', 'berhasil')
-                    ->whereYear('pengiriman.updated_at', $tahun)
-                    ->whereMonth('pengiriman.updated_at', $bulan)
-                    ->sum('invoice_penagihan.amount_after_refraksi');
+                // Sum nilai order based on tanggal_order (use total_amount from orders)
+                $total = Order::whereYear('tanggal_order', $tahun)
+                    ->whereMonth('tanggal_order', $bulan)
+                    ->sum('total_amount');
                 $nilaiOrderPerBulan[] = floatval($total ?? 0);
             }
             
@@ -191,12 +321,12 @@ class OmsetController extends Controller
             
             // Apply filter for marketing
             if ($periode === 'tahun_ini') {
-                $omsetMarketingQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+                $omsetMarketingQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
             } elseif ($periode === 'bulan_ini') {
-                $omsetMarketingQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                    ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+                $omsetMarketingQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                    ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
             } elseif ($periode === 'custom' && $request->filled(['start_date_marketing', 'end_date_marketing'])) {
-                $omsetMarketingQuery->whereBetween('pengiriman.updated_at', [
+                $omsetMarketingQuery->whereBetween('pengiriman.tanggal_kirim', [
                     $request->start_date_marketing,
                     $request->end_date_marketing
                 ]);
@@ -225,12 +355,12 @@ class OmsetController extends Controller
             
             // Apply filter for procurement
             if ($periodeProcurement === 'tahun_ini') {
-                $omsetProcurementQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+                $omsetProcurementQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
             } elseif ($periodeProcurement === 'bulan_ini') {
-                $omsetProcurementQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                    ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+                $omsetProcurementQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                    ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
             } elseif ($periodeProcurement === 'custom' && $request->filled(['start_date_procurement', 'end_date_procurement'])) {
-                $omsetProcurementQuery->whereBetween('pengiriman.updated_at', [
+                $omsetProcurementQuery->whereBetween('pengiriman.tanggal_kirim', [
                     $request->start_date_procurement,
                     $request->end_date_procurement
                 ]);
@@ -265,12 +395,12 @@ class OmsetController extends Controller
         
         // Apply filter for marketing
         if ($periode === 'tahun_ini') {
-            $omsetMarketingQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+            $omsetMarketingQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
         } elseif ($periode === 'bulan_ini') {
-            $omsetMarketingQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+            $omsetMarketingQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
         } elseif ($periode === 'custom' && $request->filled(['start_date_marketing', 'end_date_marketing'])) {
-            $omsetMarketingQuery->whereBetween('pengiriman.updated_at', [
+            $omsetMarketingQuery->whereBetween('pengiriman.tanggal_kirim', [
                 $request->start_date_marketing,
                 $request->end_date_marketing
             ]);
@@ -297,12 +427,12 @@ class OmsetController extends Controller
         
         // Apply filter for procurement
         if ($periodeProcurement === 'tahun_ini') {
-            $omsetProcurementQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+            $omsetProcurementQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
         } elseif ($periodeProcurement === 'bulan_ini') {
-            $omsetProcurementQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+            $omsetProcurementQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
         } elseif ($periodeProcurement === 'custom' && $request->filled(['start_date_procurement', 'end_date_procurement'])) {
-            $omsetProcurementQuery->whereBetween('pengiriman.updated_at', [
+            $omsetProcurementQuery->whereBetween('pengiriman.tanggal_kirim', [
                 $request->start_date_procurement,
                 $request->end_date_procurement
             ]);
@@ -338,28 +468,21 @@ class OmsetController extends Controller
         $selectedYear = $request->get('tahun_proyek', Carbon::now()->year);
         $selectedYearNilai = $request->get('tahun_nilai', Carbon::now()->year);
         
-        // Get proyek per bulan data - using successful pengiriman
+        // Get proyek per bulan data - based on tanggal_order
         $proyekPerBulan = [];
         for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $count = DB::table('invoice_penagihan')
-                ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                ->where('pengiriman.status', 'berhasil')
-                ->whereYear('pengiriman.updated_at', $selectedYear)
-                ->whereMonth('pengiriman.updated_at', $bulan)
-                ->distinct('orders.id')
-                ->count('orders.id');
+            $count = Order::whereYear('tanggal_order', $selectedYear)
+                ->whereMonth('tanggal_order', $bulan)
+                ->count();
             $proyekPerBulan[] = $count;
         }
         
-        // Get nilai order per bulan data - using amount_after_refraksi
+        // Get nilai order per bulan data - based on tanggal_order
         $nilaiOrderPerBulan = [];
         for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $total = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->where('pengiriman.status', 'berhasil')
-                ->whereYear('pengiriman.updated_at', $selectedYearNilai)
-                ->whereMonth('pengiriman.updated_at', $bulan)
-                ->sum('invoice_penagihan.amount_after_refraksi');
+            $total = Order::whereYear('tanggal_order', $selectedYearNilai)
+                ->whereMonth('tanggal_order', $bulan)
+                ->sum('total_amount');
             $nilaiOrderPerBulan[] = floatval($total ?? 0);
         }
         
@@ -377,12 +500,12 @@ class OmsetController extends Controller
         
         // Apply filter for klien
         if ($periodeKlien === 'tahun_ini') {
-            $topKlienQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+            $topKlienQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
         } elseif ($periodeKlien === 'bulan_ini') {
-            $topKlienQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+            $topKlienQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
         } elseif ($periodeKlien === 'custom' && $request->filled(['start_date_klien', 'end_date_klien'])) {
-            $topKlienQuery->whereBetween('pengiriman.updated_at', [
+            $topKlienQuery->whereBetween('pengiriman.tanggal_kirim', [
                 $request->start_date_klien,
                 $request->end_date_klien
             ]);
@@ -409,12 +532,12 @@ class OmsetController extends Controller
         
         // Apply filter for supplier
         if ($periodeSupplier === 'tahun_ini') {
-            $topSupplierQuery->whereYear('pengiriman.updated_at', Carbon::now()->year);
+            $topSupplierQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
         } elseif ($periodeSupplier === 'bulan_ini') {
-            $topSupplierQuery->whereYear('pengiriman.updated_at', Carbon::now()->year)
-                ->whereMonth('pengiriman.updated_at', Carbon::now()->month);
+            $topSupplierQuery->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
         } elseif ($periodeSupplier === 'custom' && $request->filled(['start_date_supplier', 'end_date_supplier'])) {
-            $topSupplierQuery->whereBetween('pengiriman.updated_at', [
+            $topSupplierQuery->whereBetween('pengiriman.tanggal_kirim', [
                 $request->start_date_supplier,
                 $request->end_date_supplier
             ]);
@@ -427,8 +550,20 @@ class OmsetController extends Controller
             'title', 
             'activeTab',
             'totalOmset',
-            'omsetTahunIni',
-            'omsetBulanIni',
+            'omsetTahunIniSummary',    // For summary cards (NOW)
+            'omsetBulanIniSummary',    // For summary cards (NOW)
+            'omsetTahunIni',           // For target analysis (selected year)
+            'omsetBulanIni',           // For target analysis (selected year)
+            'omsetMingguIni',
+            'targetTahunan',
+            'targetBulanan',
+            'targetMingguan',
+            'progressMinggu',
+            'progressBulan',
+            'progressTahun',
+            'rekapBulanan',
+            'selectedYearTarget',
+            'availableYearsTarget',
             'omsetMarketing',
             'omsetProcurement',
             'periode',
@@ -443,6 +578,71 @@ class OmsetController extends Controller
             'topKlien',
             'topSupplier'
         ));
+    }
+    
+    public function setTarget(Request $request)
+    {
+        try {
+            $request->validate([
+                'target_tahunan' => 'required|numeric|min:0',
+                'tahun' => 'required|integer|min:2020|max:2100'
+            ]);
+            
+            $targetTahunan = $request->target_tahunan;
+            $tahun = $request->tahun;
+            $createdBy = session('nama_user') ?? 'System';
+            
+            TargetOmset::setTarget($tahun, $targetTahunan, $createdBy);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Target omset berhasil disimpan'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getTargetByYear(Request $request)
+    {
+        try {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $target = TargetOmset::getTargetForYear($tahun);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $target
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getAvailableYears()
+    {
+        try {
+            // Get tahun-tahun yang sudah ada target
+            $yearsWithTarget = TargetOmset::orderBy('tahun', 'desc')
+                ->pluck('tahun')
+                ->toArray();
+            
+            return response()->json([
+                'success' => true,
+                'years_with_target' => $yearsWithTarget,
+                'current_year' => Carbon::now()->year
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
     
     public function export(Request $request)

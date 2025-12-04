@@ -130,7 +130,7 @@
                                     <span class="font-bold text-blue-600">{{ $po->orderDetails->count() }}</span>
                                     <span class="text-blue-600">Items</span>
                                     <span class="mx-1 text-gray-300">|</span>
-                                    <span class="font-bold text-green-600">{{ number_format($po->qty_total ?? 0, 2, ',', '.') }}</span>
+                                    <span class="font-bold text-green-600">{{ number_format($po->qty_total ?? 0, 0, ',', '.') }}</span>
                                     <span class="text-green-600">Qty</span>
                                 </div>
                                 <div class="text-right">
@@ -212,7 +212,7 @@
                                         <div class="text-xs text-gray-500 uppercase tracking-wider">Items</div>
                                     </div>
                                     <div class="text-center">
-                                        <div class="text-2xl font-bold text-green-600">{{ number_format($po->total_qty ?? 0, 2, ',', '.') }}</div>
+                                        <div class="text-2xl font-bold text-green-600">{{ number_format($po->total_qty ?? 0, 0, ',', '.') }}</div>
                                         <div class="text-xs text-gray-500 uppercase tracking-wider">Total Kuantitas</div>
                                     </div>
                                     <div class="text-center">
@@ -277,7 +277,7 @@
                                         <div class="grid grid-cols-2 gap-2 mb-2.5">
                                             <div class="bg-blue-50 rounded px-2 py-1.5">
                                                 <p class="text-xs text-blue-600 font-medium mb-0.5">Kuantitas</p>
-                                                <p class="text-sm font-bold text-blue-800">{{ number_format($detail->qty ?? 0, 2, ',', '.') }} {{ $detail->satuan ?? 'kg' }}</p>
+                                                <p class="text-sm font-bold text-blue-800">{{ number_format($detail->qty ?? 0, 0, ',', '.') }} {{ $detail->satuan ?? 'kg' }}</p>
                                             </div>
                                             <div class="bg-green-50 rounded px-2 py-1.5">
                                                 <p class="text-xs text-green-600 font-medium mb-0.5">Harga/{{ $detail->satuan ?? 'kg' }}</p>

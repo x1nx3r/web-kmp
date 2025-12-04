@@ -12,9 +12,9 @@ class KlienFactory extends Factory
     public function definition(): array
     {
         return [
-            'nama' => fake()->company(),
-            'cabang' => fake()->city(),
-            'no_hp' => fake()->phoneNumber(),
+            "nama" => fake()->company(),
+            "cabang" => fake()->city(),
+            "alamat_lengkap" => fake()->optional()->address(),
         ];
     }
 }

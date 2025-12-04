@@ -61,7 +61,7 @@ INSERT INTO orders (
     -- Order Management
     priority,                       -- enum: rendah|normal|tinggi|mendesak
     catatan,                        -- General order notes
-    status,                         -- enum: draft|dikonfirmasi|diproses|sebagian_dikirim|selesai|dibatalkan
+    status,                         -- enum: draft|dikonfirmasi|diproses|selesai|dibatalkan (simplified - no sebagian_dikirim)
     
     -- Auto-calculated Totals (updated from order_details)
     total_amount,                   -- Sum of all order_details.total_harga
@@ -424,18 +424,23 @@ saved() ->
 
 ### **Status Workflow Logic**
 ```php
-// Order Status Progression:
-draft -> dikonfirmasi -> diproses -> sebagian_dikirim -> selesai
+// Order Status Progression (SIMPLIFIED):
+draft -> dikonfirmasi -> diproses -> selesai
                     \-> dibatalkan (can cancel from any status except selesai)
 
-// OrderDetail Status Progression:  
+// NOTE: Marketing controls when to close an order (selesai).
+// System notifies Marketing when order reaches 95-105% fulfillment.
+// No auto-close - Marketing manually marks order as complete.
+
+// OrderDetail Status Progression (unchanged):  
 menunggu -> diproses -> sebagian_dikirim -> selesai
 
-// Auto-status Updates:
-- Order becomes 'sebagian_dikirim' when any order_detail has shipped_quantity > 0
-- Order becomes 'selesai' when all order_details have remaining_quantity = 0
+// Status Update Rules:
+- Order becomes 'diproses' when first pengiriman is verified
+- Order becomes 'selesai' ONLY when Marketing manually closes it
 - OrderDetail becomes 'sebagian_dikirim' when total_shipped_quantity > 0 but < qty
 - OrderDetail becomes 'selesai' when remaining_quantity <= 0
+- System notifies Marketing when order fulfillment reaches 95-105% threshold
 ```
 
 ---

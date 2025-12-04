@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@section('title', 'Edit Order - Kamil Maju Persada')
 
 @section('content')
 <div class="container-fluid px-4">
@@ -32,7 +32,7 @@
     <form action="{{ route('orders.update', $order->id) }}" method="POST" id="order-form">
         @csrf
         @method('PUT')
-        
+
         <!-- Basic Info Card -->
         <div class="card mb-4">
             <div class="card-header">
@@ -62,8 +62,8 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="tanggal_order" class="form-label">Tanggal Order <span class="text-danger">*</span></label>
-                            <input type="date" name="tanggal_order" id="tanggal_order" 
-                                   class="form-control @error('tanggal_order') is-invalid @enderror" 
+                            <input type="date" name="tanggal_order" id="tanggal_order"
+                                   class="form-control @error('tanggal_order') is-invalid @enderror"
                                    value="{{ old('tanggal_order', $order->tanggal_order->format('Y-m-d')) }}" required>
                             @error('tanggal_order')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -90,8 +90,8 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="catatan" class="form-label">Catatan</label>
-                            <textarea name="catatan" id="catatan" rows="3" 
-                                      class="form-control @error('catatan') is-invalid @enderror" 
+                            <textarea name="catatan" id="catatan" rows="3"
+                                      class="form-control @error('catatan') is-invalid @enderror"
                                       placeholder="Catatan tambahan untuk order ini">{{ old('catatan', $order->catatan) }}</textarea>
                             @error('catatan')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -124,7 +124,7 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
-                            
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
@@ -153,62 +153,62 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="row">
                                 <div class="col-md-3">
                                     <div class="mb-3">
                                         <label class="form-label">Qty <span class="text-danger">*</span></label>
-                                        <input type="number" name="order_details[{{ $index }}][qty]" class="form-control qty-input" 
+                                        <input type="number" name="order_details[{{ $index }}][qty]" class="form-control qty-input"
                                                step="0.01" min="0.01" value="{{ $detail->qty }}" required>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="mb-3">
                                         <label class="form-label">Satuan <span class="text-danger">*</span></label>
-                                        <input type="text" name="order_details[{{ $index }}][satuan]" class="form-control" 
+                                        <input type="text" name="order_details[{{ $index }}][satuan]" class="form-control"
                                                placeholder="kg, ton, box, dll" value="{{ $detail->satuan }}" required>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="mb-3">
                                         <label class="form-label">Harga Supplier <span class="text-danger">*</span></label>
-                                        <input type="number" name="order_details[{{ $index }}][harga_supplier]" class="form-control supplier-price" 
+                                        <input type="number" name="order_details[{{ $index }}][harga_supplier]" class="form-control supplier-price"
                                                step="0.01" min="0" value="{{ $detail->harga_supplier }}" required>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="mb-3">
                                         <label class="form-label">Harga Jual <span class="text-danger">*</span></label>
-                                        <input type="number" name="order_details[{{ $index }}][harga_jual]" class="form-control selling-price" 
+                                        <input type="number" name="order_details[{{ $index }}][harga_jual]" class="form-control selling-price"
                                                step="0.01" min="0" value="{{ $detail->harga_jual }}" required>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label class="form-label">Spesifikasi Khusus</label>
-                                        <textarea name="order_details[{{ $index }}][spesifikasi_khusus]" class="form-control" rows="2" 
+                                        <textarea name="order_details[{{ $index }}][spesifikasi_khusus]" class="form-control" rows="2"
                                                   placeholder="Spesifikasi khusus untuk item ini">{{ $detail->spesifikasi_khusus }}</textarea>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label class="form-label">Catatan</label>
-                                        <textarea name="order_details[{{ $index }}][catatan]" class="form-control" rows="2" 
+                                        <textarea name="order_details[{{ $index }}][catatan]" class="form-control" rows="2"
                                                   placeholder="Catatan untuk item ini">{{ $detail->catatan }}</textarea>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Margin Info -->
                             <div class="row">
                                 <div class="col-12">
                                     <div class="margin-info p-2 bg-light rounded">
                                         <small class="text-muted">
-                                            <strong>Margin:</strong> 
-                                            <span class="margin-amount">Rp {{ number_format($detail->margin, 0, ',', '.') }}</span> 
+                                            <strong>Margin:</strong>
+                                            <span class="margin-amount">Rp {{ number_format($detail->margin, 0, ',', '.') }}</span>
                                             (<span class="margin-percentage">{{ number_format($detail->margin_percentage, 1) }}%</span>)
                                         </small>
                                     </div>
@@ -217,7 +217,7 @@
                         </div>
                     @endforeach
                 </div>
-                
+
                 @error('order_details')
                     <div class="alert alert-danger mt-3">{{ $message }}</div>
                 @enderror
@@ -250,7 +250,7 @@
                 <i class="fas fa-trash"></i>
             </button>
         </div>
-        
+
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
@@ -277,62 +277,62 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="row">
             <div class="col-md-3">
                 <div class="mb-3">
                     <label class="form-label">Qty <span class="text-danger">*</span></label>
-                    <input type="number" name="order_details[INDEX][qty]" class="form-control qty-input" 
+                    <input type="number" name="order_details[INDEX][qty]" class="form-control qty-input"
                            step="0.01" min="0.01" required>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="mb-3">
                     <label class="form-label">Satuan <span class="text-danger">*</span></label>
-                    <input type="text" name="order_details[INDEX][satuan]" class="form-control" 
+                    <input type="text" name="order_details[INDEX][satuan]" class="form-control"
                            placeholder="kg, ton, box, dll" required>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="mb-3">
                     <label class="form-label">Harga Supplier <span class="text-danger">*</span></label>
-                    <input type="number" name="order_details[INDEX][harga_supplier]" class="form-control supplier-price" 
+                    <input type="number" name="order_details[INDEX][harga_supplier]" class="form-control supplier-price"
                            step="0.01" min="0" required>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="mb-3">
                     <label class="form-label">Harga Jual <span class="text-danger">*</span></label>
-                    <input type="number" name="order_details[INDEX][harga_jual]" class="form-control selling-price" 
+                    <input type="number" name="order_details[INDEX][harga_jual]" class="form-control selling-price"
                            step="0.01" min="0" required>
                 </div>
             </div>
         </div>
-        
+
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label">Spesifikasi Khusus</label>
-                    <textarea name="order_details[INDEX][spesifikasi_khusus]" class="form-control" rows="2" 
+                    <textarea name="order_details[INDEX][spesifikasi_khusus]" class="form-control" rows="2"
                               placeholder="Spesifikasi khusus untuk item ini"></textarea>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label">Catatan</label>
-                    <textarea name="order_details[INDEX][catatan]" class="form-control" rows="2" 
+                    <textarea name="order_details[INDEX][catatan]" class="form-control" rows="2"
                               placeholder="Catatan untuk item ini"></textarea>
                 </div>
             </div>
         </div>
-        
+
         <!-- Margin Info -->
         <div class="row">
             <div class="col-12">
                 <div class="margin-info p-2 bg-light rounded">
                     <small class="text-muted">
-                        <strong>Margin:</strong> 
-                        <span class="margin-amount">Rp 0</span> 
+                        <strong>Margin:</strong>
+                        <span class="margin-amount">Rp 0</span>
                         (<span class="margin-percentage">0%</span>)
                     </small>
                 </div>
@@ -345,16 +345,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let detailIndex = {{ count($order->orderDetails) }};
-    
+
     const addDetailBtn = document.getElementById('add-detail');
     const orderDetailsContainer = document.getElementById('order-details');
     const template = document.getElementById('order-detail-template');
-    
+
     // Initialize existing details
     initializeExistingDetails();
-    
+
     addDetailBtn.addEventListener('click', addDetail);
-    
+
     function initializeExistingDetails() {
         const existingItems = orderDetailsContainer.querySelectorAll('.order-detail-item');
         existingItems.forEach((item, index) => {
@@ -362,27 +362,27 @@ document.addEventListener('DOMContentLoaded', function() {
             calculateMargin(item);
         });
     }
-    
+
     function addDetail() {
         const clone = template.content.cloneNode(true);
-        
+
         // Replace INDEX placeholder with actual index
         const html = clone.firstElementChild.outerHTML.replace(/INDEX/g, detailIndex);
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
         const detailElement = tempDiv.firstElementChild;
-        
+
         // Update item number
         detailElement.querySelector('.item-number').textContent = detailIndex + 1;
-        
+
         // Setup events
         setupDetailItemEvents(detailElement);
-        
+
         orderDetailsContainer.appendChild(detailElement);
         detailIndex++;
         updateItemNumbers();
     }
-    
+
     function setupDetailItemEvents(detailElement) {
         // Remove button
         const removeBtn = detailElement.querySelector('.remove-detail');
@@ -392,46 +392,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateItemNumbers();
             }
         });
-        
+
         // Margin calculation listeners
         const qtyInput = detailElement.querySelector('.qty-input');
         const supplierPrice = detailElement.querySelector('.supplier-price');
         const sellingPrice = detailElement.querySelector('.selling-price');
-        
+
         [qtyInput, supplierPrice, sellingPrice].forEach(input => {
             input.addEventListener('input', function() {
                 calculateMargin(detailElement);
             });
         });
     }
-    
+
     function updateItemNumbers() {
         const items = orderDetailsContainer.querySelectorAll('.order-detail-item');
         items.forEach((item, index) => {
             item.querySelector('.item-number').textContent = index + 1;
         });
     }
-    
+
     function calculateMargin(element) {
         const qty = parseFloat(element.querySelector('.qty-input').value) || 0;
         const supplierPrice = parseFloat(element.querySelector('.supplier-price').value) || 0;
         const sellingPrice = parseFloat(element.querySelector('.selling-price').value) || 0;
-        
+
         const totalCost = qty * supplierPrice;
         const totalRevenue = qty * sellingPrice;
         const margin = totalRevenue - totalCost;
         const marginPercentage = totalCost > 0 ? (margin / totalCost * 100) : 0;
-        
+
         const marginAmount = element.querySelector('.margin-amount');
         const marginPercentageSpan = element.querySelector('.margin-percentage');
-        
+
         marginAmount.textContent = 'Rp ' + margin.toLocaleString('id-ID');
         marginPercentageSpan.textContent = marginPercentage.toFixed(1) + '%';
-        
+
         // Color coding
         const marginInfo = element.querySelector('.margin-info');
         marginInfo.className = 'margin-info p-2 rounded ';
-        
+
         if (marginPercentage >= 20) {
             marginInfo.classList.add('bg-success-subtle', 'text-success');
         } else if (marginPercentage >= 10) {

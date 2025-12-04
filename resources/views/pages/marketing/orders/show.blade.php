@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Detail Order - Kamil Maju Persada')
+
 @section('content')
 @php
     $outstandingSummary = [];
@@ -98,51 +100,72 @@
                         </nav>
                     </div>
                 </div>
+                @php
+                    $currentUser = auth()->user();
+                    $isOrderCreator = $currentUser && $order->created_by === $currentUser->id;
+                    $isMarketing = $currentUser && $currentUser->isMarketing();
+                    $isDirektur = $currentUser && $currentUser->isDirektur();
+                    $canManageOrder = $isOrderCreator || $isMarketing || $isDirektur;
+                @endphp
                 <div class="flex flex-wrap gap-2 sm:space-x-3">
-                    @if($order->status === 'draft')
+                    @if($order->status === 'draft' && $canManageOrder)
                         <a href="{{ route('orders.edit', $order->id) }}" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors text-center">
                             <i class="fas fa-edit mr-1 sm:mr-2"></i>
                             <span class="hidden sm:inline">Edit</span>
                         </a>
                         <form action="{{ route('orders.confirm', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Konfirmasi order ini?')">
                                 <i class="fas fa-check mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Konfirmasi</span>
                             </button>
                         </form>
-                    @elseif($order->status === 'dikonfirmasi')
+                    @elseif($order->status === 'dikonfirmasi' && $canManageOrder)
                         <form action="{{ route('orders.start-processing', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Mulai proses order ini?')">
                                 <i class="fas fa-play mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Mulai Proses</span>
                             </button>
                         </form>
-                    @elseif(in_array($order->status, ['diproses', 'sebagian_dikirim']))
+                    @elseif($order->status === 'diproses' && $canManageOrder)
                         <form action="{{ route('orders.complete', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Selesaikan order ini?')">
                                 <i class="fas fa-check-circle mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Selesaikan</span>
                             </button>
                         </form>
+                        {{-- Konsultasi Direktur button - shown when order is nearing fulfillment --}}
+                        {{-- Only the order creator or marketing users can request consultation --}}
+                        @php
+                            $fulfillmentPct = $order->getFulfillmentPercentage();
+                            $canConsultDirektur = $isOrderCreator || $isMarketing;
+                        @endphp
+                        @if($fulfillmentPct >= 95 && $fulfillmentPct <= 105 && $canConsultDirektur)
+                            <button type="button"
+                                    onclick="openConsultModal()"
+                                    class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                <i class="fas fa-question-circle mr-1 sm:mr-2"></i>
+                                <span class="hidden sm:inline">Konsultasi Direktur</span>
+                            </button>
+                        @endif
                     @endif
-                    
-                    @if(!in_array($order->status, ['selesai', 'dibatalkan']))
+
+                    @if(!in_array($order->status, ['selesai', 'dibatalkan']) && $canManageOrder)
                         <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
-                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors" 
+                            <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     onclick="return confirm('Batalkan order ini?')">
                                 <i class="fas fa-times mr-1 sm:mr-2"></i>
                                 <span class="hidden sm:inline">Batalkan</span>
                             </button>
                         </form>
                     @endif
-                    
+
                     <a href="{{ route('orders.index') }}" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm text-center">
                         <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
                         <span class="hidden sm:inline">Kembali</span>
@@ -241,7 +264,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         @if($order->catatan)
                             <div class="mt-6 p-4 bg-gray-50 rounded-lg">
                                 <h4 class="text-sm font-medium text-gray-700 mb-2">Catatan:</h4>
@@ -338,7 +361,7 @@
                                                 @include('components.order.detail-status-badge', ['status' => $detail->status])
                                             </td>
                                         </tr>
-                                        
+
                                         {{-- Expandable supplier details --}}
                                         @if($detail->orderSuppliers->count() > 1)
                                             <tr class="bg-gray-50">
@@ -365,7 +388,7 @@
                                                                                 @endif
                                                                             </div>
                                                                             <div class="text-xs text-gray-500">
-                                                                                Rank #{{ $orderSupplier->price_rank }} | 
+                                                                                Rank #{{ $orderSupplier->price_rank }} |
                                                                                 {{ $orderSupplier->supplier->alamat ?? 'No address' }}
                                                                                 @if($orderSupplier->supplier->picPurchasing)
                                                                                     | PIC: {{ $orderSupplier->supplier->picPurchasing->nama }}
@@ -417,7 +440,7 @@
                 @php
                     $successfulShipments = $order->pengiriman()->where('status', 'berhasil')->with(['details.bahanBakuSupplier.supplier.picPurchasing', 'purchasing'])->get();
                 @endphp
-                
+
                 @if($successfulShipments->count() > 0)
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
@@ -503,13 +526,13 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                                 @if(!$shipment->rating)
-                                                    <a href="{{ route('pengiriman.evaluasi', $shipment->id) }}" 
+                                                    <a href="{{ route('pengiriman.evaluasi', $shipment->id) }}"
                                                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">
                                                         <i class="fas fa-star mr-1"></i>
                                                         Lakukan Review
                                                     </a>
                                                 @else
-                                                    <a href="{{ route('pengiriman.review', $shipment->id) }}" 
+                                                    <a href="{{ route('pengiriman.review', $shipment->id) }}"
                                                        class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors">
                                                         <i class="fas fa-eye mr-1"></i>
                                                         Lihat Review
@@ -532,7 +555,7 @@
                             </table>
                         </div>
                     </div>
-                    
+
                     @if($successfulShipments->where('rating', null)->count() > 0)
                         <div class="px-4 sm:px-6 py-4 bg-yellow-50 border-t border-yellow-200">
                             <div class="flex items-start">
@@ -570,29 +593,29 @@
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Total Harga Supplier:</div>
                                 <div class="text-xs font-bold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</div>
                             </div>
-                            
+
                             <!-- Total Harga Jual -->
                             <div>
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Total Harga Jual:</div>
                                 <div class="text-xs font-bold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</div>
                             </div>
-                            
+
                             <hr class="border-gray-200">
-                            
+
                             <!-- Outstanding Qty -->
                             <div>
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Outstanding Qty:</div>
                                 <div class="text-xs font-semibold text-gray-900">{{ $outstandingDisplay ?: '0' }}</div>
                             </div>
-                            
+
                             <!-- Outstanding Amount -->
                             <div>
                                 <div class="text-xs font-medium text-gray-500 mb-0.5">Outstanding Amount:</div>
                                 <div class="text-xs font-semibold text-gray-900">Rp {{ number_format($outstandingAmount > 0 ? $outstandingAmount : $totalSelling, 0, ',', '.') }}</div>
                             </div>
-                            
+
                             <hr class="border-gray-200">
-                            
+
                             <!-- Total Margin -->
                             <div class="pt-1">
                                 <div class="text-xs font-semibold text-gray-900 mb-0.5">Total Margin:</div>
@@ -623,7 +646,7 @@
                                         <p class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
                                     </div>
                                 </div>
-                                
+
                                 @if($order->dikonfirmasi_at)
                                     <div class="timeline-item flex items-start space-x-2">
                                         <div class="timeline-marker w-2.5 h-2.5 bg-cyan-600 rounded-full mt-1"></div>
@@ -633,7 +656,7 @@
                                         </div>
                                     </div>
                                 @endif
-                                
+
                                 @if($order->selesai_at)
                                     <div class="timeline-item flex items-start space-x-2">
                                         <div class="timeline-marker w-2.5 h-2.5 bg-green-600 rounded-full mt-1"></div>
@@ -673,32 +696,42 @@
                                 $statusCounts = $order->orderDetails->groupBy('status')->map->count();
                                 $totalItems = $order->orderDetails->count();
                             @endphp
-                            
+
+                            @php
+                                $fulfillmentPercent = $order->getFulfillmentPercentage();
+                                $shippedQty = $order->getShippedQty();
+                            @endphp
+
                             <div class="space-y-3">
-                                @foreach(['menunggu' => 'Menunggu', 'diproses' => 'Diproses', 'sebagian_dikirim' => 'Sebagian Dikirim', 'selesai' => 'Selesai'] as $status => $label)
-                                    @if(isset($statusCounts[$status]))
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">{{ $label }}:</span>
-                                            <div class="flex items-center space-x-2">
-                                                <span class="text-sm font-semibold text-gray-900">{{ $statusCounts[$status] }}</span>
-                                                @include('components.order.detail-status-badge', ['status' => $status])
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endforeach
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Total Order:</span>
+                                    <span class="text-sm font-semibold text-gray-900">{{ number_format($order->total_qty, 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Sudah Dikirim:</span>
+                                    <span class="text-sm font-semibold text-green-600">{{ number_format($shippedQty, 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Sisa:</span>
+                                    <span class="text-sm font-semibold text-orange-600">{{ number_format(max(0, $order->total_qty - $shippedQty), 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}</span>
+                                </div>
                             </div>
-                            
+
                             <hr class="my-4 border-gray-200">
                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                @php
-                                    $completePercentage = ($statusCounts['selesai'] ?? 0) / $totalItems * 100;
-                                    $partialPercentage = ($statusCounts['sebagian_dikirim'] ?? 0) / $totalItems * 100;
-                                @endphp
-                                <div class="bg-green-600 h-2 rounded-full" style="width: {{ $completePercentage }}%"></div>
-                                <div class="bg-yellow-500 h-2 rounded-full" style="width: {{ $partialPercentage }}%"></div>
+                                <div class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: {{ min(100, $fulfillmentPercent) }}%"></div>
                             </div>
                             <p class="text-xs text-gray-500 mt-2">
-                                {{ number_format($completePercentage + $partialPercentage, 1) }}% progress
+                                {{ number_format($fulfillmentPercent, 1) }}% terpenuhi
+                                @if($fulfillmentPercent >= 95 && $fulfillmentPercent <= 105 && $order->status === 'diproses')
+                                    <span class="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                                        <i class="fas fa-exclamation-circle mr-1"></i>Mendekati target
+                                    </span>
+                                @elseif($fulfillmentPercent > 105)
+                                    <span class="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>Melebihi target
+                                    </span>
+                                @endif
                             </p>
                         </div>
                     </div>
@@ -707,4 +740,105 @@
         </div>
     </div>
 </div>
+
+{{-- Konsultasi Direktur Modal --}}
+@if($order->status === 'diproses')
+<div id="consultModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeConsultModal()"></div>
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-question-circle text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Konsultasi Direktur</h3>
+                        <p class="text-sm text-gray-600">Minta saran mengenai order ini</p>
+                    </div>
+                </div>
+            </div>
+
+            <form action="{{ route('orders.consult-direktur', $order->id) }}" method="POST">
+                @csrf
+                <div class="p-6">
+                    {{-- Order Info Summary --}}
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">No. PO:</span>
+                                <span class="font-medium text-gray-900 ml-1">{{ $order->po_number ?? $order->no_order }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Klien:</span>
+                                <span class="font-medium text-gray-900 ml-1">{{ $order->klien->nama ?? '-' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Fulfillment:</span>
+                                <span class="font-medium {{ $order->getFulfillmentPercentage() > 100 ? 'text-red-600' : 'text-green-600' }} ml-1">
+                                    {{ number_format($order->getFulfillmentPercentage(), 1) }}%
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Sisa:</span>
+                                <span class="font-medium text-orange-600 ml-1">
+                                    {{ number_format(max(0, $order->total_qty - $order->getShippedQty()), 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Note Input --}}
+                    <div>
+                        <label for="catatan" class="block text-sm font-medium text-gray-700 mb-2">
+                            Catatan untuk Direktur (opsional)
+                        </label>
+                        <textarea
+                            name="catatan"
+                            id="catatan"
+                            rows="3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            placeholder="Jelaskan situasi atau pertanyaan Anda..."
+                        ></textarea>
+                    </div>
+
+                    <p class="mt-3 text-xs text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Notifikasi akan dikirim ke semua Direktur aktif untuk meminta saran.
+                    </p>
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50 rounded-b-xl">
+                    <button type="button" onclick="closeConsultModal()" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium">
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Kirim Konsultasi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openConsultModal() {
+        document.getElementById('consultModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeConsultModal() {
+        document.getElementById('consultModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeConsultModal();
+        }
+    });
+</script>
+@endif
 @endsection

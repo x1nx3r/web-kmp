@@ -39,12 +39,7 @@
             <div class="hidden xl:block w-px h-8 bg-gray-200"></div>
 
             <!-- Notifications -->
-            <div class="relative">
-                <button class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all duration-200 relative">
-                    <i class="fas fa-bell text-lg"></i>
-                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
-                </button>
-            </div>
+            @livewire('notification-bell')
 
             <!-- User Menu -->
             <div class="relative">
@@ -74,7 +69,7 @@
                 <div id="userMenu" class="absolute right-0 mt-3 w-48 lg:w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 hidden z-50">
                     <div class="px-4 py-3 border-b border-gray-100">
                         @auth
-                        
+
                                 <p class="font-semibold text-gray-800">{{ auth()->user()->nama }}</p>
                                 <p class="text-sm text-gray-500">{{ auth()->user()->email }}</p>
                                 <p class="text-xs text-gray-400 mt-1">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</p>
@@ -150,14 +145,14 @@ function confirmLogout() {
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '{{ route("logout") }}';
-    
+
     // Add CSRF token
     const csrfToken = document.createElement('input');
     csrfToken.type = 'hidden';
     csrfToken.name = '_token';
     csrfToken.value = '{{ csrf_token() }}';
     form.appendChild(csrfToken);
-    
+
     document.body.appendChild(form);
     form.submit();
 }
@@ -199,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
-    
+
     // Close logout modal when clicking outside
     const logoutModal = document.getElementById('logoutModal');
     if (logoutModal) {
@@ -224,11 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="text-sm text-gray-600">Apakah Anda yakin ingin keluar?</p>
             </div>
         </div>
-        
+
         <div class="mb-6">
             <p class="text-gray-700">Anda akan keluar dari sistem dan perlu login kembali untuk mengakses halaman ini.</p>
         </div>
-        
+
         <div class="flex space-x-3">
             <button onclick="hideLogoutModal()" class="flex-1 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
                 Batal

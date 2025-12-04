@@ -89,7 +89,7 @@
         {{-- PO Document Upload --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                Unggah Surat PO (JPG/PNG) @unless($isEditing)<span class="text-red-500">*</span>@endunless
+                Unggah Surat PO (JPG/PNG) <span class="text-xs text-gray-500 font-normal">(opsional)</span>
             </label>
             <input type="file" wire:model="poDocument" accept="image/png,image/jpeg"
                    class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-600 hover:file:bg-purple-100">
@@ -101,7 +101,7 @@
             @endif
             @if($isEditing && $existingPoDocumentName)
                 <p class="text-xs text-gray-600 mt-2">
-                    Dokumen saat ini: 
+                    Dokumen saat ini:
                     @if($existingPoDocumentUrl)
                         <a href="{{ $existingPoDocumentUrl }}" class="text-purple-600 hover:text-purple-700 underline" target="_blank" rel="noopener">
                             {{ $existingPoDocumentName }}

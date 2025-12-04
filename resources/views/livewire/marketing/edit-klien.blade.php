@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-gray-50">
     {{-- Navigation Breadcrumb --}}
     <div class="bg-white border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <nav class="flex" aria-label="Breadcrumb">
                     <ol class="flex items-center space-x-4">
@@ -40,30 +40,56 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div class="space-y-6">
             {{-- Main Content --}}
-            <div class="lg:col-span-3 space-y-8">
-                {{-- Branch Information Card --}}
+            <div class="space-y-6">
+                {{-- Branch Information Card with Stats --}}
                 <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                        <h2 class="text-base font-semibold text-gray-900 flex items-center">
                             <i class="fas fa-building mr-3 text-blue-600"></i>
                             Informasi Cabang
                         </h2>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-gray-500">Total Material:</span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{{ $klien->bahanBakuKliens->count() }}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-gray-500">Aktif:</span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{{ $klien->bahanBakuKliens->where('status', 'aktif')->count() }}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-gray-500">Dibuat:</span>
+                                <span class="text-sm font-medium text-gray-700">{{ $klien->created_at->format('d/m/Y') }}</span>
+                            </div>
+                            <div class="border-l border-gray-300 h-6"></div>
+                            <button
+                                wire:click="deleteKlien"
+                                class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Hapus Cabang"
+                            >
+                                <i class="fas fa-trash mr-1.5"></i>
+                                Hapus
+                            </button>
+                        </div>
                     </div>
 
-                    <form wire:submit="updateKlien" class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form wire:submit="updateKlien" class="p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label for="nama" class="block text-sm font-medium text-gray-700 mb-2">
                                     Nama Perusahaan
                                 </label>
-                                <select wire:model="klienForm.nama" id="nama" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klienForm.nama') border-red-500 @enderror">
-                                    @foreach($uniqueCompanies as $company)
-                                        <option value="{{ $company }}">{{ $company }}</option>
-                                    @endforeach
-                                </select>
+                                <input
+                                    type="text"
+                                    wire:model="klienForm.nama"
+                                    id="nama"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klienForm.nama') border-red-500 @enderror"
+                                    placeholder="Masukkan nama perusahaan"
+                                    required
+                                >
                                 @error('klienForm.nama')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -86,29 +112,29 @@
                                 @enderror
                             </div>
 
-                            <div class="md:col-span-2">
+                            <div>
                                 <label for="alamat_lengkap" class="block text-sm font-medium text-gray-700 mb-2">
                                     Alamat Lengkap (Opsional)
                                 </label>
-                                <textarea
+                                <input
+                                    type="text"
                                     wire:model="klienForm.alamat_lengkap"
                                     id="alamat_lengkap"
-                                    rows="3"
                                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klienForm.alamat_lengkap') border-red-500 @enderror"
                                     placeholder="Masukkan alamat lengkap plant..."
-                                ></textarea>
+                                >
                                 @error('klienForm.alamat_lengkap')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
 
-                            <div class="md:col-span-2">
+                            <div>
                                 <label for="contact_person_id" class="block text-sm font-medium text-gray-700 mb-2">
                                     Contact Person
                                 </label>
-                                <select 
-                                    wire:model="klienForm.contact_person_id" 
-                                    id="contact_person_id" 
+                                <select
+                                    wire:model="klienForm.contact_person_id"
+                                    id="contact_person_id"
                                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klienForm.contact_person_id') border-red-500 @enderror"
                                     @if($kontakOptions->isEmpty()) disabled @endif
                                 >
@@ -135,13 +161,7 @@
                             </div>
                         </div>
 
-                        <div class="mt-6 flex justify-end space-x-3">
-                            <a
-                                href="{{ route('klien.index') }}"
-                                class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                                Batal
-                            </a>
+                        <div class="mt-4 flex justify-end">
                             <button
                                 type="submit"
                                 class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -162,52 +182,80 @@
 
                 {{-- Materials Management Card --}}
                 <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
                         <div class="flex items-center justify-between">
-                            <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                            <h2 class="text-base font-semibold text-gray-900 flex items-center">
                                 <i class="fas fa-boxes mr-3 text-green-600"></i>
                                 Material Management
                             </h2>
-                            <button
-                                wire:click="openMaterialModal"
-                                class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                            >
-                                <i class="fas fa-plus mr-2"></i>
-                                Tambah Material
-                            </button>
+                            <div class="flex items-center space-x-3">
+                                {{-- Sort Dropdown --}}
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm text-gray-600">
+                                        <i class="fas fa-sort mr-1"></i>
+                                        Urutkan:
+                                    </label>
+                                    <div class="relative">
+                                        <select
+                                            wire:model.live="materialSort"
+                                            class="block px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm
+                                                   focus:ring-2 focus:ring-green-500 focus:border-green-500
+                                                   bg-white appearance-none cursor-pointer"
+                                        >
+                                            <option value="nama">Nama Material</option>
+                                            <option value="order_count_desc">PO Paling Sering</option>
+                                            <option value="order_count_asc">PO Paling Jarang</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    wire:click="openMaterialModal"
+                                    class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                >
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Tambah Material
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <div class="overflow-x-auto">
                         @if($klien->bahanBakuKliens->count() > 0)
-                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm table-fixed">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Material</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Satuan</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Harga</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Status</th>
-                                        <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Post</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Status Present</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Kategori</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Keterangan</th>
-                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Updated</th>
-                                        <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Aksi</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 18%">Material</th>
+                                        <th class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 5%">PO</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 6%">Satuan</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 8%">Harga</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 7%">Status</th>
+                                        <th class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 4%">Post</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 12%">Present</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%">Kategori</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 18%">Keterangan</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 6%">Updated</th>
+                                        <th class="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 6%">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($klien->bahanBakuKliens as $material)
+                                    @foreach($this->sortedMaterials as $material)
                                         <tr class="hover:bg-gray-50">
-                                            <td class="px-3 py-3">
-                                                <div>
-                                                    <div class="text-sm font-medium text-gray-900">{{ $material->nama }}</div>
-                                                    @if($material->spesifikasi)
-                                                        <div class="text-xs text-gray-500 mt-1">{{ \Illuminate\Support\Str::limit($material->spesifikasi, 40) }}</div>
-                                                    @endif
-                                                </div>
+                                            <td class="px-3 py-2">
+                                                <div class="text-sm font-medium text-gray-900 truncate" title="{{ $material->nama }}">{{ $material->nama }}</div>
+                                                @if($material->spesifikasi)
+                                                    <div class="text-xs text-gray-500 truncate" title="{{ $material->spesifikasi }}">{{ \Illuminate\Support\Str::limit($material->spesifikasi, 30) }}</div>
+                                                @endif
                                             </td>
-                                            <td class="px-2 py-3 text-sm text-gray-900">{{ $material->satuan }}</td>
-                                            <td class="px-2 py-3">
+                                            <td class="px-2 py-2 text-center">
+                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium {{ $material->order_details_count > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-500' }}">
+                                                    {{ $material->order_details_count ?? 0 }}
+                                                </span>
+                                            </td>
+                                            <td class="px-2 py-2 text-sm text-gray-900">{{ $material->satuan }}</td>
+                                            <td class="px-2 py-2">
                                                 @if($material->harga_approved)
                                                     <div class="text-sm font-medium text-green-600">
                                                         {{ number_format($material->harga_approved / 1000, 0) }}k
@@ -219,7 +267,7 @@
                                                     <span class="text-xs text-gray-400">-</span>
                                                 @endif
                                             </td>
-                                            <td class="px-2 py-3">
+                                            <td class="px-2 py-2">
                                                 @if($material->status === 'aktif')
                                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                                                         <i class="fas fa-check text-xs mr-1"></i>
@@ -238,7 +286,7 @@
                                                 @endif
                                             </td>
                                             {{-- Post Column --}}
-                                            <td class="px-2 py-3 text-center">
+                                            <td class="px-2 py-2 text-center">
                                                 @if($material->post)
                                                     <i class="fas fa-check-circle text-green-500 text-sm"></i>
                                                 @else
@@ -246,7 +294,7 @@
                                                 @endif
                                             </td>
                                             {{-- Present Column --}}
-                                            <td class="px-2 py-3">
+                                            <td class="px-2 py-2">
                                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
                                                     @if($material->present === 'Ready') bg-green-100 text-green-800
                                                     @elseif($material->present === 'Confirmed') bg-blue-100 text-blue-800
@@ -289,7 +337,7 @@
                                                 </span>
                                             </td>
                                             {{-- Jenis Column --}}
-                                            <td class="px-2 py-3">
+                                            <td class="px-2 py-2">
                                                 @if($material->jenis && count($material->jenis) > 0)
                                                     <div class="flex flex-wrap gap-1">
                                                         @foreach($material->jenis as $jenis)
@@ -316,12 +364,12 @@
                                                 @endif
                                             </td>
                                             {{-- Cause/Keterangan Column --}}
-                                            <td class="px-2 py-3">
+                                            <td class="px-2 py-2">
                                                 @if($material->cause)
                                                     <div class="text-xs text-gray-700 leading-relaxed">
                                                         {{ \Illuminate\Support\Str::limit($material->cause, 60) }}
                                                         @if(strlen($material->cause) > 60)
-                                                            <span class="text-blue-600 cursor-pointer hover:text-blue-800" 
+                                                            <span class="text-blue-600 cursor-pointer hover:text-blue-800"
                                                                   title="{{ $material->cause }}">
                                                                 ...selengkapnya
                                                             </span>
@@ -331,8 +379,8 @@
                                                     <span class="text-xs text-gray-400 italic">Tidak ada keterangan</span>
                                                 @endif
                                             </td>
-                                            <td class="px-2 py-3 text-xs text-gray-500">{{ $material->updated_at->format('d/m') }}</td>
-                                            <td class="px-2 py-3 text-right text-sm font-medium">
+                                            <td class="px-2 py-2 text-xs text-gray-500">{{ $material->updated_at->format('d/m') }}</td>
+                                            <td class="px-2 py-2 text-right text-sm font-medium">
                                                 <div class="flex items-center justify-end space-x-1">
                                                     @if($material->harga_approved)
                                                         <a
@@ -379,74 +427,6 @@
                                 </button>
                             </div>
                         @endif
-                    </div>
-                </div>
-            </div>
-
-            {{-- Sidebar --}}
-            <div class="lg:col-span-1 space-y-6">
-                {{-- Quick Info Card --}}
-                <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Informasi Quick</h3>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-500">Perusahaan:</span>
-                            <span class="text-sm font-medium text-gray-900">{{ $klien->nama }}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-500">Cabang:</span>
-                            <span class="text-sm font-medium text-gray-900">{{ $klien->cabang }}</span>
-                        </div>
-                        @if($klien->alamat_lengkap)
-                            <div>
-                                <span class="text-sm text-gray-500 block mb-1">Alamat:</span>
-                                <span class="text-sm text-gray-700 block text-right">{{ $klien->alamat_lengkap }}</span>
-                            </div>
-                        @endif
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-500">Total Material:</span>
-                            <span class="text-sm font-medium text-green-600">{{ $klien->bahanBakuKliens->count() }}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-500">Material Aktif:</span>
-                            <span class="text-sm font-medium text-green-600">{{ $klien->bahanBakuKliens->where('status', 'aktif')->count() }}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-500">Dibuat:</span>
-                            <span class="text-sm font-medium text-gray-900">{{ $klien->created_at->format('d/m/Y') }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Actions Card --}}
-                <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Aksi Cepat</h3>
-                    </div>
-                    <div class="p-6 space-y-3">
-                        <button
-                            wire:click="openMaterialModal"
-                            class="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
-                        >
-                            <i class="fas fa-plus mr-2"></i>
-                            Tambah Material
-                        </button>
-                        <a
-                            href="{{ route('klien.index') }}"
-                            class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                            <i class="fas fa-list mr-2"></i>
-                            Lihat Semua Klien
-                        </a>
-                        <button
-                            wire:click="deleteKlien"
-                            class="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
-                        >
-                            <i class="fas fa-trash mr-2"></i>
-                            Hapus Cabang
-                        </button>
                     </div>
                 </div>
             </div>

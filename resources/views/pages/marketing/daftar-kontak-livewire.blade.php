@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Daftar Kontak Klien')
+@section('title', 'Daftar Kontak Klien - Kamil Maju Persada')
 
 @section('content')
     @if(isset($klien) && $klien)

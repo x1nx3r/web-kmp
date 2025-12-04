@@ -34,14 +34,14 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-search text-gray-400 text-sm"></i>
                 </div>
-                <input 
-                    type="text" 
-                    wire:model.live.debounce.300ms="klienSearch" 
+                <input
+                    type="text"
+                    wire:model.live.debounce.300ms="klienSearch"
                     class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
                     placeholder="Cari nama perusahaan, kota/lokasi, atau no HP..."
                 >
                 @if($klienSearch)
-                <button 
+                <button
                     wire:click="clearKlienSearch"
                     class="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
@@ -59,8 +59,8 @@
                         Filter Kota:
                     </label>
                     <div class="relative">
-                        <select 
-                            wire:model.live="selectedKota" 
+                        <select
+                            wire:model.live="selectedKota"
                             class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white pr-8"
                         >
                             <option value="">Semua Kota</option>
@@ -69,7 +69,7 @@
                             @endforeach
                         </select>
                         @if($selectedKota)
-                        <button 
+                        <button
                             wire:click="clearKotaFilter"
                             class="absolute inset-y-0 right-8 flex items-center"
                         >
@@ -85,8 +85,8 @@
                         <i class="fas fa-sort text-gray-400 mr-1"></i>
                         Urutkan:
                     </label>
-                    <select 
-                        wire:model.live="klienSort" 
+                    <select
+                        wire:model.live="klienSort"
                         class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
                     >
                         <option value="nama_asc">Nama (A-Z)</option>
@@ -98,7 +98,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="p-4">
         {{-- Loading State --}}
         <div wire:loading.delay wire:target="klienSearch,klienSort,selectedKota" class="flex items-center justify-center py-8">
@@ -115,7 +115,7 @@
                     {{-- Single location client --}}
                     @php $klien = $cabangList->first(); @endphp
                     <button
-                        wire:click="selectKlien('{{ $klien->unique_key }}')"
+                        wire:click="selectKlien('{{ addslashes($klien->unique_key) }}')"
                         class="w-full text-left p-3 rounded-lg border transition-all duration-200 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50' }}"
                     >
                         <div class="flex items-center">
@@ -155,7 +155,7 @@
                         <div class="p-2 space-y-1">
                             @foreach($cabangList as $klien)
                                 <button
-                                    wire:click="selectKlien('{{ $klien->unique_key }}')"
+                                    wire:click="selectKlien('{{ addslashes($klien->unique_key) }}')"
                                     class="w-full text-left p-2 rounded transition-all duration-200 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50' }}"
                                 >
                                     <div class="flex items-center">

@@ -24,6 +24,11 @@ class RiwayatOrder extends Component
     // UI State
     public $showDeleteModal = false;
     public $orderToDelete = null;
+    public $showCompleteModal = false;
+    public $orderToComplete = null;
+    public $showCancelModal = false;
+    public $orderToCancel = null;
+    public $cancelReason = '';
     public $expandedOrders = []; // Track which orders are expanded to show suppliers
 
     protected $queryString = [
@@ -131,17 +136,56 @@ class RiwayatOrder extends Component
         $order = Order::find($orderId);
         if ($order && $order->status === "diproses") {
             $order->complete();
+            $this->showCompleteModal = false;
+            $this->orderToComplete = null;
             session()->flash("message", "Order berhasil diselesaikan.");
         }
     }
 
+    public function confirmComplete($orderId)
+    {
+        $this->orderToComplete = $orderId;
+        $this->showCompleteModal = true;
+    }
+
+    public function cancelComplete()
+    {
+        $this->showCompleteModal = false;
+        $this->orderToComplete = null;
+    }
+
     public function cancelOrder($orderId, $reason = null)
     {
+        // Validate cancel reason
+        $this->validate([
+            'cancelReason' => 'required|string|min:5',
+        ], [
+            'cancelReason.required' => 'Alasan pembatalan harus diisi.',
+            'cancelReason.min' => 'Alasan pembatalan minimal 5 karakter.',
+        ]);
+
         $order = Order::find($orderId);
         if ($order && !in_array($order->status, ["selesai", "dibatalkan"])) {
-            $order->cancel($reason);
+            $order->cancel($this->cancelReason ?: $reason);
+            $this->showCancelModal = false;
+            $this->orderToCancel = null;
+            $this->cancelReason = '';
             session()->flash("message", "Order berhasil dibatalkan.");
         }
+    }
+
+    public function confirmCancel($orderId)
+    {
+        $this->orderToCancel = $orderId;
+        $this->cancelReason = '';
+        $this->showCancelModal = true;
+    }
+
+    public function cancelCancelation()
+    {
+        $this->showCancelModal = false;
+        $this->orderToCancel = null;
+        $this->cancelReason = '';
     }
 
     private function getOrders()

@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\ApprovalPembayaran;
+use App\Models\ApprovalPenagihan;
 use App\Models\Order;
 use App\Models\Penawaran;
 use App\Models\Pengiriman;
 use App\Models\User;
+use App\Services\Notifications\ApprovalPembayaranNotificationService;
+use App\Services\Notifications\ApprovalPenagihanNotificationService;
 use App\Services\Notifications\BaseNotificationService;
 use App\Services\Notifications\OrderNotificationService;
 use App\Services\Notifications\PenawaranNotificationService;
@@ -21,6 +25,7 @@ use Illuminate\Support\Collection;
  * - BaseNotificationService: Core notification operations (send, read, manage)
  * - PenawaranNotificationService: Penawaran/quotation notifications
  * - OrderNotificationService: Order fulfillment notifications
+ * - ApprovalPembayaranNotificationService: Approval pembayaran notifications
  */
 class NotificationService
 {
@@ -39,6 +44,16 @@ class NotificationService
     public const TYPE_ORDER_NEARING_FULFILLMENT = OrderNotificationService::TYPE_NEARING_FULFILLMENT;
     public const TYPE_ORDER_DIREKTUR_CONSULTATION = OrderNotificationService::TYPE_DIREKTUR_CONSULTATION;
     public const TYPE_ORDER_PRIORITY_ESCALATED = OrderNotificationService::TYPE_PRIORITY_ESCALATED;
+
+    // Approval Pembayaran types
+    public const TYPE_APPROVAL_PEMBAYARAN_PENDING = ApprovalPembayaranNotificationService::TYPE_PENDING_APPROVAL;
+    public const TYPE_APPROVAL_PEMBAYARAN_APPROVED = ApprovalPembayaranNotificationService::TYPE_APPROVED;
+    public const TYPE_APPROVAL_PEMBAYARAN_REJECTED = ApprovalPembayaranNotificationService::TYPE_REJECTED;
+
+    // Approval Penagihan types
+    public const TYPE_APPROVAL_PENAGIHAN_PENDING = ApprovalPenagihanNotificationService::TYPE_PENDING_APPROVAL;
+    public const TYPE_APPROVAL_PENAGIHAN_APPROVED = ApprovalPenagihanNotificationService::TYPE_APPROVED;
+    public const TYPE_APPROVAL_PENAGIHAN_REJECTED = ApprovalPenagihanNotificationService::TYPE_REJECTED;
 
     /*
     |--------------------------------------------------------------------------
@@ -247,10 +262,86 @@ class NotificationService
     }
 
     /**
+     * Get the specific notification service for approval pembayaran.
+     */
+    public static function approvalPembayaran(): string
+    {
+        return ApprovalPembayaranNotificationService::class;
+    }
+
+    /**
+     * Get the specific notification service for approval penagihan.
+     */
+    public static function approvalPenagihan(): string
+    {
+        return ApprovalPenagihanNotificationService::class;
+    }
+
+    /**
      * Get the base notification service.
      */
     public static function base(): string
     {
         return BaseNotificationService::class;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Approval Pembayaran Methods (delegated to ApprovalPembayaranNotificationService)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Notify accounting team about pending approval pembayaran.
+     */
+    public static function notifyApprovalPembayaranPending(ApprovalPembayaran $approval): int
+    {
+        return ApprovalPembayaranNotificationService::notifyPendingApproval($approval);
+    }
+
+    /**
+     * Notify about approved pembayaran.
+     */
+    public static function notifyApprovalPembayaranApproved(ApprovalPembayaran $approval, User $approvedBy): int
+    {
+        return ApprovalPembayaranNotificationService::notifyApproved($approval, $approvedBy);
+    }
+
+    /**
+     * Notify about rejected pembayaran.
+     */
+    public static function notifyApprovalPembayaranRejected(ApprovalPembayaran $approval, User $rejectedBy, ?string $reason = null): int
+    {
+        return ApprovalPembayaranNotificationService::notifyRejected($approval, $rejectedBy, $reason);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Approval Penagihan Methods (delegated to ApprovalPenagihanNotificationService)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Notify accounting team about pending approval penagihan.
+     */
+    public static function notifyApprovalPenagihanPending(ApprovalPenagihan $approval): int
+    {
+        return ApprovalPenagihanNotificationService::notifyPendingApproval($approval);
+    }
+
+    /**
+     * Notify about approved penagihan.
+     */
+    public static function notifyApprovalPenagihanApproved(ApprovalPenagihan $approval, User $approvedBy): int
+    {
+        return ApprovalPenagihanNotificationService::notifyApproved($approval, $approvedBy);
+    }
+
+    /**
+     * Notify about rejected penagihan.
+     */
+    public static function notifyApprovalPenagihanRejected(ApprovalPenagihan $approval, User $rejectedBy, ?string $reason = null): int
+    {
+        return ApprovalPenagihanNotificationService::notifyRejected($approval, $rejectedBy, $reason);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\ApprovalPembayaran as ApprovalPembayaranModel;
 use App\Models\ApprovalPenagihan;
 use App\Models\ApprovalHistory;
 use App\Models\InvoicePenagihan;
+use App\Services\Notifications\ApprovalPenagihanNotificationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -377,6 +378,10 @@ class ApprovePembayaran extends Component
         }
 
         $pengiriman = $this->approval->pengiriman;
+
+        // Load pengiriman details with order detail for harga_jual
+        $pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail');
+
         $purchaseOrder = $pengiriman->purchaseOrder;
         $klien = $purchaseOrder->klien ?? null;
 
@@ -389,13 +394,34 @@ class ApprovePembayaran extends Component
         $sequence = $lastInvoice ? (intval(substr($lastInvoice->invoice_number, -4)) + 1) : 1;
         $invoiceNumber = 'INV-' . now()->format('Ym') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
 
+        // Calculate total selling price (harga jual) instead of buying price (harga beli)
+        $totalSellingPrice = 0;
+        $items = [];
+
+        foreach ($pengiriman->pengirimanDetails as $detail) {
+            $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+            $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+            $qtyKirim = floatval($detail->qty_kirim);
+            $itemTotal = $qtyKirim * $hargaJual;
+            $totalSellingPrice += $itemTotal;
+
+            // Collect item details for invoice
+            $bahanBakuName = $detail->bahanBakuSupplier->nama ?? ($orderDetail->bahanBakuKlien->nama ?? 'Bahan Baku');
+            $items[] = [
+                'description' => $bahanBakuName,
+                'quantity' => $qtyKirim,
+                'unit_price' => $hargaJual,
+                'total' => $itemTotal,
+            ];
+        }
+
         // Get refraksi from approval pembayaran (opsional)
         $refraksiType = $this->approval->refraksi_type;
         $refraksiValue = $this->approval->refraksi_value ?? 0;
 
-        // Calculate amounts based on refraksi (bisa tanpa refraksi)
+        // Calculate amounts based on refraksi using selling price
         $qtyBeforeRefraksi = $pengiriman->total_qty_kirim;
-        $amountBeforeRefraksi = $pengiriman->total_harga_kirim;
+        $amountBeforeRefraksi = $totalSellingPrice; // Use selling price
         $qtyAfterRefraksi = $qtyBeforeRefraksi;
         $refraksiAmount = 0;
 
@@ -404,7 +430,7 @@ class ApprovePembayaran extends Component
             if ($refraksiType === 'qty') {
                 $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
                 $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
-                $hargaPerKg = $amountBeforeRefraksi / $qtyBeforeRefraksi;
+                $hargaPerKg = $qtyBeforeRefraksi > 0 ? $amountBeforeRefraksi / $qtyBeforeRefraksi : 0;
                 $refraksiAmount = $refraksiQty * $hargaPerKg;
             } elseif ($refraksiType === 'rupiah') {
                 $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
@@ -415,20 +441,7 @@ class ApprovePembayaran extends Component
 
         $subtotal = $amountBeforeRefraksi - $refraksiAmount;
 
-        // Prepare items array from pengiriman details
-        $items = [];
-        if ($pengiriman->details && count($pengiriman->details) > 0) {
-            foreach ($pengiriman->details as $detail) {
-                $items[] = [
-                    'description' => $detail->bahanBakuKlien->nama_bahan_baku ?? 'Item',
-                    'quantity' => $detail->qty_kirim,
-                    'unit_price' => $detail->harga_kirim,
-                    'total' => $detail->total_harga,
-                ];
-            }
-        }
-
-        // Create Invoice
+        // Create Invoice with selling price
         $invoice = InvoicePenagihan::create([
             'pengiriman_id' => $pengiriman->id,
             'invoice_number' => $invoiceNumber,
@@ -457,11 +470,16 @@ class ApprovePembayaran extends Component
         ]);
 
         // Create Approval Penagihan
-        ApprovalPenagihan::create([
+        $approvalPenagihan = ApprovalPenagihan::create([
             'pengiriman_id' => $pengiriman->id,
             'invoice_id' => $invoice->id,
             'status' => 'pending',
         ]);
+
+        // Send notification to accounting team
+        if ($approvalPenagihan) {
+            ApprovalPenagihanNotificationService::notifyPendingApproval($approvalPenagihan);
+        }
     }
 
     protected function ensureCanManage(): bool

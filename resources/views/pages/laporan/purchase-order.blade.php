@@ -84,42 +84,42 @@
 {{-- 2. Nilai Outstanding & PO Berdasarkan Status --}}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     {{-- Outstanding Status Pie Chart --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900">Nilai Outstanding</h3>
-                <p class="text-sm text-gray-500">Distribusi nilai outstanding per PO</p>
+                <h3 class="text-base md:text-lg font-semibold text-gray-900">Nilai Outstanding</h3>
+                <p class="text-xs md:text-sm text-gray-500">Distribusi nilai outstanding per PO</p>
             </div>
         </div>
         
-        <div class="flex justify-center items-center" style="height: 400px;">
+        <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($outstandingChartData->count() > 0)
                 <canvas id="chartOutstanding"></canvas>
             @else
                 <div class="text-center text-gray-400">
                     <i class="fas fa-check-circle text-4xl mb-2"></i>
-                    <p>Semua order detail sudah selesai!</p>
+                    <p class="text-sm">Semua order detail sudah selesai!</p>
                 </div>
             @endif
         </div>
     </div>
 
     {{-- PO By Status (Doughnut Chart) --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900">PO Berdasarkan Status</h3>
-                <p class="text-sm text-gray-500">Distribusi status purchase order</p>
+                <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Status</h3>
+                <p class="text-xs md:text-sm text-gray-500">Distribusi status purchase order</p>
             </div>
         </div>
         
-        <div class="flex justify-center items-center" style="height: 400px;">
+        <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($poByStatus->count() > 0)
                 <canvas id="chartPOByStatus"></canvas>
             @else
                 <div class="text-center text-gray-400">
                     <i class="fas fa-chart-pie text-4xl mb-2"></i>
-                    <p>Tidak ada data status</p>
+                    <p class="text-sm">Tidak ada data status</p>
                 </div>
             @endif
         </div>
@@ -129,77 +129,79 @@
 {{-- 3. PO Berdasarkan Klien & PO Winner --}}
 {{-- Filter Section for Client & Winner Charts --}}
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-    <form method="GET" action="{{ route('laporan.po') }}" class="flex flex-wrap gap-3 items-end">
-        {{-- Periode Filter --}}
-        <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Filter Periode (Klien & Winner)</label>
-            <select name="periode" id="periodeFilter" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <option value="all" {{ $periode == 'all' ? 'selected' : '' }}>Semua Data</option>
-                <option value="tahun_ini" {{ $periode == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
-                <option value="bulan_ini" {{ $periode == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
-                <option value="custom" {{ $periode == 'custom' ? 'selected' : '' }}>Custom Range</option>
-            </select>
-        </div>
+    <form method="GET" action="{{ route('laporan.po') }}" class="space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {{-- Periode Filter --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter Periode (Klien & Winner)</label>
+                <select name="periode" id="periodeFilter" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <option value="all" {{ $periode == 'all' ? 'selected' : '' }}>Semua Data</option>
+                    <option value="tahun_ini" {{ $periode == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
+                    <option value="bulan_ini" {{ $periode == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
+                    <option value="custom" {{ $periode == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                </select>
+            </div>
 
-        {{-- Start Date --}}
-        <div id="startDateDiv" class="flex-1 min-w-[180px] {{ $periode == 'custom' ? '' : 'hidden' }}">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-            <input type="date" name="start_date" value="{{ $startDate }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-        </div>
+            {{-- Start Date --}}
+            <div id="startDateDiv" class="{{ $periode == 'custom' ? '' : 'hidden' }}">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
+                <input type="date" name="start_date" value="{{ $startDate }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+            </div>
 
-        {{-- End Date --}}
-        <div id="endDateDiv" class="flex-1 min-w-[180px] {{ $periode == 'custom' ? '' : 'hidden' }}">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Akhir</label>
-            <input type="date" name="end_date" value="{{ $endDate }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-        </div>
+            {{-- End Date --}}
+            <div id="endDateDiv" class="{{ $periode == 'custom' ? '' : 'hidden' }}">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Akhir</label>
+                <input type="date" name="end_date" value="{{ $endDate }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+            </div>
 
-        {{-- Button --}}
-        <div>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
-                <i class="fas fa-filter mr-2"></i>Filter
-            </button>
+            {{-- Button --}}
+            <div class="flex items-end">
+                <button type="submit" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                    <i class="fas fa-filter mr-2"></i>Filter
+                </button>
+            </div>
         </div>
     </form>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     {{-- PO By Client (Pie Chart) --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900">PO Berdasarkan Klien</h3>
-                <p class="text-sm text-gray-500">Distribusi nilai PO per klien</p>
+                <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Klien</h3>
+                <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per klien</p>
             </div>
         </div>
         
-        <div class="flex justify-center items-center" style="height: 400px;">
+        <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($poByClient->count() > 0)
                 <canvas id="chartPOByClient"></canvas>
             @else
                 <div class="text-center text-gray-400">
                     <i class="fas fa-chart-pie text-4xl mb-2"></i>
-                    <p>Tidak ada data PO</p>
+                    <p class="text-sm">Tidak ada data PO</p>
                 </div>
             @endif
         </div>
     </div>
 
     {{-- Order Winners Pie Chart --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900">Top 10 Order Winners</h3>
-                <p class="text-sm text-gray-500">Distribusi nilai PO per marketing</p>
+                <h3 class="text-base md:text-lg font-semibold text-gray-900">Top 10 Order Winners</h3>
+                <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per marketing</p>
             </div>
         </div>
         
-        <div class="flex justify-center items-center" style="height: 400px;">
+        <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($orderWinners->count() > 0)
                 <canvas id="chartOrderWinners"></canvas>
             @else
                 <div class="text-center text-gray-400">
                     <i class="fas fa-inbox text-4xl mb-2"></i>
-                    <p>Tidak ada data order winner</p>
+                    <p class="text-sm">Tidak ada data order winner</p>
                 </div>
             @endif
         </div>
@@ -209,29 +211,29 @@
 {{-- 4. Trend PO & PO Berdasarkan Prioritas --}}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     {{-- PO Trend by Month --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900">Trend PO 12 Bulan Terakhir</h3>
-                <p class="text-sm text-gray-500">Total nilai PO per bulan</p>
+                <h3 class="text-base md:text-lg font-semibold text-gray-900">Trend PO 12 Bulan Terakhir</h3>
+                <p class="text-xs md:text-sm text-gray-500">Total nilai PO per bulan</p>
             </div>
         </div>
         
-        <div style="height: 350px;">
+        <div style="height: 250px; max-height: 350px;">
             <canvas id="chartPOTrend"></canvas>
         </div>
     </div>
 
     {{-- PO By Priority --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900">PO Berdasarkan Prioritas</h3>
-                <p class="text-sm text-gray-500">Distribusi prioritas purchase order</p>
+                <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Prioritas</h3>
+                <p class="text-xs md:text-sm text-gray-500">Distribusi prioritas purchase order</p>
             </div>
         </div>
         
-        <div style="height: 350px;">
+        <div style="height: 250px; max-height: 350px;">
             <canvas id="chartPOByPriority"></canvas>
         </div>
     </div>
@@ -265,6 +267,8 @@ const chartColors = [
 @if($poByClient->count() > 0)
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartPOByClient').getContext('2d');
+    const isMobile = window.innerWidth < 768;
+    
     new Chart(ctx, {
         type: 'pie',
         data: {
@@ -280,7 +284,14 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'right', labels: { padding: 20, font: { size: 12 } } },
+                legend: { 
+                    position: isMobile ? 'bottom' : 'right',
+                    labels: { 
+                        padding: isMobile ? 10 : 20,
+                        font: { size: isMobile ? 10 : 12 },
+                        boxWidth: isMobile ? 10 : 15
+                    } 
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -301,10 +312,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 datalabels: {
                     color: '#fff',
-                    font: { weight: 'bold', size: 14 },
+                    font: { weight: 'bold', size: isMobile ? 10 : 14 },
                     formatter: (value, context) => {
                         const percentage = @json($poByClient->pluck('percentage')->toArray())[context.dataIndex];
-                        return percentage.toFixed(1) + '%';
+                        return percentage > 5 ? percentage.toFixed(1) + '%' : '';
                     }
                 }
             }
@@ -318,6 +329,8 @@ document.addEventListener('DOMContentLoaded', function() {
 @if($poByStatus->count() > 0)
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartPOByStatus').getContext('2d');
+    const isMobile = window.innerWidth < 768;
+    
     new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -333,7 +346,14 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'right', labels: { padding: 20, font: { size: 12 } } },
+                legend: { 
+                    position: isMobile ? 'bottom' : 'right',
+                    labels: { 
+                        padding: isMobile ? 10 : 20,
+                        font: { size: isMobile ? 10 : 12 },
+                        boxWidth: isMobile ? 10 : 15
+                    } 
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -343,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 datalabels: {
                     color: '#fff',
-                    font: { weight: 'bold', size: 14 },
+                    font: { weight: 'bold', size: isMobile ? 10 : 14 },
                     formatter: (value, context) => value
                 }
             }
@@ -460,6 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
 @if($outstandingChartData->count() > 0)
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartOutstanding').getContext('2d');
+    const isMobile = window.innerWidth < 768;
     const klienData = @json($outstandingChartData->pluck('klien_nama')->toArray());
     const orderStatusData = @json($outstandingChartData->pluck('order_status')->toArray());
     const namaMaterialData = @json($outstandingChartData->pluck('nama_material')->toArray());
@@ -480,11 +501,11 @@ document.addEventListener('DOMContentLoaded', function() {
             maintainAspectRatio: true,
             plugins: {
                 legend: { 
-                    position: 'right', 
+                    position: isMobile ? 'bottom' : 'right',
                     labels: { 
-                        padding: 15, 
-                        font: { size: 11 },
-                        boxWidth: 12
+                        padding: isMobile ? 8 : 15,
+                        font: { size: isMobile ? 9 : 11 },
+                        boxWidth: isMobile ? 10 : 12
                     } 
                 },
                 tooltip: {
@@ -516,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 datalabels: {
                     color: '#fff',
-                    font: { weight: 'bold', size: 12 },
+                    font: { weight: 'bold', size: isMobile ? 9 : 12 },
                     formatter: (value, context) => {
                         const percentage = (value / {{ $totalOutstandingChart }} * 100);
                         // Only show label if percentage is > 5%
@@ -534,6 +555,8 @@ document.addEventListener('DOMContentLoaded', function() {
 @if($orderWinners->count() > 0)
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartOrderWinners').getContext('2d');
+    const isMobile = window.innerWidth < 768;
+    
     new Chart(ctx, {
         type: 'pie',
         data: {
@@ -549,7 +572,14 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'right', labels: { padding: 20, font: { size: 12 } } },
+                legend: { 
+                    position: isMobile ? 'bottom' : 'right',
+                    labels: { 
+                        padding: isMobile ? 10 : 20,
+                        font: { size: isMobile ? 10 : 12 },
+                        boxWidth: isMobile ? 10 : 15
+                    } 
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -569,10 +599,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 datalabels: {
                     color: '#fff',
-                    font: { weight: 'bold', size: 14 },
+                    font: { weight: 'bold', size: isMobile ? 10 : 14 },
                     formatter: (value, context) => {
                         const percentage = @json($orderWinners->pluck('percentage')->toArray())[context.dataIndex];
-                        return percentage.toFixed(1) + '%';
+                        return percentage > 5 ? percentage.toFixed(1) + '%' : '';
                     }
                 }
             }

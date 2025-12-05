@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\Marketing\KlienController;
 use App\Http\Controllers\Marketing\OrderController;
@@ -28,9 +29,7 @@ Route::post("/logout", [AuthController::class, "logout"])
 // Protected routes - require authentication
 Route::middleware(["auth"])->group(function () {
     // Dashboard - accessible by all authenticated users
-    Route::get('/dashboard', function () {
-        return view('pages.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');

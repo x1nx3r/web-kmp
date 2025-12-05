@@ -24,11 +24,17 @@
                 </h3>
                 <p class="text-indigo-100">Pantau progres pencapaian target omset perusahaan secara real-time</p>
             </div>
-            <button type="button" 
-                    onclick="openTargetModal()"
-                    class="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105">
-                <i class="fas fa-cog mr-2"></i>Set Target Tahunan
-            </button>
+            @if(auth()->user()->role === 'direktur')
+                <button type="button" 
+                        onclick="openTargetModal()"
+                        class="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <i class="fas fa-cog mr-2"></i>Set Target Tahunan
+                </button>
+            @else
+                <div class="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-white text-sm">
+                    <i class="fas fa-lock mr-2"></i>View Only
+                </div>
+            @endif
         </div>
     </div>
 
@@ -431,6 +437,12 @@ function toggleWeeklyDetail(bulanNum) {
 
 // Modal functions
 function openTargetModal() {
+    // Check if user is direktur
+    @if(auth()->user()->role !== 'direktur')
+        alert('⚠️ Akses Ditolak\n\nHanya Direktur yang dapat mengubah target omset.\nAnda hanya memiliki akses untuk melihat data.');
+        return;
+    @endif
+    
     document.getElementById('targetModal').classList.remove('hidden');
     
     // Set tahun to current selected year
@@ -531,20 +543,27 @@ document.getElementById('targetForm')?.addEventListener('submit', function(e) {
             tahun: tahunValue
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (response.status === 403) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Akses ditolak');
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            alert('Target berhasil disimpan untuk tahun ' + tahunValue + '!');
+            alert('✅ Target berhasil disimpan untuk tahun ' + tahunValue + '!');
             closeTargetModal();
             // Reload data for that year
             loadTargetAnalysisData(parseInt(tahunValue));
         } else {
-            alert('Gagal menyimpan target: ' + data.message);
+            alert('❌ Gagal menyimpan target\n\n' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Terjadi kesalahan saat menyimpan target');
+        alert('❌ ' + error.message);
     });
 });
 

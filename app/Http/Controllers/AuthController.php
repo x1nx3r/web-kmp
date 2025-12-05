@@ -58,28 +58,45 @@ class AuthController extends Controller
 
         $credentials = $request->only('email', 'password');
         
-        // Try to authenticate with email first, then username
-        $user = User::where('email', $credentials['email'])
-                   ->orWhere('username', $credentials['email'])
-                   ->where('status', 'aktif')
-                   ->first();
+        // First, check if user exists (regardless of status)
+        $userExists = User::where('email', $credentials['email'])
+                         ->orWhere('username', $credentials['email'])
+                         ->first();
 
-        if ($user && Hash::check($credentials['password'], $user->password)) {
-            Auth::login($user, $request->filled('remember'));
-            
-            $request->session()->regenerate();
-            
+        // If user doesn't exist
+        if (!$userExists) {
             return response()->json([
-                'success' => true,
-                'message' => 'Login berhasil!',
-                'redirect' => route('dashboard')
-            ]);
+                'success' => false,
+                'message' => 'Email/Username tidak ditemukan.'
+            ], 401);
         }
 
+        // Check if password is correct
+        if (!Hash::check($credentials['password'], $userExists->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password yang Anda masukkan salah.'
+            ], 401);
+        }
+
+        // Check if user is active
+        if ($userExists->status !== 'aktif') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun Anda tidak aktif. Silakan hubungi administrator.'
+            ], 403);
+        }
+
+        // All checks passed, login the user
+        Auth::login($userExists, $request->filled('remember'));
+        
+        $request->session()->regenerate();
+        
         return response()->json([
-            'success' => false,
-            'message' => 'Email/Username atau password salah.'
-        ], 401);
+            'success' => true,
+            'message' => 'Login berhasil!',
+            'redirect' => route('dashboard')
+        ]);
     }
 
     /**

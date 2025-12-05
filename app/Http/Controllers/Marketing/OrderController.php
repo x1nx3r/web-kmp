@@ -778,4 +778,113 @@ class OrderController extends Controller
                 "Respons berhasil dikirim. Anda menyarankan untuk {$responseLabel}. ({$notificationCount} notifikasi terkirim ke Marketing).",
             );
     }
+
+    /**
+     * Add quantity to existing order details (after Direktur advised to continue)
+     */
+    public function addQuantity(Request $request, string $id)
+    {
+        $order = Order::with([
+            "orderDetails",
+            "latestConsultation",
+        ])->findOrFail($id);
+
+        $user = Auth::user();
+
+        // Authorization: Only order creator or marketing users can add quantity
+        $isOrderCreator = $order->created_by === $user->id;
+        $isMarketing = $user->isMarketing();
+
+        if (!$isOrderCreator && !$isMarketing) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Anda tidak memiliki akses untuk mengubah order ini.",
+                );
+        }
+
+        // Only allow for orders in 'diproses' status
+        if ($order->status !== "diproses") {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Penambahan kuantitas hanya dapat dilakukan untuk order yang sedang diproses.",
+                );
+        }
+
+        // Check if Direktur advised to continue
+        $latestConsultation = $order->latestConsultation;
+        if (
+            !$latestConsultation ||
+            !$latestConsultation->isResponded() ||
+            $latestConsultation->response_type !== "lanjutkan"
+        ) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Penambahan kuantitas hanya dapat dilakukan setelah Direktur menyarankan untuk melanjutkan.",
+                );
+        }
+
+        // Validate request
+        $request->validate([
+            "quantities" => "required|array",
+            "quantities.*" => "numeric|min:0",
+        ]);
+
+        $quantities = $request->input("quantities", []);
+        $updatedCount = 0;
+        $totalQtyAdded = 0;
+        $totalAmountAdded = 0;
+
+        foreach ($quantities as $detailId => $addQty) {
+            $addQty = (float) $addQty;
+
+            if ($addQty <= 0) {
+                continue;
+            }
+
+            $detail = $order->orderDetails->find($detailId);
+            if (!$detail) {
+                continue;
+            }
+
+            // Calculate amount added for this detail
+            $amountAdded = $addQty * $detail->harga_jual;
+
+            // Update qty and recalculate total_harga
+            $newQty = $detail->qty + $addQty;
+            $newTotalHarga = $newQty * $detail->harga_jual;
+
+            $detail->update([
+                "qty" => $newQty,
+                "total_harga" => $newTotalHarga,
+            ]);
+
+            $updatedCount++;
+            $totalQtyAdded += $addQty;
+            $totalAmountAdded += $amountAdded;
+        }
+
+        if ($updatedCount === 0) {
+            return redirect()
+                ->back()
+                ->with("error", "Tidak ada kuantitas yang ditambahkan.");
+        }
+
+        // Manually add to order totals (don't recalculate, as qty represents remaining)
+        $order->total_qty += $totalQtyAdded;
+        $order->total_amount += $totalAmountAdded;
+        $order->save();
+
+        return redirect()
+            ->back()
+            ->with(
+                "success",
+                "Berhasil menambahkan kuantitas pada {$updatedCount} item. Total kuantitas ditambahkan: {$totalQtyAdded}.",
+            );
+    }
 }

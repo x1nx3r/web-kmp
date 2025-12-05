@@ -329,7 +329,7 @@
                                 </div>
                                 @if($order->status !== 'draft' && $order->total_qty > 0)
                                     <div class="text-xs text-gray-500">
-                                        Progress: {{ number_format(($order->orderDetails->sum('qty_shipped') / $order->total_qty) * 100, 1) }}%
+                                        Progress: {{ number_format($order->getFulfillmentPercentage(), 1) }}%
                                     </div>
                                 @endif
                             </div>
@@ -692,7 +692,7 @@
                     </div>
                     <div class="p-6">
                         <p class="text-gray-600 mb-4">Apakah Anda yakin ingin <span class="font-semibold text-red-600">membatalkan</span> order ini?</p>
-                        
+
                         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                             <div class="flex items-start">
                                 <i class="fas fa-exclamation-triangle text-yellow-600 mt-0.5 mr-2"></i>

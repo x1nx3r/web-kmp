@@ -345,6 +345,10 @@ Route::middleware(["auth"])->group(function () {
             OrderController::class,
             "respondConsultation",
         ])->name("orders.consultation.respond");
+        Route::post("/add-quantity", [
+            OrderController::class,
+            "addQuantity",
+        ])->name("orders.add-quantity");
     });
 
     // Evaluasi Supplier routes

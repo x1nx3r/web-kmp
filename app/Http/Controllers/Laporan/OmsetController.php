@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Laporan;
 
-use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use App\Models\Klien;
-use App\Models\BahanBakuKlien;
 use App\Models\Order;
-use App\Models\InvoicePenagihan;
 use App\Models\Pengiriman;
 use App\Models\TargetOmset;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
+use App\Models\BahanBakuKlien;
+use App\Models\InvoicePenagihan;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 
 class OmsetController extends Controller
 {
@@ -584,7 +585,7 @@ class OmsetController extends Controller
     {
         try {
             // Check if user is direktur
-            if (session('role') !== 'direktur') {
+            if (!Auth::check() || Auth::user()->role !== 'direktur') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Akses ditolak. Hanya Direktur yang dapat mengubah target omset.'
@@ -598,7 +599,7 @@ class OmsetController extends Controller
             
             $targetTahunan = $request->target_tahunan;
             $tahun = $request->tahun;
-            $createdBy = session('nama_user') ?? 'System';
+            $createdBy = Auth::user()->nama ?? 'System';
             
             TargetOmset::setTarget($tahun, $targetTahunan, $createdBy);
             

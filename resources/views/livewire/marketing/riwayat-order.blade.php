@@ -9,7 +9,7 @@
                     </div>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">Riwayat Order</h1>
-                        <p class="text-gray-600 text-sm">Kelola dan pantau semua order klien dengan sistem multi-supplier</p>
+                        <p class="text-gray-600 text-sm">Periode: {{ $currentMonthName }} {{ $selectedYear }}</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
@@ -23,6 +23,45 @@
     </div>
 
     <div class="p-6">
+        {{-- Month/Year Navigation --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-2">
+                    <select wire:model.live="selectedMonth" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                    <select wire:model.live="selectedYear" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                        @foreach($availableYears as $year)
+                            <option value="{{ $year }}">{{ $year }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    @if($selectedMonth != now()->month || $selectedYear != now()->year)
+                        <button wire:click="goToCurrentMonth" class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                            <i class="fas fa-calendar-day mr-1"></i>
+                            Kembali Ke Bulan Ini
+                        </button>
+                    @endif
+                    <span class="text-sm text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Menampilkan order untuk <strong>{{ $currentMonthName }} {{ $selectedYear }}</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+
         {{-- Status Count Cards --}}
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -329,7 +368,7 @@
                                 </div>
                                 @if($order->status !== 'draft' && $order->total_qty > 0)
                                     <div class="text-xs text-gray-500">
-                                        Progress: {{ number_format(($order->orderDetails->sum('qty_shipped') / $order->total_qty) * 100, 1) }}%
+                                        Progress: {{ number_format($order->getFulfillmentPercentage(), 1) }}%
                                     </div>
                                 @endif
                             </div>
@@ -502,13 +541,14 @@
                                     <i class="fas fa-eye mr-1"></i>
                                     Lihat Detail
                                 </a>
-                                @if($order->status === 'draft')
+                                @if($order->status === 'draft' && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
                                     <a href="{{ route('orders.edit', $order) }}" class="text-green-600 hover:text-green-800 text-sm font-medium">
                                         <i class="fas fa-edit mr-1"></i>
                                         Edit
                                     </a>
                                 @endif
                             </div>
+                            @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                             <div class="flex items-center space-x-2">
                                 @if($order->status === 'draft')
                                     <button
@@ -553,6 +593,7 @@
                                     </button>
                                 @endif
                             </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -692,7 +733,7 @@
                     </div>
                     <div class="p-6">
                         <p class="text-gray-600 mb-4">Apakah Anda yakin ingin <span class="font-semibold text-red-600">membatalkan</span> order ini?</p>
-                        
+
                         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                             <div class="flex items-start">
                                 <i class="fas fa-exclamation-triangle text-yellow-600 mt-0.5 mr-2"></i>

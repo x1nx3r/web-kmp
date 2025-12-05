@@ -7,6 +7,7 @@ use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class RiwayatPenawaran extends Component
 {
@@ -15,6 +16,10 @@ class RiwayatPenawaran extends Component
     public $search = "";
     public $statusFilter = "";
     public $sortBy = "tanggal_desc";
+
+    // Month/Year Filter
+    public $selectedMonth;
+    public $selectedYear;
 
     // Modal states
     public $showDetailModal = false;
@@ -25,6 +30,25 @@ class RiwayatPenawaran extends Component
 
     protected $paginationTheme = "tailwind";
 
+    protected $queryString = [
+        "search" => ["except" => ""],
+        "statusFilter" => ["except" => ""],
+        "sortBy" => ["except" => "tanggal_desc"],
+        "selectedMonth" => ["except" => ""],
+        "selectedYear" => ["except" => ""],
+    ];
+
+    public function mount()
+    {
+        // Default to current month/year if not set
+        if (empty($this->selectedMonth)) {
+            $this->selectedMonth = now()->month;
+        }
+        if (empty($this->selectedYear)) {
+            $this->selectedYear = now()->year;
+        }
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -32,6 +56,55 @@ class RiwayatPenawaran extends Component
 
     public function updatingStatusFilter()
     {
+        $this->resetPage();
+    }
+
+    public function updatingSelectedMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSelectedYear()
+    {
+        $this->resetPage();
+    }
+
+    public function goToPreviousMonth()
+    {
+        $date = Carbon::createFromDate(
+            $this->selectedYear,
+            $this->selectedMonth,
+            1,
+        )->subMonth();
+        $this->selectedMonth = $date->month;
+        $this->selectedYear = $date->year;
+        $this->resetPage();
+    }
+
+    public function goToNextMonth()
+    {
+        $date = Carbon::createFromDate(
+            $this->selectedYear,
+            $this->selectedMonth,
+            1,
+        )->addMonth();
+        $this->selectedMonth = $date->month;
+        $this->selectedYear = $date->year;
+        $this->resetPage();
+    }
+
+    public function goToCurrentMonth()
+    {
+        $this->selectedMonth = now()->month;
+        $this->selectedYear = now()->year;
+        $this->resetPage();
+    }
+
+    public function clearFilters()
+    {
+        $this->reset(["search", "statusFilter", "sortBy"]);
+        $this->selectedMonth = now()->month;
+        $this->selectedYear = now()->year;
         $this->resetPage();
     }
 
@@ -67,6 +140,13 @@ class RiwayatPenawaran extends Component
         // Apply status filter
         if ($this->statusFilter) {
             $query->where("status", $this->statusFilter);
+        }
+
+        // Apply month/year filter
+        if ($this->selectedMonth && $this->selectedYear) {
+            $query
+                ->whereMonth("tanggal_penawaran", $this->selectedMonth)
+                ->whereYear("tanggal_penawaran", $this->selectedYear);
         }
 
         // Apply sorting
@@ -567,21 +647,70 @@ class RiwayatPenawaran extends Component
         }
     }
 
+    public function getAvailableYears()
+    {
+        $oldestPenawaran = Penawaran::orderBy(
+            "tanggal_penawaran",
+            "asc",
+        )->first();
+        $oldestYear = $oldestPenawaran
+            ? $oldestPenawaran->tanggal_penawaran->year
+            : now()->year;
+        $currentYear = now()->year;
+
+        return range($currentYear, $oldestYear);
+    }
+
+    public function getMonthName($month)
+    {
+        $months = [
+            1 => "Januari",
+            2 => "Februari",
+            3 => "Maret",
+            4 => "April",
+            5 => "Mei",
+            6 => "Juni",
+            7 => "Juli",
+            8 => "Agustus",
+            9 => "September",
+            10 => "Oktober",
+            11 => "November",
+            12 => "Desember",
+        ];
+
+        return $months[$month] ?? "";
+    }
+
     public function render()
     {
         $penawaranList = $this->getPenawaranQuery()->paginate(10);
 
+        // Build base query for status counts with month/year filter
+        $baseQuery = Penawaran::query()->when(
+            $this->selectedMonth && $this->selectedYear,
+            function ($query) {
+                $query
+                    ->whereMonth("tanggal_penawaran", $this->selectedMonth)
+                    ->whereYear("tanggal_penawaran", $this->selectedYear);
+            },
+        );
+
         // Get status counts for filter badges
         $statusCounts = [
-            "all" => Penawaran::count(),
-            "draft" => Penawaran::where("status", "draft")->count(),
-            "menunggu_verifikasi" => Penawaran::where(
-                "status",
-                "menunggu_verifikasi",
-            )->count(),
-            "disetujui" => Penawaran::where("status", "disetujui")->count(),
-            "ditolak" => Penawaran::where("status", "ditolak")->count(),
-            "expired" => Penawaran::where("status", "expired")->count(),
+            "all" => (clone $baseQuery)->count(),
+            "draft" => (clone $baseQuery)->where("status", "draft")->count(),
+            "menunggu_verifikasi" => (clone $baseQuery)
+                ->where("status", "menunggu_verifikasi")
+                ->count(),
+            "disetujui" => (clone $baseQuery)
+                ->where("status", "disetujui")
+                ->count(),
+            "ditolak" => (clone $baseQuery)
+                ->where("status", "ditolak")
+                ->count(),
+            "expired" => (clone $baseQuery)
+                ->where("status", "expired")
+                ->count(),
         ];
 
         // Check if current user can verify penawaran (only direktur)
@@ -592,6 +721,8 @@ class RiwayatPenawaran extends Component
             "penawaranList" => $penawaranList,
             "statusCounts" => $statusCounts,
             "canVerify" => $canVerify,
+            "availableYears" => $this->getAvailableYears(),
+            "currentMonthName" => $this->getMonthName($this->selectedMonth),
         ]);
     }
 }

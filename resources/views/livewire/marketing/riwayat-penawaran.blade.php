@@ -9,7 +9,7 @@
                     </div>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">Riwayat Penawaran</h1>
-                        <p class="text-gray-600 text-sm">Daftar semua penawaran yang telah dibuat</p>
+                        <p class="text-gray-600 text-sm">Periode: {{ $currentMonthName }} {{ $selectedYear }}</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
@@ -23,6 +23,45 @@
     </div>
 
     <div class="p-6">
+        {{-- Month/Year Navigation --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-2">
+                    <select wire:model.live="selectedMonth" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                    <select wire:model.live="selectedYear" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        @foreach($availableYears as $year)
+                            <option value="{{ $year }}">{{ $year }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    @if($selectedMonth != now()->month || $selectedYear != now()->year)
+                        <button wire:click="goToCurrentMonth" class="px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                            <i class="fas fa-calendar-day mr-1"></i>
+                            Kembali Ke Bulan Ini
+                        </button>
+                    @endif
+                    <span class="text-sm text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Menampilkan penawaran untuk <strong>{{ $currentMonthName }} {{ $selectedYear }}</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+
         {{-- Filters and Search --}}
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -344,6 +383,7 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
 
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 {{-- Edit (only for draft) --}}
                                 @if($penawaran->status === 'draft')
                                     <a
@@ -363,6 +403,7 @@
                                 >
                                     <i class="fas fa-copy"></i>
                                 </button>
+                                @endif
 
                                 {{-- Approve/Reject (only for pending and only for direktur) --}}
                                 @if($penawaran->status === 'menunggu_verifikasi')
@@ -394,6 +435,7 @@
                                 @endif
 
                                 {{-- Delete --}}
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 <button
                                     wire:click="confirmDelete({{ $penawaran->id }})"
                                     class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
@@ -401,6 +443,7 @@
                                 >
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                @endif
                             </div>
                         </div>
                     </div>

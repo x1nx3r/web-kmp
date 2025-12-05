@@ -29,23 +29,60 @@ Route::post("/logout", [AuthController::class, "logout"])
 // Protected routes - require authentication
 Route::middleware(["auth"])->group(function () {
     // Dashboard - accessible by all authenticated users
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get("/dashboard", [DashboardController::class, "index"])->name(
+        "dashboard",
+    );
 
-    Route::prefix('laporan')->name('laporan.')->group(function () {
-            Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
-            Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
+    Route::prefix("laporan")
+        ->name("laporan.")
+        ->group(function () {
+            Route::get("/purchase-order", [
+                LaporanPOController::class,
+                "index",
+            ])->name("po");
+            Route::post("/purchase-order/export", [
+                LaporanPOController::class,
+                "export",
+            ])->name("po.export");
 
-            Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
-            Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
-            Route::post('/omset/set-target', [LaporanOmsetController::class, 'setTarget'])->name('omset.setTarget');
-            Route::get('/omset/target-by-year', [LaporanOmsetController::class, 'getTargetByYear'])->name('omset.getTargetByYear');
-            Route::get('/omset/available-years', [LaporanOmsetController::class, 'getAvailableYears'])->name('omset.getAvailableYears');
+            Route::get("/omset", [
+                LaporanOmsetController::class,
+                "index",
+            ])->name("omset");
+            Route::post("/omset/export", [
+                LaporanOmsetController::class,
+                "export",
+            ])->name("omset.export");
+            Route::post("/omset/set-target", [
+                LaporanOmsetController::class,
+                "setTarget",
+            ])->name("omset.setTarget");
+            Route::get("/omset/target-by-year", [
+                LaporanOmsetController::class,
+                "getTargetByYear",
+            ])->name("omset.getTargetByYear");
+            Route::get("/omset/available-years", [
+                LaporanOmsetController::class,
+                "getAvailableYears",
+            ])->name("omset.getAvailableYears");
 
-            Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
-            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
-            Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
-            Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
-    });
+            Route::get("/pengiriman", [
+                LaporanPengirimanController::class,
+                "index",
+            ])->name("pengiriman");
+            Route::match(["GET", "POST"], "/pengiriman/export", [
+                LaporanPengirimanController::class,
+                "export",
+            ])->name("pengiriman.export");
+            Route::get("/penagihan", [
+                LaporanPenagihanController::class,
+                "index",
+            ])->name("penagihan");
+            Route::post("/penagihan/export", [
+                LaporanPenagihanController::class,
+                "export",
+            ])->name("penagihan.export");
+        });
 
     // Pengaturan - accessible by all authenticated users
     Route::get("/pengaturan", [PengaturanController::class, "index"])->name(
@@ -304,6 +341,14 @@ Route::middleware(["auth"])->group(function () {
             OrderController::class,
             "consultDirektur",
         ])->name("orders.consult-direktur");
+        Route::post("/consultation/{consultation}/respond", [
+            OrderController::class,
+            "respondConsultation",
+        ])->name("orders.consultation.respond");
+        Route::post("/add-quantity", [
+            OrderController::class,
+            "addQuantity",
+        ])->name("orders.add-quantity");
     });
 
     // Evaluasi Supplier routes

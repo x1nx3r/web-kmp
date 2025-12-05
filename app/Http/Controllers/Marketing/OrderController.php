@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderConsultation;
 use App\Models\Klien;
 use App\Models\BahanBakuKlien;
 use App\Models\BahanBakuSupplier;
@@ -230,14 +231,28 @@ class OrderController extends Controller
             "orderDetails.bahanBakuKlien",
             "orderDetails.orderSuppliers.supplier.picPurchasing",
             "orderDetails.orderSuppliers.bahanBakuSupplier",
+            "pendingConsultation.requester",
+            "latestConsultation.requester",
+            "latestConsultation.responder",
         ])->findOrFail($id);
 
         // Prepare chart data for price analysis
         $chartsData = $this->prepareOrderChartsData($order);
 
+        // Get pending consultation for Direktur response panel
+        $pendingConsultation = $order->pendingConsultation;
+
+        // Get latest consultation for status display
+        $latestConsultation = $order->latestConsultation;
+
         return view(
             "pages.marketing.orders.show",
-            compact("order", "chartsData"),
+            compact(
+                "order",
+                "chartsData",
+                "pendingConsultation",
+                "latestConsultation",
+            ),
         );
     }
 
@@ -652,7 +667,26 @@ class OrderController extends Controller
                 );
         }
 
+        // Check if there's already a pending consultation for this order
+        $pendingConsultation = $order->pendingConsultation;
+        if ($pendingConsultation) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Masih ada konsultasi yang belum direspons untuk order ini.",
+                );
+        }
+
         $note = $request->input("catatan", null);
+
+        // Create consultation record
+        $consultation = OrderConsultation::create([
+            "order_id" => $order->id,
+            "requested_by" => $user->id,
+            "requested_note" => $note,
+            "requested_at" => now(),
+        ]);
 
         // Send notification to all Direktur
         $notificationCount = NotificationService::notifyDirekturOrderConsultation(
@@ -675,6 +709,182 @@ class OrderController extends Controller
             ->with(
                 "error",
                 "Gagal mengirim konsultasi. Tidak ada Direktur aktif ditemukan.",
+            );
+    }
+
+    /**
+     * Respond to a consultation request (Direktur only)
+     */
+    public function respondConsultation(
+        Request $request,
+        string $orderId,
+        string $consultationId,
+    ) {
+        $order = Order::findOrFail($orderId);
+        $consultation = OrderConsultation::where("id", $consultationId)
+            ->where("order_id", $orderId)
+            ->firstOrFail();
+
+        $user = Auth::user();
+
+        // Authorization: Only Direktur can respond
+        if (!$user->isDirektur()) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Hanya Direktur yang dapat merespons konsultasi.",
+                );
+        }
+
+        // Check if already responded
+        if ($consultation->isResponded()) {
+            return redirect()
+                ->back()
+                ->with("error", "Konsultasi ini sudah direspons sebelumnya.");
+        }
+
+        // Validate request
+        $request->validate([
+            "response_type" => "required|in:selesai,lanjutkan",
+            "response_note" => "nullable|string|max:1000",
+        ]);
+
+        // Update consultation with response
+        $consultation->update([
+            "responded_by" => $user->id,
+            "response_type" => $request->input("response_type"),
+            "response_note" => $request->input("response_note"),
+            "responded_at" => now(),
+        ]);
+
+        // Reload consultation with relationships
+        $consultation->load(["order.klien", "responder"]);
+
+        // Send notification to all Marketing users
+        $notificationCount = NotificationService::notifyConsultationResponded(
+            $consultation,
+        );
+
+        $responseLabel =
+            $consultation->response_type === "selesai"
+                ? "menutup order"
+                : "melanjutkan pengiriman";
+
+        return redirect()
+            ->back()
+            ->with(
+                "success",
+                "Respons berhasil dikirim. Anda menyarankan untuk {$responseLabel}. ({$notificationCount} notifikasi terkirim ke Marketing).",
+            );
+    }
+
+    /**
+     * Add quantity to existing order details (after Direktur advised to continue)
+     */
+    public function addQuantity(Request $request, string $id)
+    {
+        $order = Order::with([
+            "orderDetails",
+            "latestConsultation",
+        ])->findOrFail($id);
+
+        $user = Auth::user();
+
+        // Authorization: Only order creator or marketing users can add quantity
+        $isOrderCreator = $order->created_by === $user->id;
+        $isMarketing = $user->isMarketing();
+
+        if (!$isOrderCreator && !$isMarketing) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Anda tidak memiliki akses untuk mengubah order ini.",
+                );
+        }
+
+        // Only allow for orders in 'diproses' status
+        if ($order->status !== "diproses") {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Penambahan kuantitas hanya dapat dilakukan untuk order yang sedang diproses.",
+                );
+        }
+
+        // Check if Direktur advised to continue
+        $latestConsultation = $order->latestConsultation;
+        if (
+            !$latestConsultation ||
+            !$latestConsultation->isResponded() ||
+            $latestConsultation->response_type !== "lanjutkan"
+        ) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Penambahan kuantitas hanya dapat dilakukan setelah Direktur menyarankan untuk melanjutkan.",
+                );
+        }
+
+        // Validate request
+        $request->validate([
+            "quantities" => "required|array",
+            "quantities.*" => "numeric|min:0",
+        ]);
+
+        $quantities = $request->input("quantities", []);
+        $updatedCount = 0;
+        $totalQtyAdded = 0;
+        $totalAmountAdded = 0;
+
+        foreach ($quantities as $detailId => $addQty) {
+            $addQty = (float) $addQty;
+
+            if ($addQty <= 0) {
+                continue;
+            }
+
+            $detail = $order->orderDetails->find($detailId);
+            if (!$detail) {
+                continue;
+            }
+
+            // Calculate amount added for this detail
+            $amountAdded = $addQty * $detail->harga_jual;
+
+            // Update qty and recalculate total_harga
+            $newQty = $detail->qty + $addQty;
+            $newTotalHarga = $newQty * $detail->harga_jual;
+
+            $detail->update([
+                "qty" => $newQty,
+                "total_harga" => $newTotalHarga,
+            ]);
+
+            $updatedCount++;
+            $totalQtyAdded += $addQty;
+            $totalAmountAdded += $amountAdded;
+        }
+
+        if ($updatedCount === 0) {
+            return redirect()
+                ->back()
+                ->with("error", "Tidak ada kuantitas yang ditambahkan.");
+        }
+
+        // Manually add to order totals (don't recalculate, as qty represents remaining)
+        $order->total_qty += $totalQtyAdded;
+        $order->total_amount += $totalAmountAdded;
+        $order->save();
+
+        return redirect()
+            ->back()
+            ->with(
+                "success",
+                "Berhasil menambahkan kuantitas pada {$updatedCount} item. Total kuantitas ditambahkan: {$totalQtyAdded}.",
             );
     }
 }

@@ -8,6 +8,7 @@ use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 class RiwayatOrder extends Component
 {
@@ -21,6 +22,10 @@ class RiwayatOrder extends Component
     public $sortBy = "priority_desc";
     public $perPage = 10;
 
+    // Month/Year Filter
+    public $selectedMonth;
+    public $selectedYear;
+
     // UI State
     public $showDeleteModal = false;
     public $orderToDelete = null;
@@ -28,7 +33,7 @@ class RiwayatOrder extends Component
     public $orderToComplete = null;
     public $showCancelModal = false;
     public $orderToCancel = null;
-    public $cancelReason = '';
+    public $cancelReason = "";
     public $expandedOrders = []; // Track which orders are expanded to show suppliers
 
     protected $queryString = [
@@ -37,7 +42,20 @@ class RiwayatOrder extends Component
         "klienFilter" => ["except" => ""],
         "priorityFilter" => ["except" => ""],
         "sortBy" => ["except" => "priority_desc"],
+        "selectedMonth" => ["except" => ""],
+        "selectedYear" => ["except" => ""],
     ];
+
+    public function mount()
+    {
+        // Default to current month/year if not set
+        if (empty($this->selectedMonth)) {
+            $this->selectedMonth = now()->month;
+        }
+        if (empty($this->selectedYear)) {
+            $this->selectedYear = now()->year;
+        }
+    }
 
     public function updatingSearch()
     {
@@ -59,6 +77,47 @@ class RiwayatOrder extends Component
         $this->resetPage();
     }
 
+    public function updatingSelectedMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSelectedYear()
+    {
+        $this->resetPage();
+    }
+
+    public function goToPreviousMonth()
+    {
+        $date = Carbon::createFromDate(
+            $this->selectedYear,
+            $this->selectedMonth,
+            1,
+        )->subMonth();
+        $this->selectedMonth = $date->month;
+        $this->selectedYear = $date->year;
+        $this->resetPage();
+    }
+
+    public function goToNextMonth()
+    {
+        $date = Carbon::createFromDate(
+            $this->selectedYear,
+            $this->selectedMonth,
+            1,
+        )->addMonth();
+        $this->selectedMonth = $date->month;
+        $this->selectedYear = $date->year;
+        $this->resetPage();
+    }
+
+    public function goToCurrentMonth()
+    {
+        $this->selectedMonth = now()->month;
+        $this->selectedYear = now()->year;
+        $this->resetPage();
+    }
+
     public function clearFilters()
     {
         $this->reset([
@@ -68,6 +127,8 @@ class RiwayatOrder extends Component
             "priorityFilter",
             "sortBy",
         ]);
+        $this->selectedMonth = now()->month;
+        $this->selectedYear = now()->year;
         $this->resetPage();
     }
 
@@ -157,19 +218,22 @@ class RiwayatOrder extends Component
     public function cancelOrder($orderId, $reason = null)
     {
         // Validate cancel reason
-        $this->validate([
-            'cancelReason' => 'required|string|min:5',
-        ], [
-            'cancelReason.required' => 'Alasan pembatalan harus diisi.',
-            'cancelReason.min' => 'Alasan pembatalan minimal 5 karakter.',
-        ]);
+        $this->validate(
+            [
+                "cancelReason" => "required|string|min:5",
+            ],
+            [
+                "cancelReason.required" => "Alasan pembatalan harus diisi.",
+                "cancelReason.min" => "Alasan pembatalan minimal 5 karakter.",
+            ],
+        );
 
         $order = Order::find($orderId);
         if ($order && !in_array($order->status, ["selesai", "dibatalkan"])) {
             $order->cancel($this->cancelReason ?: $reason);
             $this->showCancelModal = false;
             $this->orderToCancel = null;
-            $this->cancelReason = '';
+            $this->cancelReason = "";
             session()->flash("message", "Order berhasil dibatalkan.");
         }
     }
@@ -177,7 +241,7 @@ class RiwayatOrder extends Component
     public function confirmCancel($orderId)
     {
         $this->orderToCancel = $orderId;
-        $this->cancelReason = '';
+        $this->cancelReason = "";
         $this->showCancelModal = true;
     }
 
@@ -185,7 +249,7 @@ class RiwayatOrder extends Component
     {
         $this->showCancelModal = false;
         $this->orderToCancel = null;
-        $this->cancelReason = '';
+        $this->cancelReason = "";
     }
 
     private function getOrders()
@@ -231,6 +295,13 @@ class RiwayatOrder extends Component
             })
             ->when($this->priorityFilter, function (Builder $query) {
                 $query->where("priority", $this->priorityFilter);
+            })
+            ->when($this->selectedMonth && $this->selectedYear, function (
+                Builder $query,
+            ) {
+                $query
+                    ->whereMonth("tanggal_order", $this->selectedMonth)
+                    ->whereYear("tanggal_order", $this->selectedYear);
             })
             ->when($this->sortBy, function (Builder $query) {
                 switch ($this->sortBy) {
@@ -282,14 +353,62 @@ class RiwayatOrder extends Component
 
     private function getStatusCounts()
     {
+        $baseQuery = Order::query()->when(
+            $this->selectedMonth && $this->selectedYear,
+            function (Builder $query) {
+                $query
+                    ->whereMonth("tanggal_order", $this->selectedMonth)
+                    ->whereYear("tanggal_order", $this->selectedYear);
+            },
+        );
+
         return [
-            "all" => Order::count(),
-            "draft" => Order::where("status", "draft")->count(),
-            "dikonfirmasi" => Order::where("status", "dikonfirmasi")->count(),
-            "diproses" => Order::where("status", "diproses")->count(),
-            "selesai" => Order::where("status", "selesai")->count(),
-            "dibatalkan" => Order::where("status", "dibatalkan")->count(),
+            "all" => (clone $baseQuery)->count(),
+            "draft" => (clone $baseQuery)->where("status", "draft")->count(),
+            "dikonfirmasi" => (clone $baseQuery)
+                ->where("status", "dikonfirmasi")
+                ->count(),
+            "diproses" => (clone $baseQuery)
+                ->where("status", "diproses")
+                ->count(),
+            "selesai" => (clone $baseQuery)
+                ->where("status", "selesai")
+                ->count(),
+            "dibatalkan" => (clone $baseQuery)
+                ->where("status", "dibatalkan")
+                ->count(),
         ];
+    }
+
+    public function getAvailableYears()
+    {
+        $oldestOrder = Order::orderBy("tanggal_order", "asc")->first();
+        $oldestYear = $oldestOrder
+            ? $oldestOrder->tanggal_order->year
+            : now()->year;
+        $currentYear = now()->year;
+
+        return range($currentYear, $oldestYear);
+    }
+
+    public function getMonthName($month)
+    {
+        $months = [
+            1 => "Januari",
+            2 => "Februari",
+            3 => "Maret",
+            4 => "April",
+            5 => "Mei",
+            6 => "Juni",
+            7 => "Juli",
+            8 => "Agustus",
+            9 => "September",
+            10 => "Oktober",
+            11 => "November",
+            12 => "Desember",
+        ];
+
+        return $months[$month] ?? "";
     }
 
     public function render()
@@ -298,6 +417,8 @@ class RiwayatOrder extends Component
             "orders" => $this->getOrders(),
             "statusCounts" => $this->getStatusCounts(),
             "kliens" => Klien::orderBy("nama")->get(),
+            "availableYears" => $this->getAvailableYears(),
+            "currentMonthName" => $this->getMonthName($this->selectedMonth),
         ])->layout("layouts.app");
     }
 }

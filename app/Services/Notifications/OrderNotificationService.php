@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\Order;
+use App\Models\OrderConsultation;
 use App\Models\Pengiriman;
 use App\Models\User;
 
@@ -22,6 +23,7 @@ class OrderNotificationService extends BaseNotificationService
      */
     public const TYPE_NEARING_FULFILLMENT = "order_nearing_fulfillment";
     public const TYPE_DIREKTUR_CONSULTATION = "order_direktur_consultation";
+    public const TYPE_CONSULTATION_RESPONDED = "order_consultation_responded";
     public const TYPE_COMPLETED = "order_completed";
     public const TYPE_CANCELLED = "order_cancelled";
     public const TYPE_PRIORITY_ESCALATED = "order_priority_escalated";
@@ -53,23 +55,18 @@ class OrderNotificationService extends BaseNotificationService
     public const FULFILLMENT_THRESHOLD_MAX = 105;
 
     /**
-     * Notify order creator that their order is nearing fulfillment (95-105%).
+     * Notify all Marketing users that an order is nearing fulfillment (95-105%).
      *
      * @param Order $order
      * @param float $fulfillmentPercentage
      * @param Pengiriman|null $pengiriman The pengiriman that triggered this notification
-     * @return string|null The notification ID or null if no creator
+     * @return int Number of notifications sent
      */
     public static function notifyNearingFulfillment(
         Order $order,
         float $fulfillmentPercentage,
         ?Pengiriman $pengiriman = null,
-    ): ?string {
-        $creator = $order->creator;
-        if (!$creator) {
-            return null;
-        }
-
+    ): int {
         $poNumber = $order->po_number ?? $order->no_order;
         $klienName = $order->klien ? $order->klien->nama : "Klien";
         $shippedQty = $order->getShippedQty();
@@ -79,7 +76,7 @@ class OrderNotificationService extends BaseNotificationService
         // Determine message styling based on fulfillment percentage
         $styling = self::getFulfillmentStyling($fulfillmentPercentage);
 
-        return static::send($creator, self::TYPE_NEARING_FULFILLMENT, [
+        return static::sendToRole("marketing", self::TYPE_NEARING_FULFILLMENT, [
             "title" => "Order {$styling["status_text"]} ({$fulfillmentPercentage}%)",
             "message" => "Order {$poNumber} untuk {$klienName} sudah terkirim {$shippedQty} dari {$totalQty} (sisa: {$remainingQty}). Apakah order ini sudah selesai?",
             "icon" => "shipping-fast",
@@ -139,6 +136,67 @@ class OrderNotificationService extends BaseNotificationService
                 "requested_by_id" => $requestedBy->id,
                 "requested_by_name" => $requestedBy->nama,
                 "note" => $note,
+            ],
+        );
+    }
+
+    /**
+     * Notify all Marketing users that a Direktur has responded to a consultation.
+     *
+     * @param OrderConsultation $consultation
+     * @return int Number of notifications sent
+     */
+    public static function notifyConsultationResponded(
+        OrderConsultation $consultation,
+    ): int {
+        $order = $consultation->order;
+        $responder = $consultation->responder;
+        $poNumber = $order->po_number ?? $order->no_order;
+        $klienName = $order->klien ? $order->klien->nama : "Klien";
+        $responderName = $responder ? $responder->nama : "Direktur";
+
+        $responseLabel =
+            $consultation->response_type === "selesai"
+                ? "menyarankan untuk menutup"
+                : "menyarankan untuk melanjutkan";
+
+        $message = "{$responderName} {$responseLabel} order {$poNumber} ({$klienName}).";
+
+        if ($consultation->response_note) {
+            $message .= " Catatan: {$consultation->response_note}";
+        }
+
+        $iconConfig =
+            $consultation->response_type === "selesai"
+                ? [
+                    "icon" => "check-circle",
+                    "icon_bg" => "bg-green-100",
+                    "icon_color" => "text-green-600",
+                ]
+                : [
+                    "icon" => "arrow-right",
+                    "icon_bg" => "bg-blue-100",
+                    "icon_color" => "text-blue-600",
+                ];
+
+        return static::sendToRole(
+            "marketing",
+            self::TYPE_CONSULTATION_RESPONDED,
+            [
+                "title" => "Respons Direktur: {$poNumber}",
+                "message" => $message,
+                "icon" => $iconConfig["icon"],
+                "icon_bg" => $iconConfig["icon_bg"],
+                "icon_color" => $iconConfig["icon_color"],
+                "url" => "/orders/{$order->id}",
+                "order_id" => $order->id,
+                "no_order" => $order->no_order,
+                "po_number" => $order->po_number,
+                "consultation_id" => $consultation->id,
+                "response_type" => $consultation->response_type,
+                "response_note" => $consultation->response_note,
+                "responded_by_id" => $responder?->id,
+                "responded_by_name" => $responderName,
             ],
         );
     }

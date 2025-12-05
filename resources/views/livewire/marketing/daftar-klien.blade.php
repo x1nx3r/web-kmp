@@ -212,6 +212,7 @@
                 </div>
 
                 {{-- Add Client Button --}}
+                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                 <button
                     wire:click="openCompanyModal"
                     class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700
@@ -222,6 +223,7 @@
                     <i class="fas fa-plus mr-2"></i>
                     Tambah Klien
                 </button>
+                @endif
             </div>
         </div>
     </div>
@@ -310,6 +312,7 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center justify-end space-x-1">
+                                        @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                         <a
                                             href="{{ route('kontak-klien.index', ['klien' => $klien->nama]) }}"
                                             class="flex items-center justify-center w-8 h-8 bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-800 rounded-md transition-all duration-200 group"
@@ -317,6 +320,7 @@
                                         >
                                             <i class="fas fa-address-book text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </a>
+                                        @endif
                                         <a
                                             href="{{ route('klien.edit', $klien->id) }}"
                                             class="flex items-center justify-center w-8 h-8 bg-amber-100 hover:bg-amber-200 text-amber-700 hover:text-amber-800 rounded-md transition-all duration-200 group"
@@ -324,6 +328,7 @@
                                         >
                                             <i class="fas fa-eye text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </a>
+                                        @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                         <button
                                             type="button"
                                             wire:click.stop="deleteClient({{ $klien->id }})"
@@ -332,6 +337,7 @@
                                         >
                                             <i class="fas fa-trash-alt text-xs group-hover:scale-110 transition-transform duration-200"></i>
                                         </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

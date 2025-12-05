@@ -1,7 +1,7 @@
 <div class="relative">
     {{-- Global Loading Overlay --}}
-    <div 
-        wire:loading 
+    <div
+        wire:loading
         wire:target="search,klienFilter,statusFilter,sortBy,clearSearch,clearFilters"
         class="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center"
         style="display: none;"
@@ -72,7 +72,7 @@
                 @endif
             </div>
         </div>
-        
+
         {{-- Filter Controls --}}
         <div class="p-6">
             <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
@@ -96,12 +96,12 @@
                             wire:model.live.debounce.500ms="search"
                             placeholder="Cari di semua field (nama, spesifikasi, klien)..."
                             class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm
-                                   focus:ring-2 focus:ring-purple-500 focus:border-purple-500 
+                                   focus:ring-2 focus:ring-purple-500 focus:border-purple-500
                                    transition-all duration-200 bg-gray-50 focus:bg-white"
                         >
                         @if($search)
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                <button 
+                                <button
                                     wire:click="clearSearch"
                                     class="text-gray-400 hover:text-gray-600 transition-colors duration-200"
                                     title="Clear search"
@@ -126,7 +126,7 @@
                             placeholder="Cari material spesifik..."
                             list="material-suggestions"
                             class="block w-full pl-3 pr-8 py-3 border border-gray-300 rounded-lg text-sm
-                                   focus:ring-2 focus:ring-purple-500 focus:border-purple-500 
+                                   focus:ring-2 focus:ring-purple-500 focus:border-purple-500
                                    transition-all duration-200 bg-gray-50 focus:bg-white"
                         >
                         <datalist id="material-suggestions">
@@ -136,7 +136,7 @@
                         </datalist>
                         @if($materialSearch)
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                <button 
+                                <button
                                     wire:click="clearMaterialSearch"
                                     class="text-gray-400 hover:text-gray-600 transition-colors duration-200"
                                     title="Clear material search"
@@ -157,7 +157,7 @@
                     <select
                         wire:model.live="klienFilter"
                         class="block w-full py-3 px-3 border border-gray-300 rounded-lg text-sm
-                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500 
+                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500
                                transition-all duration-200 bg-gray-50 focus:bg-white"
                     >
                         <option value="">Semua Klien</option>
@@ -180,7 +180,7 @@
                     <select
                         wire:model.live="cabangFilter"
                         class="block w-full py-3 px-3 border border-gray-300 rounded-lg text-sm
-                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500 
+                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500
                                transition-all duration-200 bg-gray-50 focus:bg-white"
                     >
                         <option value="">Semua Lokasi</option>
@@ -207,7 +207,7 @@
                     <select
                         wire:model.live="statusFilter"
                         class="block w-full py-3 px-3 border border-gray-300 rounded-lg text-sm
-                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500 
+                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500
                                transition-all duration-200 bg-gray-50 focus:bg-white"
                     >
                         <option value="">Semua Status</option>
@@ -452,7 +452,7 @@
                                     <div class="text-sm text-gray-900 max-w-xs">
                                         <div class="line-clamp-2">{{ \Illuminate\Support\Str::limit($material->spesifikasi, 100) }}</div>
                                         @if(strlen($material->spesifikasi) > 100)
-                                            <button 
+                                            <button
                                                 wire:click="editMaterial({{ $material->id }})"
                                                 class="text-xs text-purple-600 hover:text-purple-800 mt-1"
                                             >
@@ -487,6 +487,7 @@
                                 {{ $material->updated_at->format('d/m/Y H:i') }}
                             </td>
                             <td class="px-6 py-4 text-right">
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 <div class="flex items-center justify-end space-x-2">
                                     <button
                                         wire:click="editMaterial({{ $material->id }})"
@@ -503,6 +504,7 @@
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -679,7 +681,7 @@
                             {{ $deleteModal['title'] }}
                         </h3>
                     </div>
-                
+
                 <div class="px-6 py-4">
                     <p class="text-gray-700">{{ $deleteModal['message'] }}</p>
                     <p class="text-sm text-red-600 mt-2">
@@ -687,7 +689,7 @@
                         Tindakan ini tidak dapat dibatalkan.
                     </p>
                 </div>
-                
+
                 <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end space-x-3">
                     <button
                         wire:click="cancelDelete"

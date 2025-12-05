@@ -1,7 +1,7 @@
 @props(['selectedMaterials', 'editMode' => false])
 
 {{-- Action Buttons --}}
-@if(count($selectedMaterials) > 0)
+@if(count($selectedMaterials) > 0 && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between">
             <div class="flex items-center">

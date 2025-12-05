@@ -105,7 +105,7 @@
                     $isOrderCreator = $currentUser && $order->created_by === $currentUser->id;
                     $isMarketing = $currentUser && $currentUser->isMarketing();
                     $isDirektur = $currentUser && $currentUser->isDirektur();
-                    $canManageOrder = $isOrderCreator || $isMarketing || $isDirektur;
+                    $canManageOrder = $isMarketing || $isDirektur;
                 @endphp
                 <div class="flex flex-wrap gap-2 sm:space-x-3">
                     @if($order->status === 'draft' && $canManageOrder)
@@ -141,17 +141,29 @@
                         </form>
                         {{-- Konsultasi Direktur button - shown when order is nearing fulfillment --}}
                         {{-- Only the order creator or marketing users can request consultation --}}
+                        {{-- Disabled if there's already a pending consultation --}}
                         @php
                             $fulfillmentPct = $order->getFulfillmentPercentage();
                             $canConsultDirektur = $isOrderCreator || $isMarketing;
+                            $hasPendingConsultation = $pendingConsultation !== null;
                         @endphp
                         @if($fulfillmentPct >= 95 && $fulfillmentPct <= 105 && $canConsultDirektur)
-                            <button type="button"
-                                    onclick="openConsultModal()"
-                                    class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-                                <i class="fas fa-question-circle mr-1 sm:mr-2"></i>
-                                <span class="hidden sm:inline">Konsultasi Direktur</span>
-                            </button>
+                            @if($hasPendingConsultation)
+                                <button type="button"
+                                        disabled
+                                        class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
+                                        title="Menunggu respons Direktur">
+                                    <i class="fas fa-clock mr-1 sm:mr-2"></i>
+                                    <span class="hidden sm:inline">Menunggu Respons</span>
+                                </button>
+                            @else
+                                <button type="button"
+                                        onclick="openConsultModal()"
+                                        class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                    <i class="fas fa-question-circle mr-1 sm:mr-2"></i>
+                                    <span class="hidden sm:inline">Konsultasi Direktur</span>
+                                </button>
+                            @endif
                         @endif
                     @endif
 
@@ -176,6 +188,160 @@
     </div>
 
         <div class="p-4 sm:p-6">
+
+        {{-- Direktur Response Panel - shown when there's a pending consultation --}}
+        @if($isDirektur && $pendingConsultation)
+        <div class="mb-4 sm:mb-6">
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-4 sm:px-6 py-4 border-b border-blue-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-question-circle text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Konsultasi Menunggu Respons Anda</h3>
+                            <p class="text-sm text-gray-600">
+                                {{ $pendingConsultation->requester->nama ?? 'Marketing' }} meminta saran pada
+                                {{ $pendingConsultation->requested_at->format('d M Y, H:i') }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 sm:p-6">
+                    {{-- Request Note --}}
+                    @if($pendingConsultation->requested_note)
+                    <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                        <p class="text-sm text-gray-500 mb-1">Catatan dari Marketing:</p>
+                        <p class="text-sm text-gray-900">{{ $pendingConsultation->requested_note }}</p>
+                    </div>
+                    @endif
+
+                    {{-- Order Summary --}}
+                    <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">No. PO:</span>
+                                <span class="font-medium text-gray-900 ml-1">{{ $order->po_number ?? $order->no_order }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Klien:</span>
+                                <span class="font-medium text-gray-900 ml-1">{{ $order->klien->nama ?? '-' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Fulfillment:</span>
+                                <span class="font-medium {{ $order->getFulfillmentPercentage() > 100 ? 'text-red-600' : 'text-green-600' }} ml-1">
+                                    {{ number_format($order->getFulfillmentPercentage(), 1) }}%
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Sisa:</span>
+                                <span class="font-medium text-orange-600 ml-1">
+                                    {{ number_format(max(0, $order->total_qty - $order->getShippedQty()), 0, ',', '.') }} {{ $order->orderDetails->first()->satuan ?? 'unit' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Response Form --}}
+                    <form action="{{ route('orders.consultation.respond', ['order' => $order->id, 'consultation' => $pendingConsultation->id]) }}" method="POST">
+                        @csrf
+                        <div class="mb-4">
+                            <label for="response_note" class="block text-sm font-medium text-gray-700 mb-2">
+                                Catatan Anda (opsional)
+                            </label>
+                            <textarea
+                                name="response_note"
+                                id="response_note"
+                                rows="2"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                placeholder="Berikan catatan atau alasan untuk keputusan Anda..."
+                            ></textarea>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="submit" name="response_type" value="selesai"
+                                    class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Setujui Selesai
+                            </button>
+                            <button type="submit" name="response_type" value="lanjutkan"
+                                    class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center">
+                                <i class="fas fa-arrow-right mr-2"></i>
+                                Lanjutkan Pengiriman
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- Latest Consultation Status - shown for Marketing when there's a responded consultation --}}
+        @if(($isMarketing || $isOrderCreator) && $latestConsultation && $latestConsultation->isResponded())
+        <div class="mb-4 sm:mb-6">
+            <div class="bg-white border rounded-xl shadow-sm overflow-hidden {{ $latestConsultation->response_type === 'selesai' ? 'border-green-200' : 'border-blue-200' }}">
+                <div class="px-4 sm:px-6 py-3 {{ $latestConsultation->response_type === 'selesai' ? 'bg-green-50' : 'bg-blue-50' }} border-b {{ $latestConsultation->response_type === 'selesai' ? 'border-green-200' : 'border-blue-200' }}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center {{ $latestConsultation->response_type === 'selesai' ? 'bg-green-100' : 'bg-blue-100' }}">
+                                <i class="fas {{ $latestConsultation->response_type === 'selesai' ? 'fa-check-circle text-green-600' : 'fa-arrow-right text-blue-600' }}"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900">
+                                    Respons Direktur: {{ $latestConsultation->response_type_label }}
+                                </h4>
+                                <p class="text-xs text-gray-600">
+                                    {{ $latestConsultation->responder->nama ?? 'Direktur' }} • {{ $latestConsultation->responded_at->format('d M Y, H:i') }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $latestConsultation->response_type === 'selesai' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
+                                {{ $latestConsultation->response_type === 'selesai' ? 'Disarankan Tutup' : 'Disarankan Lanjut' }}
+                            </span>
+                            @if($latestConsultation->response_type === 'lanjutkan' && $order->status === 'diproses')
+                                <button type="button"
+                                        onclick="openAddQtyModal()"
+                                        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">
+                                    <i class="fas fa-plus mr-1"></i>
+                                    Tambah Kuantitas
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @if($latestConsultation->response_note)
+                <div class="px-4 sm:px-6 py-3">
+                    <p class="text-sm text-gray-600">
+                        <i class="fas fa-comment-alt mr-2 text-gray-400"></i>
+                        {{ $latestConsultation->response_note }}
+                    </p>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        {{-- Pending Consultation Notice for Marketing --}}
+        @if(($isMarketing || $isOrderCreator) && $pendingConsultation)
+        <div class="mb-4 sm:mb-6">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-clock text-yellow-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900">Menunggu Respons Direktur</h4>
+                        <p class="text-xs text-gray-600">
+                            Konsultasi dikirim oleh {{ $pendingConsultation->requester->nama ?? 'Marketing' }} pada {{ $pendingConsultation->requested_at->format('d M Y, H:i') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Price Analysis Chart - Full Width -->
         <div class="mb-4 sm:mb-6">
             <x-order.price-analysis :order="$order" :chartsData="$chartsData" />
@@ -837,8 +1003,101 @@
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeConsultModal();
+            if (typeof closeAddQtyModal === 'function') {
+                closeAddQtyModal();
+            }
         }
     });
+</script>
+@endif
+
+{{-- Add Quantity Modal - shown when Direktur advised lanjutkan --}}
+@if(($isMarketing || $isOrderCreator) && $latestConsultation && $latestConsultation->isResponded() && $latestConsultation->response_type === 'lanjutkan' && $order->status === 'diproses')
+<div id="addQtyModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeAddQtyModal()"></div>
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-plus-circle text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Tambah Kuantitas Order</h3>
+                        <p class="text-sm text-gray-600">Tambah kuantitas untuk melanjutkan pengiriman</p>
+                    </div>
+                </div>
+            </div>
+
+            <form action="{{ route('orders.add-quantity', $order->id) }}" method="POST">
+                @csrf
+                <div class="p-6 max-h-[60vh] overflow-y-auto">
+                    <p class="text-sm text-gray-600 mb-4">
+                        <i class="fas fa-info-circle mr-1 text-blue-500"></i>
+                        Masukkan jumlah kuantitas yang ingin ditambahkan untuk setiap item.
+                    </p>
+
+                    <div class="space-y-4">
+                        @foreach($order->orderDetails as $detail)
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div class="flex-1">
+                                    <h4 class="font-medium text-gray-900">{{ $detail->bahanBakuKlien->nama ?? $detail->nama_material_po ?? 'Material' }}</h4>
+                                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                                        <span>Qty saat ini: <strong class="text-gray-700">{{ number_format($detail->qty, 0, ',', '.') }} {{ $detail->satuan }}</strong></span>
+                                        <span>Terkirim: <strong class="text-green-600">{{ number_format($detail->qty_shipped ?? 0, 0, ',', '.') }} {{ $detail->satuan }}</strong></span>
+                                        <span>Harga: <strong class="text-gray-700">Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}</strong></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <label for="add_qty_{{ $detail->id }}" class="text-sm text-gray-600 whitespace-nowrap">Tambah:</label>
+                                    <input type="number"
+                                           name="quantities[{{ $detail->id }}]"
+                                           id="add_qty_{{ $detail->id }}"
+                                           min="0"
+                                           step="0.01"
+                                           value="0"
+                                           class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-right"
+                                           placeholder="0">
+                                    <span class="text-sm text-gray-500">{{ $detail->satuan }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-xs text-yellow-800">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            Kuantitas yang ditambahkan akan menambah jumlah order dan total harga secara otomatis.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50 rounded-b-xl">
+                    <button type="button" onclick="closeAddQtyModal()" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium">
+                        <i class="fas fa-save mr-2"></i>
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openAddQtyModal() {
+        document.getElementById('addQtyModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAddQtyModal() {
+        document.getElementById('addQtyModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
 </script>
 @endif
 @endsection

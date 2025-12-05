@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\ApprovalPembayaran;
 use App\Models\ApprovalPenagihan;
+use App\Models\CatatanPiutang;
+use App\Models\InvoicePenagihan;
 use App\Models\Order;
 use App\Models\OrderConsultation;
 use App\Models\Penawaran;
@@ -14,6 +16,7 @@ use App\Services\Notifications\ApprovalPenagihanNotificationService;
 use App\Services\Notifications\BaseNotificationService;
 use App\Services\Notifications\OrderNotificationService;
 use App\Services\Notifications\PenawaranNotificationService;
+use App\Services\Notifications\PiutangNotificationService;
 use Illuminate\Support\Collection;
 
 /**
@@ -56,6 +59,12 @@ class NotificationService
     public const TYPE_APPROVAL_PENAGIHAN_PENDING = ApprovalPenagihanNotificationService::TYPE_PENDING_APPROVAL;
     public const TYPE_APPROVAL_PENAGIHAN_APPROVED = ApprovalPenagihanNotificationService::TYPE_APPROVED;
     public const TYPE_APPROVAL_PENAGIHAN_REJECTED = ApprovalPenagihanNotificationService::TYPE_REJECTED;
+
+    // Piutang types
+    public const TYPE_PIUTANG_SUPPLIER_OVERDUE = PiutangNotificationService::TYPE_SUPPLIER_OVERDUE;
+    public const TYPE_PIUTANG_PABRIK_OVERDUE = PiutangNotificationService::TYPE_PABRIK_OVERDUE;
+    public const TYPE_PIUTANG_SUPPLIER_NEAR_DUE = PiutangNotificationService::TYPE_SUPPLIER_NEAR_DUE;
+    public const TYPE_PIUTANG_PABRIK_NEAR_DUE = PiutangNotificationService::TYPE_PABRIK_NEAR_DUE;
 
     /*
     |--------------------------------------------------------------------------

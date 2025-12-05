@@ -550,32 +550,21 @@
                         </label>
                         <div class="relative">
                             <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">Rp</span>
-                            <input type="number" step="0.01" wire:model="jumlah_bayar"
-                                placeholder="0.00"
-                                max="{{ $selectedPiutang->total_amount }}"
-                                class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <input
+                                type="text"
+                                id="jumlah_bayar_pabrik_display"
+                                value="{{ $jumlah_bayar ? number_format($jumlah_bayar, 0, ',', '.') : '' }}"
+                                placeholder="0"
+                                class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                oninput="formatCurrencyJumlahBayarPabrik(this)"
+                            >
+                            <input type="hidden" wire:model.defer="jumlah_bayar" id="jumlah_bayar_pabrik_hidden">
                         </div>
                         <p class="text-xs text-gray-500 mt-1">
                             <i class="fas fa-info-circle mr-1"></i>
                             Maksimal: Rp {{ number_format($selectedPiutang->total_amount, 0, ',', '.') }}
                         </p>
                         @error('jumlah_bayar') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-
-                    <!-- Metode Pembayaran -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Metode Pembayaran <span class="text-red-500">*</span>
-                        </label>
-                        <select wire:model="metode_pembayaran"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                            <option value="">Pilih Metode</option>
-                            <option value="tunai">💵 Tunai</option>
-                            <option value="transfer">🏦 Transfer Bank</option>
-                            <option value="cek">📄 Cek</option>
-                            <option value="giro">📋 Giro</option>
-                        </select>
-                        @error('metode_pembayaran') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
                     <!-- Catatan -->
@@ -617,3 +606,43 @@
     </div>
     @endif
 </div>
+
+@script
+<script>
+    // Format currency for jumlah bayar pabrik
+    window.formatCurrencyJumlahBayarPabrik = function(displayInput) {
+        let value = displayInput.value.replace(/[^0-9]/g, '');
+
+        let hiddenInput = document.getElementById('jumlah_bayar_pabrik_hidden');
+        if (hiddenInput) {
+            hiddenInput.value = value;
+            hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        if (value) {
+            displayInput.value = parseInt(value).toLocaleString('id-ID');
+        } else {
+            displayInput.value = '';
+        }
+    }
+
+    // Initialize on modal open
+    document.addEventListener('livewire:navigated', function() {
+        initCurrencyInputPabrik();
+    });
+
+    function initCurrencyInputPabrik() {
+        const displayInput = document.getElementById('jumlah_bayar_pabrik_display');
+        const hiddenInput = document.getElementById('jumlah_bayar_pabrik_hidden');
+
+        if (displayInput && hiddenInput && hiddenInput.value) {
+            displayInput.value = parseInt(hiddenInput.value).toLocaleString('id-ID');
+        }
+    }
+
+    // Re-initialize when modal opens
+    $wire.on('pembayaranModalOpened', () => {
+        setTimeout(initCurrencyInputPabrik, 100);
+    });
+</script>
+@endscript

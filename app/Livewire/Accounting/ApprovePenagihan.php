@@ -58,6 +58,18 @@ class ApprovePenagihan extends Component
         $this->updateBankSelection();
     }
 
+    /**
+     * Auto-update refraksi when form values change
+     */
+    public function updatedRefraksiForm()
+    {
+        // Only auto-update if user can manage and approval is not completed
+        if (!$this->canManage || $this->approval->status === 'completed' || $this->approval->status === 'rejected') {
+            return;
+        }
+
+        $this->updateRefraksi();
+    }
     public function loadApproval()
     {
         $this->approval = ApprovalPenagihanModel::with([
@@ -68,6 +80,7 @@ class ApprovePenagihan extends Component
             'pengiriman.pengirimanDetails.orderDetail', // Tambahan untuk harga_jual
             'pengiriman.purchaseOrder.klien',
             'pengiriman.purchaseOrder.orderDetails.orderSuppliers.supplier',
+            'pengiriman.approvalPembayaran', // Untuk mengambil refraksi dari pembayaran
             'histories' => function($query) {
                 $query->orderBy('created_at', 'desc');
             },
@@ -79,6 +92,9 @@ class ApprovePenagihan extends Component
         $this->invoice = $this->approval->invoice;
         $this->pengiriman = $this->approval->pengiriman;
         $this->approvalHistory = $this->approval->histories;
+
+        // Auto-sync refraksi dari approval pembayaran jika invoice belum punya refraksi
+        $this->syncRefraksiFromPembayaran();
 
         // Load refraksi values from invoice
         $this->refraksiForm['type'] = $this->invoice->refraksi_type ?? 'qty';
@@ -101,6 +117,80 @@ class ApprovePenagihan extends Component
         } else {
             $this->selectedBank = 'mandiri';
         }
+    }
+
+    /**
+     * Sync refraksi dari approval pembayaran ke invoice penagihan secara otomatis
+     */
+    private function syncRefraksiFromPembayaran()
+    {
+        // Cek apakah pengiriman punya approval pembayaran dengan refraksi
+        $approvalPembayaran = $this->pengiriman->approvalPembayaran;
+
+        if (!$approvalPembayaran || $approvalPembayaran->refraksi_value <= 0) {
+            return; // Tidak ada refraksi dari pembayaran
+        }
+
+        // Cek apakah invoice sudah punya refraksi yang sama
+        if ($this->invoice->refraksi_type === $approvalPembayaran->refraksi_type
+            && $this->invoice->refraksi_value == $approvalPembayaran->refraksi_value) {
+            return; // Sudah sync, tidak perlu update
+        }
+
+        // Hitung total harga jual
+        $totalSelling = 0;
+        if ($this->pengiriman->pengirimanDetails) {
+            foreach ($this->pengiriman->pengirimanDetails as $detail) {
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                if ($orderDetail && $orderDetail->harga_jual) {
+                    $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+                }
+            }
+        }
+
+        // Apply refraksi dari pembayaran
+        $refraksiType = $approvalPembayaran->refraksi_type;
+        $refraksiValue = floatval($approvalPembayaran->refraksi_value);
+
+        $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
+        $amountBeforeRefraksi = $totalSelling;
+        $qtyAfterRefraksi = $qtyBeforeRefraksi;
+        $refraksiAmount = 0;
+        $subtotal = $amountBeforeRefraksi;
+
+        if ($refraksiType === 'qty') {
+            // Refraksi Qty
+            $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
+            $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+
+            $hargaPerKg = $qtyBeforeRefraksi > 0 ? $subtotal / $qtyBeforeRefraksi : 0;
+            $refraksiAmount = $refraksiQty * $hargaPerKg;
+            $subtotal = $subtotal - $refraksiAmount;
+        } elseif ($refraksiType === 'rupiah') {
+            // Refraksi Rupiah
+            $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
+            $subtotal = $subtotal - $refraksiAmount;
+        } elseif ($refraksiType === 'lainnya') {
+            // Refraksi Lainnya
+            $refraksiAmount = $refraksiValue;
+            $subtotal = $subtotal - $refraksiAmount;
+        }
+
+        // Update invoice dengan refraksi dari pembayaran
+        $this->invoice->update([
+            'refraksi_type' => $refraksiType,
+            'refraksi_value' => $refraksiValue,
+            'refraksi_amount' => $refraksiAmount,
+            'qty_before_refraksi' => $qtyBeforeRefraksi,
+            'qty_after_refraksi' => $qtyAfterRefraksi,
+            'amount_before_refraksi' => $amountBeforeRefraksi,
+            'amount_after_refraksi' => $subtotal,
+            'subtotal' => $subtotal,
+            'total_amount' => $subtotal + ($this->invoice->tax_amount ?? 0) - ($this->invoice->discount_amount ?? 0),
+        ]);
+
+        // Refresh invoice data
+        $this->invoice->refresh();
     }
 
     public function updateBankSelection()

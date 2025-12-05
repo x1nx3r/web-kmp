@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Pengiriman;
 use App\Models\ApprovalPembayaran;
+use App\Services\Notifications\ApprovalPembayaranNotificationService;
 
 class PengirimanObserver
 {
@@ -33,14 +34,19 @@ class PengirimanObserver
     }
 
     /**
-     * Create approval pembayaran record
+     * Create approval pembayaran record and notify accounting team
      */
     private function createApprovalPembayaran(Pengiriman $pengiriman): void
     {
-        ApprovalPembayaran::create([
+        $approval = ApprovalPembayaran::create([
             'pengiriman_id' => $pengiriman->id,
             'status' => 'pending',
         ]);
+
+        // Send notification to accounting team
+        if ($approval) {
+            ApprovalPembayaranNotificationService::notifyPendingApproval($approval);
+        }
     }
 
     /**

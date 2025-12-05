@@ -29,7 +29,7 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-search text-gray-400 text-sm"></i>
             </div>
-            <input type="text" id="client-search" 
+            <input type="text" id="client-search"
                    class="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
                    placeholder="Cari nama perusahaan atau lokasi...">
         </div>
@@ -39,8 +39,8 @@
     <div class="p-4">
         <div id="client-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
             @forelse($kliens as $klien)
-                <button type="button" 
-                        class="client-button w-full text-left p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                <button type="button"
+                        class="client-button w-full text-left p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         data-client-id="{{ $klien->id }}"
                         data-client-name="{{ $klien->nama }}"
                         data-client-cabang="{{ $klien->cabang ?? '' }}"
@@ -77,7 +77,7 @@
                 </div>
             @endforelse
         </div>
-        
+
         {{-- No search results --}}
         <div id="no-search-results" class="text-center py-8 text-gray-500 hidden">
             <i class="fas fa-search text-2xl mb-2"></i>

@@ -541,13 +541,14 @@
                                     <i class="fas fa-eye mr-1"></i>
                                     Lihat Detail
                                 </a>
-                                @if($order->status === 'draft')
+                                @if($order->status === 'draft' && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
                                     <a href="{{ route('orders.edit', $order) }}" class="text-green-600 hover:text-green-800 text-sm font-medium">
                                         <i class="fas fa-edit mr-1"></i>
                                         Edit
                                     </a>
                                 @endif
                             </div>
+                            @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                             <div class="flex items-center space-x-2">
                                 @if($order->status === 'draft')
                                     <button
@@ -592,6 +593,7 @@
                                     </button>
                                 @endif
                             </div>
+                            @endif
                         </div>
                     </div>
                 </div>

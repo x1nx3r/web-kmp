@@ -35,24 +35,26 @@
             <!-- Search -->
             <div class="flex-1">
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Pencarian Kontak</label>
-                <input type="text" 
-                       wire:model.live.debounce.300ms="search" 
+                <input type="text"
+                       wire:model.live.debounce.300ms="search"
                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                        placeholder="Cari nama, HP, atau jabatan...">
             </div>
 
             <!-- Actions -->
             <div class="flex space-x-2 md:flex-shrink-0">
-                <button wire:click="openKontakModal" 
+                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
+                <button wire:click="openKontakModal"
                         class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
                     <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
                     Tambah Kontak
                 </button>
-                
+                @endif
+
                 @if($search)
-                    <button wire:click="clearSearch" 
+                    <button wire:click="clearSearch"
                             class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
                         Reset
                     </button>
@@ -102,6 +104,7 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-center text-sm font-medium">
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 <div class="flex justify-center space-x-2">
                                     <button wire:click="editKontak({{ $contact->id }})"
                                             class="text-blue-600 hover:text-blue-900" title="Edit">
@@ -116,6 +119,7 @@
                                         </svg>
                                     </button>
                                 </div>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -159,7 +163,7 @@
                                 </h3>
                                 <p class="text-sm text-gray-600 mt-1">{{ $selectedClient }}</p>
                             </div>
-                            <button 
+                            <button
                                 wire:click="closeKontakModal"
                                 class="text-gray-400 hover:text-gray-600 transition-colors"
                             >
@@ -184,8 +188,8 @@
                             <!-- Nama -->
                             <div>
                                 <label for="nama" class="block text-sm font-medium text-gray-700 mb-1">Nama *</label>
-                                <input type="text" 
-                                       wire:model="kontakForm.nama" 
+                                <input type="text"
+                                       wire:model="kontakForm.nama"
                                        class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('kontakForm.nama') border-red-500 @else border-gray-300 @enderror"
                                        placeholder="Masukkan nama kontak">
                                 @error('kontakForm.nama')
@@ -196,8 +200,8 @@
                             <!-- Nomor HP -->
                             <div>
                                 <label for="nomor_hp" class="block text-sm font-medium text-gray-700 mb-1">Nomor HP</label>
-                                <input type="text" 
-                                       wire:model="kontakForm.nomor_hp" 
+                                <input type="text"
+                                       wire:model="kontakForm.nomor_hp"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                        placeholder="Masukkan nomor HP">
                             </div>
@@ -205,8 +209,8 @@
                             <!-- Jabatan -->
                             <div class="md:col-span-2">
                                 <label for="jabatan" class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-                                <input type="text" 
-                                       wire:model="kontakForm.jabatan" 
+                                <input type="text"
+                                       wire:model="kontakForm.jabatan"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                        placeholder="Masukkan jabatan">
                             </div>
@@ -215,7 +219,7 @@
                         <!-- Catatan -->
                         <div>
                             <label for="catatan" class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
-                            <textarea wire:model="kontakForm.catatan" 
+                            <textarea wire:model="kontakForm.catatan"
                                       rows="3"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                       placeholder="Masukkan catatan tambahan"></textarea>
@@ -226,12 +230,12 @@
 
                         <!-- Modal Actions -->
                         <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
-                            <button type="button" 
+                            <button type="button"
                                     wire:click="closeKontakModal"
                                     class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">
                                 Batal
                             </button>
-                            <button type="submit" 
+                            <button type="submit"
                                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
                                 {{ $editingKontak ? 'Perbarui' : 'Simpan' }}
                             </button>
@@ -268,7 +272,7 @@
                     {{-- Modal Body --}}
                     <div class="p-6">
                         <p class="text-gray-700 mb-6">{{ $deleteModal['message'] }}</p>
-                        
+
                         <div class="flex justify-end space-x-3">
                             <button wire:click="closeDeleteModal"
                                     class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">

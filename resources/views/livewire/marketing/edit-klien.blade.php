@@ -64,6 +64,7 @@
                                 <span class="text-sm text-gray-500">Dibuat:</span>
                                 <span class="text-sm font-medium text-gray-700">{{ $klien->created_at->format('d/m/Y') }}</span>
                             </div>
+                            @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                             <div class="border-l border-gray-300 h-6"></div>
                             <button
                                 wire:click="deleteKlien"
@@ -73,6 +74,7 @@
                                 <i class="fas fa-trash mr-1.5"></i>
                                 Hapus
                             </button>
+                            @endif
                         </div>
                     </div>
 
@@ -161,6 +163,7 @@
                             </div>
                         </div>
 
+                        @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                         <div class="mt-4 flex justify-end">
                             <button
                                 type="submit"
@@ -177,6 +180,7 @@
                                 </span>
                             </button>
                         </div>
+                        @endif
                     </form>
                 </div>
 
@@ -211,6 +215,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 <button
                                     wire:click="openMaterialModal"
                                     class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -218,6 +223,7 @@
                                     <i class="fas fa-plus mr-2"></i>
                                     Tambah Material
                                 </button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -391,6 +397,7 @@
                                                             <i class="fas fa-chart-line text-xs"></i>
                                                         </a>
                                                     @endif
+                                                    @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                                     <button
                                                         wire:click="editMaterial({{ $material->id }})"
                                                         class="text-amber-600 hover:text-amber-800 p-1"
@@ -405,6 +412,7 @@
                                                     >
                                                         <i class="fas fa-trash-alt text-xs"></i>
                                                     </button>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -418,6 +426,7 @@
                                 </div>
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Material</h3>
                                 <p class="text-gray-500 mb-6">Plant ini belum memiliki material yang terdaftar.</p>
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 <button
                                     wire:click="openMaterialModal"
                                     class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -425,6 +434,7 @@
                                     <i class="fas fa-plus mr-2"></i>
                                     Tambah Material Pertama
                                 </button>
+                                @endif
                             </div>
                         @endif
                     </div>

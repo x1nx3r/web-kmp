@@ -105,7 +105,7 @@
                     $isOrderCreator = $currentUser && $order->created_by === $currentUser->id;
                     $isMarketing = $currentUser && $currentUser->isMarketing();
                     $isDirektur = $currentUser && $currentUser->isDirektur();
-                    $canManageOrder = $isOrderCreator || $isMarketing || $isDirektur;
+                    $canManageOrder = $isMarketing || $isDirektur;
                 @endphp
                 <div class="flex flex-wrap gap-2 sm:space-x-3">
                     @if($order->status === 'draft' && $canManageOrder)

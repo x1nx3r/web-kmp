@@ -383,6 +383,7 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
 
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 {{-- Edit (only for draft) --}}
                                 @if($penawaran->status === 'draft')
                                     <a
@@ -402,6 +403,7 @@
                                 >
                                     <i class="fas fa-copy"></i>
                                 </button>
+                                @endif
 
                                 {{-- Approve/Reject (only for pending and only for direktur) --}}
                                 @if($penawaran->status === 'menunggu_verifikasi')
@@ -433,6 +435,7 @@
                                 @endif
 
                                 {{-- Delete --}}
+                                @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
                                 <button
                                     wire:click="confirmDelete({{ $penawaran->id }})"
                                     class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm font-medium"
@@ -440,6 +443,7 @@
                                 >
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                @endif
                             </div>
                         </div>
                     </div>

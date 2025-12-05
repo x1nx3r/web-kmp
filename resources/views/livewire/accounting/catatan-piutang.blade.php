@@ -18,13 +18,37 @@
         </div>
     @endif
 
-    {{-- Header --}}
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">
-            <i class="fas fa-file-invoice-dollar text-blue-600 mr-2"></i>
-            Catatan Piutang
-        </h1>
-        <p class="text-gray-600">Kelola catatan piutang dari supplier dan klien/pabrik</p>
+    {{-- Welcome Banner --}}
+    <x-welcome-banner
+        title="Catatan Piutang"
+        subtitle="Kelola catatan piutang dari supplier dan klien/pabrik"
+        icon="fas fa-file-invoice-dollar"
+    />
+
+    {{-- Navigation Breadcrumb --}}
+    <div class="bg-white border-b border-gray-200 mb-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <nav aria-label="Breadcrumb" class="w-full">
+                    <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
+                        <li>
+                            <a href="{{ route('dashboard') }}" class="flex items-center text-gray-400 hover:text-gray-500">
+                                <i class="fas fa-home"></i>
+                                <span class="sr-only">Home</span>
+                            </a>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-300 mx-2"></i>
+                            <span>Accounting</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-300 mx-2"></i>
+                            <span class="text-gray-900 font-medium">Catatan Piutang</span>
+                        </li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
     </div>
 
     {{-- Tab Navigation --}}

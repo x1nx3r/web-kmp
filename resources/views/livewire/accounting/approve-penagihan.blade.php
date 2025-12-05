@@ -276,7 +276,15 @@
                             {{-- Display Current Refraksi --}}
                             @if($invoice->refraksi_value > 0)
                                 <div class="mb-4 p-4 bg-white rounded-lg border border-yellow-300">
-                                    <p class="text-sm font-semibold text-gray-700 mb-2">Refraksi Saat Ini:</p>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <p class="text-sm font-semibold text-gray-700">Refraksi Saat Ini:</p>
+                                        @if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->refraksi_value > 0)
+                                            <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
+                                                <i class="fas fa-sync-alt mr-1"></i>
+                                                Dari Pembayaran
+                                            </span>
+                                        @endif
+                                    </div>
                                     @if($invoice->refraksi_type === 'qty')
                                         <p class="text-sm text-gray-600">
                                             <strong>Tipe:</strong> Qty ({{ $invoice->refraksi_value }}%)
@@ -302,6 +310,12 @@
                                     <p class="text-sm text-red-600 font-semibold mt-2">
                                         Potongan: Rp {{ number_format($invoice->refraksi_amount, 0, ',', '.') }}
                                     </p>
+                                    @if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->refraksi_value > 0)
+                                        <p class="text-xs text-blue-600 mt-2">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Refraksi otomatis diambil dari approval pembayaran
+                                        </p>
+                                    @endif
                                 </div>
                             @else
                                 <div class="mb-4 p-4 bg-white rounded-lg border border-gray-300">
@@ -319,10 +333,10 @@
                                         <i class="fas fa-edit mr-1"></i>
                                         Edit Refraksi (Opsional - Kosongkan untuk tanpa refraksi)
                                     </h4>
-                                    <div class="grid grid-cols-2 gap-3 mb-3">
+                                    <div class="grid grid-cols-2 gap-3">
                                         <div>
                                             <label class="block text-xs font-medium text-gray-700 mb-1">Tipe Refraksi</label>
-                                            <select wire:model="refraksiForm.type"
+                                            <select wire:model.live="refraksiForm.type"
                                                     class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500">
                                                 <option value="qty">Qty (%)</option>
                                                 <option value="rupiah">Rupiah (Rp/kg)</option>
@@ -331,20 +345,20 @@
                                         </div>
                                         <div>
                                             <label class="block text-xs font-medium text-gray-700 mb-1">Nilai (0 = tanpa refraksi)</label>
-                                            <input type="number" wire:model="refraksiForm.value" step="0.01" min="0"
+                                            <input type="number" wire:model.live.debounce.500ms="refraksiForm.value" step="0.01" min="0"
                                                    placeholder="0"
                                                    class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500">
                                         </div>
                                     </div>
-                                    <button wire:click="updateRefraksi" wire:loading.attr="disabled"
-                                            class="w-full px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 disabled:opacity-50">
-                                        <span wire:loading.remove wire:target="updateRefraksi">
-                                            <i class="fas fa-save mr-1"></i> Update Refraksi
-                                        </span>
-                                        <span wire:loading wire:target="updateRefraksi">
-                                            <i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...
-                                        </span>
-                                    </button>
+                                    <div class="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                                        <p class="text-xs text-green-700 flex items-center">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            <span wire:loading.remove wire:target="refraksiForm">Perubahan refraksi tersimpan otomatis</span>
+                                            <span wire:loading wire:target="refraksiForm">
+                                                <i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...
+                                            </span>
+                                        </p>
+                                    </div>
                                 </div>
                             @endif
 

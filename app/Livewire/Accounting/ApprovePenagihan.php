@@ -115,7 +115,15 @@ class ApprovePenagihan extends Component
                 }
             }
         } else {
+            // Set default bank to mandiri and save to database
             $this->selectedBank = 'mandiri';
+            $defaultBank = $this->bankOptions['mandiri'];
+            $this->invoice->update([
+                'bank_name' => $defaultBank['name'],
+                'bank_account_number' => $defaultBank['account_number'],
+                'bank_account_name' => $defaultBank['account_name'],
+            ]);
+            $this->invoice->refresh();
         }
     }
 

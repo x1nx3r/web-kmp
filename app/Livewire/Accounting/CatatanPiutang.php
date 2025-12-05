@@ -205,6 +205,7 @@ class CatatanPiutang extends Component
         $this->tanggal_bayar = now()->format('Y-m-d');
         $this->jumlah_bayar = $this->selectedPiutang->sisa_piutang;
         $this->showPembayaranModal = true;
+        $this->dispatch('pembayaranModalOpened');
     }
 
     public function create()

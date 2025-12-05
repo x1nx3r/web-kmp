@@ -151,6 +151,7 @@ class CatatanPiutangPabrik extends Component
         $this->bukti_pembayaran = null;
 
         $this->showPembayaranModal = true;
+        $this->dispatch('pembayaranModalOpened');
     }
 
     public function closePembayaranModal()
@@ -174,7 +175,6 @@ class CatatanPiutangPabrik extends Component
         $this->validate([
             'tanggal_bayar' => 'required|date',
             'jumlah_bayar' => 'required|numeric|min:0.01|max:' . $this->selectedPiutang->total_amount,
-            'metode_pembayaran' => 'required|in:tunai,transfer,cek,giro',
             'catatan_pembayaran' => 'nullable|string|max:500',
             'bukti_pembayaran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
@@ -186,7 +186,6 @@ class CatatanPiutangPabrik extends Component
                 'no_pembayaran' => $this->generateNoPembayaran(),
                 'tanggal_bayar' => $this->tanggal_bayar,
                 'jumlah_bayar' => $this->jumlah_bayar,
-                'metode_pembayaran' => $this->metode_pembayaran,
                 'catatan' => $this->catatan_pembayaran,
                 'created_by' => Auth::id(),
             ];

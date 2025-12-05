@@ -55,7 +55,15 @@
                             </label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
-                                <input type="number" step="0.01" wire:model="jumlah_bayar" placeholder="0.00" max="{{ $selectedPiutang->sisa_piutang }}" class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                <input
+                                    type="text"
+                                    id="jumlah_bayar_display"
+                                    value="{{ $jumlah_bayar ? number_format($jumlah_bayar, 0, ',', '.') : '' }}"
+                                    placeholder="0"
+                                    class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    oninput="formatCurrencyJumlahBayar(this)"
+                                >
+                                <input type="hidden" wire:model.defer="jumlah_bayar" id="jumlah_bayar_hidden">
                             </div>
                             <p class="text-xs text-gray-500 mt-2">
                                 <i class="fas fa-info-circle mr-1"></i>
@@ -113,3 +121,43 @@
     </div>
     @endif
 </div>
+
+@script
+<script>
+    // Format currency for jumlah bayar
+    window.formatCurrencyJumlahBayar = function(displayInput) {
+        let value = displayInput.value.replace(/[^0-9]/g, '');
+
+        let hiddenInput = document.getElementById('jumlah_bayar_hidden');
+        if (hiddenInput) {
+            hiddenInput.value = value;
+            hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        if (value) {
+            displayInput.value = parseInt(value).toLocaleString('id-ID');
+        } else {
+            displayInput.value = '';
+        }
+    }
+
+    // Initialize on modal open
+    document.addEventListener('livewire:navigated', function() {
+        initCurrencyInput();
+    });
+
+    function initCurrencyInput() {
+        const displayInput = document.getElementById('jumlah_bayar_display');
+        const hiddenInput = document.getElementById('jumlah_bayar_hidden');
+
+        if (displayInput && hiddenInput && hiddenInput.value) {
+            displayInput.value = parseInt(hiddenInput.value).toLocaleString('id-ID');
+        }
+    }
+
+    // Re-initialize when modal opens
+    $wire.on('pembayaranModalOpened', () => {
+        setTimeout(initCurrencyInput, 100);
+    });
+</script>
+@endscript

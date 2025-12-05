@@ -20,3 +20,10 @@ Schedule::command("orders:escalate-priorities --notify")
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path("logs/order-priority-escalation.log"));
+
+// Check overdue piutang daily at 8:00 AM and notify accounting
+Schedule::command("piutang:check-overdue --notify-near-due")
+    ->dailyAt("08:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/piutang-overdue-check.log"));

@@ -34,3 +34,10 @@ Schedule::command("pengiriman:notify-pending")
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path("logs/pengiriman-pending-reminder.log"));
+
+// Send pengiriman review reminder daily at 6:00 AM
+Schedule::command("pengiriman:notify-review")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/pengiriman-review-reminder.log"));

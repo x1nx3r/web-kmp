@@ -196,11 +196,11 @@
                         <input type="hidden" name="total_harga_kirim" id="total_harga_kirim">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Bukti Foto Bongkar</label>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Bukti Foto Bongkar (JPG/PNG/PDF)</label>
                         <input type="file" 
                                name="bukti_foto_bongkar" 
                                id="bukti_foto_bongkar"
-                               accept="image/*"
+                               accept="image/*,application/pdf"
                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
                                {{ !$canEdit ? 'disabled' : '' }}>
                         @if($pengiriman->bukti_foto_bongkar)

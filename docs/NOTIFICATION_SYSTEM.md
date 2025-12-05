@@ -385,6 +385,12 @@ Beberapa notifikasi dikirim secara otomatis melalui Laravel Scheduler:
 - **Target**: Manager & Staff Purchasing
 - **Purpose**: Remind about pending deliveries (status: pending, menunggu_verifikasi)
 
+### 4. Pengiriman Review Reminder
+- **Command**: `pengiriman:notify-review`
+- **Schedule**: Daily at 06:00 WIB
+- **Target**: Manager & Staff Marketing
+- **Purpose**: Remind about successful deliveries ready for review/rating
+
 ### Konfigurasi Scheduler
 
 File: `routes/console.php`
@@ -412,6 +418,13 @@ Schedule::command("pengiriman:notify-pending")
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path("logs/pengiriman-pending-reminder.log"));
+
+// Send pengiriman review reminder daily at 6:00 AM
+Schedule::command("pengiriman:notify-review")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/pengiriman-review-reminder.log"));
 ```
 
 ### Menjalankan Scheduler
@@ -428,6 +441,7 @@ Untuk testing lokal, jalankan:
 # Test single command
 php artisan forecast:notify-pending
 php artisan pengiriman:notify-pending
+php artisan pengiriman:notify-review
 
 # Run scheduler manually
 php artisan schedule:run

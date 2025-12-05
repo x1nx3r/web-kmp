@@ -23,6 +23,7 @@ class PengirimanNotificationService extends BaseNotificationService
     public const TYPE_SUBMITTED = "pengiriman_submitted";
     public const TYPE_VERIFIED = "pengiriman_verified";
     public const TYPE_REVISION_REQUESTED = "pengiriman_revision_requested";
+    public const TYPE_SUCCESS_READY_FOR_REVIEW = "pengiriman_success_ready_for_review";
 
     /**
      * Notify Manager & Staff Purchasing tentang pengiriman yang belum terselesaikan.
@@ -185,6 +186,92 @@ class PengirimanNotificationService extends BaseNotificationService
             "url" => "/procurement/pengiriman",
             "pengiriman_id" => $pengiriman->id,
             "reason" => $reason,
+        ]);
+    }
+
+    /**
+     * Notify Marketing bahwa pengiriman berhasil dan siap untuk dinilai.
+     * Dipanggil ketika status pengiriman berubah menjadi 'berhasil'.
+     *
+     * @param Pengiriman $pengiriman
+     * @return int Jumlah notifikasi terkirim
+     */
+    public static function notifySuccessReadyForReview(Pengiriman $pengiriman): int
+    {
+        // Cari order
+        $order = $pengiriman->order;
+        
+        if (!$order) {
+            return 0;
+        }
+
+        $poNumber = $order->po_number ?? $order->no_order ?? '-';
+        $klienName = $order->klien->nama ?? 'Klien';
+
+        // Kirim ke semua Marketing
+        return static::sendToRole("marketing", self::TYPE_SUCCESS_READY_FOR_REVIEW, [
+            "title" => "⭐ Pengiriman Berhasil - Siap Dinilai",
+            "message" => "Pengiriman {$pengiriman->no_pengiriman} untuk order {$poNumber} ({$klienName}) telah berhasil dan siap untuk dinilai",
+            "icon" => "star",
+            "icon_bg" => "bg-green-100",
+            "icon_color" => "text-green-600",
+            "url" => "/orders/{$order->id}",
+            "pengiriman_id" => $pengiriman->id,
+            "no_pengiriman" => $pengiriman->no_pengiriman,
+            "order_id" => $order->id,
+            "po_number" => $poNumber,
+        ]);
+    }
+
+    /**
+     * Notify semua Marketing tentang pengiriman yang berhasil dan belum dinilai.
+     * Dipanggil setiap hari jam 06:00 WIB via scheduler.
+     *
+     * @return int Jumlah notifikasi terkirim
+     */
+    public static function notifyUnreviewedSuccessfulDeliveries(): int
+    {
+        // Hitung pengiriman berhasil yang belum dinilai
+        $unreviewedCount = Pengiriman::where('status', 'berhasil')
+            ->whereNull('rating')
+            ->count();
+        
+        if ($unreviewedCount === 0) {
+            return 0;
+        }
+
+        // Ambil beberapa pengiriman untuk ditampilkan di pesan
+        $pengirimans = Pengiriman::where('status', 'berhasil')
+            ->whereNull('rating')
+            ->with(['order.klien', 'order.creator'])
+            ->orderBy('tanggal_kirim', 'asc')
+            ->limit(5)
+            ->get();
+
+        // Format pesan dengan detail pengiriman
+        $pengirimanList = $pengirimans->map(function($pengiriman) {
+            $poNumber = $pengiriman->order->po_number ?? $pengiriman->order->no_order ?? '-';
+            $klien = $pengiriman->order->klien->nama ?? '-';
+            $tanggal = $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('d M Y') : '-';
+            return "• {$pengiriman->no_pengiriman} - PO: {$poNumber} ({$klien}) - {$tanggal}";
+        })->implode("\n");
+
+        $message = "Ada {$unreviewedCount} pengiriman berhasil yang belum dinilai.";
+        
+        if ($pengirimans->count() > 0) {
+            $message .= "\n\nBeberapa pengiriman:\n{$pengirimanList}";
+        }
+
+        // Kirim ke semua Marketing
+        return static::sendToRole("marketing", self::TYPE_SUCCESS_READY_FOR_REVIEW, [
+            "title" => "⭐ Reminder: Pengiriman Siap Dinilai",
+            "message" => $message,
+            "icon" => "star",
+            "icon_bg" => "bg-yellow-100",
+            "icon_color" => "text-yellow-600",
+            "url" => "/orders",
+            "unreviewed_count" => $unreviewedCount,
+            "reminder_type" => "daily",
         ]);
     }
 }

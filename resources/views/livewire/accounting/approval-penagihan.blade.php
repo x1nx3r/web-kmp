@@ -26,6 +26,13 @@
         </div>
     @endif
 
+    {{-- Welcome Banner --}}
+    <x-welcome-banner
+        title="Approval Penagihan"
+        subtitle="Buat invoice dan verifikasi penagihan"
+        icon="fas fa-file-invoice-dollar"
+    />
+
     {{-- Navigation Breadcrumb --}}
     <div class="bg-white border-b border-gray-200 mb-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,13 +58,6 @@
             </div>
         </div>
     </div>
-
-    {{-- Welcome Banner --}}
-    <x-welcome-banner
-        title="Approval Penagihan"
-        subtitle="Buat invoice dan verifikasi penagihan"
-        icon="fas fa-file-invoice-dollar"
-    />
 
     {{-- Tab Navigation --}}
     <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

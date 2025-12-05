@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Laporan;
 use App\Http\Controllers\Controller;
 use App\Models\Klien;
 use App\Models\InvoicePenagihan;
-use App\Models\CatatanPiutang;
 use App\Models\CatatanPiutangPabrik;
 use App\Models\ApprovalPenagihan;
+use App\Models\PembayaranPiutangPabrik;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -37,18 +37,22 @@ class PenagihanController extends Controller
             ->whereMonth('invoice_date', Carbon::now()->month)
             ->sum('total_amount') ?? 0;
 
-        // Calculate Total Piutang Supplier (belum lunas) - from catatan_piutangs table
-        $totalPiutangSupplier = CatatanPiutang::where('status', '!=', 'lunas')
-            ->sum('sisa_piutang') ?? 0;
-
-        // Calculate Total Piutang Pabrik (belum lunas) - from catatan_piutang_pabriks table
-        $totalPiutangPabrik = CatatanPiutangPabrik::where('status', '!=', 'lunas')
-            ->sum('sisa_piutang') ?? 0;
+        // Calculate Total Piutang Pabrik (from invoices with remaining balance)
+        // Piutang = total_amount - sum(pembayaran) for all completed invoices
+        $totalPiutangPabrik = InvoicePenagihan::whereHas('approvalPenagihan', function($query) {
+                $query->where('status', 'completed');
+            })
+            ->with('pembayaranPabrik')
+            ->get()
+            ->sum(function($invoice) {
+                $totalPaid = $invoice->pembayaranPabrik->sum('jumlah_bayar');
+                $remaining = $invoice->total_amount - $totalPaid;
+                return $remaining > 0 ? $remaining : 0;
+            });
 
         // Get filter periode
         $periode = $request->get('periode', 'semua');
         $periodeKlien = $request->get('periode_klien', 'semua');
-        $periodePiutangSupplier = $request->get('periode_piutang_supplier', 'semua');
         $periodePiutangPabrik = $request->get('periode_piutang_pabrik', 'semua');
 
         // Handle AJAX request for Penagihan Per Klien
@@ -164,79 +168,60 @@ class PenagihanController extends Controller
             ]);
         }
 
-        // Handle AJAX request for Top Piutang Supplier
-        if ($request->ajax() && $request->get('ajax') === 'piutang_supplier') {
-            $piutangQuery = CatatanPiutang::select('supplier_id', DB::raw('SUM(sisa_piutang) as total'))
-                ->where('status', '!=', 'lunas')
-                ->with('supplier:id,nama,alamat')
-                ->groupBy('supplier_id');
-
-            // Apply filter
-            if ($periodePiutangSupplier === 'tahun_ini') {
-                $piutangQuery->whereYear('created_at', Carbon::now()->year);
-            } elseif ($periodePiutangSupplier === 'bulan_ini') {
-                $piutangQuery->whereYear('created_at', Carbon::now()->year)
-                    ->whereMonth('created_at', Carbon::now()->month);
-            } elseif ($periodePiutangSupplier === 'custom' && $request->filled(['start_date_piutang_supplier', 'end_date_piutang_supplier'])) {
-                $piutangQuery->whereBetween('created_at', [
-                    $request->start_date_piutang_supplier,
-                    $request->end_date_piutang_supplier
-                ]);
-            }
-
-            $data = $piutangQuery->orderBy('total', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function($item) {
-                    return [
-                        'nama' => $item->supplier ? $item->supplier->nama : 'Unknown',
-                        'alamat' => $item->supplier ? $item->supplier->alamat : null,
-                        'total' => floatval($item->total ?? 0)
-                    ];
-                })->filter(function($item) {
-                    return $item['total'] > 0;
-                })->values();
-
-            return response()->json($data);
-        }
-
         // Handle AJAX request for Top Piutang Pabrik
         if ($request->ajax() && $request->get('ajax') === 'piutang_pabrik') {
-            $piutangQuery = CatatanPiutangPabrik::select('klien_id', DB::raw('SUM(sisa_piutang) as total'))
-                ->where('status', '!=', 'lunas')
-                ->with('klien:id,nama,alamat')
-                ->groupBy('klien_id');
+            $periode = $request->get('periode', 'semua');
+
+            // Get all completed invoices and calculate remaining balance
+            $invoicesQuery = InvoicePenagihan::whereHas('approvalPenagihan', function($query) {
+                    $query->where('status', 'completed');
+                })
+                ->with('pembayaranPabrik', 'pengiriman.klien');
 
             // Apply filter
-            if ($periodePiutangPabrik === 'tahun_ini') {
-                $piutangQuery->whereYear('created_at', Carbon::now()->year);
-            } elseif ($periodePiutangPabrik === 'bulan_ini') {
-                $piutangQuery->whereYear('created_at', Carbon::now()->year)
-                    ->whereMonth('created_at', Carbon::now()->month);
-            } elseif ($periodePiutangPabrik === 'custom' && $request->filled(['start_date_piutang_pabrik', 'end_date_piutang_pabrik'])) {
-                $piutangQuery->whereBetween('created_at', [
-                    $request->start_date_piutang_pabrik,
-                    $request->end_date_piutang_pabrik
-                ]);
+            if ($periode === 'tahun_ini') {
+                $invoicesQuery->whereYear('invoice_date', Carbon::now()->year);
+            } elseif ($periode === 'bulan_ini') {
+                $invoicesQuery->whereYear('invoice_date', Carbon::now()->year)
+                    ->whereMonth('invoice_date', Carbon::now()->month);
             }
 
-            $data = $piutangQuery->orderBy('total', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function($item) {
-                    return [
-                        'nama' => $item->klien ? $item->klien->nama : 'Unknown',
-                        'alamat' => $item->klien ? $item->klien->alamat : null,
-                        'total' => floatval($item->total ?? 0)
-                    ];
-                })->filter(function($item) {
-                    return $item['total'] > 0;
-                })->values();
+            $invoices = $invoicesQuery->get();
+
+            // Group by klien and calculate remaining balance
+            $piutangByKlien = [];
+            foreach ($invoices as $invoice) {
+                $totalPaid = $invoice->pembayaranPabrik->sum('jumlah_bayar');
+                $remaining = $invoice->total_amount - $totalPaid;
+
+                if ($remaining > 0) {
+                    $klien = $invoice->pengiriman && $invoice->pengiriman->klien
+                        ? $invoice->pengiriman->klien
+                        : null;
+                    $klienId = $klien ? $klien->id : 0;
+                    $klienNama = $klien ? $klien->nama : $invoice->customer_name;
+                    $klienAlamat = $klien ? $klien->alamat : $invoice->customer_address;
+
+                    if (!isset($piutangByKlien[$klienId])) {
+                        $piutangByKlien[$klienId] = [
+                            'nama' => $klienNama,
+                            'alamat' => $klienAlamat,
+                            'total' => 0
+                        ];
+                    }
+                    $piutangByKlien[$klienId]['total'] += $remaining;
+                }
+            }
+
+            // Sort by total desc and limit to 10
+            usort($piutangByKlien, function($a, $b) {
+                return $b['total'] <=> $a['total'];
+            });
+
+            $data = array_slice(array_values($piutangByKlien), 0, 10);
 
             return response()->json($data);
-        }
-
-        // Initial data for charts
+        }        // Initial data for charts
         $penagihanKlien = InvoicePenagihan::select('customer_name', DB::raw('SUM(total_amount) as total'))
             ->whereHas('approvalPenagihan', function($query) {
                 $query->where('status', 'completed');
@@ -280,23 +265,45 @@ class PenagihanController extends Controller
             ->limit(10)
             ->get();
 
-        // Top Piutang Supplier
-        $topPiutangSupplier = CatatanPiutang::select('supplier_id', DB::raw('SUM(sisa_piutang) as total'))
-            ->where('status', '!=', 'lunas')
-            ->with('supplier:id,nama,alamat')
-            ->groupBy('supplier_id')
-            ->orderBy('total', 'desc')
-            ->limit(10)
+        // Top Piutang Pabrik - from all completed invoices with remaining balance
+        $invoicesForPiutang = InvoicePenagihan::whereHas('approvalPenagihan', function($query) {
+                $query->where('status', 'completed');
+            })
+            ->with('pembayaranPabrik', 'pengiriman.klien')
             ->get();
 
-        // Top Piutang Pabrik
-        $topPiutangPabrik = CatatanPiutangPabrik::select('klien_id', DB::raw('SUM(sisa_piutang) as total'))
-            ->where('status', '!=', 'lunas')
-            ->with('klien:id,nama,alamat')
-            ->groupBy('klien_id')
-            ->orderBy('total', 'desc')
-            ->limit(10)
-            ->get();
+        // Group by klien and calculate remaining balance
+        $piutangByKlien = [];
+        foreach ($invoicesForPiutang as $invoice) {
+            $totalPaid = $invoice->pembayaranPabrik->sum('jumlah_bayar');
+            $remaining = $invoice->total_amount - $totalPaid;
+
+            if ($remaining > 0) {
+                $klien = $invoice->pengiriman && $invoice->pengiriman->klien
+                    ? $invoice->pengiriman->klien
+                    : null;
+                $klienId = $klien ? $klien->id : 0;
+                $klienNama = $klien ? $klien->nama : $invoice->customer_name;
+                $klienAlamat = $klien ? $klien->alamat : $invoice->customer_address;
+
+                if (!isset($piutangByKlien[$klienId])) {
+                    $piutangByKlien[$klienId] = [
+                        'id' => $klienId,
+                        'nama' => $klienNama,
+                        'alamat' => $klienAlamat,
+                        'total' => 0
+                    ];
+                }
+                $piutangByKlien[$klienId]['total'] += $remaining;
+            }
+        }
+
+        // Sort by total desc and limit to 10
+        usort($piutangByKlien, function($a, $b) {
+            return $b['total'] <=> $a['total'];
+        });
+
+        $topPiutangPabrik = collect(array_slice(array_values($piutangByKlien), 0, 10));
 
         // Penagihan per bulan (current year)
         $selectedYear = $request->get('tahun', Carbon::now()->year);
@@ -342,11 +349,9 @@ class PenagihanController extends Controller
             'totalPenagihan',
             'penagihanTahunIni',
             'penagihanBulanIni',
-            'totalPiutangSupplier',
             'totalPiutangPabrik',
             'penagihanKlien',
             'topKlien',
-            'topPiutangSupplier',
             'topPiutangPabrik',
             'penagihanPerBulan',
             'jumlahInvoicePerBulan',
@@ -355,7 +360,6 @@ class PenagihanController extends Controller
             'availableYears',
             'periode',
             'periodeKlien',
-            'periodePiutangSupplier',
             'periodePiutangPabrik'
         ));
     }

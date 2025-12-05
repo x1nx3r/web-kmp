@@ -385,14 +385,8 @@ class ApprovePembayaran extends Component
         $purchaseOrder = $pengiriman->purchaseOrder;
         $klien = $purchaseOrder->klien ?? null;
 
-        // Generate invoice number
-        $lastInvoice = InvoicePenagihan::whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $sequence = $lastInvoice ? (intval(substr($lastInvoice->invoice_number, -4)) + 1) : 1;
-        $invoiceNumber = 'INV-' . now()->format('Ym') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        // Generate invoice number using model method with duplicate prevention
+        $invoiceNumber = InvoicePenagihan::generateInvoiceNumber();
 
         // Calculate total selling price (harga jual) instead of buying price (harga beli)
         $totalSellingPrice = 0;

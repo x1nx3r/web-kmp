@@ -14,6 +14,7 @@ use App\Http\Controllers\Laporan\PurchaseOrderController as LaporanPOController;
 use App\Http\Controllers\Laporan\OmsetController as LaporanOmsetController;
 use App\Http\Controllers\Laporan\PengirimanController as LaporanPengirimanController;
 use App\Http\Controllers\Laporan\PenagihanController as LaporanPenagihanController;
+use App\Http\Controllers\Laporan\PembayaranController as LaporanPembayaranController;
 
 // Authentication routes
 Route::middleware("guest")->group(function () {
@@ -29,6 +30,27 @@ Route::post("/logout", [AuthController::class, "logout"])
 // Protected routes - require authentication
 Route::middleware(["auth"])->group(function () {
     // Dashboard - accessible by all authenticated users
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::prefix('laporan')->name('laporan.')->group(function () {
+            Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
+            Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
+
+            Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
+            Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
+            Route::post('/omset/set-target', [LaporanOmsetController::class, 'setTarget'])->name('omset.setTarget');
+            Route::get('/omset/target-by-year', [LaporanOmsetController::class, 'getTargetByYear'])->name('omset.getTargetByYear');
+            Route::get('/omset/available-years', [LaporanOmsetController::class, 'getAvailableYears'])->name('omset.getAvailableYears');
+
+            Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
+            Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
+
+            Route::get('/pembayaran', [LaporanPembayaranController::class, 'index'])->name('pembayaran');
+            Route::post('/pembayaran/export', [LaporanPembayaranController::class, 'export'])->name('pembayaran.export');
+
+            Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
+            Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
+    });
     Route::get("/dashboard", [DashboardController::class, "index"])->name(
         "dashboard",
     );

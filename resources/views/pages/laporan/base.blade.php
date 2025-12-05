@@ -12,7 +12,7 @@
         <!-- Mobile Dropdown -->
         <div class="sm:hidden">
             <label for="tabs" class="sr-only">Pilih Tab</label>
-            <select id="tabs" name="tabs" 
+            <select id="tabs" name="tabs"
                     class="block w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
                     onchange="window.location.href = this.value">
                 <option value="{{ route('laporan.po') }}" {{ $activeTab === 'po' ? 'selected' : '' }}>
@@ -23,6 +23,9 @@
                 </option>
                 <option value="{{ route('laporan.pengiriman') }}" {{ $activeTab === 'pengiriman' ? 'selected' : '' }}>
                     Laporan Pengiriman
+                </option>
+                <option value="{{ route('laporan.pembayaran') }}" {{ $activeTab === 'pembayaran' ? 'selected' : '' }}>
+                    Laporan Pembayaran
                 </option>
                 <option value="{{ route('laporan.penagihan') }}" {{ $activeTab === 'penagihan' ? 'selected' : '' }}>
                     Laporan Penagihan
@@ -44,6 +47,10 @@
                class="{{ $activeTab === 'pengiriman' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
                 Laporan Pengiriman
             </a>
+            <a href="{{ route('laporan.pembayaran') }}"
+               class="{{ $activeTab === 'pembayaran' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                Laporan Pembayaran
+            </a>
             <a href="{{ route('laporan.penagihan') }}"
                class="{{ $activeTab === 'penagihan' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
                 Laporan Penagihan
@@ -63,7 +70,7 @@ function exportData() {
     const form = new FormData();
     form.append('start_date', document.querySelector('input[name="start_date"]').value);
     form.append('end_date', document.querySelector('input[name="end_date"]').value);
-    
+
     fetch('{{ route("laporan." . $activeTab . ".export") }}', {
         method: 'POST',
         headers: {

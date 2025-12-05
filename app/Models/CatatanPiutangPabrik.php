@@ -4,37 +4,38 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 
 class CatatanPiutangPabrik extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $table = 'catatan_piutang_pabriks';
+    protected $table = "catatan_piutang_pabriks";
 
     protected $fillable = [
-        'klien_id',
-        'no_invoice',
-        'tanggal_invoice',
-        'tanggal_jatuh_tempo',
-        'jumlah_piutang',
-        'jumlah_dibayar',
-        'sisa_piutang',
-        'status',
-        'hari_keterlambatan',
-        'keterangan',
-        'bukti_transaksi',
-        'created_by',
-        'updated_by',
+        "klien_id",
+        "no_invoice",
+        "tanggal_invoice",
+        "tanggal_jatuh_tempo",
+        "jumlah_piutang",
+        "jumlah_dibayar",
+        "sisa_piutang",
+        "status",
+        "hari_keterlambatan",
+        "keterangan",
+        "bukti_transaksi",
+        "created_by",
+        "updated_by",
     ];
 
     protected $casts = [
-        'tanggal_invoice' => 'date',
-        'tanggal_jatuh_tempo' => 'date',
-        'jumlah_piutang' => 'decimal:2',
-        'jumlah_dibayar' => 'decimal:2',
-        'sisa_piutang' => 'decimal:2',
-        'hari_keterlambatan' => 'integer',
+        "tanggal_invoice" => "date",
+        "tanggal_jatuh_tempo" => "date",
+        "jumlah_piutang" => "decimal:2",
+        "jumlah_dibayar" => "decimal:2",
+        "sisa_piutang" => "decimal:2",
+        "hari_keterlambatan" => "integer",
     ];
 
     /**
@@ -42,7 +43,7 @@ class CatatanPiutangPabrik extends Model
      */
     public function klien()
     {
-        return $this->belongsTo(Klien::class, 'klien_id');
+        return $this->belongsTo(Klien::class, "klien_id");
     }
 
     /**
@@ -50,7 +51,7 @@ class CatatanPiutangPabrik extends Model
      */
     public function creator()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, "created_by");
     }
 
     /**
@@ -58,7 +59,7 @@ class CatatanPiutangPabrik extends Model
      */
     public function updater()
     {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(User::class, "updated_by");
     }
 
     /**
@@ -70,7 +71,7 @@ class CatatanPiutangPabrik extends Model
         $jatuhTempo = Carbon::parse($this->tanggal_jatuh_tempo)->startOfDay();
 
         // Jika sudah lunas, status tidak berubah
-        if ($this->status === 'lunas') {
+        if ($this->status === "lunas") {
             return;
         }
 
@@ -79,14 +80,16 @@ class CatatanPiutangPabrik extends Model
             $this->hari_keterlambatan = $today->diffInDays($jatuhTempo);
 
             if ($this->sisa_piutang > 0) {
-                $this->status = 'terlambat';
+                $this->status = "terlambat";
             }
         } elseif ($today->eq($jatuhTempo)) {
             $this->hari_keterlambatan = 0;
-            $this->status = $this->jumlah_dibayar > 0 ? 'cicilan' : 'jatuh_tempo';
+            $this->status =
+                $this->jumlah_dibayar > 0 ? "cicilan" : "jatuh_tempo";
         } else {
             $this->hari_keterlambatan = 0;
-            $this->status = $this->jumlah_dibayar > 0 ? 'cicilan' : 'belum_jatuh_tempo';
+            $this->status =
+                $this->jumlah_dibayar > 0 ? "cicilan" : "belum_jatuh_tempo";
         }
 
         $this->save();
@@ -102,7 +105,7 @@ class CatatanPiutangPabrik extends Model
 
         // Update status
         if ($this->sisa_piutang <= 0) {
-            $this->status = 'lunas';
+            $this->status = "lunas";
             $this->hari_keterlambatan = 0;
         } else {
             $this->updateStatus();

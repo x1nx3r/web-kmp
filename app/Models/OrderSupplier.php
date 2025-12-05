@@ -5,37 +5,38 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class OrderSupplier extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'order_detail_id',
-        'supplier_id',
-        'bahan_baku_supplier_id',
-        'unit_price',
-        'shipped_quantity',
-        'shipped_amount',
-        'calculated_margin',
-        'potential_profit',
-        'is_recommended',
-        'price_rank',
-        'is_available',
-        'has_been_used',
-        'price_updated_at',
+        "order_detail_id",
+        "supplier_id",
+        "bahan_baku_supplier_id",
+        "unit_price",
+        "shipped_quantity",
+        "shipped_amount",
+        "calculated_margin",
+        "potential_profit",
+        "is_recommended",
+        "price_rank",
+        "is_available",
+        "has_been_used",
+        "price_updated_at",
     ];
 
     protected $casts = [
-        'unit_price' => 'decimal:2',
-        'shipped_quantity' => 'decimal:2',
-        'shipped_amount' => 'decimal:2',
-        'calculated_margin' => 'decimal:4',
-        'potential_profit' => 'decimal:2',
-        'is_recommended' => 'boolean',
-        'is_available' => 'boolean',
-        'has_been_used' => 'boolean',
-        'price_updated_at' => 'datetime',
+        "unit_price" => "decimal:2",
+        "shipped_quantity" => "decimal:2",
+        "shipped_amount" => "decimal:2",
+        "calculated_margin" => "decimal:4",
+        "potential_profit" => "decimal:2",
+        "is_recommended" => "boolean",
+        "is_available" => "boolean",
+        "has_been_used" => "boolean",
+        "price_updated_at" => "datetime",
     ];
 
     /**
@@ -61,22 +62,22 @@ class OrderSupplier extends Model
      */
     public function scopeAvailable($query)
     {
-        return $query->where('is_available', true);
+        return $query->where("is_available", true);
     }
 
     public function scopeRecommended($query)
     {
-        return $query->where('is_recommended', true);
+        return $query->where("is_recommended", true);
     }
 
     public function scopeByPriceRank($query)
     {
-        return $query->orderBy('price_rank');
+        return $query->orderBy("price_rank");
     }
 
     public function scopeByMargin($query)
     {
-        return $query->orderByDesc('calculated_margin');
+        return $query->orderByDesc("calculated_margin");
     }
 
     /**
@@ -85,7 +86,8 @@ class OrderSupplier extends Model
     public function calculateMargin($sellingPrice): void
     {
         if ($this->unit_price > 0 && $sellingPrice > 0) {
-            $this->calculated_margin = (($sellingPrice - $this->unit_price) / $sellingPrice) * 100;
+            $this->calculated_margin =
+                (($sellingPrice - $this->unit_price) / $sellingPrice) * 100;
             $this->potential_profit = $sellingPrice - $this->unit_price;
         }
     }
@@ -93,12 +95,17 @@ class OrderSupplier extends Model
     public function updateShippedQuantity(): void
     {
         // Calculate shipped quantity from pengiriman_details
-        $shipped = \DB::table('pengiriman_details as pd')
-            ->join('pengiriman as p', 'p.id', '=', 'pd.pengiriman_id')
-            ->join('purchase_order_bahan_baku as pobb', 'pobb.id', '=', 'pd.purchase_order_bahan_baku_id')
-            ->where('pd.bahan_baku_supplier_id', $this->bahan_baku_supplier_id)
-            ->where('pobb.order_detail_id', $this->order_detail_id) // Assuming this link exists
-            ->sum('pd.qty_kirim');
+        $shipped = \DB::table("pengiriman_details as pd")
+            ->join("pengiriman as p", "p.id", "=", "pd.pengiriman_id")
+            ->join(
+                "purchase_order_bahan_baku as pobb",
+                "pobb.id",
+                "=",
+                "pd.purchase_order_bahan_baku_id",
+            )
+            ->where("pd.bahan_baku_supplier_id", $this->bahan_baku_supplier_id)
+            ->where("pobb.order_detail_id", $this->order_detail_id) // Assuming this link exists
+            ->sum("pd.qty_kirim");
 
         $this->shipped_quantity = $shipped ?? 0;
         $this->shipped_amount = $this->shipped_quantity * $this->unit_price;
@@ -112,7 +119,9 @@ class OrderSupplier extends Model
 
     public function getFulfillmentPercentageAttribute(): float
     {
-        if ($this->orderDetail->qty == 0) return 0;
+        if ($this->orderDetail->qty == 0) {
+            return 0;
+        }
         return ($this->shipped_quantity / $this->orderDetail->qty) * 100;
     }
 

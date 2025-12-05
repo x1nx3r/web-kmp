@@ -4,33 +4,34 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CatatanPiutang extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $table = 'catatan_piutangs';
+    protected $table = "catatan_piutangs";
 
     protected $fillable = [
-        'supplier_id',
-        'tanggal_piutang',
-        'tanggal_jatuh_tempo',
-        'jumlah_piutang',
-        'jumlah_dibayar',
-        'sisa_piutang',
-        'status',
-        'keterangan',
-        'bukti_transaksi',
-        'created_by',
-        'updated_by',
+        "supplier_id",
+        "tanggal_piutang",
+        "tanggal_jatuh_tempo",
+        "jumlah_piutang",
+        "jumlah_dibayar",
+        "sisa_piutang",
+        "status",
+        "keterangan",
+        "bukti_transaksi",
+        "created_by",
+        "updated_by",
     ];
 
     protected $casts = [
-        'tanggal_piutang' => 'date',
-        'tanggal_jatuh_tempo' => 'date',
-        'jumlah_piutang' => 'decimal:2',
-        'jumlah_dibayar' => 'decimal:2',
-        'sisa_piutang' => 'decimal:2',
+        "tanggal_piutang" => "date",
+        "tanggal_jatuh_tempo" => "date",
+        "jumlah_piutang" => "decimal:2",
+        "jumlah_dibayar" => "decimal:2",
+        "sisa_piutang" => "decimal:2",
     ];
 
     /**
@@ -38,7 +39,7 @@ class CatatanPiutang extends Model
      */
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class, 'supplier_id');
+        return $this->belongsTo(Supplier::class, "supplier_id");
     }
 
     /**
@@ -46,7 +47,7 @@ class CatatanPiutang extends Model
      */
     public function creator()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, "created_by");
     }
 
     /**
@@ -54,7 +55,7 @@ class CatatanPiutang extends Model
      */
     public function updater()
     {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(User::class, "updated_by");
     }
 
     /**
@@ -62,7 +63,7 @@ class CatatanPiutang extends Model
      */
     public function pembayaran()
     {
-        return $this->hasMany(PembayaranPiutang::class, 'catatan_piutang_id');
+        return $this->hasMany(PembayaranPiutang::class, "catatan_piutang_id");
     }
 
     /**
@@ -70,17 +71,17 @@ class CatatanPiutang extends Model
      */
     public function updateSisaPiutang()
     {
-        $totalDibayar = $this->pembayaran()->sum('jumlah_bayar');
+        $totalDibayar = $this->pembayaran()->sum("jumlah_bayar");
         $this->jumlah_dibayar = $totalDibayar;
         $this->sisa_piutang = $this->jumlah_piutang - $totalDibayar;
 
         // Update status
         if ($this->sisa_piutang <= 0) {
-            $this->status = 'lunas';
+            $this->status = "lunas";
         } elseif ($totalDibayar > 0) {
-            $this->status = 'cicilan';
+            $this->status = "cicilan";
         } else {
-            $this->status = 'belum_lunas';
+            $this->status = "belum_lunas";
         }
 
         $this->save();

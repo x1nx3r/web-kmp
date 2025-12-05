@@ -4,32 +4,33 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 
 class RiwayatHargaKlien extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $table = 'riwayat_harga_klien';
+    protected $table = "riwayat_harga_klien";
 
     protected $fillable = [
-        'bahan_baku_klien_id',
-        'harga_lama',
-        'harga_approved_baru',
-        'selisih_harga',
-        'persentase_perubahan',
-        'tipe_perubahan',
-        'keterangan',
-        'tanggal_perubahan',
-        'updated_by_marketing',
+        "bahan_baku_klien_id",
+        "harga_lama",
+        "harga_approved_baru",
+        "selisih_harga",
+        "persentase_perubahan",
+        "tipe_perubahan",
+        "keterangan",
+        "tanggal_perubahan",
+        "updated_by_marketing",
     ];
 
     protected $casts = [
-        'harga_lama' => 'decimal:2',
-        'harga_approved_baru' => 'decimal:2',
-        'selisih_harga' => 'decimal:2',
-        'persentase_perubahan' => 'decimal:4',
-        'tanggal_perubahan' => 'datetime',
+        "harga_lama" => "decimal:2",
+        "harga_approved_baru" => "decimal:2",
+        "selisih_harga" => "decimal:2",
+        "persentase_perubahan" => "decimal:4",
+        "tanggal_perubahan" => "datetime",
     ];
 
     /**
@@ -45,7 +46,7 @@ class RiwayatHargaKlien extends Model
      */
     public function updatedByMarketing()
     {
-        return $this->belongsTo(User::class, 'updated_by_marketing');
+        return $this->belongsTo(User::class, "updated_by_marketing");
     }
 
     /**
@@ -53,7 +54,10 @@ class RiwayatHargaKlien extends Model
      */
     public function scopeByDateRange($query, $startDate, $endDate)
     {
-        return $query->whereBetween('tanggal_perubahan', [$startDate, $endDate]);
+        return $query->whereBetween("tanggal_perubahan", [
+            $startDate,
+            $endDate,
+        ]);
     }
 
     /**
@@ -61,7 +65,7 @@ class RiwayatHargaKlien extends Model
      */
     public function scopeByTipePerubahan($query, $tipe)
     {
-        return $query->where('tipe_perubahan', $tipe);
+        return $query->where("tipe_perubahan", $tipe);
     }
 
     /**
@@ -69,7 +73,7 @@ class RiwayatHargaKlien extends Model
      */
     public function scopeByBahanBakuKlien($query, $bahanBakuKlienId)
     {
-        return $query->where('bahan_baku_klien_id', $bahanBakuKlienId);
+        return $query->where("bahan_baku_klien_id", $bahanBakuKlienId);
     }
 
     /**
@@ -77,7 +81,9 @@ class RiwayatHargaKlien extends Model
      */
     public function getFormattedHargaLamaAttribute()
     {
-        return $this->harga_lama ? 'Rp ' . number_format((float) $this->harga_lama, 0, ',', '.') : 'N/A';
+        return $this->harga_lama
+            ? "Rp " . number_format((float) $this->harga_lama, 0, ",", ".")
+            : "N/A";
     }
 
     /**
@@ -85,7 +91,8 @@ class RiwayatHargaKlien extends Model
      */
     public function getFormattedHargaBaruAttribute()
     {
-        return 'Rp ' . number_format((float) $this->harga_approved_baru, 0, ',', '.');
+        return "Rp " .
+            number_format((float) $this->harga_approved_baru, 0, ",", ".");
     }
 
     /**
@@ -93,8 +100,10 @@ class RiwayatHargaKlien extends Model
      */
     public function getFormattedSelisihHargaAttribute()
     {
-        $prefix = $this->selisih_harga >= 0 ? '+' : '';
-        return $prefix . 'Rp ' . number_format((float) $this->selisih_harga, 0, ',', '.');
+        $prefix = $this->selisih_harga >= 0 ? "+" : "";
+        return $prefix .
+            "Rp " .
+            number_format((float) $this->selisih_harga, 0, ",", ".");
     }
 
     /**
@@ -102,12 +111,12 @@ class RiwayatHargaKlien extends Model
      */
     public function getChangeColorAttribute()
     {
-        return match($this->tipe_perubahan) {
-            'naik' => 'red',
-            'turun' => 'green',
-            'tetap' => 'blue',
-            'awal' => 'gray',
-            default => 'gray'
+        return match ($this->tipe_perubahan) {
+            "naik" => "red",
+            "turun" => "green",
+            "tetap" => "blue",
+            "awal" => "gray",
+            default => "gray",
         };
     }
 
@@ -116,55 +125,60 @@ class RiwayatHargaKlien extends Model
      */
     public function getChangeIconAttribute()
     {
-        return match($this->tipe_perubahan) {
-            'naik' => '↗️',
-            'turun' => '↘️',
-            'tetap' => '➡️',
-            'awal' => '🆕',
-            default => '➡️'
+        return match ($this->tipe_perubahan) {
+            "naik" => "↗️",
+            "turun" => "↘️",
+            "tetap" => "➡️",
+            "awal" => "🆕",
+            default => "➡️",
         };
     }
 
     /**
      * Static method to create price history record
      */
-    public static function createPriceHistory($bahanBakuKlienId, $hargaBaru, $marketingUserId, $keterangan = null, $tanggal = null)
-    {
+    public static function createPriceHistory(
+        $bahanBakuKlienId,
+        $hargaBaru,
+        $marketingUserId,
+        $keterangan = null,
+        $tanggal = null,
+    ) {
         // Get current price from bahan_baku_klien
         $bahanBaku = BahanBakuKlien::find($bahanBakuKlienId);
         $hargaLama = $bahanBaku->harga_approved;
 
         // Calculate difference and percentage
         $selisihHarga = $hargaBaru - ($hargaLama ?? 0);
-        
+
         $persentasePerubahan = 0;
         if ($hargaLama && $hargaLama > 0) {
             $persentasePerubahan = ($selisihHarga / $hargaLama) * 100;
         }
 
         // Determine change type
-        $tipePerubahan = 'awal';
+        $tipePerubahan = "awal";
         if ($hargaLama) {
             if ($selisihHarga > 0) {
-                $tipePerubahan = 'naik';
+                $tipePerubahan = "naik";
             } elseif ($selisihHarga < 0) {
-                $tipePerubahan = 'turun';
+                $tipePerubahan = "turun";
             } else {
-                $tipePerubahan = 'tetap';
+                $tipePerubahan = "tetap";
             }
         }
 
         // Create history record
         return self::create([
-            'bahan_baku_klien_id' => $bahanBakuKlienId,
-            'harga_lama' => $hargaLama,
-            'harga_approved_baru' => $hargaBaru,
-            'selisih_harga' => $selisihHarga,
-            'persentase_perubahan' => $persentasePerubahan,
-            'tipe_perubahan' => $tipePerubahan,
-            'keterangan' => $keterangan,
-            'tanggal_perubahan' => $tanggal ?? now(),
-            'updated_by_marketing' => $marketingUserId,
+            "bahan_baku_klien_id" => $bahanBakuKlienId,
+            "harga_lama" => $hargaLama,
+            "harga_approved_baru" => $hargaBaru,
+            "selisih_harga" => $selisihHarga,
+            "persentase_perubahan" => $persentasePerubahan,
+            "tipe_perubahan" => $tipePerubahan,
+            "keterangan" => $keterangan,
+            "tanggal_perubahan" => $tanggal ?? now(),
+            "updated_by_marketing" => $marketingUserId,
         ]);
     }
 
@@ -173,9 +187,10 @@ class RiwayatHargaKlien extends Model
      */
     public function scopeForChart($query, $bahanBakuKlienId, $days = 30)
     {
-        return $query->where('bahan_baku_klien_id', $bahanBakuKlienId)
-                    ->where('tanggal_perubahan', '>=', Carbon::now()->subDays($days))
-                    ->orderBy('tanggal_perubahan', 'asc')
-                    ->select('tanggal_perubahan', 'harga_approved_baru');
+        return $query
+            ->where("bahan_baku_klien_id", $bahanBakuKlienId)
+            ->where("tanggal_perubahan", ">=", Carbon::now()->subDays($days))
+            ->orderBy("tanggal_perubahan", "asc")
+            ->select("tanggal_perubahan", "harga_approved_baru");
     }
 }

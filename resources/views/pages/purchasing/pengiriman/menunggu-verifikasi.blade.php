@@ -528,13 +528,13 @@ function uploadFotoTandaTerima(pengirimanId, inputElement) {
         return;
     }
     
-    // Validate file size (max 2MB)
-    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
     if (file.size > maxSize) {
         Swal.fire({
             icon: 'error',
             title: 'File Terlalu Besar',
-            text: 'Ukuran file maksimal adalah 2MB.',
+            text: 'Ukuran file maksimal adalah 10MB.',
             confirmButtonColor: '#dc2626'
         });
         inputElement.value = '';

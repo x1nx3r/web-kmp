@@ -633,9 +633,9 @@ class PengirimanController extends Controller
                     "total_qty_kirim" => "required|numeric|min:0",
                     "total_harga_kirim" => "required|numeric|min:0",
                     "bukti_foto_bongkar" =>
-                        "nullable|file|mimes:jpeg,png,jpg,pdf|max:2048",
+                        "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240",
                     "foto_tanda_terima" =>
-                        "nullable|file|mimes:jpeg,png,jpg,pdf|max:2048",
+                        "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240",
                     "catatan" => "nullable|string",
                     "details" => "required|array|min:1",
                     "details.*.bahan_baku_supplier_id" =>
@@ -1817,7 +1817,7 @@ class PengirimanController extends Controller
             // Validate
             $request->validate([
                 "foto_tanda_terima" =>
-                    "required|file|mimes:jpeg,png,jpg,pdf|max:2048",
+                    "required|file|mimes:jpeg,png,jpg,pdf|max:10240",
             ]);
 
             // Find pengiriman (menunggu verifikasi only)

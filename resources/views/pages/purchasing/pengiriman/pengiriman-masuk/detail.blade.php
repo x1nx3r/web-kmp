@@ -196,7 +196,7 @@
                         <input type="hidden" name="total_harga_kirim" id="total_harga_kirim">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Bukti Foto Bongkar (JPG/PNG/PDF)</label>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Bukti Foto Bongkar (JPG/PNG/PDF - Max 10MB)</label>
                         <input type="file" 
                                name="bukti_foto_bongkar" 
                                id="bukti_foto_bongkar"

@@ -14,6 +14,7 @@ use App\Http\Controllers\Laporan\PurchaseOrderController as LaporanPOController;
 use App\Http\Controllers\Laporan\OmsetController as LaporanOmsetController;
 use App\Http\Controllers\Laporan\PengirimanController as LaporanPengirimanController;
 use App\Http\Controllers\Laporan\PenagihanController as LaporanPenagihanController;
+use App\Http\Controllers\Laporan\PembayaranController as LaporanPembayaranController;
 
 // Authentication routes
 Route::middleware("guest")->group(function () {
@@ -43,6 +44,10 @@ Route::middleware(["auth"])->group(function () {
 
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
             Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
+
+            Route::get('/pembayaran', [LaporanPembayaranController::class, 'index'])->name('pembayaran');
+            Route::post('/pembayaran/export', [LaporanPembayaranController::class, 'export'])->name('pembayaran.export');
+
             Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
             Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
     });

@@ -83,7 +83,7 @@
 
     {{-- Filters & Search --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     <i class="fas fa-search mr-1"></i> Pencarian
@@ -103,6 +103,20 @@
                     @foreach($kliens as $klien)
                         <option value="{{ $klien->id }}">{{ $klien->nama }}</option>
                     @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-filter mr-1"></i> Status Pembayaran
+                </label>
+                <select wire:model.live="statusFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="all">Semua Status</option>
+                    <option value="belum_bayar">Belum Bayar</option>
+                    <option value="cicilan">Cicilan</option>
+                    <option value="lunas">Lunas</option>
+                    <option value="overdue">Jatuh Tempo</option>
                 </select>
             </div>
         </div>
@@ -128,11 +142,14 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($piutangs as $piutang)
                         @php
-                            $hariTerlambat = (int) \Carbon\Carbon::parse($piutang->due_date)->diffInDays(now());
+                            $dueDate = \Carbon\Carbon::parse($piutang->due_date);
+                            $isOverdue = $dueDate->lt(now());
+                            $hariTerlambat = $isOverdue ? (int) $dueDate->diffInDays(now()) : 0;
+                            $hariMenjelang = !$isOverdue ? (int) now()->diffInDays($dueDate) : 0;
                             $totalPaid = $piutang->pembayaranPabrik->sum('jumlah_bayar');
                             $sisaPiutang = $piutang->total_amount - $totalPaid;
                         @endphp
-                        <tr class="hover:bg-gray-50 transition-colors">
+                        <tr class="hover:bg-gray-50 transition-colors {{ $sisaPiutang <= 0 ? 'bg-green-50' : '' }}">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900">{{ $loop->iteration + ($piutangs->currentPage() - 1) * $piutangs->perPage() }}</div>
                             </td>
@@ -150,12 +167,14 @@
                                 <div class="text-sm text-gray-900">{{ $piutang->due_date->format('d M Y') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                @if($hariTerlambat > 0)
+                                @if($sisaPiutang <= 0)
+                                    <div class="text-sm text-green-600 font-medium">-</div>
+                                @elseif($isOverdue)
                                     <div class="text-sm font-bold {{ $hariTerlambat > 7 ? 'text-red-600' : 'text-orange-600' }}">
-                                        {{ $hariTerlambat }} hari
+                                        {{ $hariTerlambat }} hari terlambat
                                     </div>
                                 @else
-                                    <div class="text-sm text-gray-500">-</div>
+                                    <div class="text-sm text-blue-600">{{ $hariMenjelang }} hari lagi</div>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -507,8 +526,22 @@
                 </button>
             </div>
 
+            {{-- Error Message in Modal --}}
+            @if (session()->has('error'))
+                <div class="mx-6 mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle text-red-500 mr-3"></i>
+                        <p class="text-red-700 font-medium">{{ session('error') }}</p>
+                    </div>
+                </div>
+            @endif
+
             {{-- Modal Body --}}
             <form wire:submit.prevent="savePembayaran" class="p-6">
+                @php
+                    $totalPaidBefore = $selectedPiutang->pembayaranPabrik->sum('jumlah_bayar');
+                    $sisaPiutang = $selectedPiutang->total_amount - $totalPaidBefore;
+                @endphp
                 <!-- Invoice Info -->
                 <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 mb-6 border border-blue-200">
                     <div class="grid grid-cols-2 gap-4 text-sm">
@@ -527,6 +560,14 @@
                         <div>
                             <label class="font-medium text-gray-600">Jatuh Tempo:</label>
                             <p class="text-gray-900">{{ $selectedPiutang->due_date->format('d M Y') }}</p>
+                        </div>
+                        <div>
+                            <label class="font-medium text-gray-600">Sudah Dibayar:</label>
+                            <p class="font-semibold text-green-600">Rp {{ number_format($totalPaidBefore, 0, ',', '.') }}</p>
+                        </div>
+                        <div>
+                            <label class="font-medium text-gray-600">Sisa Piutang:</label>
+                            <p class="text-lg font-bold text-orange-600">Rp {{ number_format($sisaPiutang, 0, ',', '.') }}</p>
                         </div>
                     </div>
                 </div>
@@ -562,7 +603,7 @@
                         </div>
                         <p class="text-xs text-gray-500 mt-1">
                             <i class="fas fa-info-circle mr-1"></i>
-                            Maksimal: Rp {{ number_format($selectedPiutang->total_amount, 0, ',', '.') }}
+                            Maksimal: Rp {{ number_format($sisaPiutang, 0, ',', '.') }}
                         </p>
                         @error('jumlah_bayar') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                     </div>

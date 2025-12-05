@@ -72,6 +72,29 @@ class Order extends Model
         return $this->hasMany(OrderDetail::class);
     }
 
+    public function consultations(): HasMany
+    {
+        return $this->hasMany(OrderConsultation::class);
+    }
+
+    /**
+     * Get the latest consultation for this order.
+     */
+    public function latestConsultation()
+    {
+        return $this->hasOne(OrderConsultation::class)->latestOfMany();
+    }
+
+    /**
+     * Get the latest pending consultation for this order.
+     */
+    public function pendingConsultation()
+    {
+        return $this->hasOne(OrderConsultation::class)
+            ->whereNull("responded_at")
+            ->latestOfMany();
+    }
+
     public function bahanBakuKliens(): HasManyThrough
     {
         return $this->hasManyThrough(
@@ -300,7 +323,9 @@ class Order extends Model
             return 0;
         }
 
-        $shippedQty = $this->orderDetails->sum("qty_shipped");
+        // Calculate shipped qty as: original total_qty - remaining qty in order_details
+        $remainingQty = $this->orderDetails->sum("qty");
+        $shippedQty = $this->total_qty - $remainingQty;
         return round(($shippedQty / $this->total_qty) * 100, 2);
     }
 
@@ -318,7 +343,9 @@ class Order extends Model
      */
     public function getShippedQty(): float
     {
-        return $this->orderDetails->sum("qty_shipped");
+        // Shipped qty = original total_qty - remaining qty in order_details
+        $remainingQty = $this->orderDetails->sum("qty");
+        return $this->total_qty - $remainingQty;
     }
 
     /**

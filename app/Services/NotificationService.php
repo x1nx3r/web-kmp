@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderConsultation;
 use App\Models\Penawaran;
 use App\Models\Pengiriman;
 use App\Models\User;
@@ -38,6 +39,7 @@ class NotificationService
     // Order types
     public const TYPE_ORDER_NEARING_FULFILLMENT = OrderNotificationService::TYPE_NEARING_FULFILLMENT;
     public const TYPE_ORDER_DIREKTUR_CONSULTATION = OrderNotificationService::TYPE_DIREKTUR_CONSULTATION;
+    public const TYPE_ORDER_CONSULTATION_RESPONDED = OrderNotificationService::TYPE_CONSULTATION_RESPONDED;
     public const TYPE_ORDER_PRIORITY_ESCALATED = OrderNotificationService::TYPE_PRIORITY_ESCALATED;
 
     /*
@@ -163,13 +165,13 @@ class NotificationService
     */
 
     /**
-     * Notify order creator that their order is nearing fulfillment (95-105%).
+     * Notify all Marketing users that an order is nearing fulfillment (95-105%).
      */
     public static function notifyOrderNearingFulfillment(
         Order $order,
         float $fulfillmentPercentage,
         ?Pengiriman $pengiriman = null,
-    ): ?string {
+    ): int {
         return OrderNotificationService::notifyNearingFulfillment(
             $order,
             $fulfillmentPercentage,
@@ -189,6 +191,17 @@ class NotificationService
             $order,
             $requestedBy,
             $note,
+        );
+    }
+
+    /**
+     * Notify all Marketing users that a Direktur has responded to a consultation.
+     */
+    public static function notifyConsultationResponded(
+        OrderConsultation $consultation,
+    ): int {
+        return OrderNotificationService::notifyConsultationResponded(
+            $consultation,
         );
     }
 

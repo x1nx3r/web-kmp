@@ -88,26 +88,42 @@ class OrderNotificationServiceTest extends TestCase
     }
 
     /** @test */
-    public function notify_nearing_fulfillment_sends_notification_to_order_creator()
+    public function notify_nearing_fulfillment_sends_notification_to_all_marketing_users()
     {
+        // Create additional marketing users
+        $marketingUser2 = User::factory()->create([
+            "nama" => "Marketing User 2",
+            "role" => "marketing",
+            "status" => "aktif",
+        ]);
+
         $fulfillmentPercentage = 98.5;
 
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
             $this->order,
             $fulfillmentPercentage,
         );
 
-        $this->assertNotNull($notificationId);
+        // Should send to all active marketing users (2 in this case)
+        $this->assertEquals(2, $notificationCount);
+
+        // Verify notification sent to first marketing user
         $this->assertDatabaseHas("notifications", [
-            "id" => $notificationId,
             "type" => OrderNotificationService::TYPE_NEARING_FULFILLMENT,
             "notifiable_type" => User::class,
             "notifiable_id" => $this->marketingUser->id,
         ]);
 
+        // Verify notification sent to second marketing user
+        $this->assertDatabaseHas("notifications", [
+            "type" => OrderNotificationService::TYPE_NEARING_FULFILLMENT,
+            "notifiable_type" => User::class,
+            "notifiable_id" => $marketingUser2->id,
+        ]);
+
         // Verify notification data
         $notification = DB::table("notifications")
-            ->where("id", $notificationId)
+            ->where("type", OrderNotificationService::TYPE_NEARING_FULFILLMENT)
             ->first();
         $data = json_decode($notification->data, true);
 
@@ -127,30 +143,17 @@ class OrderNotificationServiceTest extends TestCase
     }
 
     /** @test */
-    public function notify_nearing_fulfillment_returns_null_when_order_has_no_creator()
+    public function notify_nearing_fulfillment_returns_zero_when_no_active_marketing_users()
     {
-        // Create a mock Order that returns null for creator relationship
-        $orderMock = $this->createPartialMock(Order::class, ["__get"]);
-        $orderMock->id = 999;
-        $orderMock->no_order = "ORD-MOCK-001";
-        $orderMock->po_number = "PO-MOCK-001";
-        $orderMock->total_qty = 100;
+        // Deactivate all marketing users
+        User::where("role", "marketing")->update(["status" => "nonaktif"]);
 
-        $orderMock
-            ->method("__get")
-            ->willReturnCallback(function ($property) use ($orderMock) {
-                if ($property === "creator") {
-                    return null;
-                }
-                return $orderMock->$property ?? null;
-            });
-
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
-            $orderMock,
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
+            $this->order,
             95.0,
         );
 
-        $this->assertNull($notificationId);
+        $this->assertEquals(0, $notificationCount);
     }
 
     /** @test */
@@ -164,13 +167,16 @@ class OrderNotificationServiceTest extends TestCase
             "status" => "diproses",
         ]);
 
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
             $orderWithoutPo,
             97.0,
         );
 
+        $this->assertGreaterThan(0, $notificationCount);
+
         $notification = DB::table("notifications")
-            ->where("id", $notificationId)
+            ->where("type", OrderNotificationService::TYPE_NEARING_FULFILLMENT)
+            ->orderBy("created_at", "desc")
             ->first();
         $data = json_decode($notification->data, true);
 
@@ -180,13 +186,15 @@ class OrderNotificationServiceTest extends TestCase
     /** @test */
     public function notify_nearing_fulfillment_shows_correct_styling_for_below_100_percent()
     {
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
             $this->order,
             95.0,
         );
 
+        $this->assertGreaterThan(0, $notificationCount);
+
         $notification = DB::table("notifications")
-            ->where("id", $notificationId)
+            ->where("type", OrderNotificationService::TYPE_NEARING_FULFILLMENT)
             ->first();
         $data = json_decode($notification->data, true);
 
@@ -198,13 +206,15 @@ class OrderNotificationServiceTest extends TestCase
     /** @test */
     public function notify_nearing_fulfillment_shows_correct_styling_for_exactly_100_percent()
     {
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
             $this->order,
             100.0,
         );
 
+        $this->assertGreaterThan(0, $notificationCount);
+
         $notification = DB::table("notifications")
-            ->where("id", $notificationId)
+            ->where("type", OrderNotificationService::TYPE_NEARING_FULFILLMENT)
             ->first();
         $data = json_decode($notification->data, true);
 
@@ -216,13 +226,15 @@ class OrderNotificationServiceTest extends TestCase
     /** @test */
     public function notify_nearing_fulfillment_shows_correct_styling_for_above_100_percent()
     {
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
             $this->order,
             103.5,
         );
 
+        $this->assertGreaterThan(0, $notificationCount);
+
         $notification = DB::table("notifications")
-            ->where("id", $notificationId)
+            ->where("type", OrderNotificationService::TYPE_NEARING_FULFILLMENT)
             ->first();
         $data = json_decode($notification->data, true);
 
@@ -603,13 +615,15 @@ class OrderNotificationServiceTest extends TestCase
     /** @test */
     public function notification_includes_correct_url_format()
     {
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
             $this->order,
             98.0,
         );
 
+        $this->assertGreaterThan(0, $notificationCount);
+
         $notification = DB::table("notifications")
-            ->where("id", $notificationId)
+            ->where("type", OrderNotificationService::TYPE_NEARING_FULFILLMENT)
             ->first();
         $data = json_decode($notification->data, true);
 
@@ -620,13 +634,15 @@ class OrderNotificationServiceTest extends TestCase
     /** @test */
     public function notification_data_includes_all_required_fields_for_nearing_fulfillment()
     {
-        $notificationId = OrderNotificationService::notifyNearingFulfillment(
+        $notificationCount = OrderNotificationService::notifyNearingFulfillment(
             $this->order,
             97.5,
         );
 
+        $this->assertGreaterThan(0, $notificationCount);
+
         $notification = DB::table("notifications")
-            ->where("id", $notificationId)
+            ->where("type", OrderNotificationService::TYPE_NEARING_FULFILLMENT)
             ->first();
         $data = json_decode($notification->data, true);
 

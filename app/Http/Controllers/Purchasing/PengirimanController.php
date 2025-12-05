@@ -1493,17 +1493,17 @@ class PengirimanController extends Controller
                         $fulfillmentPercentage >= 95 &&
                         $fulfillmentPercentage <= 105
                     ) {
-                        $notificationId = NotificationService::notifyOrderNearingFulfillment(
+                        $notificationCount = NotificationService::notifyOrderNearingFulfillment(
                             $order,
                             $fulfillmentPercentage,
                             $pengiriman,
                         );
 
                         Log::info(
-                            "Sent order nearing fulfillment notification",
+                            "Sent order nearing fulfillment notifications to Marketing",
                             [
                                 "order_id" => $order->id,
-                                "notification_id" => $notificationId,
+                                "notification_count" => $notificationCount,
                                 "fulfillment_percentage" => $fulfillmentPercentage,
                             ],
                         );

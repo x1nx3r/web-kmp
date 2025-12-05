@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderConsultation;
 use App\Models\Klien;
 use App\Models\BahanBakuKlien;
 use App\Models\BahanBakuSupplier;
@@ -230,14 +231,28 @@ class OrderController extends Controller
             "orderDetails.bahanBakuKlien",
             "orderDetails.orderSuppliers.supplier.picPurchasing",
             "orderDetails.orderSuppliers.bahanBakuSupplier",
+            "pendingConsultation.requester",
+            "latestConsultation.requester",
+            "latestConsultation.responder",
         ])->findOrFail($id);
 
         // Prepare chart data for price analysis
         $chartsData = $this->prepareOrderChartsData($order);
 
+        // Get pending consultation for Direktur response panel
+        $pendingConsultation = $order->pendingConsultation;
+
+        // Get latest consultation for status display
+        $latestConsultation = $order->latestConsultation;
+
         return view(
             "pages.marketing.orders.show",
-            compact("order", "chartsData"),
+            compact(
+                "order",
+                "chartsData",
+                "pendingConsultation",
+                "latestConsultation",
+            ),
         );
     }
 
@@ -652,7 +667,26 @@ class OrderController extends Controller
                 );
         }
 
+        // Check if there's already a pending consultation for this order
+        $pendingConsultation = $order->pendingConsultation;
+        if ($pendingConsultation) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Masih ada konsultasi yang belum direspons untuk order ini.",
+                );
+        }
+
         $note = $request->input("catatan", null);
+
+        // Create consultation record
+        $consultation = OrderConsultation::create([
+            "order_id" => $order->id,
+            "requested_by" => $user->id,
+            "requested_note" => $note,
+            "requested_at" => now(),
+        ]);
 
         // Send notification to all Direktur
         $notificationCount = NotificationService::notifyDirekturOrderConsultation(
@@ -675,6 +709,73 @@ class OrderController extends Controller
             ->with(
                 "error",
                 "Gagal mengirim konsultasi. Tidak ada Direktur aktif ditemukan.",
+            );
+    }
+
+    /**
+     * Respond to a consultation request (Direktur only)
+     */
+    public function respondConsultation(
+        Request $request,
+        string $orderId,
+        string $consultationId,
+    ) {
+        $order = Order::findOrFail($orderId);
+        $consultation = OrderConsultation::where("id", $consultationId)
+            ->where("order_id", $orderId)
+            ->firstOrFail();
+
+        $user = Auth::user();
+
+        // Authorization: Only Direktur can respond
+        if (!$user->isDirektur()) {
+            return redirect()
+                ->back()
+                ->with(
+                    "error",
+                    "Hanya Direktur yang dapat merespons konsultasi.",
+                );
+        }
+
+        // Check if already responded
+        if ($consultation->isResponded()) {
+            return redirect()
+                ->back()
+                ->with("error", "Konsultasi ini sudah direspons sebelumnya.");
+        }
+
+        // Validate request
+        $request->validate([
+            "response_type" => "required|in:selesai,lanjutkan",
+            "response_note" => "nullable|string|max:1000",
+        ]);
+
+        // Update consultation with response
+        $consultation->update([
+            "responded_by" => $user->id,
+            "response_type" => $request->input("response_type"),
+            "response_note" => $request->input("response_note"),
+            "responded_at" => now(),
+        ]);
+
+        // Reload consultation with relationships
+        $consultation->load(["order.klien", "responder"]);
+
+        // Send notification to all Marketing users
+        $notificationCount = NotificationService::notifyConsultationResponded(
+            $consultation,
+        );
+
+        $responseLabel =
+            $consultation->response_type === "selesai"
+                ? "menutup order"
+                : "melanjutkan pengiriman";
+
+        return redirect()
+            ->back()
+            ->with(
+                "success",
+                "Respons berhasil dikirim. Anda menyarankan untuk {$responseLabel}. ({$notificationCount} notifikasi terkirim ke Marketing).",
             );
     }
 }

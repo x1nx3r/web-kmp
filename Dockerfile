@@ -44,6 +44,10 @@ RUN mkdir -p storage/framework/{cache,sessions,views} \
 
 COPY unit.json /docker-entrypoint.d/unit.json
 
+# Copy and set up entrypoint script for runtime permission fixes
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 8000
 
-CMD ["unitd", "--no-daemon"]
+CMD ["/docker-entrypoint.sh"]

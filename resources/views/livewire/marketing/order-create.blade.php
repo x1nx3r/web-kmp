@@ -40,7 +40,7 @@
             {{-- Left Section - Client & Order Info --}}
             <div class="space-y-6 order-2 lg:order-1">
                 {{-- Client Selection --}}
-                <x-order.client-selector-livewire 
+                <x-order.client-selector-livewire
                     :kliens="$kliens"
                     :selectedKlien="$selectedKlien"
                     :selectedKlienCabang="$selectedKlienCabang"
@@ -51,7 +51,7 @@
                 />
 
                 {{-- Order Information --}}
-                <x-order.info-section-livewire 
+                <x-order.info-section-livewire
                     :tanggalOrder="$tanggalOrder"
                     :priority="$priority"
                     :catatan="$catatan"
@@ -71,7 +71,7 @@
                             <h3 class="text-lg font-semibold text-gray-900">Review & Submit</h3>
                             <p class="text-sm text-gray-600">Pastikan semua informasi sudah benar sebelum membuat order</p>
                         </div>
-                        
+
                         @if($selectedMaterial && $quantity > 0 && $hargaJual > 0)
                             <div class="bg-gray-50 rounded-lg p-4 text-center">
                                 <div class="text-sm text-gray-500 mb-1">Total Estimasi Order</div>
@@ -82,27 +82,49 @@
                                 @endif
                             </div>
                         @endif
-                        
+
                         <div class="flex flex-col space-y-3">
                             @if($isEditing)
-                                <button 
+                                <button
                                     type="button"
                                     wire:click="updateOrder"
+                                    wire:loading.attr="disabled"
+                                    wire:target="poDocument"
                                     class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     @if(!$this->canSubmit) disabled @endif
                                 >
-                                    <i class="fas fa-save mr-2"></i>
-                                    Update Order
+                                    <span wire:loading.remove wire:target="poDocument">
+                                        <i class="fas fa-save mr-2"></i>
+                                        Update Order
+                                    </span>
+                                    <span wire:loading wire:target="poDocument" class="flex items-center justify-center">
+                                        <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Mengunggah...
+                                    </span>
                                 </button>
                             @else
-                                <button 
+                                <button
                                     type="button"
                                     wire:click="createOrder"
+                                    wire:loading.attr="disabled"
+                                    wire:target="poDocument"
                                     class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     @if(!$this->canSubmit) disabled @endif
                                 >
-                                    <i class="fas fa-save mr-2"></i>
-                                    Buat Order
+                                    <span wire:loading.remove wire:target="poDocument">
+                                        <i class="fas fa-save mr-2"></i>
+                                        Buat Order
+                                    </span>
+                                    <span wire:loading wire:target="poDocument" class="flex items-center justify-center">
+                                        <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Mengunggah...
+                                    </span>
                                 </button>
                             @endif
                         </div>
@@ -147,8 +169,8 @@
                                     Nama Raw Material Sesuai Surat PO
                                     <span class="text-xs text-gray-500 font-normal ml-1">(opsional)</span>
                                 </label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     wire:model="namaMaterialPO"
                                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                     placeholder="Contoh: Gula Pasir Premium Grade A"
@@ -256,14 +278,14 @@
 
     {{-- Flash Messages --}}
     @if (session()->has('success'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)"
              class="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50">
             <span class="block sm:inline">{{ session('success') }}</span>
         </div>
     @endif
 
     @if (session()->has('error'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
              class="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
             <span class="block sm:inline">{{ session('error') }}</span>
         </div>

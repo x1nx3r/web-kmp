@@ -795,6 +795,17 @@
                                             class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
                                         >
 
+                                        {{-- Upload Progress Indicator --}}
+                                        <div wire:loading wire:target="buktiPembayaran" class="mt-3">
+                                            <div class="flex items-center text-blue-600">
+                                                <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <span class="text-sm font-medium">Mengunggah file...</span>
+                                            </div>
+                                        </div>
+
                                         @error('buktiPembayaran')
                                             <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
                                         @enderror
@@ -849,18 +860,40 @@
                                         <button
                                             wire:click="approve"
                                             wire:confirm="Apakah Anda yakin ingin menyetujui approval ini?"
-                                            class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center"
+                                            wire:loading.attr="disabled"
+                                            wire:target="buktiPembayaran"
+                                            class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <i class="fas fa-check-circle mr-2"></i>
-                                            Approve
+                                            <span wire:loading.remove wire:target="buktiPembayaran">
+                                                <i class="fas fa-check-circle mr-2"></i>
+                                                Approve
+                                            </span>
+                                            <span wire:loading wire:target="buktiPembayaran" class="flex items-center">
+                                                <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Mengunggah...
+                                            </span>
                                         </button>
                                         <button
                                             wire:click="reject"
                                             wire:confirm="Apakah Anda yakin ingin menolak approval ini?"
-                                            class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center"
+                                            wire:loading.attr="disabled"
+                                            wire:target="buktiPembayaran"
+                                            class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <i class="fas fa-times-circle mr-2"></i>
-                                            Reject
+                                            <span wire:loading.remove wire:target="buktiPembayaran">
+                                                <i class="fas fa-times-circle mr-2"></i>
+                                                Reject
+                                            </span>
+                                            <span wire:loading wire:target="buktiPembayaran" class="flex items-center">
+                                                <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Mengunggah...
+                                            </span>
                                         </button>
                                     </div>
                                 @elseif(!$canManage && $approval->status === 'pending')

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Pengiriman;
 use App\Models\ApprovalPembayaran;
+use App\Services\Notifications\PengirimanNotificationService;
 use App\Services\Notifications\ApprovalPembayaranNotificationService;
 
 class PengirimanObserver
@@ -30,6 +31,11 @@ class PengirimanObserver
             if (!$pengiriman->approvalPembayaran) {
                 $this->createApprovalPembayaran($pengiriman);
             }
+        }
+
+        // Check if status changed to 'berhasil' - notify marketing for review
+        if ($pengiriman->isDirty('status') && $pengiriman->status === 'berhasil') {
+            PengirimanNotificationService::notifySuccessReadyForReview($pengiriman);
         }
     }
 

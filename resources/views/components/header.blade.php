@@ -66,18 +66,16 @@
                 </button>
 
                 <!-- User Dropdown Menu -->
-                <div id="userMenu" class="absolute right-0 mt-3 w-48 lg:w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 hidden z-50">
+                <div id="userMenu" class="absolute right-0 mt-3 w-48 lg:w-64 bg-white rounded-xl shadow-lg border border-gray-100 py-2 hidden z-50">
                     <div class="px-4 py-3 border-b border-gray-100">
                         @auth
-
-                                <p class="font-semibold text-gray-800">{{ auth()->user()->nama }}</p>
-                                <p class="text-sm text-gray-500">{{ auth()->user()->email }}</p>
+                                <p class="font-semibold text-gray-800 truncate">{{ auth()->user()->nama }}</p>
+                                <p class="text-sm text-gray-500 truncate" title="{{ auth()->user()->email }}">{{ auth()->user()->email }}</p>
                                 <p class="text-xs text-gray-400 mt-1">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</p>
                         @else
                                 <p class="font-semibold text-gray-800">Guest</p>
                                 <p class="text-sm text-gray-500">-</p>
                                 <p class="text-xs text-gray-400 mt-1">Tamu</p>
-
                         @endauth
                     </div>
 

@@ -363,6 +363,95 @@ class ApprovalPembayaranNotificationService extends BaseNotificationService
 
 ---
 
+## Scheduled Notifications (Laravel Scheduler)
+
+Beberapa notifikasi dikirim secara otomatis melalui Laravel Scheduler:
+
+### 1. Order Priority Escalation
+- **Command**: `orders:escalate-priorities --notify`
+- **Schedule**: Daily at 06:00 WIB
+- **Target**: Order creators
+- **Purpose**: Escalate order priorities and notify about urgent orders
+
+### 2. Forecast Pending Reminder
+- **Command**: `forecast:notify-pending`
+- **Schedule**: Daily at 06:00 WIB
+- **Target**: Manager & Staff Purchasing
+- **Purpose**: Remind about pending forecasts that need processing
+
+### 3. Pengiriman Pending Reminder
+- **Command**: `pengiriman:notify-pending`
+- **Schedule**: Daily at 06:00 WIB
+- **Target**: Manager & Staff Purchasing
+- **Purpose**: Remind about pending deliveries (status: pending, menunggu_verifikasi)
+
+### 4. Pengiriman Review Reminder
+- **Command**: `pengiriman:notify-review`
+- **Schedule**: Daily at 06:00 WIB
+- **Target**: Manager & Staff Marketing
+- **Purpose**: Remind about successful deliveries ready for review/rating
+
+### Konfigurasi Scheduler
+
+File: `routes/console.php`
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+// Escalate order priorities daily at 6:00 AM
+Schedule::command("orders:escalate-priorities --notify")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/order-priority-escalation.log"));
+
+// Send forecast pending reminder daily at 6:00 AM
+Schedule::command("forecast:notify-pending")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/forecast-pending-reminder.log"));
+
+// Send pengiriman pending reminder daily at 6:00 AM
+Schedule::command("pengiriman:notify-pending")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/pengiriman-pending-reminder.log"));
+
+// Send pengiriman review reminder daily at 6:00 AM
+Schedule::command("pengiriman:notify-review")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/pengiriman-review-reminder.log"));
+```
+
+### Menjalankan Scheduler
+
+Untuk menjalankan scheduler di production, tambahkan cron job:
+
+```bash
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Untuk testing lokal, jalankan:
+
+```bash
+# Test single command
+php artisan forecast:notify-pending
+php artisan pengiriman:notify-pending
+php artisan pengiriman:notify-review
+
+# Run scheduler manually
+php artisan schedule:run
+
+# Watch scheduler (development)
+php artisan schedule:work
+```
+
+---
+
 ## Best Practices
 
 ### 1. Naming Conventions

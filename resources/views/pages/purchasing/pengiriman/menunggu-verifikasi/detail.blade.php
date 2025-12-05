@@ -286,29 +286,58 @@
                             <div class="relative group">
                                 @php
                                     $photoUrl = asset('storage/pengiriman/bukti/' . $photo);
+                                    $extension = strtolower(pathinfo($photo, PATHINFO_EXTENSION));
+                                    $isPdf = $extension === 'pdf';
                                 @endphp
                                 
-                                <img src="{{ $photoUrl }}" 
-                                     alt="Bukti Foto Bongkar {{ $index + 1 }}" 
-                                     class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                     onclick="window.open('{{ $photoUrl }}', '_blank')"
-                                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE1MCAxNjBIMjUwTDIzMCAxOTBIMjUwTDIzMCAyMjBIMTUwVjE2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
-                                
-                                {{-- Overlay dengan buttons --}}
-                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                    <div class="flex space-x-2">
-                                        <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
-                                                class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
-                                                title="Lihat gambar">
-                                            <i class="fas fa-eye text-sm"></i>
-                                        </button>
-                                        <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
-                                                class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
-                                                title="Download gambar">
-                                            <i class="fas fa-download text-sm"></i>
-                                        </button>
+                                @if($isPdf)
+                                    {{-- PDF Preview --}}
+                                    <div class="w-full h-48 bg-gradient-to-br from-red-50 to-red-100 rounded-lg border-2 border-red-200 cursor-pointer hover:shadow-lg transition-all flex flex-col items-center justify-center"
+                                         onclick="window.open('{{ $photoUrl }}', '_blank')">
+                                        <i class="fas fa-file-pdf text-red-500 text-5xl mb-3"></i>
+                                        <p class="text-sm font-medium text-red-700">Bukti Bongkar PDF</p>
+                                        <p class="text-xs text-red-600 mt-1">Klik untuk melihat</p>
                                     </div>
-                                </div>
+                                    
+                                    {{-- Overlay dengan buttons untuk PDF --}}
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <div class="flex space-x-2">
+                                            <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
+                                                    class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
+                                                    title="Lihat PDF">
+                                                <i class="fas fa-eye text-sm"></i>
+                                            </button>
+                                            <a href="{{ $photoUrl }}" download="{{ $photo }}"
+                                               class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all inline-flex items-center"
+                                               title="Download PDF">
+                                                <i class="fas fa-download text-sm"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                @else
+                                    {{-- Image Preview --}}
+                                    <img src="{{ $photoUrl }}" 
+                                         alt="Bukti Foto Bongkar {{ $index + 1 }}" 
+                                         class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                         onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE1MCAxNjBIMjUwTDIzMCAxOTBIMjUwTDIzMCAyMjBIMTUwVjE2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                    
+                                    {{-- Overlay dengan buttons untuk Image --}}
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <div class="flex space-x-2">
+                                            <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
+                                                    class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
+                                                    title="Lihat gambar">
+                                                <i class="fas fa-eye text-sm"></i>
+                                            </button>
+                                            <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
+                                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                                    title="Download gambar">
+                                                <i class="fas fa-download text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     @endforeach
@@ -343,30 +372,59 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 @php
                     $photoUrl = asset('storage/pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima);
+                    $extension = strtolower(pathinfo($pengiriman->foto_tanda_terima, PATHINFO_EXTENSION));
+                    $isPdf = $extension === 'pdf';
                 @endphp
                 
                 <div class="relative group">
-                    <img src="{{ $photoUrl }}" 
-                         alt="Foto Tanda Terima" 
-                         class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                         onclick="window.open('{{ $photoUrl }}', '_blank')"
-                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE1MCAxNjBIMjUwTDIzMCAxOTBIMjUwTDIzMCAyMjBIMTUwVjE2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
-                    
-                    {{-- Overlay dengan buttons --}}
-                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div class="flex space-x-2">
-                            <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
-                                    class="bg-white text-purple-600 p-2 rounded-full shadow-lg hover:bg-purple-50 transition-all"
-                                    title="Lihat gambar">
-                                <i class="fas fa-eye text-sm"></i>
-                            </button>
-                            <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', 'tanda_terima_{{ $pengiriman->no_pengiriman }}.jpg');"
-                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
-                                    title="Download gambar">
-                                <i class="fas fa-download text-sm"></i>
-                            </button>
+                    @if($isPdf)
+                        {{-- PDF Preview --}}
+                        <div class="w-full h-48 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-2 border-purple-200 cursor-pointer hover:shadow-lg transition-all flex flex-col items-center justify-center"
+                             onclick="window.open('{{ $photoUrl }}', '_blank')">
+                            <i class="fas fa-file-pdf text-purple-500 text-5xl mb-3"></i>
+                            <p class="text-sm font-medium text-purple-700">Tanda Terima PDF</p>
+                            <p class="text-xs text-purple-600 mt-1">Klik untuk melihat</p>
                         </div>
-                    </div>
+                        
+                        {{-- Overlay dengan buttons untuk PDF --}}
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div class="flex space-x-2">
+                                <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
+                                        class="bg-white text-purple-600 p-2 rounded-full shadow-lg hover:bg-purple-50 transition-all"
+                                        title="Lihat PDF">
+                                    <i class="fas fa-eye text-sm"></i>
+                                </button>
+                                <a href="{{ $photoUrl }}" download="tanda_terima_{{ $pengiriman->no_pengiriman }}.pdf"
+                                   class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all inline-flex items-center"
+                                   title="Download PDF">
+                                    <i class="fas fa-download text-sm"></i>
+                                </a>
+                            </div>
+                        </div>
+                    @else
+                        {{-- Image Preview --}}
+                        <img src="{{ $photoUrl }}" 
+                             alt="Foto Tanda Terima" 
+                             class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                             onclick="window.open('{{ $photoUrl }}', '_blank')"
+                             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE1MCAxNjBIMjUwTDIzMCAxOTBIMjUwTDIzMCAyMjBIMTUwVjE2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                        
+                        {{-- Overlay dengan buttons untuk Image --}}
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div class="flex space-x-2">
+                                <button onclick="window.open('{{ $photoUrl }}', '_blank')" 
+                                        class="bg-white text-purple-600 p-2 rounded-full shadow-lg hover:bg-purple-50 transition-all"
+                                        title="Lihat gambar">
+                                    <i class="fas fa-eye text-sm"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', 'tanda_terima_{{ $pengiriman->no_pengiriman }}.jpg');"
+                                        class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                        title="Download gambar">
+                                    <i class="fas fa-download text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

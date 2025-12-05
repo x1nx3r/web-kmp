@@ -243,7 +243,7 @@
                                                     <input type="file" 
                                                            id="upload-foto-{{ $pengiriman->id }}" 
                                                            class="hidden" 
-                                                           accept="image/*"
+                                                           accept="image/*,application/pdf"
                                                            onchange="uploadFotoTandaTerima({{ $pengiriman->id }}, this)">
                                                     <button onclick="document.getElementById('upload-foto-{{ $pengiriman->id }}').click()" 
                                                             class="bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center transition-all duration-200 w-full whitespace-nowrap shadow-sm hover:shadow" 
@@ -516,12 +516,12 @@ function uploadFotoTandaTerima(pengirimanId, inputElement) {
     }
     
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
         Swal.fire({
             icon: 'error',
             title: 'File Tidak Valid',
-            text: 'Hanya file gambar (JPEG, PNG, JPG) yang diperbolehkan.',
+            text: 'Hanya file gambar (JPEG, PNG, JPG) atau PDF yang diperbolehkan.',
             confirmButtonColor: '#dc2626'
         });
         inputElement.value = '';

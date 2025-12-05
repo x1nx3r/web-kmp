@@ -89,9 +89,9 @@
         {{-- PO Document Upload --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                Unggah Surat PO (JPG/PNG) <span class="text-xs text-gray-500 font-normal">(opsional)</span>
+                Unggah Surat PO (JPG/PNG/PDF) <span class="text-xs text-gray-500 font-normal">(opsional)</span>
             </label>
-            <input type="file" wire:model="poDocument" accept="image/png,image/jpeg"
+            <input type="file" wire:model="poDocument" accept="image/png,image/jpeg,application/pdf"
                    class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-600 hover:file:bg-purple-100">
             @error('poDocument')
                 <p class="text-sm text-red-600 mt-1">{{ $message }}</p>

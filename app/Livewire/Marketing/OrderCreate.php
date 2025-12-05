@@ -443,7 +443,7 @@ class OrderCreate extends Component
     {
         if ($this->poDocument) {
             $this->validateOnly("poDocument", [
-                "poDocument" => "file|mimes:jpg,jpeg,png|max:5120",
+                "poDocument" => "file|mimes:jpg,jpeg,png,pdf|max:5120",
             ]);
         }
     }
@@ -503,7 +503,7 @@ class OrderCreate extends Component
             "poNumber" => "required|string|max:50",
             "poStartDate" => "required|date",
             "poEndDate" => "required|date|after_or_equal:poStartDate",
-            "poDocument" => "nullable|file|mimes:jpg,jpeg,png|max:5120",
+            "poDocument" => "nullable|file|mimes:jpg,jpeg,png,pdf|max:5120",
             "priority" => "required|in:rendah,normal,tinggi,mendesak",
         ]);
 

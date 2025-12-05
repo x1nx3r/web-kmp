@@ -95,28 +95,49 @@ class InvoicePenagihan extends Model
     }
 
     /**
-     * Generate invoice number
+     * Generate invoice number with duplicate prevention
+     *
+     * @param int $maxRetries Maximum retry attempts if duplicate found
+     * @return string Generated invoice number
+     * @throws \Exception if unable to generate unique number after max retries
      */
-    public static function generateInvoiceNumber()
+    public static function generateInvoiceNumber(int $maxRetries = 5): string
     {
         $date = Carbon::now();
-        $year = $date->format('Y');
-        $month = $date->format('m');
+        $yearMonth = $date->format('Ym');
 
-        // Get last invoice number for this month
-        $lastInvoice = self::whereYear('invoice_date', $year)
-            ->whereMonth('invoice_date', $month)
-            ->orderBy('id', 'desc')
-            ->first();
+        for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
+            // Get last invoice number for this month with locking
+            $lastInvoice = self::whereYear('invoice_date', $date->year)
+                ->whereMonth('invoice_date', $date->month)
+                ->orderBy('id', 'desc')
+                ->lockForUpdate()
+                ->first();
 
-        $sequence = 1;
-        if ($lastInvoice) {
-            // Extract sequence from last invoice number
-            $parts = explode('/', $lastInvoice->invoice_number);
-            $sequence = isset($parts[3]) ? intval($parts[3]) + 1 : 1;
+            $sequence = 1;
+            if ($lastInvoice && $lastInvoice->invoice_number) {
+                // Extract sequence from last invoice number (format: INV-YYYYMM-XXXX)
+                $parts = explode('-', $lastInvoice->invoice_number);
+                if (count($parts) >= 3) {
+                    $sequence = intval($parts[2]) + 1;
+                }
+            }
+
+            $invoiceNumber = sprintf('INV-%s-%04d', $yearMonth, $sequence);
+
+            // Check if this number already exists
+            $exists = self::where('invoice_number', $invoiceNumber)->exists();
+
+            if (!$exists) {
+                return $invoiceNumber;
+            }
+
+            // If exists, try next sequence
+            $sequence++;
         }
 
-        return sprintf('INV/%s/%s/%04d', $year, $month, $sequence);
+        // If all retries failed, use timestamp for uniqueness
+        return sprintf('INV-%s-%04d-%s', $yearMonth, $sequence, substr(uniqid(), -4));
     }
 
     /**

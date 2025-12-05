@@ -461,6 +461,16 @@ class ApprovePenagihan extends Component
             'invoiceNumber.max' => 'Nomor invoice maksimal 191 karakter',
         ]);
 
+        // Check if invoice number already exists (excluding current invoice)
+        $exists = InvoicePenagihan::where('invoice_number', $this->invoiceNumber)
+            ->where('id', '!=', $this->invoice->id)
+            ->exists();
+
+        if ($exists) {
+            session()->flash('error', 'Nomor invoice "' . $this->invoiceNumber . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
+            return;
+        }
+
         try {
             $this->invoice->update([
                 'invoice_number' => $this->invoiceNumber,
@@ -468,6 +478,12 @@ class ApprovePenagihan extends Component
 
             session()->flash('message', 'Nomor invoice berhasil diperbarui');
             $this->loadApproval();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1062) {
+                session()->flash('error', 'Nomor invoice "' . $this->invoiceNumber . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
+            } else {
+                session()->flash('error', 'Gagal memperbarui nomor invoice: ' . $e->getMessage());
+            }
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal memperbarui nomor invoice: ' . $e->getMessage());
         }

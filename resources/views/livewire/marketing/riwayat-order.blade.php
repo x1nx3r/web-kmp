@@ -27,39 +27,31 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="flex items-center space-x-2">
-                    <button wire:click="goToPreviousMonth" class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <div class="flex items-center space-x-2">
-                        <select wire:model.live="selectedMonth" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                            <option value="1">Januari</option>
-                            <option value="2">Februari</option>
-                            <option value="3">Maret</option>
-                            <option value="4">April</option>
-                            <option value="5">Mei</option>
-                            <option value="6">Juni</option>
-                            <option value="7">Juli</option>
-                            <option value="8">Agustus</option>
-                            <option value="9">September</option>
-                            <option value="10">Oktober</option>
-                            <option value="11">November</option>
-                            <option value="12">Desember</option>
-                        </select>
-                        <select wire:model.live="selectedYear" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                            @foreach($availableYears as $year)
-                                <option value="{{ $year }}">{{ $year }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <button wire:click="goToNextMonth" class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
+                    <select wire:model.live="selectedMonth" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                    <select wire:model.live="selectedYear" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                        @foreach($availableYears as $year)
+                            <option value="{{ $year }}">{{ $year }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="flex items-center space-x-2">
                     @if($selectedMonth != now()->month || $selectedYear != now()->year)
                         <button wire:click="goToCurrentMonth" class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                             <i class="fas fa-calendar-day mr-1"></i>
-                            Bulan Ini
+                            Kembali Ke Bulan Ini
                         </button>
                     @endif
                     <span class="text-sm text-gray-500">

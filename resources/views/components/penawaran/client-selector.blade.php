@@ -114,10 +114,12 @@
                 @if($cabangList->count() == 1)
                     {{-- Single location client --}}
                     @php $klien = $cabangList->first(); @endphp
-                    <button
-                        wire:click="selectKlien('{{ addslashes($klien->unique_key) }}')"
-                        class="w-full text-left p-3 rounded-lg border transition-all duration-200 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50' }}"
-                    >
+                    <div wire:key="client-{{ $klien->id }}-{{ $loop->index }}">
+                        <button
+                            type="button"
+                            wire:click.prevent="selectKlien('{{ addslashes($klien->unique_key) }}')"
+                            class="w-full text-left p-3 rounded-lg border transition-all duration-200 cursor-pointer {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50' }}"
+                        >
                         <div class="flex items-center">
                             <div class="w-8 h-8 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-100' : 'bg-gray-100' }} rounded-lg flex items-center justify-center mr-3">
                                 <i class="fas fa-building {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'text-blue-600' : 'text-gray-600' }} text-sm"></i>
@@ -137,10 +139,11 @@
                                 </div>
                             @endif
                         </div>
-                    </button>
+                        </button>
+                    </div>
                 @else
                     {{-- Multi-location client --}}
-                    <div class="border border-gray-200 rounded-lg">
+                    <div wire:key="client-group-{{ $loop->index }}" class="border border-gray-200 rounded-lg">
                         <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
                             <div class="flex items-center">
                                 <div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center mr-3">
@@ -155,8 +158,10 @@
                         <div class="p-2 space-y-1">
                             @foreach($cabangList as $klien)
                                 <button
-                                    wire:click="selectKlien('{{ addslashes($klien->unique_key) }}')"
-                                    class="w-full text-left p-2 rounded transition-all duration-200 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50' }}"
+                                    type="button"
+                                    wire:key="client-branch-{{ $klien->id }}"
+                                    wire:click.prevent="selectKlien('{{ addslashes($klien->unique_key) }}')"
+                                    class="w-full text-left p-2 rounded transition-all duration-200 cursor-pointer {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50' }}"
                                 >
                                     <div class="flex items-center">
                                         <div class="w-6 h-6 {{ ($selectedKlien === $klien->nama && $selectedKlienCabang === $klien->cabang) ? 'bg-blue-100' : 'bg-gray-100' }} rounded flex items-center justify-center mr-3">

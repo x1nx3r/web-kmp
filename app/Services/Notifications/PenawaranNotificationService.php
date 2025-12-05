@@ -38,7 +38,7 @@ class PenawaranNotificationService extends BaseNotificationService
             "icon" => "file-invoice",
             "icon_bg" => "bg-yellow-100",
             "icon_color" => "text-yellow-600",
-            "url" => "/marketing/penawaran",
+            "url" => "/penawaran",
             "penawaran_id" => $penawaran->id,
             "nomor_penawaran" => $penawaran->nomor_penawaran,
         ]);
@@ -66,7 +66,7 @@ class PenawaranNotificationService extends BaseNotificationService
             "icon" => "check-circle",
             "icon_bg" => "bg-green-100",
             "icon_color" => "text-green-600",
-            "url" => "/marketing/penawaran",
+            "url" => "/penawaran",
             "penawaran_id" => $penawaran->id,
             "nomor_penawaran" => $penawaran->nomor_penawaran,
         ]);
@@ -79,8 +79,10 @@ class PenawaranNotificationService extends BaseNotificationService
      * @param string $reason The rejection reason
      * @return string|null The notification ID or null if no creator
      */
-    public static function notifyRejected(Penawaran $penawaran, string $reason): ?string
-    {
+    public static function notifyRejected(
+        Penawaran $penawaran,
+        string $reason,
+    ): ?string {
         $creator = $penawaran->createdBy;
         if (!$creator) {
             return null;
@@ -95,7 +97,7 @@ class PenawaranNotificationService extends BaseNotificationService
             "icon" => "times-circle",
             "icon_bg" => "bg-red-100",
             "icon_color" => "text-red-600",
-            "url" => "/marketing/penawaran",
+            "url" => "/penawaran",
             "penawaran_id" => $penawaran->id,
             "nomor_penawaran" => $penawaran->nomor_penawaran,
             "reason" => $reason,

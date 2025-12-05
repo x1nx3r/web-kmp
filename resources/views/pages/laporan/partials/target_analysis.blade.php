@@ -24,11 +24,17 @@
                 </h3>
                 <p class="text-indigo-100">Pantau progres pencapaian target omset perusahaan secara real-time</p>
             </div>
-            <button type="button" 
-                    onclick="openTargetModal()"
-                    class="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105">
-                <i class="fas fa-cog mr-2"></i>Set Target Tahunan
-            </button>
+            @if(auth()->user()->role === 'direktur')
+                <button type="button" 
+                        onclick="openTargetModal()"
+                        class="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <i class="fas fa-cog mr-2"></i>Set Target Tahunan
+                </button>
+            @else
+                <div class="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-white text-sm">
+                    <i class="fas fa-lock mr-2"></i>View Only
+                </div>
+            @endif
         </div>
     </div>
 
@@ -407,195 +413,12 @@ function changeTargetYearSlide(direction) {
     loadTargetAnalysisData(newYear);
 }
 
-// Load target analysis data via AJAX (without page refresh)
+// Load target analysis data via page reload with tahun_target parameter
 function loadTargetAnalysisData(year) {
-    // Show loading indicator
-    document.getElementById('currentYearDisplay').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    
-    // Fetch data via AJAX
-    fetch('{{ route("laporan.omset") }}?ajax=target_analysis&tahun_target=' + year, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Update current year
-        currentYearTarget = year;
-        
-        // Update display
-        updateTargetAnalysisUI(data);
-        
-        // Update URL without refresh
-        const url = new URL(window.location.href);
-        url.searchParams.set('tahun_target', year);
-        window.history.pushState({}, '', url);
-    })
-    .catch(error => {
-        console.error('Error loading data:', error);
-        alert('Gagal memuat data. Silakan coba lagi.');
-        document.getElementById('currentYearDisplay').textContent = currentYearTarget;
-    });
-}
-
-// Update UI with new data
-function updateTargetAnalysisUI(data) {
-    // Update year display
-    document.getElementById('currentYearDisplay').textContent = data.selectedYearTarget;
-    document.getElementById('yearBadge').textContent = data.selectedYearTarget;
-    document.getElementById('rekapYear').textContent = data.selectedYearTarget;
-    
-    // Update target displays
-    document.getElementById('targetTahunanDisplay').textContent = formatNumber(data.targetTahunan);
-    
-    // Update progress minggu
-    document.querySelector('.bg-white:nth-child(1) .text-green-600').textContent = 'Rp ' + formatNumber(data.omsetMingguIni);
-    document.querySelector('.bg-white:nth-child(1) .font-bold:nth-of-type(2)').textContent = data.progressMinggu.toFixed(1) + '%';
-    document.querySelector('.bg-white:nth-child(1) .bg-gradient-to-r').style.width = Math.min(100, data.progressMinggu) + '%';
-    document.querySelector('.bg-white:nth-child(1) .text-orange-600').textContent = 'Rp ' + formatNumber(Math.max(0, data.targetMingguan - data.omsetMingguIni));
-    
-    // Update progress bulan
-    document.querySelector('.bg-white:nth-child(2) .text-green-600').textContent = 'Rp ' + formatNumber(data.omsetBulanIni);
-    document.querySelector('.bg-white:nth-child(2) .font-bold:nth-of-type(2)').textContent = data.progressBulan.toFixed(1) + '%';
-    document.querySelector('.bg-white:nth-child(2) .bg-gradient-to-r').style.width = Math.min(100, data.progressBulan) + '%';
-    document.querySelector('.bg-white:nth-child(2) .text-orange-600').textContent = 'Rp ' + formatNumber(Math.max(0, data.targetBulanan - data.omsetBulanIni));
-    
-    // Update progress tahun
-    document.querySelector('.bg-white:nth-child(3) .text-green-600').textContent = 'Rp ' + formatNumber(data.omsetTahunIni);
-    document.querySelector('.bg-white:nth-child(3) .font-bold:nth-of-type(2)').textContent = data.progressTahun.toFixed(1) + '%';
-    document.querySelector('.bg-white:nth-child(3) .bg-gradient-to-r').style.width = Math.min(100, data.progressTahun) + '%';
-    document.querySelector('.bg-white:nth-child(3) .text-orange-600').textContent = 'Rp ' + formatNumber(Math.max(0, data.targetTahunan - data.omsetTahunIni));
-    
-    // Update total akumulasi
-    document.getElementById('totalAkumulasi').textContent = 'Rp ' + formatNumber(data.omsetTahunIni);
-    
-    // Update charts
-    updateProgressCharts(data);
-    
-    // Update monthly breakdown table
-    updateMonthlyBreakdown(data);
-}
-
-// Format number with Indonesian locale
-function formatNumber(num) {
-    return new Intl.NumberFormat('id-ID').format(num);
-}
-
-// Update progress charts
-function updateProgressCharts(data) {
-    // Update weekly chart
-    if (window.chartProgressMinggu) {
-        window.chartProgressMinggu.data.datasets[0].data = [data.progressMinggu, 100 - data.progressMinggu];
-        window.chartProgressMinggu.update();
-    }
-    
-    // Update monthly chart
-    if (window.chartProgressBulan) {
-        window.chartProgressBulan.data.datasets[0].data = [data.progressBulan, 100 - data.progressBulan];
-        window.chartProgressBulan.update();
-    }
-    
-    // Update yearly chart
-    if (window.chartProgressTahun) {
-        window.chartProgressTahun.data.datasets[0].data = [data.progressTahun, 100 - data.progressTahun];
-        window.chartProgressTahun.update();
-    }
-}
-
-// Update monthly breakdown table
-function updateMonthlyBreakdown(data) {
-    const tbody = document.querySelector('table tbody');
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    const currentMonth = new Date().getMonth() + 1;
-    
-    let html = '';
-    for (let i = 0; i < 12; i++) {
-        const bulanNum = i + 1;
-        const monthData = data.rekapBulanan[bulanNum] || {realisasi: 0, progress: 0, selisih: 0, mingguan: []};
-        const isCurrent = bulanNum === currentMonth;
-        const statusClass = monthData.progress >= 100 ? 'text-green-600' : (monthData.progress >= 75 ? 'text-blue-600' : (monthData.progress > 0 ? 'text-orange-600' : 'text-gray-400'));
-        
-        html += `<tr class="hover:bg-gray-50 transition-colors ${isCurrent ? 'bg-indigo-50' : ''}">
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                ${Object.keys(monthData.mingguan).length > 0 ? `
-                <button onclick="toggleWeeklyDetail(${bulanNum})" class="mr-2 text-indigo-600 hover:text-indigo-800">
-                    <i id="icon-${bulanNum}" class="fas fa-chevron-right transition-transform"></i>
-                </button>` : ''}
-                ${months[i]}
-                ${isCurrent ? '<span class="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">Current</span>' : ''}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
-                Rp ${formatNumber(data.targetBulanan)}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                Rp ${formatNumber(monthData.realisasi)}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                <span class="font-bold ${statusClass}">${monthData.progress.toFixed(1)}%</span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                <span class="font-semibold ${monthData.selisih >= 0 ? 'text-green-600' : 'text-red-600'}">
-                    ${monthData.selisih >= 0 ? '+' : ''}Rp ${formatNumber(Math.abs(monthData.selisih))}
-                </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-center">
-                ${getStatusBadge(monthData.progress)}
-            </td>
-        </tr>`;
-        
-        // Weekly detail row
-        if (Object.keys(monthData.mingguan).length > 0) {
-            html += `<tr id="weekly-${bulanNum}" class="hidden bg-gray-50">
-                <td colspan="6" class="px-6 py-4">
-                    <div class="ml-8 space-y-2">
-                        <p class="text-xs font-semibold text-gray-700 mb-3">📊 Detail Mingguan ${months[i]}:</p>
-                        ${Object.entries(monthData.mingguan).map(([minggu, weekData]) => `
-                            <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-                                <div class="flex items-center space-x-3">
-                                    <span class="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
-                                        Minggu ${minggu}
-                                    </span>
-                                    <span class="text-xs text-gray-500">${weekData.tanggal}</span>
-                                </div>
-                                <div class="flex items-center space-x-4">
-                                    <span class="text-sm font-semibold text-gray-700">Rp ${formatNumber(weekData.omset)}</span>
-                                    <div class="w-32 bg-gray-200 rounded-full h-2">
-                                        <div class="bg-indigo-500 h-2 rounded-full" style="width: ${Math.min(100, weekData.progress)}%"></div>
-                                    </div>
-                                    <span class="text-sm font-bold ${weekData.progress >= 100 ? 'text-green-600' : (weekData.progress >= 75 ? 'text-blue-600' : 'text-orange-600')}">
-                                        ${weekData.progress.toFixed(1)}%
-                                    </span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </td>
-            </tr>`;
-        }
-    }
-    
-    tbody.innerHTML = html;
-    
-    // Update footer
-    const selisihTotal = data.omsetTahunIni - data.targetTahunan;
-    document.querySelector('tfoot td:nth-child(2)').textContent = 'Rp ' + formatNumber(data.targetTahunan);
-    document.querySelector('tfoot td:nth-child(3)').textContent = 'Rp ' + formatNumber(data.omsetTahunIni);
-    document.querySelector('tfoot td:nth-child(4)').textContent = data.progressTahun.toFixed(1) + '%';
-    document.querySelector('tfoot td:nth-child(5)').textContent = (selisihTotal >= 0 ? '+' : '') + 'Rp ' + formatNumber(Math.abs(selisihTotal));
-    document.querySelector('tfoot td:nth-child(5)').className = `px-6 py-4 text-sm font-bold text-right ${selisihTotal >= 0 ? 'text-green-600' : 'text-red-600'}`;
-}
-
-// Get status badge HTML
-function getStatusBadge(progress) {
-    if (progress >= 100) {
-        return '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700"><i class="fas fa-check-circle mr-1"></i>Target Tercapai</span>';
-    } else if (progress >= 75) {
-        return '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700"><i class="fas fa-arrow-up mr-1"></i>On Track</span>';
-    } else if (progress > 0) {
-        return '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700"><i class="fas fa-exclamation-triangle mr-1"></i>Perlu Boost</span>';
-    } else {
-        return '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600"><i class="fas fa-minus-circle mr-1"></i>Belum Ada Data</span>';
-    }
+    // Update URL and reload page with new year parameter
+    const url = new URL(window.location.href);
+    url.searchParams.set('tahun_target', year);
+    window.location.href = url.toString();
 }
 
 // Toggle weekly detail
@@ -614,6 +437,12 @@ function toggleWeeklyDetail(bulanNum) {
 
 // Modal functions
 function openTargetModal() {
+    // Check if user is direktur
+    @if(auth()->user()->role !== 'direktur')
+        alert('⚠️ Akses Ditolak\n\nHanya Direktur yang dapat mengubah target omset.\nAnda hanya memiliki akses untuk melihat data.');
+        return;
+    @endif
+    
     document.getElementById('targetModal').classList.remove('hidden');
     
     // Set tahun to current selected year
@@ -714,20 +543,27 @@ document.getElementById('targetForm')?.addEventListener('submit', function(e) {
             tahun: tahunValue
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (response.status === 403) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Akses ditolak');
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            alert('Target berhasil disimpan untuk tahun ' + tahunValue + '!');
+            alert('✅ Target berhasil disimpan untuk tahun ' + tahunValue + '!');
             closeTargetModal();
             // Reload data for that year
             loadTargetAnalysisData(parseInt(tahunValue));
         } else {
-            alert('Gagal menyimpan target: ' + data.message);
+            alert('❌ Gagal menyimpan target\n\n' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Terjadi kesalahan saat menyimpan target');
+        alert('❌ ' + error.message);
     });
 });
 

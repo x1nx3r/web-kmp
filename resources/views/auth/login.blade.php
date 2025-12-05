@@ -201,9 +201,12 @@
       if (type === 'success') {
         statusDiv.className = 'mb-4 p-4 rounded-xl border border-green-200 bg-green-50 text-green-700 text-sm';
         icon.className = 'fas fa-check-circle mr-2';
+      } else if (type === 'warning') {
+        statusDiv.className = 'mb-4 p-4 rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-700 text-sm';
+        icon.className = 'fas fa-exclamation-triangle mr-2';
       } else {
-        statusDiv.className = 'mb-4 p-4 rounded-xl border border-green-200 bg-green-50 text-green-700 text-sm';
-        icon.className = 'fas fa-exclamation-circle mr-2';
+        statusDiv.className = 'mb-4 p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm';
+        icon.className = 'fas fa-times-circle mr-2';
       }
       
       // Hide message after 5 seconds
@@ -253,7 +256,16 @@
             'X-Requested-With': 'XMLHttpRequest',
           }
         })
-        .then(response => response.json())
+        .then(response => {
+          // Check if response is 403 (account not active)
+          if (response.status === 403) {
+            return response.json().then(data => {
+              showMessage(data.message, 'warning');
+              throw new Error('Account not active');
+            });
+          }
+          return response.json();
+        })
         .then(data => {
           if (data.success) {
             showMessage(data.message, 'success');
@@ -271,7 +283,9 @@
         })
         .catch(error => {
           console.error('Error:', error);
-          showMessage('Terjadi kesalahan. Silakan coba lagi.');
+          if (error.message !== 'Account not active') {
+            showMessage('Terjadi kesalahan. Silakan coba lagi.');
+          }
           // Reset Turnstile on error
           if (window.turnstile) {
             window.turnstile.reset();

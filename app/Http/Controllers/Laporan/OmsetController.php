@@ -583,6 +583,14 @@ class OmsetController extends Controller
     public function setTarget(Request $request)
     {
         try {
+            // Check if user is direktur
+            if (session('role') !== 'direktur') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak. Hanya Direktur yang dapat mengubah target omset.'
+                ], 403);
+            }
+            
             $request->validate([
                 'target_tahunan' => 'required|numeric|min:0',
                 'tahun' => 'required|integer|min:2020|max:2100'

@@ -535,7 +535,7 @@
                                     </button>
                                 @elseif($order->status === 'diproses')
                                     <button
-                                        wire:click="completeOrder({{ $order->id }})"
+                                        wire:click="confirmComplete({{ $order->id }})"
                                         class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     >
                                         <i class="fas fa-check-double mr-1"></i>
@@ -545,7 +545,7 @@
 
                                 @if(!in_array($order->status, ['selesai', 'dibatalkan']))
                                     <button
-                                        wire:click="cancelOrder({{ $order->id }})"
+                                        wire:click="confirmCancel({{ $order->id }})"
                                         class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     >
                                         <i class="fas fa-times mr-1"></i>
@@ -619,6 +619,118 @@
                             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                         >
                             Hapus Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Complete Confirmation Modal --}}
+    @if($showCompleteModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="cancelComplete"></div>
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-check-double text-green-600 text-lg"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Selesaikan Order</h3>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="text-gray-600 mb-4">Apakah Anda yakin ingin menandai order ini sebagai <span class="font-semibold text-green-600">selesai</span>?</p>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-blue-600 mt-0.5 mr-2"></i>
+                                <div class="text-sm text-blue-800">
+                                    <p class="font-medium mb-1">Pastikan:</p>
+                                    <ul class="list-disc list-inside space-y-1 text-blue-700">
+                                        <li>Semua material sudah dikirim</li>
+                                        <li>Dokumen sudah lengkap</li>
+                                        <li>Pembayaran sudah diproses</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                        <button
+                            wire:click="cancelComplete"
+                            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            wire:click="completeOrder({{ $orderToComplete }})"
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center"
+                        >
+                            <i class="fas fa-check mr-2"></i>
+                            Ya, Selesaikan Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Cancel Confirmation Modal --}}
+    @if($showCancelModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="cancelCancelation"></div>
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-times-circle text-red-600 text-lg"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Pembatalan Order</h3>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="text-gray-600 mb-4">Apakah Anda yakin ingin <span class="font-semibold text-red-600">membatalkan</span> order ini?</p>
+                        
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 mt-0.5 mr-2"></i>
+                                <div class="text-sm text-yellow-800">
+                                    <p class="font-medium">Perhatian: Tindakan ini tidak dapat dibatalkan!</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Alasan Pembatalan <span class="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                wire:model="cancelReason"
+                                rows="3"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                placeholder="Masukkan alasan pembatalan order..."
+                                required
+                            ></textarea>
+                            @error('cancelReason')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                        <button
+                            wire:click="cancelCancelation"
+                            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            wire:click="cancelOrder({{ $orderToCancel }})"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center"
+                        >
+                            <i class="fas fa-times mr-2"></i>
+                            Ya, Batalkan Order
                         </button>
                     </div>
                 </div>

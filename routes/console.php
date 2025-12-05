@@ -20,3 +20,17 @@ Schedule::command("orders:escalate-priorities --notify")
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path("logs/order-priority-escalation.log"));
+
+// Send forecast pending reminder daily at 6:00 AM
+Schedule::command("forecast:notify-pending")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/forecast-pending-reminder.log"));
+
+// Send pengiriman pending reminder daily at 6:00 AM
+Schedule::command("pengiriman:notify-pending")
+    ->dailyAt("06:00")
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/pengiriman-pending-reminder.log"));

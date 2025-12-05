@@ -5,21 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SupplierEvaluationDetail extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'supplier_evaluation_id',
-        'kriteria',
-        'sub_kriteria',
-        'penilaian',
-        'keterangan',
+        "supplier_evaluation_id",
+        "kriteria",
+        "sub_kriteria",
+        "penilaian",
+        "keterangan",
     ];
 
     protected $casts = [
-        'penilaian' => 'integer',
+        "penilaian" => "integer",
     ];
 
     /**
@@ -27,6 +28,9 @@ class SupplierEvaluationDetail extends Model
      */
     public function evaluation(): BelongsTo
     {
-        return $this->belongsTo(SupplierEvaluation::class, 'supplier_evaluation_id');
+        return $this->belongsTo(
+            SupplierEvaluation::class,
+            "supplier_evaluation_id",
+        );
     }
 }

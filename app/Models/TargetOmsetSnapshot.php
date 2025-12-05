@@ -4,37 +4,38 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TargetOmsetSnapshot extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $table = 'target_omset_snapshots';
+    protected $table = "target_omset_snapshots";
 
     protected $fillable = [
-        'target_omset_id',
-        'tahun',
-        'bulan',
-        'minggu',
-        'periode_type',
-        'target_amount',
-        'actual_omset',
-        'progress_percentage',
-        'selisih',
-        'status',
-        'snapshot_at',
-        'created_by',
+        "target_omset_id",
+        "tahun",
+        "bulan",
+        "minggu",
+        "periode_type",
+        "target_amount",
+        "actual_omset",
+        "progress_percentage",
+        "selisih",
+        "status",
+        "snapshot_at",
+        "created_by",
     ];
 
     protected $casts = [
-        'tahun' => 'integer',
-        'bulan' => 'integer',
-        'minggu' => 'integer',
-        'target_amount' => 'decimal:2',
-        'actual_omset' => 'decimal:2',
-        'progress_percentage' => 'decimal:2',
-        'selisih' => 'decimal:2',
-        'snapshot_at' => 'datetime',
+        "tahun" => "integer",
+        "bulan" => "integer",
+        "minggu" => "integer",
+        "target_amount" => "decimal:2",
+        "actual_omset" => "decimal:2",
+        "progress_percentage" => "decimal:2",
+        "selisih" => "decimal:2",
+        "snapshot_at" => "datetime",
     ];
 
     /**
@@ -56,48 +57,46 @@ class TargetOmsetSnapshot extends Model
         $actualOmset,
         $bulan = null,
         $minggu = null,
-        $createdBy = null
+        $createdBy = null,
     ) {
-        $progressPercentage = $targetAmount > 0 ? ($actualOmset / $targetAmount) * 100 : 0;
+        $progressPercentage =
+            $targetAmount > 0 ? ($actualOmset / $targetAmount) * 100 : 0;
         $selisih = $actualOmset - $targetAmount;
-        
+
         // Determine status
         if ($progressPercentage >= 100) {
-            $status = 'tercapai';
+            $status = "tercapai";
         } elseif ($progressPercentage >= 75) {
-            $status = 'on_track';
+            $status = "on_track";
         } elseif ($progressPercentage > 0) {
-            $status = 'perlu_boost';
+            $status = "perlu_boost";
         } else {
-            $status = 'belum_ada_data';
+            $status = "belum_ada_data";
         }
 
         // Create unique identifier for snapshot
         $conditions = [
-            'target_omset_id' => $targetOmsetId,
-            'tahun' => $tahun,
-            'periode_type' => $periodeType,
+            "target_omset_id" => $targetOmsetId,
+            "tahun" => $tahun,
+            "periode_type" => $periodeType,
         ];
 
         if ($bulan) {
-            $conditions['bulan'] = $bulan;
+            $conditions["bulan"] = $bulan;
         }
         if ($minggu) {
-            $conditions['minggu'] = $minggu;
+            $conditions["minggu"] = $minggu;
         }
 
-        return self::updateOrCreate(
-            $conditions,
-            [
-                'target_amount' => $targetAmount,
-                'actual_omset' => $actualOmset,
-                'progress_percentage' => $progressPercentage,
-                'selisih' => $selisih,
-                'status' => $status,
-                'snapshot_at' => now(),
-                'created_by' => $createdBy,
-            ]
-        );
+        return self::updateOrCreate($conditions, [
+            "target_amount" => $targetAmount,
+            "actual_omset" => $actualOmset,
+            "progress_percentage" => $progressPercentage,
+            "selisih" => $selisih,
+            "status" => $status,
+            "snapshot_at" => now(),
+            "created_by" => $createdBy,
+        ]);
     }
 
     /**
@@ -105,9 +104,9 @@ class TargetOmsetSnapshot extends Model
      */
     public static function getYearlySnapshots($tahun)
     {
-        return self::where('tahun', $tahun)
-            ->where('periode_type', 'yearly')
-            ->orderBy('snapshot_at', 'desc')
+        return self::where("tahun", $tahun)
+            ->where("periode_type", "yearly")
+            ->orderBy("snapshot_at", "desc")
             ->get();
     }
 
@@ -116,9 +115,9 @@ class TargetOmsetSnapshot extends Model
      */
     public static function getMonthlySnapshots($tahun)
     {
-        return self::where('tahun', $tahun)
-            ->where('periode_type', 'monthly')
-            ->orderBy('bulan')
+        return self::where("tahun", $tahun)
+            ->where("periode_type", "monthly")
+            ->orderBy("bulan")
             ->get();
     }
 
@@ -127,14 +126,13 @@ class TargetOmsetSnapshot extends Model
      */
     public static function getWeeklySnapshots($tahun, $bulan = null)
     {
-        $query = self::where('tahun', $tahun)
-            ->where('periode_type', 'weekly');
-        
+        $query = self::where("tahun", $tahun)->where("periode_type", "weekly");
+
         if ($bulan) {
-            $query->where('bulan', $bulan);
+            $query->where("bulan", $bulan);
         }
-        
-        return $query->orderBy('minggu')->get();
+
+        return $query->orderBy("minggu")->get();
     }
 
     /**
@@ -142,30 +140,37 @@ class TargetOmsetSnapshot extends Model
      */
     public static function getComparison($tahun, $periodeType, $bulan = null)
     {
-        $current = self::where('tahun', $tahun)
-            ->where('periode_type', $periodeType);
-        
+        $current = self::where("tahun", $tahun)->where(
+            "periode_type",
+            $periodeType,
+        );
+
         if ($bulan) {
-            $current->where('bulan', $bulan);
+            $current->where("bulan", $bulan);
         }
-        
-        $current = $current->latest('snapshot_at')->first();
-        
-        $previous = self::where('tahun', $tahun - 1)
-            ->where('periode_type', $periodeType);
-        
+
+        $current = $current->latest("snapshot_at")->first();
+
+        $previous = self::where("tahun", $tahun - 1)->where(
+            "periode_type",
+            $periodeType,
+        );
+
         if ($bulan) {
-            $previous->where('bulan', $bulan);
+            $previous->where("bulan", $bulan);
         }
-        
-        $previous = $previous->latest('snapshot_at')->first();
-        
+
+        $previous = $previous->latest("snapshot_at")->first();
+
         return [
-            'current' => $current,
-            'previous' => $previous,
-            'growth' => $current && $previous 
-                ? (($current->actual_omset - $previous->actual_omset) / $previous->actual_omset) * 100 
-                : null
+            "current" => $current,
+            "previous" => $previous,
+            "growth" =>
+                $current && $previous
+                    ? (($current->actual_omset - $previous->actual_omset) /
+                            $previous->actual_omset) *
+                        100
+                    : null,
         ];
     }
 }

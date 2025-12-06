@@ -332,7 +332,7 @@
             @forelse($pengiriman->details as $index => $detail)
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
+                    <td>{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
                     <td class="text-center">{{ number_format($detail->qty_kirim, 2, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($detail->purchaseOrderBahanBaku->harga_satuan ?? $detail->harga_satuan ?? 0, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($detail->total_harga, 0, ',', '.') }}</td>

@@ -402,7 +402,17 @@ function populateDetailModalBerhasil(pengiriman) {
     content.innerHTML = `
         <!-- 1. Informasi Pengiriman -->
         <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-            <h4 class="text-md font-semibold text-gray-900 mb-3">Informasi Pengiriman</h4>
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-md font-semibold text-gray-900">Informasi Pengiriman</h4>
+                ${pengiriman.bukti_pembayaran_url ? `
+                    <a href="${pengiriman.bukti_pembayaran_url}" 
+                       download
+                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-all duration-150 shadow-sm hover:shadow-md">
+                        <i class="fas fa-download mr-1.5"></i>
+                        Download Bukti Pembayaran
+                    </a>
+                ` : ''}
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm font-medium text-gray-600">No Pengiriman</label>

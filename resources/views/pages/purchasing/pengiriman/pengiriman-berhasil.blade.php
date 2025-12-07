@@ -178,11 +178,21 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button onclick="openDetailModalBerhasil({{ $pengiriman->id }})" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-md transition-colors duration-150">
-                                        <i class="fas fa-eye mr-1"></i>
-                                        Detail
-                                    </button>
+                                    <div class="flex flex-col gap-2">
+                                        <button onclick="openDetailModalBerhasil({{ $pengiriman->id }})" 
+                                                class="inline-flex items-center px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-md transition-colors duration-150">
+                                            <i class="fas fa-eye mr-1"></i>
+                                            Detail
+                                        </button>
+                                        @if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->bukti_pembayaran)
+                                            <a href="{{ asset('storage/' . $pengiriman->approvalPembayaran->bukti_pembayaran) }}" 
+                                               download
+                                               class="inline-flex items-center px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-md transition-colors duration-150 text-center">
+                                                <i class="fas fa-download mr-1"></i>
+                                                Bukti Bayar
+                                            </a>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

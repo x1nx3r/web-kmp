@@ -275,6 +275,17 @@
                                         
                                         {{-- Action Button Section --}}
                                         <div class="flex flex-col sm:flex-row gap-2 sm:w-auto w-full">
+                                            {{-- Download Bukti Pembayaran Button - Accessible for All Users --}}
+                                            @if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->bukti_pembayaran)
+                                                <a href="{{ asset('storage/' . $pengiriman->approvalPembayaran->bukti_pembayaran) }}" 
+                                                   download
+                                                   class="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center transition-all duration-200 w-full sm:w-auto whitespace-nowrap shadow-sm hover:shadow" 
+                                                   title="Download Bukti Pembayaran">
+                                                    <i class="fas fa-download mr-1.5"></i>
+                                                    Bukti Bayar
+                                                </a>
+                                            @endif
+                                            
                                             @if($canVerifyFisik)
                                                 {{-- Button for Direktur & Manager: Verifikasi Fisik --}}
                                                 <button onclick="openVerifikasiFisikModal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}')" 

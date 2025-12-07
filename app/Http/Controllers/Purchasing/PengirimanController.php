@@ -28,7 +28,7 @@ class PengirimanController extends Controller
                 "order.klien:id,nama,cabang",
                 "purchasing:id,nama",
                 "pengirimanDetails",
-                "approvalPembayaran:id,pengiriman_id,refraksi_type,refraksi_value,refraksi_amount,qty_before_refraksi,qty_after_refraksi,amount_before_refraksi,amount_after_refraksi",
+                "approvalPembayaran:id,pengiriman_id,refraksi_type,refraksi_value,refraksi_amount,qty_before_refraksi,qty_after_refraksi,amount_before_refraksi,amount_after_refraksi,bukti_pembayaran",
             ])
                 ->whereNotNull("purchase_order_id")
                 ->whereNotNull("purchasing_id")
@@ -1466,6 +1466,13 @@ class PengirimanController extends Controller
                     "amount_after_refraksi" =>
                         $approval->amount_after_refraksi,
                 ];
+
+                // Add bukti pembayaran URL if exists
+                if ($approval->bukti_pembayaran) {
+                    $data["bukti_pembayaran_url"] = asset(
+                        "storage/" . $approval->bukti_pembayaran,
+                    );
+                }
 
                 // Calculate harga beli
                 $totalHargaBeli =

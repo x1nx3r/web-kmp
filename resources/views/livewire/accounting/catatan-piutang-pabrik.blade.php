@@ -83,7 +83,7 @@
 
     {{-- Filters & Search --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 p-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     <i class="fas fa-search mr-1"></i> Pencarian
@@ -117,6 +117,43 @@
                     <option value="cicilan">Cicilan</option>
                     <option value="lunas">Lunas</option>
                     <option value="overdue">Jatuh Tempo</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-calendar-alt mr-1"></i> Bulan
+                </label>
+                <select wire:model.live="bulanFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="">Semua Bulan</option>
+                    <option value="1">Januari</option>
+                    <option value="2">Februari</option>
+                    <option value="3">Maret</option>
+                    <option value="4">April</option>
+                    <option value="5">Mei</option>
+                    <option value="6">Juni</option>
+                    <option value="7">Juli</option>
+                    <option value="8">Agustus</option>
+                    <option value="9">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-calendar mr-1"></i> Tahun
+                </label>
+                <select wire:model.live="tahunFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="">Semua Tahun</option>
+                    @for($year = date('Y'); $year >= 2020; $year--)
+                        <option value="{{ $year }}">{{ $year }}</option>
+                    @endfor
                 </select>
             </div>
         </div>

@@ -21,6 +21,8 @@ class CatatanPiutangPabrik extends Component
     public $search = '';
     public $klienFilter = 'all';
     public $statusFilter = 'all'; // all, belum_bayar, cicilan, lunas, overdue
+    public $bulanFilter = '';
+    public $tahunFilter = '';
     public $sortField = 'due_date';
     public $sortDirection = 'asc';
 
@@ -43,6 +45,8 @@ class CatatanPiutangPabrik extends Component
         'search' => ['except' => ''],
         'klienFilter' => ['except' => 'all'],
         'statusFilter' => ['except' => 'all'],
+        'bulanFilter' => ['except' => ''],
+        'tahunFilter' => ['except' => ''],
     ];
 
     public function mount()
@@ -74,6 +78,16 @@ class CatatanPiutangPabrik extends Component
             $query->whereHas('pengiriman', function($q) {
                 $q->where('klien_id', $this->klienFilter);
             });
+        }
+
+        // Filter by month
+        if ($this->bulanFilter !== '') {
+            $query->whereMonth('invoice_date', $this->bulanFilter);
+        }
+
+        // Filter by year
+        if ($this->tahunFilter !== '') {
+            $query->whereYear('invoice_date', $this->tahunFilter);
         }
 
         // Get all invoices first for filtering by payment status
@@ -213,6 +227,16 @@ class CatatanPiutangPabrik extends Component
     }
 
     public function updatedStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedBulanFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTahunFilter()
     {
         $this->resetPage();
     }

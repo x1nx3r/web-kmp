@@ -26,6 +26,7 @@ class DetailPembayaran extends Component
             'pengiriman.pengirimanDetails.bahanBakuSupplier',
             'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
             'pengiriman.purchaseOrder',
+            'catatanPiutang.supplier',
             'histories' => function($query) {
                 $query->orderBy('created_at', 'desc');
             },

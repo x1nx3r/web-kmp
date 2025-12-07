@@ -20,6 +20,8 @@ class CatatanPiutang extends Component
     public $search = '';
     public $statusFilter = 'all';
     public $supplierFilter = 'all';
+    public $bulanFilter = '';
+    public $tahunFilter = '';
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
 
@@ -102,6 +104,16 @@ class CatatanPiutang extends Component
             $query->where('supplier_id', $this->supplierFilter);
         }
 
+        // Filter by month
+        if ($this->bulanFilter !== '') {
+            $query->whereMonth('tanggal_piutang', $this->bulanFilter);
+        }
+
+        // Filter by year
+        if ($this->tahunFilter !== '') {
+            $query->whereYear('tanggal_piutang', $this->tahunFilter);
+        }
+
         $piutangs = $this->applySorting($query)->paginate(10);
         $suppliers = Supplier::orderBy('nama')->get();
 
@@ -148,10 +160,10 @@ class CatatanPiutang extends Component
         $field = $this->sortField;
 
         if ($field === 'supplier_name') {
-            $query->orderBy(
-                Supplier::select('nama')->whereColumn('suppliers.id', 'catatan_piutangs.supplier_id'),
-                $this->sortDirection
-            );
+            // Join dengan supplier table untuk sorting by nama
+            $query->join('suppliers', 'suppliers.id', '=', 'catatan_piutangs.supplier_id')
+                ->select('catatan_piutangs.*')
+                ->orderBy('suppliers.nama', $this->sortDirection);
         } else {
             if (! in_array($field, $this->allowedSortFields, true)) {
                 $field = 'created_at';
@@ -416,6 +428,16 @@ class CatatanPiutang extends Component
     }
 
     public function updatingSupplierFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingBulanFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTahunFilter()
     {
         $this->resetPage();
     }

@@ -22,6 +22,13 @@
                 Pengiriman Masuk
                 <span class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full" id="masuk-count">0</span>
             </button>
+            <button onclick="switchTab('menunggu-fisik')" 
+                    id="tab-menunggu-fisik" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
+                <i class="fas fa-box-open mr-2"></i>
+                Menunggu Fisik
+                <span class="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full" id="fisik-count">0</span>
+            </button>
             <button onclick="switchTab('menunggu-verifikasi')" 
                     id="tab-menunggu-verifikasi" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
@@ -29,6 +36,7 @@
                 Menunggu Verifikasi
                 <span class="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full" id="verifikasi-count">0</span>
             </button>
+            
             <button onclick="switchTab('pengiriman-berhasil')" 
                     id="tab-pengiriman-berhasil" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
@@ -58,6 +66,17 @@
                     <span>Masuk</span>
                 </div>
             </button>
+            <button onclick="switchTab('menunggu-fisik')" 
+                    id="tab-menunggu-fisik-mobile" 
+                    class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max relative">
+                <div class="flex flex-col items-center space-y-1">
+                    <div class="relative">
+                        <i class="fas fa-box-open text-sm"></i>
+                        <span class="absolute -top-2 -right-2 bg-purple-100 text-purple-800 text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[1.25rem] h-5 flex items-center justify-center" id="fisik-count-mobile">0</span>
+                    </div>
+                    <span>Fisik</span>
+                </div>
+            </button>
             <button onclick="switchTab('menunggu-verifikasi')" 
                     id="tab-menunggu-verifikasi-mobile" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max relative">
@@ -69,6 +88,7 @@
                     <span>Verifikasi</span>
                 </div>
             </button>
+            
             <button onclick="switchTab('pengiriman-berhasil')" 
                     id="tab-pengiriman-berhasil-mobile" 
                     class="tab-button border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 flex-shrink-0 py-3 px-2 border-b-2 font-medium text-xs transition-colors min-w-max relative">
@@ -157,6 +177,9 @@ function updateUrl(tabName) {
         }
         if (tabName !== 'menunggu-verifikasi') {
             url.searchParams.delete('page_menunggu');
+        }
+        if (tabName !== 'menunggu-fisik') {
+            url.searchParams.delete('page_fisik');
         }
         if (tabName !== 'pengiriman-berhasil') {
             url.searchParams.delete('page_berhasil');
@@ -261,7 +284,7 @@ function initializeTabFromUrl() {
     console.log('Current URL params:', Object.fromEntries(urlParams));
     
     // Validate tab exists
-    const validTabs = ['pengiriman-masuk', 'menunggu-verifikasi', 'pengiriman-berhasil', 'pengiriman-gagal'];
+    const validTabs = ['pengiriman-masuk', 'menunggu-verifikasi', 'menunggu-fisik', 'pengiriman-berhasil', 'pengiriman-gagal'];
     if (!validTabs.includes(activeTab)) {
         activeTab = 'pengiriman-masuk';
     }
@@ -322,6 +345,10 @@ function updateBreadcrumb(tabName) {
             tabTitle = 'Pengiriman - Menunggu Verifikasi';
             tabUrl = '?tab=menunggu-verifikasi';
             break;
+        case 'menunggu-fisik':
+            tabTitle = 'Pengiriman - Menunggu Fisik';
+            tabUrl = '?tab=menunggu-fisik';
+            break;
         case 'pengiriman-berhasil':
             tabTitle = 'Pengiriman - Pengiriman Berhasil';
             tabUrl = '?tab=pengiriman-berhasil';
@@ -347,6 +374,7 @@ function refreshWithPreservedParams() {
     const currentTab = currentParams.get('tab') || 'pengiriman-masuk';
     const currentPage = currentParams.get('page') || '1';
     const currentPageMenunggu = currentParams.get('page_menunggu') || '1';
+    const currentPageFisik = currentParams.get('page_fisik') || '1';
     const currentPageBerhasil = currentParams.get('page_berhasil') || '1';
     const currentPageGagal = currentParams.get('page_gagal') || '1';
     
@@ -357,6 +385,7 @@ function refreshWithPreservedParams() {
     // Preserve pagination for all tabs
     if (currentParams.get('page')) params.append('page', currentPage);
     if (currentParams.get('page_menunggu')) params.append('page_menunggu', currentPageMenunggu);
+    if (currentParams.get('page_fisik')) params.append('page_fisik', currentPageFisik);
     if (currentParams.get('page_berhasil')) params.append('page_berhasil', currentPageBerhasil);
     if (currentParams.get('page_gagal')) params.append('page_gagal', currentPageGagal);
     
@@ -369,6 +398,11 @@ function refreshWithPreservedParams() {
     if (currentParams.get('search_verifikasi')) params.append('search_verifikasi', currentParams.get('search_verifikasi'));
     if (currentParams.get('filter_purchasing_verifikasi')) params.append('filter_purchasing_verifikasi', currentParams.get('filter_purchasing_verifikasi'));
     if (currentParams.get('sort_date_verifikasi')) params.append('sort_date_verifikasi', currentParams.get('sort_date_verifikasi'));
+    
+    // Preserve search and filter parameters for menunggu-fisik tab
+    if (currentParams.get('search_fisik')) params.append('search_fisik', currentParams.get('search_fisik'));
+    if (currentParams.get('filter_purchasing_fisik')) params.append('filter_purchasing_fisik', currentParams.get('filter_purchasing_fisik'));
+    if (currentParams.get('sort_date_fisik')) params.append('sort_date_fisik', currentParams.get('sort_date_fisik'));
     
     // Preserve search and filter parameters for pengiriman-berhasil tab
     if (currentParams.get('search_berhasil')) params.append('search_berhasil', currentParams.get('search_berhasil'));
@@ -401,12 +435,14 @@ function updateTabCounts() {
     // Update counts from actual data
     document.getElementById('masuk-count').textContent = '{{ $pengirimanMasuk->total() ?? 0 }}';
     document.getElementById('verifikasi-count').textContent = '{{ $menungguVerifikasi->total() ?? 0 }}';
+    document.getElementById('fisik-count').textContent = '{{ $menungguFisik->total() ?? 0 }}';
     document.getElementById('berhasil-count').textContent = '{{ $pengirimanBerhasil->total() ?? 0 }}';
     document.getElementById('gagal-count').textContent = '{{ $pengirimanGagal->total() ?? 0 }}';
     
     // Update mobile counts
     document.getElementById('masuk-count-mobile').textContent = '{{ $pengirimanMasuk->total() ?? 0 }}';
     document.getElementById('verifikasi-count-mobile').textContent = '{{ $menungguVerifikasi->total() ?? 0 }}';
+    document.getElementById('fisik-count-mobile').textContent = '{{ $menungguFisik->total() ?? 0 }}';
     document.getElementById('berhasil-count-mobile').textContent = '{{ $pengirimanBerhasil->total() ?? 0 }}';
     document.getElementById('gagal-count-mobile').textContent = '{{ $pengirimanGagal->total() ?? 0 }}';
 }
@@ -508,6 +544,11 @@ function kirimUlang(id) {
     <!-- Menunggu Verifikasi Tab -->
     <div id="menunggu-verifikasi" class="tab-content bg-white rounded-lg shadow-lg border border-gray-200 p-6 hidden">
         @include('pages.purchasing.pengiriman.menunggu-verifikasi')
+    </div>
+
+    <!-- Menunggu Fisik Tab -->
+    <div id="menunggu-fisik" class="tab-content bg-white rounded-lg shadow-lg border border-gray-200 p-6 hidden">
+        @include('pages.purchasing.pengiriman.menunggu-fisik')
     </div>
 
     <!-- Pengiriman Berhasil Tab -->

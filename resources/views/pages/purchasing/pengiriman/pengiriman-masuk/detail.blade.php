@@ -415,65 +415,46 @@
         {{-- Card 4: Catatan Pengiriman - Responsive --}}
         <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm">
             <div class="flex items-center mb-3 sm:mb-4 pb-3 border-b border-gray-200">
-                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 shrink-0">
-                    <i class="fas fa-sticky-note text-purple-600 text-sm sm:text-base"></i>
+                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 shrink-0">
+                    <i class="fas fa-sticky-note text-orange-600 text-sm sm:text-base"></i>
                 </div>
                 <div class="min-w-0 flex-1">
                     <h3 class="text-base sm:text-lg font-semibold text-gray-900 truncate">Catatan Pengiriman</h3>
-                    <p class="text-xs text-gray-500 hidden sm:block">Informasi tambahan terkait pengiriman</p>
+                    <p class="text-xs text-gray-500 hidden sm:block">Informasi catatan terkait pengiriman</p>
                 </div>
             </div>
             
-            {{-- Catatan Sebelumnya --}}
-            <div class="mb-4 sm:mb-6">
-                <h4 class="text-sm sm:text-md font-semibold text-gray-800 mb-2 sm:mb-3">Catatan Sebelumnya</h4>
-                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
-                    @if($pengiriman->catatan)
-                        <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ $pengiriman->catatan }}</p>
-                    @else
-                        <p class="text-sm text-gray-500 italic">Tidak ada catatan sebelumnya untuk pengiriman ini.</p>
-                    @endif
+            <div class="space-y-3 sm:space-y-4">
+                {{-- Catatan (Read-only from previous status) --}}
+                @if($pengiriman->catatan)
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">
+                        Catatan Sebelumnya (Read-only)
+                    </label>
+                    <textarea 
+                        name="catatan_display" 
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
+                        rows="2"
+                        readonly>{{ $pengiriman->catatan }}</textarea>
                 </div>
-            </div>
-            
-            {{-- Input Catatan Baru --}}
-            <div>
-                <h4 class="text-sm sm:text-md font-semibold text-gray-800 mb-2 sm:mb-3">Tambah/Update Catatan</h4>
-                <div class="space-y-2 sm:space-y-3">
-                    <textarea name="catatan" 
-                              id="catatan_pengiriman"
-                              rows="4"
-                              class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none transition-colors text-sm {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
-                              placeholder="{{ $canEdit ? 'Tambahkan catatan baru atau update catatan pengiriman...' : 'Mode lihat saja - tidak dapat mengedit catatan' }}"
-                              maxlength="500"
-                              data-original-catatan="{{ $pengiriman->catatan ?? '' }}"
-                              {{ !$canEdit ? 'readonly' : '' }}>{{ old('catatan', $pengiriman->catatan ?? '') }}</textarea>
-                    
-                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center text-xs text-gray-500 gap-2 sm:gap-0">
-                        <span>
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Catatan akan menggantikan catatan sebelumnya jika diisi
-                        </span>
-                        <span id="catatanCounter">0/500 karakter</span>
-                    </div>
-                    
-                    {{-- Quick Actions --}}
-                    @if($canEdit)
-                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                            <button type="button" 
-                                    onclick="clearCatatan()" 
-                                    class="w-full sm:w-auto px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-                                <i class="fas fa-eraser mr-1"></i>
-                                Kosongkan
-                            </button>
-                            <button type="button" 
-                                    onclick="resetToOriginal()" 
-                                    class="w-full sm:w-auto px-3 py-1.5 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors">
-                                <i class="fas fa-undo mr-1"></i>
-                                Reset ke Asli
-                            </button>
-                        </div>
-                    @endif
+                @endif
+                
+                {{-- Catatan Refraksi (Editable) --}}
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">
+                        Catatan Refraksi <span class="text-gray-400">(Opsional)</span>
+                    </label>
+                    <textarea 
+                        name="catatan_refraksi" 
+                        id="catatan_refraksi"
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}" 
+                        rows="3"
+                        placeholder="{{ $canEdit ? 'Masukkan catatan refraksi (opsional)...' : 'Mode lihat saja - tidak dapat mengedit' }}"
+                        {{ !$canEdit ? 'readonly' : '' }}>{{ old('catatan_refraksi', $pengiriman->catatan_refraksi ?? '') }}</textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Catatan terkait pemeriksaan dan refraksi barang yang dikirim
+                    </p>
                 </div>
             </div>
         </div>

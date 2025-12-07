@@ -28,6 +28,7 @@ class Pengiriman extends Model
         'foto_tanda_terima_uploaded_at',
         'status',
         'catatan',
+        'catatan_refraksi',
         'rating',
         'ulasan',
     ];

@@ -1097,6 +1097,24 @@ function confirmSubmit() {
         return;
     }
     
+    // Add timestamp to catatan
+    const currentCatatan = dataToSubmit.get('catatan') || '';
+    const timestamp = new Date().toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+    
+    const updatedCatatan = currentCatatan 
+        ? `${currentCatatan}\n\n[Diajukan pada: ${timestamp}]`
+        : `[Diajukan pada: ${timestamp}]`;
+    
+    dataToSubmit.set('catatan', updatedCatatan);
+    
     // Submit to backend
     fetch('/procurement/pengiriman/submit', {
         method: 'POST',

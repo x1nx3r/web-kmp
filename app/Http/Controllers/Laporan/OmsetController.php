@@ -92,7 +92,7 @@ class OmsetController extends Controller
         $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
         $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
         
-        // Calculate Monthly Breakdown dengan detail mingguan
+        // Calculate Monthly Breakdown dengan detail mingguan (4 minggu per bulan)
         $rekapBulanan = [];
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             // Omset total bulan - GUNAKAN tanggal_kirim dari pengiriman
@@ -105,20 +105,31 @@ class OmsetController extends Controller
             $progressBulanIni = $targetBulanan > 0 ? ($omsetBulan / $targetBulanan) * 100 : 0;
             $selisih = $omsetBulan - $targetBulanan;
             
-            // Calculate weekly breakdown for this month - GUNAKAN KALENDER SEBENARNYA
+            // Calculate weekly breakdown for this month - SETIAP BULAN 4 MINGGU (7 hari per minggu)
             $mingguanDetail = [];
             $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
             $endDate = $startDate->copy()->endOfMonth();
-            $totalDaysInMonth = $startDate->daysInMonth;
             
-            // Bagi bulan berdasarkan jumlah hari sebenarnya, bukan asumsi 4 minggu
-            // Setiap minggu adalah 7 hari, jadi bisa ada 4-5 minggu per bulan
-            $minggu = 1;
-            $currentDate = $startDate->copy();
-            
-            while ($currentDate <= $endDate) {
-                $weekStart = $currentDate->copy();
-                $weekEnd = $currentDate->copy()->addDays(6)->min($endDate);
+            // Bagi bulan menjadi tepat 4 minggu (7 hari per minggu = 28 hari)
+            // Sisa hari di akhir bulan (29, 30, 31) masuk ke minggu ke-4
+            for ($minggu = 1; $minggu <= 4; $minggu++) {
+                if ($minggu == 1) {
+                    $weekStart = $startDate->copy();
+                } else {
+                    $weekStart = $startDate->copy()->addDays(($minggu - 1) * 7);
+                }
+                
+                if ($minggu == 4) {
+                    // Minggu ke-4 ambil sampai akhir bulan (bisa lebih dari 7 hari)
+                    $weekEnd = $endDate->copy();
+                } else {
+                    $weekEnd = $weekStart->copy()->addDays(6)->min($endDate);
+                }
+                
+                // Skip jika weekStart sudah melewati end of month
+                if ($weekStart > $endDate) {
+                    break;
+                }
                 
                 $omsetMinggu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                     ->where('pengiriman.status', 'berhasil')
@@ -132,9 +143,6 @@ class OmsetController extends Controller
                     'progress' => $progressMingguIni,
                     'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
                 ];
-                
-                $minggu++;
-                $currentDate->addDays(7);
             }
             
             $rekapBulanan[$bulan] = [

@@ -45,11 +45,15 @@ class TargetOmset extends Model
 
     /**
      * Set or update target omset for a year
+     * Sistem: 1 bulan = 4 minggu, 1 tahun = 48 minggu (12 bulan x 4 minggu)
      */
     public static function setTarget($year, $targetTahunan, $createdBy = null)
     {
-        $targetMingguan = round($targetTahunan / 52, 2);
-        $targetBulanan = round($targetMingguan * 4, 2);
+        // Target per bulan (12 bulan)
+        $targetBulanan = round($targetTahunan / 12, 2);
+        
+        // Target per minggu (48 minggu = 12 bulan x 4 minggu per bulan)
+        $targetMingguan = round($targetTahunan / 48, 2);
 
         return self::updateOrCreate(
             ['tahun' => $year],

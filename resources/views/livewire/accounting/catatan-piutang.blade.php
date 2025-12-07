@@ -78,7 +78,7 @@
         {{-- Supplier Tab Content --}}
 
     {{-- Statistics Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
@@ -115,11 +115,23 @@
             </div>
         </div>
 
+        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-yellow-100 text-sm font-medium">Jatuh Tempo & Mendekati</p>
+                    <h3 class="text-2xl font-bold mt-1">{{ $totalJatuhTempo }} <span class="text-sm">Item</span></h3>
+                </div>
+                <div class="bg-yellow-400 bg-opacity-30 rounded-full p-3">
+                    <i class="fas fa-clock text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-red-100 text-sm font-medium">Belum Lunas</p>
-                    <h3 class="text-2xl font-bold mt-1">{{ $totalBelumLunas }} <span class="text-sm">Item</span></h3>
+                    <p class="text-red-100 text-sm font-medium">Total Terlambat</p>
+                    <h3 class="text-2xl font-bold mt-1">{{ $totalTerlambat }} <span class="text-sm">Item</span></h3>
                 </div>
                 <div class="bg-red-400 bg-opacity-30 rounded-full p-3">
                     <i class="fas fa-exclamation-triangle text-2xl"></i>
@@ -130,7 +142,7 @@
 
     {{-- Filters & Search --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 p-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     <i class="fas fa-search mr-1"></i> Pencarian
@@ -163,6 +175,43 @@
                     @foreach($suppliers as $supplier)
                         <option value="{{ $supplier->id }}">{{ $supplier->nama }}</option>
                     @endforeach
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-calendar-alt mr-1"></i> Bulan
+                </label>
+                <select wire:model.live="bulanFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Bulan</option>
+                    <option value="1">Januari</option>
+                    <option value="2">Februari</option>
+                    <option value="3">Maret</option>
+                    <option value="4">April</option>
+                    <option value="5">Mei</option>
+                    <option value="6">Juni</option>
+                    <option value="7">Juli</option>
+                    <option value="8">Agustus</option>
+                    <option value="9">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-calendar mr-1"></i> Tahun
+                </label>
+                <select wire:model.live="tahunFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Tahun</option>
+                    @for($year = date('Y'); $year >= 2020; $year--)
+                        <option value="{{ $year }}">{{ $year }}</option>
+                    @endfor
                 </select>
             </div>
 
@@ -199,6 +248,7 @@
                                 <i class="fas {{ $sortField === 'tanggal_piutang' ? ($sortDirection === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300' }}"></i>
                             </button>
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hari Terlambat</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <button type="button" wire:click="sortBy('jumlah_piutang')" class="flex items-center space-x-1 focus:outline-none">
                                 <span>Jumlah</span>
@@ -240,6 +290,29 @@
                                 <div class="text-sm text-gray-900">{{ $piutang->tanggal_piutang->format('d M Y') }}</div>
                                 @if($piutang->tanggal_jatuh_tempo)
                                     <div class="text-xs text-gray-500">JT: {{ $piutang->tanggal_jatuh_tempo->format('d M Y') }}</div>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if($piutang->tanggal_jatuh_tempo && $piutang->status !== 'lunas')
+                                    @php
+                                        $dueDate = \Carbon\Carbon::parse($piutang->tanggal_jatuh_tempo);
+                                        $isOverdue = $dueDate->lt(now());
+                                        $hariTerlambat = $isOverdue ? (int) $dueDate->diffInDays(now()) : 0;
+                                        $hariMenjelang = !$isOverdue ? (int) now()->diffInDays($dueDate) : 0;
+                                    @endphp
+                                    @if($isOverdue)
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                            <i class="fas fa-exclamation-circle mr-1"></i> {{ $hariTerlambat }} hari
+                                        </span>
+                                    @elseif($hariMenjelang <= 7)
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            <i class="fas fa-clock mr-1"></i> {{ $hariMenjelang }} hari lagi
+                                        </span>
+                                    @else
+                                        <span class="text-sm text-gray-500">{{ $hariMenjelang }} hari lagi</span>
+                                    @endif
+                                @else
+                                    <span class="text-sm text-gray-400">-</span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -287,7 +360,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center">
+                            <td colspan="9" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
                                     <p class="text-gray-500 text-sm">Tidak ada data catatan piutang</p>

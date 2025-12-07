@@ -574,7 +574,7 @@
                             <p class="text-sm text-green-700 mt-1">Refraksi yang dikenakan kepada supplier</p>
                         </div>
                         <div class="p-6">
-                            @if($approval->refraksi_type)
+                            @if($approval->refraksi_type && $approval->refraksi_value > 0)
                                 <div class="grid grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label class="text-xs font-medium text-green-700">Jenis</label>
@@ -596,6 +596,14 @@
                                         <label class="text-xs font-medium text-green-700">Total Pembayaran</label>
                                         <p class="mt-1 text-lg text-green-600 font-bold">Rp {{ number_format($approval->amount_after_refraksi, 0, ',', '.') }}</p>
                                     </div>
+                                </div>
+                            @else
+                                <div class="bg-white border border-green-200 rounded-lg p-4 mb-4 text-center">
+                                    <p class="text-sm text-gray-500">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Tidak ada refraksi pembayaran diterapkan
+                                    </p>
+                                    <p class="text-xs text-gray-400 mt-1">Pembayaran menggunakan harga penuh tanpa potongan refraksi</p>
                                 </div>
                             @endif
 

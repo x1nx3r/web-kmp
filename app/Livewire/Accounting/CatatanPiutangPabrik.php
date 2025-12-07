@@ -161,12 +161,17 @@ class CatatanPiutangPabrik extends Component
             return Carbon::parse($invoice->due_date)->lt(now()) && $sisaPiutang > 0;
         });
 
-        $totalJatuhTempo = $overdueInvoices->count();
-
-        // Calculate total terlambat (more than 7 days overdue)
-        $totalTerlambat = $overdueInvoices->filter(function($invoice) {
-            return Carbon::parse($invoice->due_date)->diffInDays(now()) > 7;
+        // Count invoices due within 7 days or already overdue (with remaining balance)
+        $totalJatuhTempo = $allCompletedInvoices->filter(function($invoice) {
+            $totalPaid = $invoice->pembayaranPabrik->sum('jumlah_bayar');
+            $sisaPiutang = $invoice->total_amount - $totalPaid;
+            $dueDate = Carbon::parse($invoice->due_date);
+            // Include invoices due today or in the next 7 days, plus overdue
+            return $dueDate->lte(now()->addDays(7)) && $sisaPiutang > 0;
         })->count();
+
+        // Calculate total terlambat (already past due date)
+        $totalTerlambat = $overdueInvoices->count();
 
         return view('livewire.accounting.catatan-piutang-pabrik', [
             'piutangs' => $paginatedInvoices,

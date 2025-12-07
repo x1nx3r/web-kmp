@@ -73,9 +73,9 @@ class ApprovePembayaran extends Component
         $this->piutangForm['amount'] = $this->approval->piutang_amount ?? 0;
         $this->piutangForm['notes'] = $this->approval->piutang_notes ?? '';
 
-        // Load refraksi values from approval pembayaran
+        // Load refraksi values from approval pembayaran - default 0 jika tidak ada
         $this->refraksiForm['type'] = $this->approval->refraksi_type ?? 'qty';
-        $this->refraksiForm['value'] = $this->approval->refraksi_value ?? 0;
+        $this->refraksiForm['value'] = floatval($this->approval->refraksi_value ?? 0);
     }
 
     public function approve()
@@ -306,7 +306,7 @@ class ApprovePembayaran extends Component
 
         DB::beginTransaction();
         try {
-            // Update refraksi values untuk approval pembayaran - bisa null/0 untuk tidak ada refraksi
+            // Update refraksi values untuk approval pembayaran - default 0 untuk tidak ada refraksi
             $refraksiValue = floatval($this->refraksiForm['value'] ?? 0);
 
             // Calculate refraksi untuk pembayaran
@@ -316,7 +316,7 @@ class ApprovePembayaran extends Component
             $amountAfterRefraksi = $amountBeforeRefraksi;
             $refraksiAmount = 0;
 
-            // Jika value 0 atau kosong, set refraksi menjadi 0 (bukan null karena constraint database)
+            // Jika value 0 atau kosong, set semua refraksi menjadi 0/null (tanpa refraksi)
             if ($refraksiValue <= 0) {
                 $this->approval->refraksi_type = null;
                 $this->approval->refraksi_value = 0;

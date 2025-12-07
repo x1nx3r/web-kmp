@@ -123,6 +123,18 @@ class CatatanPiutang extends Component
         $totalSisa = CatatanPiutangModel::sum('sisa_piutang');
         $totalBelumLunas = CatatanPiutangModel::where('status', '!=', 'lunas')->count();
 
+        // Hitung piutang yang sudah jatuh tempo atau mendekati jatuh tempo
+        $totalJatuhTempo = CatatanPiutangModel::where('status', '!=', 'lunas')
+            ->whereNotNull('tanggal_jatuh_tempo')
+            ->whereDate('tanggal_jatuh_tempo', '<=', now()->addDays(7))
+            ->count();
+
+        // Hitung piutang yang sudah terlambat
+        $totalTerlambat = CatatanPiutangModel::where('status', '!=', 'lunas')
+            ->whereNotNull('tanggal_jatuh_tempo')
+            ->whereDate('tanggal_jatuh_tempo', '<', now())
+            ->count();
+
         return view('livewire.accounting.catatan-piutang', [
             'piutangs' => $piutangs,
             'suppliers' => $suppliers,
@@ -130,6 +142,8 @@ class CatatanPiutang extends Component
             'totalDibayar' => $totalDibayar,
             'totalSisa' => $totalSisa,
             'totalBelumLunas' => $totalBelumLunas,
+            'totalJatuhTempo' => $totalJatuhTempo,
+            'totalTerlambat' => $totalTerlambat,
         ]);
     }
 

@@ -124,6 +124,115 @@
                 </div>
             </div>
 
+            {{-- Ringkasan Pembayaran --}}
+            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg shadow-sm border border-indigo-200 mb-6">
+                <div class="border-b border-indigo-200 bg-indigo-100 px-6 py-4">
+                    <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                        <i class="fas fa-calculator text-indigo-600 mr-3"></i>
+                        Ringkasan Perhitungan Pembayaran
+                    </h2>
+                    <p class="text-sm text-indigo-700 mt-1">Detail perhitungan dari harga pengiriman hingga pembayaran final</p>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        {{-- Total Harga Pengiriman (Original) --}}
+                        <div class="flex justify-between items-center pb-3 border-b border-indigo-200">
+                            <div>
+                                <p class="text-sm font-medium text-gray-700">Total Harga Pengiriman</p>
+                                <p class="text-xs text-gray-500 mt-1">Harga awal dari pengiriman ({{ number_format($pengiriman->total_qty_kirim, 2, ',', '.') }} kg)</p>
+                            </div>
+                            <p class="text-lg font-bold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                        </div>
+
+                        {{-- Refraksi Penagihan (Customer) --}}
+                        @if($invoicePenagihan && $invoicePenagihan->refraksi_amount > 0)
+                            <div class="flex justify-between items-center pb-3 border-b border-indigo-200 bg-purple-50 -mx-6 px-6 py-3">
+                                <div>
+                                    <p class="text-sm font-medium text-purple-700 flex items-center">
+                                        <i class="fas fa-minus-circle mr-2"></i>
+                                        Refraksi Penagihan (Customer)
+                                    </p>
+                                    <p class="text-xs text-purple-600 mt-1">
+                                        @if($invoicePenagihan->refraksi_type === 'qty')
+                                            {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}% dari qty
+                                        @else
+                                            Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                        @endif
+                                        | Qty: {{ number_format($invoicePenagihan->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($invoicePenagihan->qty_after_refraksi, 2, ',', '.') }} kg
+                                    </p>
+                                </div>
+                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
+                            </div>
+
+                            {{-- Subtotal setelah refraksi penagihan --}}
+                            <div class="flex justify-between items-center pb-3 border-b border-indigo-300">
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-700">Subtotal (Setelah Refraksi Penagihan)</p>
+                                    <p class="text-xs text-gray-500 mt-1">Nilai yang akan ditagihkan ke customer</p>
+                                </div>
+                                <p class="text-lg font-bold text-indigo-700">Rp {{ number_format($invoicePenagihan->amount_after_refraksi ?? $pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                            </div>
+                        @endif
+
+                        {{-- Refraksi Pembayaran (Supplier) --}}
+                        @if($approval->refraksi_amount > 0)
+                            <div class="flex justify-between items-center pb-3 border-b border-indigo-200 bg-green-50 -mx-6 px-6 py-3">
+                                <div>
+                                    <p class="text-sm font-medium text-green-700 flex items-center">
+                                        <i class="fas fa-minus-circle mr-2"></i>
+                                        Refraksi Pembayaran (Supplier)
+                                    </p>
+                                    <p class="text-xs text-green-600 mt-1">
+                                        @if($approval->refraksi_type === 'qty')
+                                            {{ number_format($approval->refraksi_value, 2, ',', '.') }}% dari qty
+                                        @elseif($approval->refraksi_type === 'rupiah')
+                                            Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                        @endif
+                                        | Qty: {{ number_format($approval->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($approval->qty_after_refraksi, 2, ',', '.') }} kg
+                                    </p>
+                                </div>
+                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($approval->refraksi_amount, 0, ',', '.') }}</p>
+                            </div>
+                        @endif
+
+                        {{-- Potongan Piutang --}}
+                        @if($approval->piutang_amount > 0)
+                            <div class="flex justify-between items-center pb-3 border-b border-indigo-200 bg-blue-50 -mx-6 px-6 py-3">
+                                <div>
+                                    <p class="text-sm font-medium text-blue-700 flex items-center">
+                                        <i class="fas fa-minus-circle mr-2"></i>
+                                        Potongan Piutang
+                                    </p>
+                                    @if($approval->catatanPiutang)
+                                        <p class="text-xs text-blue-600 mt-1">
+                                            ID Piutang #{{ $approval->catatanPiutang->id }} | {{ $approval->catatanPiutang->supplier->nama ?? '-' }}
+                                        </p>
+                                    @endif
+                                </div>
+                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($approval->piutang_amount, 0, ',', '.') }}</p>
+                            </div>
+                        @endif
+
+                        {{-- Total Pembayaran Final --}}
+                        <div class="flex justify-between items-center pt-3 bg-gradient-to-r from-green-100 to-emerald-100 -mx-6 px-6 py-4 rounded-lg border-2 border-green-300">
+                            <div>
+                                <p class="text-base font-bold text-gray-900 flex items-center">
+                                    <i class="fas fa-hand-holding-usd text-green-600 mr-2"></i>
+                                    Total Pembayaran ke Supplier
+                                </p>
+                                <p class="text-xs text-gray-600 mt-1">Nilai final yang harus dibayar kepada supplier</p>
+                            </div>
+                            @php
+                                // Base amount adalah total harga pengiriman (bukan dari invoice penagihan)
+                                // Karena refraksi pembayaran dan piutang dihitung dari harga pengiriman
+                                $totalPembayaran = $pengiriman->total_harga_kirim - ($approval->refraksi_amount ?? 0) - ($approval->piutang_amount ?? 0);
+                            @endphp
+                            <p class="text-2xl font-bold text-green-700">Rp {{ number_format($totalPembayaran, 0, ',', '.') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Refraksi Penagihan (dari Invoice) --}}
             @if($invoicePenagihan && $invoicePenagihan->refraksi_type)
                 <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm border border-purple-200 mb-6">

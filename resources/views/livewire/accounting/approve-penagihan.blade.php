@@ -302,9 +302,16 @@
                                         <p class="text-sm text-gray-600">
                                             <strong>Qty:</strong> {{ number_format($invoice->qty_before_refraksi, 2, ',', '.') }} kg
                                         </p>
-                                    @else
+                                    @elseif($invoice->refraksi_type === 'lainnya')
                                         <p class="text-sm text-gray-600">
                                             <strong>Tipe:</strong> Lainnya (Manual)
+                                        </p>
+                                        <p class="text-sm text-gray-600">
+                                            <strong>Nilai:</strong> Rp {{ number_format($invoice->refraksi_value, 0, ',', '.') }}
+                                        </p>
+                                    @else
+                                        <p class="text-sm text-gray-600">
+                                            <strong>Tipe:</strong> {{ ucfirst($invoice->refraksi_type) }}
                                         </p>
                                     @endif
                                     <p class="text-sm text-red-600 font-semibold mt-2">

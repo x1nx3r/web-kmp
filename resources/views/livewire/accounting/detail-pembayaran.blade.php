@@ -155,10 +155,14 @@
                                     <p class="text-xs text-purple-600 mt-1">
                                         @if($invoicePenagihan->refraksi_type === 'qty')
                                             {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}% dari qty
-                                        @else
+                                        @elseif($invoicePenagihan->refraksi_type === 'rupiah')
                                             Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                        @elseif($invoicePenagihan->refraksi_type === 'lainnya')
+                                            Lainnya: Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}
                                         @endif
-                                        | Qty: {{ number_format($invoicePenagihan->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($invoicePenagihan->qty_after_refraksi, 2, ',', '.') }} kg
+                                        @if($invoicePenagihan->refraksi_type !== 'lainnya')
+                                            | Qty: {{ number_format($invoicePenagihan->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($invoicePenagihan->qty_after_refraksi, 2, ',', '.') }} kg
+                                        @endif
                                     </p>
                                 </div>
                                 <p class="text-lg font-bold text-red-600">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
@@ -187,8 +191,12 @@
                                             {{ number_format($approval->refraksi_value, 2, ',', '.') }}% dari qty
                                         @elseif($approval->refraksi_type === 'rupiah')
                                             Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                        @elseif($approval->refraksi_type === 'lainnya')
+                                            Lainnya: Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}
                                         @endif
-                                        | Qty: {{ number_format($approval->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($approval->qty_after_refraksi, 2, ',', '.') }} kg
+                                        @if($approval->refraksi_type !== 'lainnya')
+                                            | Qty: {{ number_format($approval->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($approval->qty_after_refraksi, 2, ',', '.') }} kg
+                                        @endif
                                     </p>
                                 </div>
                                 <p class="text-lg font-bold text-red-600">- Rp {{ number_format($approval->refraksi_amount, 0, ',', '.') }}</p>
@@ -250,8 +258,12 @@
                                 <p class="mt-1 text-base text-gray-900 font-semibold">
                                     @if($invoicePenagihan->refraksi_type === 'qty')
                                         <i class="fas fa-percentage text-purple-600 mr-2"></i>Qty (%)
-                                    @else
+                                    @elseif($invoicePenagihan->refraksi_type === 'rupiah')
                                         <i class="fas fa-money-bill text-purple-600 mr-2"></i>Rupiah (Rp/kg)
+                                    @elseif($invoicePenagihan->refraksi_type === 'lainnya')
+                                        <i class="fas fa-calculator text-purple-600 mr-2"></i>Lainnya (Manual)
+                                    @else
+                                        <i class="fas fa-question-circle text-purple-600 mr-2"></i>{{ ucfirst($invoicePenagihan->refraksi_type) }}
                                     @endif
                                 </p>
                             </div>
@@ -260,19 +272,25 @@
                                 <p class="mt-1 text-base text-gray-900 font-semibold">
                                     @if($invoicePenagihan->refraksi_type === 'qty')
                                         {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}%
-                                    @else
+                                    @elseif($invoicePenagihan->refraksi_type === 'rupiah')
                                         Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                    @elseif($invoicePenagihan->refraksi_type === 'lainnya')
+                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }} (Total)
+                                    @else
+                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}
                                     @endif
                                 </p>
                             </div>
-                            <div>
-                                <label class="text-sm font-medium text-purple-700">Qty Sebelum Refraksi</label>
-                                <p class="mt-1 text-base text-gray-900">{{ number_format($invoicePenagihan->qty_before_refraksi, 2, ',', '.') }} kg</p>
-                            </div>
-                            <div>
-                                <label class="text-sm font-medium text-purple-700">Qty Setelah Refraksi</label>
-                                <p class="mt-1 text-base text-gray-900 font-semibold">{{ number_format($invoicePenagihan->qty_after_refraksi, 2, ',', '.') }} kg</p>
-                            </div>
+                            @if($invoicePenagihan->refraksi_type !== 'lainnya')
+                                <div>
+                                    <label class="text-sm font-medium text-purple-700">Qty Sebelum Refraksi</label>
+                                    <p class="mt-1 text-base text-gray-900">{{ number_format($invoicePenagihan->qty_before_refraksi, 2, ',', '.') }} kg</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-purple-700">Qty Setelah Refraksi</label>
+                                    <p class="mt-1 text-base text-gray-900 font-semibold">{{ number_format($invoicePenagihan->qty_after_refraksi, 2, ',', '.') }} kg</p>
+                                </div>
+                            @endif
                             <div>
                                 <label class="text-sm font-medium text-purple-700">Potongan Refraksi</label>
                                 <p class="mt-1 text-xl text-red-600 font-bold">
@@ -322,8 +340,10 @@
                                                 <i class="fas fa-percentage text-green-600 mr-2"></i>Qty (%)
                                             @elseif($approval->refraksi_type === 'rupiah')
                                                 <i class="fas fa-money-bill text-green-600 mr-2"></i>Rupiah (Rp/kg)
+                                            @elseif($approval->refraksi_type === 'lainnya')
+                                                <i class="fas fa-calculator text-green-600 mr-2"></i>Lainnya (Manual)
                                             @else
-                                                <i class="fas fa-calculator text-green-600 mr-2"></i>Refraksi Lainnya
+                                                <i class="fas fa-question-circle text-green-600 mr-2"></i>{{ ucfirst($approval->refraksi_type) }}
                                             @endif
                                         </p>
                                     </div>
@@ -334,19 +354,23 @@
                                                 {{ number_format($approval->refraksi_value, 2, ',', '.') }}%
                                             @elseif($approval->refraksi_type === 'rupiah')
                                                 Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                            @elseif($approval->refraksi_type === 'lainnya')
+                                                Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }} (Total)
                                             @else
                                                 Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}
                                             @endif
                                         </p>
                                     </div>
-                                    <div>
-                                        <label class="text-sm font-medium text-green-700">Qty Sebelum Refraksi</label>
-                                        <p class="mt-1 text-base text-gray-900">{{ number_format($approval->qty_before_refraksi, 2, ',', '.') }} kg</p>
-                                    </div>
-                                    <div>
-                                        <label class="text-sm font-medium text-green-700">Qty Setelah Refraksi</label>
-                                        <p class="mt-1 text-base text-gray-900 font-semibold">{{ number_format($approval->qty_after_refraksi, 2, ',', '.') }} kg</p>
-                                    </div>
+                                    @if($approval->refraksi_type !== 'lainnya')
+                                        <div>
+                                            <label class="text-sm font-medium text-green-700">Qty Sebelum Refraksi</label>
+                                            <p class="mt-1 text-base text-gray-900">{{ number_format($approval->qty_before_refraksi, 2, ',', '.') }} kg</p>
+                                        </div>
+                                        <div>
+                                            <label class="text-sm font-medium text-green-700">Qty Setelah Refraksi</label>
+                                            <p class="mt-1 text-base text-gray-900 font-semibold">{{ number_format($approval->qty_after_refraksi, 2, ',', '.') }} kg</p>
+                                        </div>
+                                    @endif
                                     <div>
                                         <label class="text-sm font-medium text-green-700">Potongan Refraksi</label>
                                         <p class="mt-1 text-xl text-red-600 font-bold">

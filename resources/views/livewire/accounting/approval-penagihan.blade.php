@@ -397,7 +397,17 @@
                                         Refraksi diambil dari Approval Pembayaran
                                     </p>
                                     <p class="text-blue-700 text-xs">
-                                        Tipe: <strong>{{ $selectedData->approvalPembayaran->refraksi_type === 'qty' ? 'Qty (%)' : ($selectedData->approvalPembayaran->refraksi_type === 'rupiah' ? 'Rupiah (Rp/kg)' : 'Lainnya') }}</strong>,
+                                        Tipe: <strong>
+                                            @if($selectedData->approvalPembayaran->refraksi_type === 'qty')
+                                                Qty (%)
+                                            @elseif($selectedData->approvalPembayaran->refraksi_type === 'rupiah')
+                                                Rupiah (Rp/kg)
+                                            @elseif($selectedData->approvalPembayaran->refraksi_type === 'lainnya')
+                                                Lainnya (Manual)
+                                            @else
+                                                {{ ucfirst($selectedData->approvalPembayaran->refraksi_type) }}
+                                            @endif
+                                        </strong>,
                                         Nilai: <strong>{{ number_format($selectedData->approvalPembayaran->refraksi_value, 2, ',', '.') }}</strong>
                                     </p>
 
@@ -433,7 +443,7 @@
                                     >
                                         <option value="qty">Refraksi Qty (%)</option>
                                         <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
-                                        <option value="lainnya">Lainnya (Manual)</option>
+                                        <option value="lainnya">Refraksi Lainnya (Manual)</option>
                                     </select>
                                     @error('invoiceForm.refraksi_type') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
@@ -446,7 +456,7 @@
                                         step="0.01"
                                         wire:model="invoiceForm.refraksi_value"
                                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                        placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? 'Contoh: 1 untuk 1%' : (($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah' ? 'Contoh: 40 untuk Rp 40/kg' : 'Nominal total potongan') }}"
+                                        placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? 'Contoh: 1 untuk 1%' : (($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah' ? 'Contoh: 40 untuk Rp 40/kg' : 'Contoh: 500000 untuk Rp 500.000') }}"
                                     />
                                     @error('invoiceForm.refraksi_value') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
@@ -459,10 +469,10 @@
                                     <p>• Contoh: 1% dari 5000 kg = 50 kg refraksi → menjadi 4950 kg</p>
                                 @elseif(($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah')
                                     <p>• <strong>Refraksi Rupiah:</strong> Potongan harga per kilogram</p>
-                                    <p>• Contoh: Rp 40/kg dari 5000 kg = Rp 200.000 potongan</p>
+                                    <p>• Contoh: Rp 40/kg × 5000 kg = Rp 200.000 potongan</p>
                                 @else
-                                    <p>• <strong>Refraksi Lainnya:</strong> Input manual nominal total potongan</p>
-                                    <p>• Contoh: Rp 500.000 untuk potongan langsung</p>
+                                    <p>• <strong>Refraksi Lainnya:</strong> Masukkan nominal total potongan secara manual</p>
+                                    <p>• Contoh: Rp 500.000 langsung menjadi total potongan</p>
                                 @endif
                             </div>
                         </div>
@@ -574,13 +584,25 @@
                                                 Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 0, ',', '.') }}
                                             </p>
                                         </div>
-                                    @else
+                                    @elseif($selectedData->invoice->refraksi_type === 'rupiah')
                                         <div class="text-xs space-y-1">
                                             <p class="text-gray-600">
                                                 <span class="font-medium">Tipe:</span> Refraksi Rupiah (Rp {{ number_format($selectedData->invoice->refraksi_value, 0, ',', '.') }}/kg)
                                             </p>
                                             <p class="text-gray-600">
                                                 <span class="font-medium">Qty:</span> {{ number_format($selectedData->invoice->qty_before_refraksi, 2, ',', '.') }} kg
+                                            </p>
+                                            <p class="text-red-600 font-semibold">
+                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+                                    @elseif($selectedData->invoice->refraksi_type === 'lainnya')
+                                        <div class="text-xs space-y-1">
+                                            <p class="text-gray-600">
+                                                <span class="font-medium">Tipe:</span> Refraksi Lainnya (Manual)
+                                            </p>
+                                            <p class="text-gray-600">
+                                                <span class="font-medium">Nilai Potongan:</span> Rp {{ number_format($selectedData->invoice->refraksi_value, 0, ',', '.') }}
                                             </p>
                                             <p class="text-red-600 font-semibold">
                                                 Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 0, ',', '.') }}
@@ -623,6 +645,7 @@
                                         >
                                             <option value="qty">Refraksi Qty (%)</option>
                                             <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
+                                            <option value="lainnya">Refraksi Lainnya (Manual)</option>
                                         </select>
                                     </div>
                                     <div>
@@ -635,7 +658,7 @@
                                             min="0"
                                             step="0.01"
                                             class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : '40 untuk Rp 40/kg' }}"
+                                            placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : (($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah' ? '40 untuk Rp 40/kg' : '500000 untuk Rp 500.000') }}"
                                         />
                                     </div>
                                 </div>

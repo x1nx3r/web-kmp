@@ -598,8 +598,10 @@
                                                 <i class="fas fa-percentage text-green-600 mr-1"></i>Qty ({{ number_format($approval->refraksi_value, 2) }}%)
                                             @elseif($approval->refraksi_type === 'rupiah')
                                                 <i class="fas fa-money-bill text-green-600 mr-1"></i>Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                            @elseif($approval->refraksi_type === 'lainnya')
+                                                <i class="fas fa-calculator text-green-600 mr-1"></i>Lainnya (Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }})
                                             @else
-                                                <i class="fas fa-calculator text-green-600 mr-1"></i>Refraksi Lainnya (Manual)
+                                                <i class="fas fa-calculator text-green-600 mr-1"></i>{{ ucfirst($approval->refraksi_type) }}
                                             @endif
                                         </p>
                                     </div>

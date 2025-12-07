@@ -1665,7 +1665,7 @@ class PengirimanController extends Controller
     public function verifikasiPengiriman(Request $request, $id)
     {
         try {
-            $pengiriman = Pengiriman::findOrFail($id);
+            $pengiriman = Pengiriman::with('details.orderDetail')->findOrFail($id);
             
             // Validate current status
             if ($pengiriman->status !== 'menunggu_verifikasi') {
@@ -1684,15 +1684,50 @@ class PengirimanController extends Controller
                 ], 403);
             }
             
-            // Update status to berhasil (successful delivery)
-            $pengiriman->status = 'berhasil';
-            $pengiriman->save();
+            // Start database transaction
+            DB::beginTransaction();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Pengiriman berhasil diverifikasi',
-                'pengiriman' => $pengiriman
-            ]);
+            try {
+                // Update pengiriman status to berhasil (successful delivery)
+                $pengiriman->status = 'berhasil';
+                $pengiriman->save();
+                
+                // Update related OrderDetail records
+                foreach ($pengiriman->details as $detail) {
+                    if ($detail->orderDetail) {
+                        $orderDetail = $detail->orderDetail;
+                        
+                        // Decrease qty by qty_kirim
+                        $newQty = (float)$orderDetail->qty - (float)$detail->qty_kirim;
+                        $orderDetail->qty = max(0, $newQty); // Ensure qty doesn't go negative
+                        
+                        // Recalculate total_harga based on new qty and harga_jual
+                        $orderDetail->total_harga = (float)$orderDetail->qty * (float)$orderDetail->harga_jual;
+                        
+                        // Save quietly to prevent triggering the 'saved' event that updates parent Order
+                        $orderDetail->saveQuietly();
+                        
+                        Log::info('Updated OrderDetail ID: ' . $orderDetail->id . 
+                                  ', New Qty: ' . $orderDetail->qty . 
+                                  ', New Total: ' . $orderDetail->total_harga);
+                    }
+                }
+                
+                // Commit the transaction
+                DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pengiriman berhasil diverifikasi dan qty order detail telah diperbarui',
+                    'pengiriman' => $pengiriman
+                ]);
+                
+            } catch (\Exception $e) {
+                // Rollback on any error
+                DB::rollBack();
+                throw $e;
+            }
+            
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,

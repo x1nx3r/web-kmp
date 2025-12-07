@@ -233,14 +233,14 @@ class OmsetController extends Controller
         
         // Handle AJAX request for Top Supplier
         if ($request->ajax() && $request->get('ajax') === 'top_supplier') {
-            // Using amount_after_refraksi from approval_pembayaran (actual payment to supplier)
-            $topSupplierQuery = DB::table('approval_pembayaran')
-                ->join('pengiriman', 'approval_pembayaran.pengiriman_id', '=', 'pengiriman.id')
+            // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
+            $topSupplierQuery = DB::table('pengiriman')
                 ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
                 ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+                ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
                 ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                    DB::raw('SUM(approval_pembayaran.amount_after_refraksi) as total'))
+                    DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
                 ->where('pengiriman.status', 'berhasil')
                 ->whereNull('pengiriman.deleted_at')
                 ->whereNull('pengiriman_details.deleted_at')
@@ -524,14 +524,14 @@ class OmsetController extends Controller
             ->get();
         
         // Get Top Supplier data
-        // Using amount_after_refraksi from approval_pembayaran (actual payment to supplier)
-        $topSupplierQuery = DB::table('approval_pembayaran')
-            ->join('pengiriman', 'approval_pembayaran.pengiriman_id', '=', 'pengiriman.id')
+        // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
+        $topSupplierQuery = DB::table('pengiriman')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
             ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
             ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                DB::raw('SUM(approval_pembayaran.amount_after_refraksi) as total'))
+                DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
             ->where('pengiriman.status', 'berhasil')
             ->whereNull('pengiriman.deleted_at')
             ->whereNull('pengiriman_details.deleted_at')

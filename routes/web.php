@@ -556,6 +556,10 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "getDetailBerhasil",
         ])->name("purchasing.pengiriman.detail-berhasil");
+        Route::post("pengiriman/{pengiriman}/update-catatan", [
+            PengirimanController::class,
+            "updateCatatan",
+        ])->name("purchasing.pengiriman.update-catatan");
         Route::get("pengiriman/{pengiriman}/detail-gagal", [
             PengirimanController::class,
             "getDetailGagal",
@@ -564,6 +568,14 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "getDetailVerifikasi",
         ])->name("purchasing.pengiriman.detail-verifikasi");
+        Route::get("pengiriman/{pengiriman}/detail-fisik", [
+            PengirimanController::class,
+            "getDetailFisik",
+        ])->name("purchasing.pengiriman.detail-fisik");
+        Route::post("pengiriman/{pengiriman}/verifikasi-fisik", [
+            PengirimanController::class,
+            "verifikasiFisik",
+        ])->name("purchasing.pengiriman.verifikasi-fisik");
         Route::get("pengiriman/{pengiriman}/revisi-modal", [
             PengirimanController::class,
             "getRevisiModal",
@@ -584,6 +596,10 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "verifikasiPengiriman",
         ])->name("purchasing.pengiriman.verifikasi");
+        Route::post("pengiriman/{pengiriman}/verifikasi-fisik", [
+            PengirimanController::class,
+            "verifikasiFisik",
+        ])->name("purchasing.pengiriman.verifikasi-fisik");
         Route::post("pengiriman/{pengiriman}/revisi", [
             PengirimanController::class,
             "revisiPengiriman",

@@ -28,6 +28,7 @@ class PengirimanController extends Controller
                 "order.klien:id,nama,cabang",
                 "purchasing:id,nama",
                 "pengirimanDetails",
+                "approvalPembayaran:id,pengiriman_id,refraksi_type,refraksi_value,refraksi_amount,qty_before_refraksi,qty_after_refraksi,amount_before_refraksi,amount_after_refraksi,bukti_pembayaran",
             ])
                 ->whereNotNull("purchase_order_id")
                 ->whereNotNull("purchasing_id")
@@ -116,6 +117,29 @@ class PengirimanController extends Controller
                 });
             }
 
+            // Apply search filter for menunggu fisik
+            if (
+                $status === "menunggu_fisik" &&
+                $request->filled("search_fisik")
+            ) {
+                $search = $request->get("search_fisik");
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas("order", function ($orderQuery) use ($search) {
+                        $orderQuery->where("po_number", "LIKE", "%{$search}%");
+                    })
+                        ->orWhereHas("purchasing", function (
+                            $purchasingQuery,
+                        ) use ($search) {
+                            $purchasingQuery->where(
+                                "nama",
+                                "LIKE",
+                                "%{$search}%",
+                            );
+                        })
+                        ->orWhere("no_pengiriman", "LIKE", "%{$search}%");
+                });
+            }
+
             // Apply purchasing filter for pengiriman masuk
             if (
                 $status === "pending" &&
@@ -157,6 +181,17 @@ class PengirimanController extends Controller
                 $query->where(
                     "purchasing_id",
                     $request->get("filter_purchasing_verifikasi"),
+                );
+            }
+
+            // Apply purchasing filter for menunggu fisik
+            if (
+                $status === "menunggu_fisik" &&
+                $request->filled("filter_purchasing_fisik")
+            ) {
+                $query->where(
+                    "purchasing_id",
+                    $request->get("filter_purchasing_fisik"),
                 );
             }
 
@@ -219,6 +254,17 @@ class PengirimanController extends Controller
                         ? "asc"
                         : "desc";
                 $query->orderBy("created_at", $sortOrder);
+            }
+            // Apply date sorting for menunggu fisik
+            elseif (
+                $status === "menunggu_fisik" &&
+                $request->filled("sort_date_fisik")
+            ) {
+                $sortOrder =
+                    $request->get("sort_date_fisik") === "oldest"
+                        ? "asc"
+                        : "desc";
+                $query->orderBy("created_at", $sortOrder);
             } else {
                 $query->orderBy("created_at", "desc");
             }
@@ -237,6 +283,11 @@ class PengirimanController extends Controller
             ["*"],
             "verifikasi_page",
         );
+        $menungguFisik = $baseQuery("menunggu_fisik")->paginate(
+            10,
+            ["*"],
+            "fisik_page",
+        );
         $pengirimanBerhasil = $baseQuery("berhasil")->paginate(
             10,
             ["*"],
@@ -253,6 +304,7 @@ class PengirimanController extends Controller
             compact(
                 "pengirimanMasuk",
                 "menungguVerifikasi",
+                "menungguFisik",
                 "pengirimanBerhasil",
                 "pengirimanGagal",
             ),
@@ -637,6 +689,7 @@ class PengirimanController extends Controller
                     "foto_tanda_terima" =>
                         "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240",
                     "catatan" => "nullable|string",
+                    "catatan_refraksi" => "nullable|string",
                     "details" => "required|array|min:1",
                     "details.*.bahan_baku_supplier_id" =>
                         "required|exists:bahan_baku_supplier,id",
@@ -729,8 +782,9 @@ class PengirimanController extends Controller
                 "bukti_foto_bongkar_uploaded_at" => $buktiFotoUploadedAt,
                 "foto_tanda_terima" => $tandaTerimaFileName,
                 "foto_tanda_terima_uploaded_at" => $tandaTerimaUploadedAt,
-                "catatan" => $validatedData["catatan"],
-                "status" => "menunggu_verifikasi",
+                "catatan" => $validatedData["catatan"] ?? null,
+                "catatan_refraksi" => $validatedData["catatan_refraksi"] ?? null,
+                "status" => "menunggu_fisik",
             ]);
 
             // Update existing details (don't delete and recreate)
@@ -990,7 +1044,172 @@ class PengirimanController extends Controller
     }
 
     /**
-     * Get detail for pengiriman berhasil
+     * Get detail for pengiriman menunggu fisik
+     */
+    public function getDetailFisik($id)
+    {
+        try {
+            $pengiriman = Pengiriman::with([
+                "order",
+                "order.klien",
+                "purchasing",
+                "forecast",
+                "pengirimanDetails.bahanBakuSupplier",
+                "pengirimanDetails.bahanBakuSupplier.supplier",
+                "pengirimanDetails.orderDetail",
+                "approvalPembayaran",
+                "invoicePenagihan",
+            ])
+                ->where("status", "menunggu_fisik")
+                ->findOrFail($id);
+
+            // Return HTML view for modal
+            return view(
+                "pages.purchasing.pengiriman.menunggu-fisik.detail",
+                compact("pengiriman"),
+            );
+        } catch (\Exception $e) {
+            Log::error("Error in getDetailFisik: " . $e->getMessage());
+            return response(
+                '<div class="text-center py-8 text-red-500">Error: ' .
+                    $e->getMessage() .
+                    "<br><small>" .
+                    $e->getFile() .
+                    ":" .
+                    $e->getLine() .
+                    "</small></div>",
+                500,
+            );
+        }
+    }
+
+    /**
+     * Get detail for pengiriman menunggu verifikasi
+     */
+    public function getDetailVerifikasi($id)
+    {
+        try {
+            $pengiriman = Pengiriman::with([
+                "order",
+                "order.klien",
+                "purchasing",
+                "forecast",
+                "pengirimanDetails.bahanBakuSupplier",
+                "pengirimanDetails.bahanBakuSupplier.supplier",
+                "pengirimanDetails.orderDetail",
+                "approvalPembayaran",
+                "invoicePenagihan",
+            ])
+                ->where("status", "menunggu_verifikasi")
+                ->findOrFail($id);
+
+            // Return HTML view for modal
+            return view(
+                "pages.purchasing.pengiriman.menunggu-verifikasi.detail",
+                compact("pengiriman"),
+            );
+        } catch (\Exception $e) {
+            Log::error("Error in getDetailVerifikasi: " . $e->getMessage());
+            return response(
+                '<div class="text-center py-8 text-red-500">Error: ' .
+                    $e->getMessage() .
+                    "<br><small>" .
+                    $e->getFile() .
+                    ":" .
+                    $e->getLine() .
+                    "</small></div>",
+                500,
+            );
+        }
+    }
+
+    /**
+     * Get detail for pengiriman gagal - returns JSON for AJAX
+     */
+    public function getDetailGagal($id)
+    {
+        try {
+            $pengiriman = Pengiriman::with([
+                "order",
+                "order.klien",
+                "purchasing",
+                "forecast",
+                "pengirimanDetails.bahanBakuSupplier",
+                "pengirimanDetails.bahanBakuSupplier.supplier",
+                "pengirimanDetails.orderDetail",
+                "approvalPembayaran",
+                "invoicePenagihan",
+            ])
+                ->where("status", "gagal")
+                ->findOrFail($id);
+
+            // Format data for response
+            $data = [
+                "id" => $pengiriman->id,
+                "no_pengiriman" => $pengiriman->no_pengiriman,
+                "status" => ucfirst($pengiriman->status),
+                "no_po" => $pengiriman->order->po_number ?? "-",
+                "pic_purchasing" => $pengiriman->purchasing->nama ?? "-",
+                "tanggal_kirim" => $pengiriman->tanggal_kirim
+                    ? Carbon::parse($pengiriman->tanggal_kirim)->format("d F Y")
+                    : "-",
+                "hari_kirim" => $pengiriman->hari_kirim ?? "-",
+                "total_qty" =>
+                    number_format(
+                        $pengiriman->total_qty_kirim ?? 0,
+                        0,
+                        ",",
+                        ".",
+                    ) . " kg",
+                "total_harga" =>
+                    "Rp " .
+                    number_format(
+                        $pengiriman->total_harga_kirim ?? 0,
+                        0,
+                        ",",
+                        ".",
+                    ),
+                "total_items" => $pengiriman->pengirimanDetails
+                    ? $pengiriman->pengirimanDetails->count()
+                    : 0,
+                "catatan" => $pengiriman->catatan,
+                "alasan_gagal" => $pengiriman->alasan_gagal,
+                "catatan_refraksi" => $pengiriman->catatan_refraksi,
+                "details" => $pengiriman->pengirimanDetails
+                    ? $pengiriman->pengirimanDetails->map(function ($detail) {
+                        return [
+                            "bahan_baku" =>
+                                $detail->bahanBakuSupplier->nama ?? "-",
+                            "supplier" =>
+                                $detail->bahanBakuSupplier->supplier->nama ??
+                                "-",
+                            "qty_kirim" => $detail->qty_kirim,
+                            "harga_satuan" => $detail->harga_satuan,
+                            "total_harga" => $detail->total_harga,
+                        ];
+                    })
+                    : [],
+            ];
+
+            return response()->json([
+                "success" => true,
+                "pengiriman" => $data,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error in getDetailGagal: " . $e->getMessage());
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" =>
+                        "Gagal memuat detail pengiriman: " . $e->getMessage()
+                ],
+                500
+            );
+        }
+    }
+
+    /**
+     * Get detail for pengiriman berhasil - this returns JSON for AJAX
      */
     public function getDetailBerhasil($id)
     {
@@ -1002,6 +1221,9 @@ class PengirimanController extends Controller
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
                 "pengirimanDetails.bahanBakuSupplier.supplier",
+                "pengirimanDetails.orderDetail",
+                "approvalPembayaran",
+                "invoicePenagihan",
             ])
                 ->where("status", "berhasil")
                 ->findOrFail($id);
@@ -1070,12 +1292,12 @@ class PengirimanController extends Controller
             }
 
             // Pengiriman timeline
-            // Pengiriman created (pending)
+            // Pengiriman created (pending - menunggu fisik)
             $timeline[] = [
                 "type" => "pengiriman",
                 "status" => "pending",
                 "title" => "Pengiriman Dibuat",
-                "description" => "Pengiriman {$pengiriman->no_pengiriman} telah dibuat",
+                "description" => "Pengiriman {$pengiriman->no_pengiriman} telah dibuat dan menunggu verifikasi fisik",
                 "timestamp" => $pengiriman->created_at,
                 "formatted_time" => $pengiriman->created_at
                     ? Carbon::parse($pengiriman->created_at)->format(
@@ -1086,7 +1308,40 @@ class PengirimanController extends Controller
                 "color" => "gray",
             ];
 
-            // Pengiriman updated (menunggu verifikasi)
+            // Fisik Diterima (estimate from file upload time or between created_at and updated_at)
+            $fisikVerifiedAt = null;
+            if ($pengiriman->foto_tanda_terima_uploaded_at) {
+                $fisikVerifiedAt = Carbon::parse($pengiriman->foto_tanda_terima_uploaded_at);
+            }
+            if ($pengiriman->bukti_foto_bongkar_uploaded_at) {
+                $buktiFotoAt = Carbon::parse($pengiriman->bukti_foto_bongkar_uploaded_at);
+                if (!$fisikVerifiedAt || $buktiFotoAt->lt($fisikVerifiedAt)) {
+                    $fisikVerifiedAt = $buktiFotoAt;
+                }
+            }
+            
+            // If no file upload time, estimate as midpoint between created and updated
+            if (!$fisikVerifiedAt && $pengiriman->created_at && $pengiriman->updated_at && $pengiriman->created_at != $pengiriman->updated_at) {
+                $createdTimestamp = Carbon::parse($pengiriman->created_at)->timestamp;
+                $updatedTimestamp = Carbon::parse($pengiriman->updated_at)->timestamp;
+                $midTimestamp = ($createdTimestamp + $updatedTimestamp) / 2;
+                $fisikVerifiedAt = Carbon::createFromTimestamp($midTimestamp);
+            }
+
+            if ($fisikVerifiedAt) {
+                $timeline[] = [
+                    "type" => "pengiriman",
+                    "status" => "fisik_diterima",
+                    "title" => "Fisik Diterima",
+                    "description" => "Barang telah diterima secara fisik dan dokumen telah diverifikasi oleh Direktur/Manager Purchasing",
+                    "timestamp" => $fisikVerifiedAt,
+                    "formatted_time" => $fisikVerifiedAt->format("d M Y, H:i"),
+                    "icon" => "fa-box-check",
+                    "color" => "purple",
+                ];
+            }
+
+            // Pengiriman updated (menunggu verifikasi dokumen oleh accounting)
             if (
                 $pengiriman->updated_at &&
                 $pengiriman->updated_at != $pengiriman->created_at
@@ -1094,15 +1349,15 @@ class PengirimanController extends Controller
                 $timeline[] = [
                     "type" => "pengiriman",
                     "status" => "menunggu_verifikasi",
-                    "title" => "Menunggu Verifikasi",
-                    "description" => "Pengiriman {$pengiriman->no_pengiriman} menunggu verifikasi",
+                    "title" => "Menunggu Verifikasi Dokumen",
+                    "description" => "Pengiriman {$pengiriman->no_pengiriman} menunggu verifikasi dokumen oleh Accounting",
                     "timestamp" => $pengiriman->updated_at,
                     "formatted_time" => $pengiriman->updated_at
                         ? Carbon::parse($pengiriman->updated_at)->format(
                             "d M Y, H:i",
                         )
                         : "-",
-                    "icon" => "fa-clock",
+                    "icon" => "fa-file-invoice",
                     "color" => "yellow",
                 ];
             }
@@ -1197,334 +1452,127 @@ class PengirimanController extends Controller
                     : [],
             ];
 
-            return response()->json([
-                "success" => true,
-                "pengiriman" => $data,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Gagal memuat detail pengiriman: " . $e->getMessage(),
-                ],
-                500,
-            );
-        }
-    }
+            // Add refraksi and price info if approval pembayaran exists
+            if ($pengiriman->approvalPembayaran) {
+                $approval = $pengiriman->approvalPembayaran;
+                $data["approval_pembayaran"] = [
+                    "refraksi_type" => $approval->refraksi_type,
+                    "refraksi_value" => $approval->refraksi_value,
+                    "refraksi_amount" => $approval->refraksi_amount,
+                    "qty_before_refraksi" => $approval->qty_before_refraksi,
+                    "qty_after_refraksi" => $approval->qty_after_refraksi,
+                    "amount_before_refraksi" =>
+                        $approval->amount_before_refraksi,
+                    "amount_after_refraksi" =>
+                        $approval->amount_after_refraksi,
+                ];
 
-    /**
-     * Get detail for pengiriman gagal
-     */
-    public function getDetailGagal($id)
-    {
-        try {
-            $pengiriman = Pengiriman::with([
-                "order",
-                "order.klien",
-                "purchasing",
-                "pengirimanDetails.bahanBakuSupplier",
-                "pengirimanDetails.bahanBakuSupplier.supplier",
-            ])
-                ->where("status", "gagal")
-                ->findOrFail($id);
-
-            // Format data for response
-            $data = [
-                "id" => $pengiriman->id,
-                "no_pengiriman" => $pengiriman->no_pengiriman,
-                "status" => ucfirst($pengiriman->status),
-                "no_po" => $pengiriman->order->po_number ?? "-",
-                "pic_purchasing" => $pengiriman->purchasing->nama ?? "-",
-                "tanggal_kirim" => $pengiriman->tanggal_kirim
-                    ? Carbon::parse($pengiriman->tanggal_kirim)->format("d F Y")
-                    : "-",
-                "hari_kirim" => $pengiriman->hari_kirim ?? "-",
-                "total_qty" =>
-                    number_format(
-                        $pengiriman->total_qty_kirim ?? 0,
-                        0,
-                        ",",
-                        ".",
-                    ) . " kg",
-                "total_harga" =>
-                    "Rp " .
-                    number_format(
-                        $pengiriman->total_harga_kirim ?? 0,
-                        0,
-                        ",",
-                        ".",
-                    ),
-                "total_items" => $pengiriman->pengirimanDetails
-                    ? $pengiriman->pengirimanDetails->count()
-                    : 0,
-                "catatan" => $pengiriman->catatan,
-                "details" => $pengiriman->pengirimanDetails
-                    ? $pengiriman->pengirimanDetails->map(function ($detail) {
-                        return [
-                            "bahan_baku" =>
-                                $detail->bahanBakuSupplier->nama ?? "-",
-                            "supplier" =>
-                                $detail->bahanBakuSupplier->supplier->nama ??
-                                "-",
-                            "qty_kirim" => $detail->qty_kirim,
-                            "harga_satuan" => $detail->harga_satuan,
-                            "total_harga" => $detail->total_harga,
-                        ];
-                    })
-                    : [],
-            ];
-
-            return response()->json([
-                "success" => true,
-                "pengiriman" => $data,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Gagal memuat detail pengiriman: " . $e->getMessage(),
-                ],
-                500,
-            );
-        }
-    }
-
-    /**
-     * Get detail for pengiriman verifikasi
-     */
-    public function getDetailVerifikasi($id)
-    {
-        try {
-            // Load pengiriman dengan relasi basic terlebih dahulu
-            $pengiriman = Pengiriman::where(
-                "status",
-                "menunggu_verifikasi",
-            )->findOrFail($id);
-
-            // Load relasi satu per satu untuk menghindari timeout
-            $pengiriman->load("purchasing");
-            $pengiriman->load("forecast");
-            $pengiriman->load("order.klien");
-            $pengiriman->load("pengirimanDetails");
-
-            // Debug logging untuk troubleshoot
-            Log::info("Debug Pengiriman Detail:", [
-                "pengiriman_id" => $pengiriman->id,
-                "purchase_order_id" => $pengiriman->purchase_order_id,
-                "has_order" => $pengiriman->order ? "YES" : "NO",
-                "qty_total" => $pengiriman->order?->qty_total,
-                "total_amount" => $pengiriman->order?->total_amount,
-            ]);
-
-            return view(
-                "pages.purchasing.pengiriman.menunggu-verifikasi.detail",
-                compact("pengiriman"),
-            );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error("Pengiriman not found with ID: " . $id);
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Pengiriman tidak ditemukan atau bukan status menunggu verifikasi",
-                ],
-                404,
-            );
-        } catch (\Exception $e) {
-            Log::error(
-                "Error in getDetailVerifikasi for ID " .
-                    $id .
-                    ": " .
-                    $e->getMessage(),
-            );
-            Log::error("Stack trace: " . $e->getTraceAsString());
-
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Gagal memuat detail pengiriman: " . $e->getMessage(),
-                ],
-                500,
-            );
-        }
-    }
-
-    /**
-     * Verifikasi pengiriman - ubah status menjadi berhasil dan kurangi qty Order
-     */
-    public function verifikasiPengiriman($id)
-    {
-        // Check user role authorization
-        $user = Auth::user();
-        if (!in_array($user->role, ["direktur", "manager_purchasing"])) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Anda tidak memiliki akses untuk memverifikasi pengiriman. Hanya Direktur dan Manager Purchasing yang dapat melakukan verifikasi.",
-                ],
-                403,
-            );
-        }
-
-        try {
-            Log::info("Starting verifikasi pengiriman for ID: {$id}");
-
-            DB::beginTransaction();
-
-            $pengiriman = Pengiriman::with([
-                "order",
-                "pengirimanDetails.orderDetail",
-            ])
-                ->where("status", "menunggu_verifikasi")
-                ->findOrFail($id);
-
-            Log::info("Found pengiriman", [
-                "pengiriman_id" => $pengiriman->id,
-                "order_id" => $pengiriman->purchase_order_id,
-                "details_count" => $pengiriman->pengirimanDetails->count(),
-                "total_qty_kirim" => $pengiriman->total_qty_kirim,
-            ]);
-
-            // Update status pengiriman menjadi berhasil (tanpa mengubah catatan)
-            $pengiriman->update([
-                "status" => "berhasil",
-                // Catatan tetap sama seperti sebelumnya
-            ]);
-
-            Log::info("Updated pengiriman status to berhasil");
-
-            // Kurangi qty dan total_harga di order_details untuk setiap detail
-            // PENTING: Gunakan withoutEvents() agar tidak trigger observer yang update order totals
-            foreach ($pengiriman->pengirimanDetails as $detail) {
-                $orderDetail = $detail->orderDetail;
-                if ($orderDetail) {
-                    $oldQty = $orderDetail->qty;
-                    $oldTotalHarga = $orderDetail->total_harga;
-                    $newQty = $orderDetail->qty - $detail->qty_kirim;
-
-                    // Hitung total_harga baru berdasarkan qty baru
-                    $newTotalHarga = max(0, $newQty) * $orderDetail->harga_jual;
-
-                    // Update tanpa trigger events (agar tidak update total_qty & total_amount di order)
-                    $orderDetail->withoutEvents(function () use (
-                        $orderDetail,
-                        $newQty,
-                        $newTotalHarga,
-                    ) {
-                        $orderDetail->update([
-                            "qty" => max(0, $newQty),
-                            "total_harga" => $newTotalHarga,
-                        ]);
-                    });
-
-                    Log::info(
-                        "Updated order detail qty and total_harga (without triggering order totals update)",
-                        [
-                            "order_detail_id" => $orderDetail->id,
-                            "old_qty" => $oldQty,
-                            "qty_kirim" => $detail->qty_kirim,
-                            "new_qty" => max(0, $newQty),
-                            "old_total_harga" => $oldTotalHarga,
-                            "new_total_harga" => $newTotalHarga,
-                            "harga_jual" => $orderDetail->harga_jual,
-                        ],
-                    );
-                } else {
-                    Log::warning(
-                        "OrderDetail not found for pengiriman detail",
-                        [
-                            "pengiriman_detail_id" => $detail->id,
-                            "purchase_order_bahan_baku_id" =>
-                                $detail->purchase_order_bahan_baku_id,
-                        ],
+                // Add bukti pembayaran URL if exists
+                if ($approval->bukti_pembayaran) {
+                    $data["bukti_pembayaran_url"] = asset(
+                        "storage/" . $approval->bukti_pembayaran,
                     );
                 }
+
+                // Calculate harga beli
+                $totalHargaBeli =
+                    $approval->amount_after_refraksi ??
+                    $approval->amount_before_refraksi ??
+                    $pengiriman->total_harga_kirim ??
+                    0;
+                $qtyAfterRefraksi =
+                    $approval->qty_after_refraksi ??
+                    $approval->qty_before_refraksi ??
+                    $pengiriman->total_qty_kirim ??
+                    1;
+                $hargaBeliPerKg =
+                    $qtyAfterRefraksi > 0
+                        ? $totalHargaBeli / $qtyAfterRefraksi
+                        : 0;
+
+                $data["total_harga_beli"] = $totalHargaBeli;
+                $data["qty_after_refraksi"] = $qtyAfterRefraksi;
+                $data["harga_beli_per_kg"] = $hargaBeliPerKg;
             }
 
-            // Update status order jika diperlukan (tanpa mengubah qty)
-            if ($pengiriman->order) {
-                $oldStatus = $pengiriman->order->status;
+            // Calculate harga jual
+            $hargaJualPerKg = 0;
+            $totalHargaJual = 0;
+            $qtyJual = 0;
+            $source = "";
 
-                // Jika status order adalah 'dikonfirmasi', ubah menjadi 'diproses'
-                if ($pengiriman->order->status === "dikonfirmasi") {
-                    $pengiriman->order->update([
-                        "status" => "diproses",
-                    ]);
-
-                    Log::info("Updated order status", [
-                        "order_id" => $pengiriman->order->id,
-                        "old_status" => $oldStatus,
-                        "new_status" => "diproses",
-                    ]);
-                }
-            } else {
-                Log::warning("Order not found for pengiriman", [
-                    "pengiriman_id" => $pengiriman->id,
-                    "purchase_order_id" => $pengiriman->purchase_order_id,
-                ]);
-            }
-
-            DB::commit();
-            Log::info("Verifikasi pengiriman completed successfully");
-
-            // After commit, check if order is nearing fulfillment and notify Marketing
-            if ($pengiriman->order) {
-                // Reload order to get fresh data after commit
-                $order = Order::with([
-                    "creator",
-                    "klien",
-                    "orderDetails",
-                ])->find($pengiriman->order->id);
-
-                if ($order && $order->status === "diproses") {
-                    $fulfillmentPercentage = $order->getFulfillmentPercentage();
-
-                    Log::info("Checking order fulfillment for notification", [
-                        "order_id" => $order->id,
-                        "fulfillment_percentage" => $fulfillmentPercentage,
-                    ]);
-
-                    // Notify if order is at 95-105% fulfillment
+            if ($pengiriman->invoicePenagihan) {
+                $invoice = $pengiriman->invoicePenagihan;
+                $totalHargaJual =
+                    $invoice->amount_after_refraksi ??
+                    $invoice->subtotal ??
+                    0;
+                $qtyJual =
+                    $invoice->qty_after_refraksi ??
+                    $invoice->qty_before_refraksi ??
+                    $pengiriman->total_qty_kirim ??
+                    1;
+                $hargaJualPerKg =
+                    $qtyJual > 0 ? $totalHargaJual / $qtyJual : 0;
+                $source = "Invoice Penagihan";
+            } elseif (
+                $pengiriman->pengirimanDetails &&
+                $pengiriman->pengirimanDetails->count() > 0
+            ) {
+                foreach ($pengiriman->pengirimanDetails as $detail) {
                     if (
-                        $fulfillmentPercentage >= 95 &&
-                        $fulfillmentPercentage <= 105
+                        $detail->orderDetail &&
+                        $detail->orderDetail->harga_jual > 0
                     ) {
-                        $notificationCount = NotificationService::notifyOrderNearingFulfillment(
-                            $order,
-                            $fulfillmentPercentage,
-                            $pengiriman,
-                        );
-
-                        Log::info(
-                            "Sent order nearing fulfillment notifications to Marketing",
-                            [
-                                "order_id" => $order->id,
-                                "notification_count" => $notificationCount,
-                                "fulfillment_percentage" => $fulfillmentPercentage,
-                            ],
-                        );
+                        $hargaJualPerKg += $detail->orderDetail->harga_jual;
+                        $totalHargaJual +=
+                            $detail->qty_kirim *
+                            $detail->orderDetail->harga_jual;
+                        $qtyJual += $detail->qty_kirim;
                     }
                 }
+                if (
+                    $pengiriman->pengirimanDetails->count() > 1 &&
+                    $qtyJual > 0
+                ) {
+                    $hargaJualPerKg = $totalHargaJual / $qtyJual;
+                }
+                $source = "Purchase Order";
             }
+
+            if ($hargaJualPerKg > 0) {
+                $data["harga_jual_per_kg"] = $hargaJualPerKg;
+                $data["total_harga_jual"] = $totalHargaJual;
+                $data["qty_jual"] = $qtyJual;
+                $data["harga_jual_source"] = $source;
+
+                // Calculate margin if harga beli is available
+                if (
+                    isset($data["total_harga_beli"]) &&
+                    $data["total_harga_beli"] > 0
+                ) {
+                    $margin =
+                        $totalHargaJual - $data["total_harga_beli"];
+                    $marginPercentage =
+                        ($margin / $data["total_harga_beli"]) * 100;
+                    $data["margin"] = $margin;
+                    $data["margin_percentage"] = $marginPercentage;
+                }
+            }
+
+            // Add catatan refraksi
+            $data["catatan_refraksi"] = $pengiriman->catatan_refraksi;
 
             return response()->json([
                 "success" => true,
-                "message" => "Pengiriman berhasil diverifikasi",
+                "pengiriman" => $data,
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error in verifikasiPengiriman: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
-
             return response()->json(
                 [
                     "success" => false,
                     "message" =>
-                        "Gagal memverifikasi pengiriman: " . $e->getMessage(),
+                        "Gagal memuat detail pengiriman: " . $e->getMessage(),
                 ],
                 500,
             );
@@ -1532,241 +1580,252 @@ class PengirimanController extends Controller
     }
 
     /**
-     * Revisi pengiriman - ubah status menjadi pending dan update catatan
+     * Update catatan for pengiriman
      */
-    public function revisiPengiriman(Request $request, $id)
+    public function updateCatatan(Request $request, $id)
     {
-        // Check user role authorization
-        $user = Auth::user();
-        if (!in_array($user->role, ["direktur", "manager_purchasing"])) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Anda tidak memiliki akses untuk merevisi pengiriman. Hanya Direktur dan Manager Purchasing yang dapat melakukan revisi.",
-                ],
-                403,
-            );
-        }
-
         try {
             $request->validate([
-                "catatan" => "required|string|max:1000",
-                "hapus_foto" => "nullable|boolean",
+                "catatan" => "nullable|string|max:1000",
             ]);
 
-            $pengiriman = Pengiriman::where(
-                "status",
-                "menunggu_verifikasi",
-            )->findOrFail($id);
-
-            // Jika diminta untuk hapus foto, hapus dari storage
-            if (
-                $request->get("hapus_foto", false) &&
-                $pengiriman->bukti_foto_bongkar
-            ) {
-                $oldPhotos = is_array($pengiriman->bukti_foto_bongkar)
-                    ? $pengiriman->bukti_foto_bongkar
-                    : [$pengiriman->bukti_foto_bongkar];
-
-                foreach ($oldPhotos as $oldPhoto) {
-                    if (
-                        Storage::disk("public")->exists(
-                            "pengiriman/bukti/" . $oldPhoto,
-                        )
-                    ) {
-                        Storage::disk("public")->delete(
-                            "pengiriman/bukti/" . $oldPhoto,
-                        );
-                    }
-                }
-
-                $pengiriman->update([
-                    "status" => "pending",
-                    "catatan" => $request->catatan,
-                    "bukti_foto_bongkar" => null,
-                ]);
-            } else {
-                $pengiriman->update([
-                    "status" => "pending",
-                    "catatan" => $request->catatan,
-                ]);
-            }
+            $pengiriman = Pengiriman::findOrFail($id);
+            $pengiriman->catatan = $request->catatan;
+            $pengiriman->save();
 
             return response()->json([
                 "success" => true,
-                "message" =>
-                    "Pengiriman berhasil direvisi dan dikembalikan ke status pending",
+                "message" => "Catatan berhasil diperbarui",
+                "catatan" => $pengiriman->catatan,
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" => "Validasi gagal",
+                    "errors" => $e->errors(),
+                ],
+                422,
+            );
         } catch (\Exception $e) {
             return response()->json(
                 [
                     "success" => false,
                     "message" =>
-                        "Gagal merevisi pengiriman: " . $e->getMessage(),
+                        "Gagal memperbarui catatan: " . $e->getMessage(),
                 ],
                 500,
             );
         }
     }
 
-    /**
-     * Get revisi modal for pengiriman verifikasi
-     */
-    public function getRevisiModal($id)
+    public function verifikasiFisik(Request $request, $id)
     {
         try {
-            // First, get the pengiriman with basic info
-            $pengiriman = Pengiriman::where(
-                "status",
-                "menunggu_verifikasi",
-            )->findOrFail($id);
-
-            // Load relations step by step with error handling
-            try {
-                $pengiriman->load("purchasing");
-            } catch (\Exception $e) {
-                Log::error(
-                    "Error loading purchasing relation in revisi modal: " .
-                        $e->getMessage(),
-                );
+            $pengiriman = Pengiriman::findOrFail($id);
+            
+            // Validate current status
+            if ($pengiriman->status !== 'menunggu_fisik') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengiriman tidak dalam status menunggu fisik'
+                ], 400);
             }
-
-            try {
-                $pengiriman->load([
-                    "order" => function ($query) {
-                        $query->with("klien");
-                    },
-                ]);
-            } catch (\Exception $e) {
-                Log::error(
-                    "Error loading order relation in revisi modal: " .
-                        $e->getMessage(),
-                );
+            
+            // Check user authorization
+            $user = Auth::user();
+            if (!in_array($user->role, ['direktur', 'manager_purchasing'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk memverifikasi fisik pengiriman'
+                ], 403);
             }
-
-            return view(
-                "pages.purchasing.pengiriman.menunggu-verifikasi.revisi",
-                compact("pengiriman"),
-            );
+            
+            // Update status to menunggu_verifikasi (next stage in workflow)
+            $pengiriman->status = 'menunggu_verifikasi';
+            $pengiriman->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengiriman berhasil diverifikasi fisik dan menunggu verifikasi dokumen',
+                'pengiriman' => $pengiriman
+            ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error("Pengiriman not found for revisi modal with ID: " . $id);
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Pengiriman tidak ditemukan atau bukan status menunggu verifikasi",
-                ],
-                404,
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan'
+            ], 404);
         } catch (\Exception $e) {
-            Log::error(
-                "Error in getRevisiModal for ID " .
-                    $id .
-                    ": " .
-                    $e->getMessage(),
-            );
-            Log::error("Stack trace: " . $e->getTraceAsString());
-
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Gagal memuat modal revisi: " . $e->getMessage(),
-                ],
-                500,
-            );
+            Log::error('Error in verifikasiFisik: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memverifikasi fisik: ' . $e->getMessage()
+            ], 500);
         }
     }
 
     /**
-     * Get verifikasi modal for pengiriman verifikasi
+     * Verifikasi pengiriman (menunggu_verifikasi -> berhasil)
+     * This is document verification by Direktur/Manager Purchasing
+     */
+    public function verifikasiPengiriman(Request $request, $id)
+    {
+        try {
+            $pengiriman = Pengiriman::with('details.orderDetail')->findOrFail($id);
+            
+            // Validate current status
+            if ($pengiriman->status !== 'menunggu_verifikasi') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengiriman tidak dalam status menunggu verifikasi'
+                ], 400);
+            }
+            
+            // Check user authorization
+            $user = Auth::user();
+            if (!in_array($user->role, ['direktur', 'manager_purchasing'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk memverifikasi dokumen pengiriman'
+                ], 403);
+            }
+            
+            // Start database transaction
+            DB::beginTransaction();
+            
+            try {
+                // Update pengiriman status to berhasil (successful delivery)
+                $pengiriman->status = 'berhasil';
+                $pengiriman->save();
+                
+                // Update related OrderDetail records
+                foreach ($pengiriman->details as $detail) {
+                    if ($detail->orderDetail) {
+                        $orderDetail = $detail->orderDetail;
+                        
+                        // Decrease qty by qty_kirim
+                        $newQty = (float)$orderDetail->qty - (float)$detail->qty_kirim;
+                        $orderDetail->qty = max(0, $newQty); // Ensure qty doesn't go negative
+                        
+                        // Recalculate total_harga based on new qty and harga_jual
+                        $orderDetail->total_harga = (float)$orderDetail->qty * (float)$orderDetail->harga_jual;
+                        
+                        // Save quietly to prevent triggering the 'saved' event that updates parent Order
+                        $orderDetail->saveQuietly();
+                        
+                        Log::info('Updated OrderDetail ID: ' . $orderDetail->id . 
+                                  ', New Qty: ' . $orderDetail->qty . 
+                                  ', New Total: ' . $orderDetail->total_harga);
+                    }
+                }
+                
+                // Commit the transaction
+                DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pengiriman berhasil diverifikasi dan qty order detail telah diperbarui',
+                    'pengiriman' => $pengiriman
+                ]);
+                
+            } catch (\Exception $e) {
+                // Rollback on any error
+                DB::rollBack();
+                throw $e;
+            }
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error in verifikasiPengiriman: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memverifikasi pengiriman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get verifikasi modal
      */
     public function getVerifikasiModal($id)
     {
         try {
-            // First, get the pengiriman with basic info
-            $pengiriman = Pengiriman::where(
-                "status",
-                "menunggu_verifikasi",
-            )->findOrFail($id);
+            $pengiriman = Pengiriman::with([
+                'order',
+                'order.klien',
+                'purchasing',
+                'forecast',
+                'pengirimanDetails.bahanBakuSupplier',
+                'pengirimanDetails.bahanBakuSupplier.supplier',
+                'pengirimanDetails.orderDetail',
+                'approvalPembayaran',
+                'invoicePenagihan',
+            ])
+            ->where('status', 'menunggu_verifikasi')
+            ->findOrFail($id);
 
-            // Load relations step by step with error handling
-            try {
-                $pengiriman->load("purchasing");
-            } catch (\Exception $e) {
-                Log::error(
-                    "Error loading purchasing relation in verifikasi modal: " .
-                        $e->getMessage(),
-                );
-            }
-
-            try {
-                $pengiriman->load([
-                    "order" => function ($query) {
-                        $query->with("klien");
-                    },
-                ]);
-            } catch (\Exception $e) {
-                Log::error(
-                    "Error loading order relation in verifikasi modal: " .
-                        $e->getMessage(),
-                );
-            }
-
-            // Load pengiriman details with safer approach
-            try {
-                $pengiriman->load([
-                    "pengirimanDetails" => function ($query) {
-                        $query->with([
-                            "orderDetail",
-                            "bahanBakuSupplier" => function ($q) {
-                                $q->with("supplier");
-                            },
-                        ]);
-                    },
-                ]);
-            } catch (\Exception $e) {
-                Log::error(
-                    "Error loading pengirimanDetails relation in verifikasi modal: " .
-                        $e->getMessage(),
-                );
-                // Load pengirimanDetails tanpa relasi bersarang sebagai fallback
-                $pengiriman->load("pengirimanDetails");
-            }
-
+            // Return HTML view for modal
             return view(
-                "pages.purchasing.pengiriman.menunggu-verifikasi.verifikasi",
-                compact("pengiriman"),
-            );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error(
-                "Pengiriman not found for verifikasi modal with ID: " . $id,
-            );
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Pengiriman tidak ditemukan atau bukan status menunggu verifikasi",
-                ],
-                404,
+                'pages.purchasing.pengiriman.menunggu-verifikasi.verifikasi',
+                compact('pengiriman')
             );
         } catch (\Exception $e) {
-            Log::error(
-                "Error in getVerifikasiModal for ID " .
-                    $id .
-                    ": " .
-                    $e->getMessage(),
+            Log::error('Error in getVerifikasiModal: ' . $e->getMessage());
+            return response(
+                '<div class="text-center py-8 text-red-500">Error: ' .
+                    $e->getMessage() .
+                    '<br><small>' .
+                    $e->getFile() .
+                    ':' .
+                    $e->getLine() .
+                    '</small></div>',
+                500
             );
-            Log::error("Stack trace: " . $e->getTraceAsString());
+        }
+    }
 
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Gagal memuat modal verifikasi: " . $e->getMessage(),
-                ],
-                500,
+    /**
+     * Get revisi modal
+     */
+    public function getRevisiModal($id)
+    {
+        try {
+            $pengiriman = Pengiriman::with([
+                'order',
+                'order.klien',
+                'purchasing',
+                'forecast',
+                'pengirimanDetails.bahanBakuSupplier',
+                'pengirimanDetails.bahanBakuSupplier.supplier',
+                'pengirimanDetails.orderDetail',
+                'approvalPembayaran',
+                'invoicePenagihan',
+            ])
+            ->where('status', 'menunggu_verifikasi')
+            ->findOrFail($id);
+
+            // Return HTML view for modal
+            return view(
+                'pages.purchasing.pengiriman.menunggu-verifikasi.revisi',
+                compact('pengiriman')
+            );
+        } catch (\Exception $e) {
+            Log::error('Error in getRevisiModal: ' . $e->getMessage());
+            return response(
+                '<div class="text-center py-8 text-red-500">Error: ' .
+                    $e->getMessage() .
+                    '<br><small>' .
+                    $e->getFile() .
+                    ':' .
+                    $e->getLine() .
+                    '</small></div>',
+                500
             );
         }
     }
@@ -1776,146 +1835,151 @@ class PengirimanController extends Controller
      */
     public function uploadFotoTandaTerima(Request $request, $id)
     {
-        // Check user role authorization - Only Direktur, Manager Purchasing, and Staff Purchasing can upload
-        $user = Auth::user();
-        if (
-            !in_array($user->role, [
-                "direktur",
-                "manager_purchasing",
-                "staff_purchasing",
-            ])
-        ) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Anda tidak memiliki akses untuk mengupload foto tanda terima. Hanya Direktur, Manager Purchasing, dan Staff Purchasing yang dapat melakukan aksi ini.",
-                ],
-                403,
-            );
-        }
-
-        // For Staff Purchasing, ensure they are the PIC
-        if ($user->role === "staff_purchasing") {
-            $pengiriman = Pengiriman::where(
-                "status",
-                "menunggu_verifikasi",
-            )->find($id);
-            if ($pengiriman && $pengiriman->purchasing_id !== $user->id) {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "message" =>
-                            "Anda hanya dapat mengupload foto tanda terima untuk pengiriman yang Anda tangani sebagai PIC.",
-                    ],
-                    403,
-                );
-            }
-        }
-
         try {
-            // Validate
             $request->validate([
-                "foto_tanda_terima" =>
-                    "required|file|mimes:jpeg,png,jpg,pdf|max:10240",
+                'foto_tanda_terima' => 'required|file|mimes:jpeg,png,jpg,pdf|max:10240',
+            ], [
+                'foto_tanda_terima.required' => 'File foto tanda terima harus diupload',
+                'foto_tanda_terima.file' => 'File tidak valid',
+                'foto_tanda_terima.mimes' => 'File harus berupa gambar (JPEG, PNG, JPG) atau PDF',
+                'foto_tanda_terima.max' => 'Ukuran file maksimal 10MB',
             ]);
 
-            // Find pengiriman (menunggu verifikasi only)
-            $pengiriman = Pengiriman::where(
-                "status",
-                "menunggu_verifikasi",
-            )->findOrFail($id);
-
-            // Handle file upload
-            if ($request->hasFile("foto_tanda_terima")) {
-                // Delete old photo if exists
-                if (
-                    $pengiriman->foto_tanda_terima &&
-                    Storage::disk("public")->exists(
-                        "pengiriman/tanda-terima/" .
-                            $pengiriman->foto_tanda_terima,
-                    )
-                ) {
-                    Storage::disk("public")->delete(
-                        "pengiriman/tanda-terima/" .
-                            $pengiriman->foto_tanda_terima,
-                    );
-                }
-
-                // Upload new file
-                $file = $request->file("foto_tanda_terima");
-                if ($file && $file->isValid()) {
-                    $tandaTerimaFileName =
-                        "tanda_terima_" .
-                        $pengiriman->id .
-                        "_" .
-                        time() .
-                        "." .
-                        $file->getClientOriginalExtension();
-                    $file->storeAs(
-                        "pengiriman/tanda-terima",
-                        $tandaTerimaFileName,
-                        "public",
-                    );
-
-                    // Update pengiriman
-                    $pengiriman->update([
-                        "foto_tanda_terima" => $tandaTerimaFileName,
-                        "foto_tanda_terima_uploaded_at" => now(),
-                    ]);
-
-                    return response()->json([
-                        "success" => true,
-                        "message" => "Foto tanda terima berhasil diupload",
-                        "foto_url" => asset(
-                            "storage/pengiriman/tanda-terima/" .
-                                $tandaTerimaFileName,
-                        ),
-                        "uploaded_at" => now()->format("d M Y, H:i") . " WIB",
-                    ]);
-                }
+            $pengiriman = Pengiriman::findOrFail($id);
+            
+            // Check user authorization
+            $user = Auth::user();
+            $canUpload = in_array($user->role, ['direktur', 'manager_purchasing', 'staff_purchasing']);
+            
+            if (!$canUpload) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk upload foto tanda terima'
+                ], 403);
             }
-
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" => "File tidak valid",
-                ],
-                400,
-            );
+            
+            // For staff purchasing, check if they are the PIC
+            if ($user->role === 'staff_purchasing' && $pengiriman->purchasing_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda hanya dapat upload foto untuk pengiriman yang Anda tangani'
+                ], 403);
+            }
+            
+            // Delete old file if exists
+            if ($pengiriman->foto_tanda_terima && Storage::disk('public')->exists('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima)) {
+                Storage::disk('public')->delete('pengiriman/tanda-terima/' . $pengiriman->foto_tanda_terima);
+            }
+            
+            // Upload new file
+            $file = $request->file('foto_tanda_terima');
+            $fileName = 'tanda_terima_' . $pengiriman->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $file->storeAs('pengiriman/tanda-terima', $fileName, 'public');
+            
+            // Update pengiriman
+            $pengiriman->foto_tanda_terima = $fileName;
+            $pengiriman->foto_tanda_terima_uploaded_at = now();
+            $pengiriman->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto tanda terima berhasil diupload',
+                'file_name' => $fileName,
+                'uploaded_at' => $pengiriman->foto_tanda_terima_uploaded_at->format('d M Y, H:i') . ' WIB'
+            ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Validasi gagal: " . $e->validator->errors()->first(),
-                ],
-                422,
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" =>
-                        "Pengiriman tidak ditemukan atau bukan status menunggu verifikasi",
-                ],
-                404,
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan'
+            ], 404);
         } catch (\Exception $e) {
-            Log::error(
-                "Error uploading foto tanda terima for ID " .
-                    $id .
-                    ": " .
-                    $e->getMessage(),
-            );
+            Log::error('Error in uploadFotoTandaTerima: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal upload foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" => "Gagal mengupload foto: " . $e->getMessage(),
-                ],
-                500,
-            );
+    /**
+     * Revisi pengiriman (kirim kembali ke pending untuk diperbaiki)
+     */
+    public function revisiPengiriman(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'catatan' => 'required|string|min:10|max:1000',
+            ], [
+                'catatan.required' => 'Catatan revisi harus diisi',
+                'catatan.min' => 'Catatan revisi minimal 10 karakter',
+                'catatan.max' => 'Catatan revisi maksimal 1000 karakter',
+            ]);
+
+            $pengiriman = Pengiriman::findOrFail($id);
+            
+            // Check user authorization - Only Direktur and Manager Purchasing can revise
+            $user = Auth::user();
+            if (!in_array($user->role, ['direktur', 'manager_purchasing'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk merevisi pengiriman. Hanya Direktur dan Manager Purchasing yang dapat melakukan revisi.'
+                ], 403);
+            }
+            
+            // Check if status is menunggu_verifikasi
+            if ($pengiriman->status !== 'menunggu_verifikasi') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengiriman tidak dalam status menunggu verifikasi'
+                ], 400);
+            }
+            
+            // Build revisi catatan with timestamp
+            $timestamp = now()->format('d M Y, H:i');
+            $revisedBy = $user->nama;
+            $revisiCatatan = "[REVISI oleh {$revisedBy} pada {$timestamp}]\n" . $request->catatan;
+            
+            // Append to existing catatan if exists
+            if ($pengiriman->catatan) {
+                $pengiriman->catatan = $pengiriman->catatan . "\n\n" . $revisiCatatan;
+            } else {
+                $pengiriman->catatan = $revisiCatatan;
+            }
+            
+            // Update status back to pending
+            $pengiriman->status = 'pending';
+            $pengiriman->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengiriman berhasil direvisi dan dikembalikan ke status pending',
+                'pengiriman' => $pengiriman
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error in revisiPengiriman: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal merevisi pengiriman: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

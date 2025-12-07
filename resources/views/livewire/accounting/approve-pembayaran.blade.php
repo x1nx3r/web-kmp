@@ -188,17 +188,32 @@
                         </div>
                     @endif
 
-                    {{-- Catatan Pengiriman --}}
+                    {{-- Catatan Pengiriman (Card Putih) --}}
                     @if(! empty($pengiriman->catatan))
-                        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg shadow-sm border border-yellow-200">
-                            <div class="border-b border-yellow-200 bg-yellow-100 px-6 py-4">
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
                                 <h2 class="text-lg font-semibold text-gray-900 flex items-center">
-                                    <i class="fas fa-sticky-note text-yellow-600 mr-3"></i>
+                                    <i class="fas fa-sticky-note text-gray-600 mr-3"></i>
                                     Catatan Pengiriman
                                 </h2>
                             </div>
                             <div class="p-6">
                                 <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{{ $pengiriman->catatan }}</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Catatan Refraksi (Card Kuning) --}}
+                    @if(! empty($pengiriman->catatan_refraksi))
+                        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg shadow-sm border border-yellow-200">
+                            <div class="border-b border-yellow-200 bg-yellow-100 px-6 py-4">
+                                <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                                    <i class="fas fa-calculator text-yellow-600 mr-3"></i>
+                                    Catatan Refraksi
+                                </h2>
+                            </div>
+                            <div class="p-6">
+                                <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{{ $pengiriman->catatan_refraksi }}</p>
                             </div>
                         </div>
                     @endif

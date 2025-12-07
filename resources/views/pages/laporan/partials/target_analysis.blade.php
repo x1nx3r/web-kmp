@@ -357,7 +357,7 @@
                 </div>
                 <p class="mt-2 text-xs text-gray-500">
                     <i class="fas fa-info-circle mr-1"></i>
-                    Target akan dibagi otomatis: 52 minggu & 12 bulan
+                    Target akan dibagi otomatis: 48 minggu (4 minggu per bulan) & 12 bulan
                 </p>
             </div>
             <div class="mb-6 p-4 bg-indigo-50 rounded-lg">
@@ -462,8 +462,11 @@ function updateTargetPreview() {
     const cleanValue = input.replace(/\D/g, '');
     const targetTahunan = parseInt(cleanValue) || 0;
     
-    const targetMingguan = Math.round(targetTahunan / 52);
-    const targetBulanan = Math.round(targetMingguan * 4);
+    // Target Bulanan = Target Tahunan / 12 bulan
+    const targetBulanan = Math.round(targetTahunan / 12);
+    
+    // Target Mingguan = Target Tahunan / 48 minggu (12 bulan x 4 minggu per bulan)
+    const targetMingguan = Math.round(targetTahunan / 48);
     
     document.getElementById('previewMingguan').textContent = 'Rp ' + targetMingguan.toLocaleString('id-ID');
     document.getElementById('previewBulanan').textContent = 'Rp ' + targetBulanan.toLocaleString('id-ID');

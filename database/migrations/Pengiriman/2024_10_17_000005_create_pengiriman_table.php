@@ -25,8 +25,9 @@ return new class extends Migration
             $table->timestamp('bukti_foto_bongkar_uploaded_at')->nullable();
             $table->string('foto_tanda_terima')->nullable();
             $table->timestamp('foto_tanda_terima_uploaded_at')->nullable();
-            $table->enum('status', ['pending','menunggu_verifikasi', 'berhasil', 'gagal'])->default('pending');
+            $table->enum('status', ['pending','menunggu_fisik','menunggu_verifikasi', 'berhasil', 'gagal'])->default('pending');
             $table->text('catatan')->nullable();
+            $table->text('catatan_refraksi')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

@@ -55,12 +55,12 @@ class ApprovalPenagihan extends Component
 
     public function render()
     {
-        // Get pengiriman with status 'berhasil' AND approval_pembayaran completed
+        // Get pengiriman with status 'berhasil' OR 'menunggu_verifikasi' AND approval_pembayaran completed
         // Show in 'pending' tab - untuk buat invoice
         $pengirimansWithoutInvoice = null;
 
         if ($this->activeTab === 'pending') {
-            $pengirimansWithoutInvoice = Pengiriman::where('status', 'berhasil')
+            $pengirimansWithoutInvoice = Pengiriman::whereIn('status', ['berhasil', 'menunggu_verifikasi'])
                 ->doesntHave('invoicePenagihan')
                 ->whereHas('approvalPembayaran', function($q) {
                     $q->where('status', 'completed');
@@ -85,7 +85,10 @@ class ApprovalPenagihan extends Component
 
         // Filter by tab
         if ($this->activeTab === 'pending') {
-            $query->where('status', 'pending');
+            $query->where('status', 'pending')
+                  ->whereHas('pengiriman', function($q) {
+                      $q->whereIn('status', ['berhasil', 'menunggu_verifikasi']);
+                  });
         } else {
             // approved tab - hanya yang completed
             $query->where('status', 'completed');

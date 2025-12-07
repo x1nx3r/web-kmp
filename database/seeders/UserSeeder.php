@@ -72,6 +72,14 @@ class UserSeeder extends Seeder
                 'role' => 'staff_accounting',
                 'password' => Hash::make('password123'),
                 'status' => 'aktif'
+            ],
+            [
+                'nama' => 'Azmil',
+                'username' => 'azmil',
+                'email' => 'azmilm041@gmail.com',
+                'role' => 'staff_accounting',
+                'password' => Hash::make('password123'),
+                'status' => 'aktif'
             ]
 
         ];

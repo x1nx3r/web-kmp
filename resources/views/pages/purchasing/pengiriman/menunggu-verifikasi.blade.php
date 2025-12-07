@@ -150,7 +150,17 @@
                         <div class="flex items-center space-x-3">
                             <div class="text-right">
                                 <p class="text-xs text-gray-500">{{ $pengirimanList->count() }} {{ $pengirimanList->count() == 1 ? 'pengiriman' : 'pengiriman' }}</p>
-                                @php $totalHarga = $pengirimanList->sum('total_harga_kirim'); @endphp
+                                @php 
+                                    // Calculate total with refraksi consideration
+                                    $totalHarga = 0;
+                                    foreach($pengirimanList as $item) {
+                                        if($item->approvalPembayaran && $item->approvalPembayaran->amount_after_refraksi > 0) {
+                                            $totalHarga += $item->approvalPembayaran->amount_after_refraksi;
+                                        } else {
+                                            $totalHarga += $item->total_harga_kirim;
+                                        }
+                                    }
+                                @endphp
                                 @if($totalHarga > 0)
                                     <p class="text-sm font-semibold text-yellow-600">Rp {{ number_format($totalHarga, 0, ',', '.') }}</p>
                                 @endif
@@ -212,16 +222,58 @@
                                                         {{ $pengiriman->tanggal_kirim->format('d M Y') }}
                                                     </span>
                                                 @endif
-                                                @if($pengiriman->total_qty_kirim && $pengiriman->total_qty_kirim > 0)
-                                                    <span class="flex items-center gap-1">
-                                                        <i class="fas fa-weight text-yellow-600"></i>
-                                                        {{ number_format($pengiriman->total_qty_kirim, 0, ',', '.') }} kg
+                                                
+                                                {{-- Qty - Cek apakah ada refraksi dari approval pembayaran --}}
+                                                @php
+                                                    $qtyToShow = $pengiriman->total_qty_kirim;
+                                                    $hasRefraksiQty = false;
+                                                    $refraksiQtyAmount = 0;
+                                                    
+                                                    if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->qty_after_refraksi > 0) {
+                                                        $qtyToShow = $pengiriman->approvalPembayaran->qty_after_refraksi;
+                                                        $hasRefraksiQty = true;
+                                                        $refraksiQtyAmount = $pengiriman->approvalPembayaran->qty_before_refraksi - $pengiriman->approvalPembayaran->qty_after_refraksi;
+                                                    }
+                                                @endphp
+                                                
+                                                @if($qtyToShow && $qtyToShow > 0)
+                                                    <span class="flex flex-col gap-0.5">
+                                                        <span class="flex items-center gap-1">
+                                                            <i class="fas fa-weight text-yellow-600"></i>
+                                                            <span class="font-medium">{{ number_format($qtyToShow, 0, ',', '.') }} kg</span>
+                                                        </span>
+                                                        @if($hasRefraksiQty && $refraksiQtyAmount > 0)
+                                                            <span class="text-red-600 text-[10px] ml-4">
+                                                                <i class="fas fa-arrow-down"></i>
+                                                                Refraksi: {{ number_format($refraksiQtyAmount, 2, ',', '.') }} kg
+                                                            </span>
+                                                        @endif
                                                     </span>
                                                 @endif
-                                                @if($pengiriman->total_harga_kirim && $pengiriman->total_harga_kirim > 0)
-                                                    <span class="flex items-center gap-1 font-medium text-green-700">
-                                                        <i class="fas fa-money-bill-wave"></i>
-                                                        Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}
+                                                
+                                                {{-- Amount - Cek apakah ada refraksi dari approval pembayaran --}}
+                                                @php
+                                                    $amountToShow = $pengiriman->total_harga_kirim;
+                                                    $hasRefraksiAmount = false;
+                                                    
+                                                    if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->amount_after_refraksi > 0) {
+                                                        $amountToShow = $pengiriman->approvalPembayaran->amount_after_refraksi;
+                                                        $hasRefraksiAmount = true;
+                                                    }
+                                                @endphp
+                                                
+                                                @if($amountToShow && $amountToShow > 0)
+                                                    <span class="flex flex-col gap-0.5">
+                                                        <span class="flex items-center gap-1 font-medium text-green-700">
+                                                            <i class="fas fa-money-bill-wave"></i>
+                                                            <span>Rp {{ number_format($amountToShow, 0, ',', '.') }}</span>
+                                                        </span>
+                                                        @if($hasRefraksiAmount && $pengiriman->approvalPembayaran->refraksi_amount > 0)
+                                                            <span class="text-red-600 text-[10px] ml-4">
+                                                                <i class="fas fa-arrow-down"></i>
+                                                                Refraksi: Rp {{ number_format($pengiriman->approvalPembayaran->refraksi_amount, 0, ',', '.') }}
+                                                            </span>
+                                                        @endif
                                                     </span>
                                                 @endif
                                             </div>
@@ -231,6 +283,17 @@
                                         
                                         {{-- Action Button Section --}}
                                         <div class="flex flex-col sm:flex-row gap-2 sm:w-auto w-full">
+                                            {{-- Download Bukti Pembayaran Button - Accessible for All Users --}}
+                                            @if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->bukti_pembayaran)
+                                                <a href="{{ asset('storage/' . $pengiriman->approvalPembayaran->bukti_pembayaran) }}" 
+                                                   download
+                                                   class="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center transition-all duration-200 w-full sm:w-auto whitespace-nowrap shadow-sm hover:shadow" 
+                                                   title="Download Bukti Pembayaran">
+                                                    <i class="fas fa-download mr-1.5"></i>
+                                                    Bukti Bayar
+                                                </a>
+                                            @endif
+                                            
                                             @php
                                                 // Check if user is PIC for this pengiriman (for Staff Purchasing)
                                                 $isPIC = $pengiriman->purchasing_id === $currentUser->id;

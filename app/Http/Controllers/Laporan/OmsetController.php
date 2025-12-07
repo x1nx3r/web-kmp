@@ -92,7 +92,7 @@ class OmsetController extends Controller
         $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
         $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
         
-        // Calculate Monthly Breakdown dengan detail mingguan
+        // Calculate Monthly Breakdown dengan detail mingguan (4 minggu per bulan)
         $rekapBulanan = [];
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             // Omset total bulan - GUNAKAN tanggal_kirim dari pengiriman
@@ -105,20 +105,31 @@ class OmsetController extends Controller
             $progressBulanIni = $targetBulanan > 0 ? ($omsetBulan / $targetBulanan) * 100 : 0;
             $selisih = $omsetBulan - $targetBulanan;
             
-            // Calculate weekly breakdown for this month - GUNAKAN KALENDER SEBENARNYA
+            // Calculate weekly breakdown for this month - SETIAP BULAN 4 MINGGU (7 hari per minggu)
             $mingguanDetail = [];
             $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
             $endDate = $startDate->copy()->endOfMonth();
-            $totalDaysInMonth = $startDate->daysInMonth;
             
-            // Bagi bulan berdasarkan jumlah hari sebenarnya, bukan asumsi 4 minggu
-            // Setiap minggu adalah 7 hari, jadi bisa ada 4-5 minggu per bulan
-            $minggu = 1;
-            $currentDate = $startDate->copy();
-            
-            while ($currentDate <= $endDate) {
-                $weekStart = $currentDate->copy();
-                $weekEnd = $currentDate->copy()->addDays(6)->min($endDate);
+            // Bagi bulan menjadi tepat 4 minggu (7 hari per minggu = 28 hari)
+            // Sisa hari di akhir bulan (29, 30, 31) masuk ke minggu ke-4
+            for ($minggu = 1; $minggu <= 4; $minggu++) {
+                if ($minggu == 1) {
+                    $weekStart = $startDate->copy();
+                } else {
+                    $weekStart = $startDate->copy()->addDays(($minggu - 1) * 7);
+                }
+                
+                if ($minggu == 4) {
+                    // Minggu ke-4 ambil sampai akhir bulan (bisa lebih dari 7 hari)
+                    $weekEnd = $endDate->copy();
+                } else {
+                    $weekEnd = $weekStart->copy()->addDays(6)->min($endDate);
+                }
+                
+                // Skip jika weekStart sudah melewati end of month
+                if ($weekStart > $endDate) {
+                    break;
+                }
                 
                 $omsetMinggu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                     ->where('pengiriman.status', 'berhasil')
@@ -132,9 +143,6 @@ class OmsetController extends Controller
                     'progress' => $progressMingguIni,
                     'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
                 ];
-                
-                $minggu++;
-                $currentDate->addDays(7);
             }
             
             $rekapBulanan[$bulan] = [
@@ -225,14 +233,14 @@ class OmsetController extends Controller
         
         // Handle AJAX request for Top Supplier
         if ($request->ajax() && $request->get('ajax') === 'top_supplier') {
-            // Using amount_after_refraksi from approval_pembayaran (actual payment to supplier)
-            $topSupplierQuery = DB::table('approval_pembayaran')
-                ->join('pengiriman', 'approval_pembayaran.pengiriman_id', '=', 'pengiriman.id')
+            // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
+            $topSupplierQuery = DB::table('pengiriman')
                 ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
                 ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+                ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
                 ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                    DB::raw('SUM(approval_pembayaran.amount_after_refraksi) as total'))
+                    DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
                 ->where('pengiriman.status', 'berhasil')
                 ->whereNull('pengiriman.deleted_at')
                 ->whereNull('pengiriman_details.deleted_at')
@@ -516,14 +524,14 @@ class OmsetController extends Controller
             ->get();
         
         // Get Top Supplier data
-        // Using amount_after_refraksi from approval_pembayaran (actual payment to supplier)
-        $topSupplierQuery = DB::table('approval_pembayaran')
-            ->join('pengiriman', 'approval_pembayaran.pengiriman_id', '=', 'pengiriman.id')
+        // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
+        $topSupplierQuery = DB::table('pengiriman')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
             ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
             ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                DB::raw('SUM(approval_pembayaran.amount_after_refraksi) as total'))
+                DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
             ->where('pengiriman.status', 'berhasil')
             ->whereNull('pengiriman.deleted_at')
             ->whereNull('pengiriman_details.deleted_at')

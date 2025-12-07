@@ -14,8 +14,8 @@ class PengirimanObserver
      */
     public function created(Pengiriman $pengiriman): void
     {
-        // Auto-create approval pembayaran if status is 'menunggu_verifikasi'
-        if ($pengiriman->status === 'menunggu_verifikasi') {
+        // Auto-create approval pembayaran if status is 'menunggu_fisik'
+        if ($pengiriman->status === 'menunggu_fisik') {
             $this->createApprovalPembayaran($pengiriman);
         }
     }
@@ -25,8 +25,8 @@ class PengirimanObserver
      */
     public function updated(Pengiriman $pengiriman): void
     {
-        // Check if status changed to 'menunggu_verifikasi'
-        if ($pengiriman->isDirty('status') && $pengiriman->status === 'menunggu_verifikasi') {
+        // Check if status changed to 'menunggu_fisik'
+        if ($pengiriman->isDirty('status') && $pengiriman->status === 'menunggu_fisik') {
             // Check if approval pembayaran already exists
             if (!$pengiriman->approvalPembayaran) {
                 $this->createApprovalPembayaran($pengiriman);

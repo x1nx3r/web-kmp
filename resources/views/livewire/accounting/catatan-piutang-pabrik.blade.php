@@ -81,6 +81,24 @@
         </div>
     </div>
 
+    {{-- Export Section --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-file-export text-blue-600 text-xl mr-3"></i>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-800">Export Laporan</h3>
+                    <p class="text-xs text-gray-500">Cetak laporan piutang per pabrik/klien</p>
+                </div>
+            </div>
+            <button wire:click="openExportModal"
+                class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center space-x-2">
+                <i class="fas fa-file-pdf"></i>
+                <span class="font-medium">Cetak PDF per Pabrik</span>
+            </button>
+        </div>
+    </div>
+
     {{-- Filters & Search --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 p-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -543,6 +561,80 @@
                 <button type="button" wire:click="closeDetailModal" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-md font-medium">
                     <i class="fas fa-times mr-2"></i>Tutup
                 </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Export Modal --}}
+    @if($showExportModal)
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 rounded-t-xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-file-pdf text-white text-2xl"></i>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Export PDF Piutang</h3>
+                            <p class="text-sm text-blue-100">Pilih klien untuk dicetak</p>
+                        </div>
+                    </div>
+                    <button wire:click="closeExportModal" class="text-white hover:text-blue-200 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                @if (session()->has('error'))
+                    <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                            <p class="text-sm text-red-700">{{ session('error') }}</p>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-building mr-1"></i> Pilih Klien/Pabrik
+                    </label>
+                    <select wire:model="selectedKlienForExport"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Pilih Klien --</option>
+                        @foreach($kliens as $klien)
+                            <option value="{{ $klien->id }}">{{ $klien->nama }}</option>
+                        @endforeach
+                    </select>
+                    @error('selectedKlienForExport')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-2"></i>
+                        <div class="text-sm text-blue-700">
+                            <p class="font-medium mb-1">Informasi:</p>
+                            <ul class="list-disc list-inside space-y-1 text-xs">
+                                <li>PDF akan berisi semua invoice klien yang dipilih</li>
+                                <li>Termasuk invoice yang sudah lunas maupun belum</li>
+                                <li>Format: Landscape (A4)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button wire:click="closeExportModal"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-times mr-2"></i>Batal
+                    </button>
+                    <button wire:click="exportPdfPerKlien"
+                        class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                        <i class="fas fa-download mr-2"></i>Cetak PDF
+                    </button>
+                </div>
             </div>
         </div>
     </div>

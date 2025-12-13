@@ -29,10 +29,14 @@ class CatatanPiutangPabrik extends Component
     // Modal states
     public $showDetailModal = false;
     public $showPembayaranModal = false;
+    public $showExportModal = false;
 
     // Detail data
     public $detailPiutang;
     public $selectedPiutang;
+
+    // Export PDF
+    public $selectedKlienForExport = '';
 
     // Pembayaran form
     public $tanggal_bayar;
@@ -347,5 +351,87 @@ class CatatanPiutangPabrik extends Component
 
         $sequence = $lastPembayaran ? (intval(substr($lastPembayaran->no_pembayaran, -4)) + 1) : 1;
         return 'PAY-PABRIK-' . now()->format('Ym') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function openExportModal()
+    {
+        $this->showExportModal = true;
+        $this->selectedKlienForExport = '';
+    }
+
+    public function closeExportModal()
+    {
+        $this->showExportModal = false;
+        $this->selectedKlienForExport = '';
+    }
+
+    public function exportPdfPerKlien()
+    {
+        $this->validate([
+            'selectedKlienForExport' => 'required|exists:kliens,id',
+        ], [
+            'selectedKlienForExport.required' => 'Silakan pilih klien terlebih dahulu',
+        ]);
+
+        $klien = Klien::findOrFail($this->selectedKlienForExport);
+
+        // Get all invoices for this klien
+        $invoices = \App\Models\InvoicePenagihan::with(['pengiriman.klien', 'approvalPenagihan', 'pembayaranPabrik'])
+            ->whereHas('approvalPenagihan', function($q) {
+                $q->where('status', 'completed');
+            })
+            ->whereHas('pengiriman.order', function($q) {
+                $q->where('klien_id', $this->selectedKlienForExport);
+            })
+            ->orderBy('invoice_date', 'asc')
+            ->get();
+
+        if ($invoices->isEmpty()) {
+            session()->flash('error', 'Tidak ada data piutang untuk klien ini');
+            $this->closeExportModal();
+            return;
+        }
+
+        // Calculate data for each invoice
+        $data = [];
+        $grandTotal = 0;
+        $grandSisaPiutang = 0;
+
+        foreach ($invoices as $invoice) {
+            $totalPaid = $invoice->pembayaranPabrik->sum('jumlah_bayar');
+            $sisaPiutang = $invoice->total_amount - $totalPaid;
+
+            $data[] = [
+                'tanggal' => $invoice->invoice_date,
+                'transaksi' => 'Sales Invoice',
+                'no_invoice' => $invoice->invoice_number,
+                'jatuh_tempo' => $invoice->due_date,
+                'deskripsi' => '',
+                'jumlah' => $invoice->total_amount,
+                'sisa_piutang' => $sisaPiutang,
+            ];
+
+            $grandTotal += $invoice->total_amount;
+            $grandSisaPiutang += $sisaPiutang;
+        }
+
+        // Generate PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.piutang-pabrik', [
+            'klien' => $klien,
+            'data' => $data,
+            'grandTotal' => $grandTotal,
+            'grandSisaPiutang' => $grandSisaPiutang,
+            'tanggalCetak' => now()->format('d/m/Y'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        $fileName = 'Laporan_Piutang_' . str_replace(' ', '', $klien->nama) . '_' . now()->format('d-m-Y') . '.pdf';
+
+        $this->closeExportModal();
+
+        return response()->streamDownload(function() use ($pdf) {
+            echo $pdf->output();
+        }, $fileName);
     }
 }

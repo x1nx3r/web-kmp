@@ -305,7 +305,7 @@ class PengirimanExport implements
             });
         }
 
-        return $query->orderBy('tanggal_kirim', 'desc')->get();
+        return $query->orderBy('tanggal_kirim', 'asc')->get();
     }
 
     /**

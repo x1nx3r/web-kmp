@@ -41,10 +41,10 @@ class ForecastPendingExport implements
         $data = [];
         
         // Baris 1: Judul
-        $data[] = ['LAPORAN FORECAST PENDING', '', '', '', '', '', '', '', ''];
+        $data[] = ['LAPORAN FORECAST PENDING', '', '', '', '', '', '', '', '', ''];
         
         // Baris 2: Tanggal Export
-        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', ''];
+        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', ''];
         
         // Baris 3: Filter
         $filterInfo = [];
@@ -62,26 +62,26 @@ class ForecastPendingExport implements
         }
         
         if (!empty($filterInfo)) {
-            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', ''];
         } else {
-            $data[] = ['Filter: Semua Data Forecast Pending', '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: Semua Data Forecast Pending', '', '', '', '', '', '', '', '', ''];
         }
         
         // Baris 4: Kosong
-        $data[] = ['', '', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', '', ''];
         
         // Header tabel
         $data[] = [
-            'No PO',
             'Tanggal Perkiraan Kirim',
             'Hari Perkiraan Kirim',
-            'PIC Supplier',
+            'No PO',
             'Supplier',
             'Bahan Baku PO',
             'Nama Pabrik',
             'QTY Forecasting',
             'Harga Beli',
-            'Total Harga Forecasting'
+            'Total Harga Forecasting',
+            'PIC Supplier'
         ];
 
         // Data forecasts
@@ -94,16 +94,16 @@ class ForecastPendingExport implements
             if ($forecastDetails->isEmpty()) {
                 // Jika tidak ada details, tampilkan data forecast saja
                 $data[] = [
-                    optional($forecast->order)->po_number ?? 'N/A',
                     $forecast->tanggal_forecast ? Carbon::parse($forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
                     $forecast->hari_kirim_forecast ?? 'N/A',
-                    'N/A',
+                    optional($forecast->order)->po_number ?? 'N/A',
                     'N/A',
                     'Tidak ada detail',
                     optional(optional($forecast->order)->klien)->nama ?? 'N/A',
                     0,
                     0,
-                    0
+                    0,
+                    'N/A'
                 ];
             } else {
                 // Loop untuk setiap detail forecast
@@ -113,16 +113,16 @@ class ForecastPendingExport implements
                     $picSupplier = optional($supplier)->picPurchasing;
 
                     $data[] = [
-                        optional($forecast->order)->po_number ?? 'N/A',
                         $forecast->tanggal_forecast ? Carbon::parse($forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
                         $forecast->hari_kirim_forecast ?? 'N/A',
-                        optional($picSupplier)->nama ?? 'N/A',
+                        optional($forecast->order)->po_number ?? 'N/A',
                         optional($supplier)->nama ?? 'N/A',
                         optional($bahanBaku)->nama ?? 'N/A',
                         optional(optional($forecast->order)->klien)->nama ?? 'N/A',
                         (float)($detail->qty_forecast ?? 0),
                         (float)($detail->harga_satuan_forecast ?? 0),
-                        (float)($detail->total_harga_forecast ?? 0)
+                        (float)($detail->total_harga_forecast ?? 0),
+                        optional($picSupplier)->nama ?? 'N/A'
                     ];
                 }
             }
@@ -212,9 +212,9 @@ class ForecastPendingExport implements
             $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("B{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("G{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle("H{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle("I{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-            $sheet->getStyle("J{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
             // Alternating row colors
             if ($row % 2 == 0) {
@@ -229,9 +229,9 @@ class ForecastPendingExport implements
 
         // Number format for currency columns
         for ($row = 6; $row <= $lastRow; $row++) {
-            $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("G{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('#,##0');
-            $sheet->getStyle("J{$row}")->getNumberFormat()->setFormatCode('#,##0');
         }
 
         // Auto-size all columns except merged cells
@@ -282,8 +282,8 @@ class ForecastPendingExport implements
             $query->whereRaw('LOWER(hari_kirim_forecast) LIKE ?', ['%' . strtolower($this->hariKirim) . '%']);
         }
 
-        return $query->orderBy('tanggal_forecast', 'desc')
-                     ->orderBy('created_at', 'desc')
+        return $query->orderBy('tanggal_forecast', 'asc')
+                     ->orderBy('created_at', 'asc')
                      ->get();
     }
 
@@ -293,16 +293,16 @@ class ForecastPendingExport implements
     public function columnWidths(): array
     {
         return [
-            'A' => 18,  // No PO
-            'B' => 20,  // Tanggal Perkiraan Kirim
-            'C' => 20,  // Hari Perkiraan Kirim
-            'D' => 25,  // PIC Supplier
-            'E' => 30,  // Supplier
-            'F' => 40,  // Bahan Baku PO
-            'G' => 35,  // Nama Pabrik
-            'H' => 18,  // QTY Forecasting
-            'I' => 20,  // Harga Beli
-            'J' => 25,  // Total Harga Forecasting
+            'A' => 20,  // Tanggal Perkiraan Kirim
+            'B' => 20,  // Hari Perkiraan Kirim
+            'C' => 18,  // No PO
+            'D' => 30,  // Supplier
+            'E' => 40,  // Bahan Baku PO
+            'F' => 35,  // Nama Pabrik
+            'G' => 18,  // QTY Forecasting
+            'H' => 20,  // Harga Beli
+            'I' => 25,  // Total Harga Forecasting
+            'J' => 25,  // PIC Supplier
         ];
     }
 

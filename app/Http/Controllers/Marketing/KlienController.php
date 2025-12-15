@@ -20,8 +20,11 @@ class KlienController extends Controller
     public function create()
     {
         $klien = new Klien();
-        $kontakOptions = KontakKlien::orderBy('nama')->get();
-        return view('pages.marketing.klien.create', compact('klien', 'kontakOptions'));
+        $kontakOptions = KontakKlien::orderBy("nama")->get();
+        return view(
+            "pages.marketing.klien.create",
+            compact("klien", "kontakOptions"),
+        );
     }
 
     /**
@@ -32,59 +35,80 @@ class KlienController extends Controller
     {
         try {
             $data = $request->validate([
-                'nama' => 'required|string|max:255',
-                'cabang' => 'required|string|max:255',
-                'contact_person_id' => 'nullable|exists:kontak_klien,id',
+                "nama" => "required|string|max:255",
+                "cabang" => "required|string|max:255",
+                "contact_person_id" => "nullable|exists:kontak_klien,id",
             ]);
 
             // Check if this exact branch already exists
-            $exists = Klien::where('nama', $data['nama'])
-                          ->where('cabang', $data['cabang'])
-                          ->exists();
+            $exists = Klien::where("nama", $data["nama"])
+                ->where("cabang", $data["cabang"])
+                ->exists();
 
             if ($exists) {
-                $message = 'Plant ini sudah terdaftar untuk perusahaan tersebut';
+                $message =
+                    "Plant ini sudah terdaftar untuk perusahaan tersebut";
                 if (request()->wantsJson() || request()->ajax()) {
-                    return response()->json(['success' => false, 'message' => $message], 422);
+                    return response()->json(
+                        ["success" => false, "message" => $message],
+                        422,
+                    );
                 }
-                return redirect()->back()->withErrors(['cabang' => $message])->withInput();
+                return redirect()
+                    ->back()
+                    ->withErrors(["cabang" => $message])
+                    ->withInput();
             }
 
             // Check if company already exists (has any branches)
-            $companyExists = Klien::where('nama', $data['nama'])->exists();
+            $companyExists = Klien::where("nama", $data["nama"])->exists();
 
             if (!$companyExists) {
                 // New company: Create placeholder first, then the actual branch
                 Klien::create([
-                    'nama' => $data['nama'],
-                    'cabang' => 'Kantor Pusat',
-                    'contact_person_id' => null,
+                    "nama" => $data["nama"],
+                    "cabang" => "Kantor Pusat",
+                    "contact_person_id" => null,
                 ]);
-                $message = 'Perusahaan dan plant baru berhasil ditambahkan';
+                $message = "Perusahaan dan plant baru berhasil ditambahkan";
             } else {
-                $message = 'Plant berhasil ditambahkan';
+                $message = "Plant berhasil ditambahkan";
             }
 
             // Create the actual branch
             Klien::create($data);
 
             if (request()->wantsJson() || request()->ajax()) {
-                return response()->json(['success' => true, 'message' => $message]);
+                return response()->json([
+                    "success" => true,
+                    "message" => $message,
+                ]);
             }
 
-            return redirect()->route('klien.index')->with('success', $message);
+            return redirect()->route("klien.index")->with("success", $message);
         } catch (\Illuminate\Validation\ValidationException $e) {
             if (request()->wantsJson() || request()->ajax()) {
-                return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+                return response()->json(
+                    ["success" => false, "errors" => $e->errors()],
+                    422,
+                );
             }
-            
+
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             if (request()->wantsJson() || request()->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Gagal menambahkan plant'], 500);
+                return response()->json(
+                    [
+                        "success" => false,
+                        "message" => "Gagal menambahkan plant",
+                    ],
+                    500,
+                );
             }
 
-            return redirect()->route('klien.index')->with('error', 'Gagal menambahkan klien.');
+            return redirect()
+                ->route("klien.index")
+                ->with("error", "Gagal menambahkan klien.");
         }
     }
 
@@ -93,8 +117,8 @@ class KlienController extends Controller
      */
     public function show(Klien $klien)
     {
-        $klien->load('contactPerson');
-        return view('pages.marketing.klien.show', compact('klien'));
+        $klien->load("contactPerson");
+        return view("pages.marketing.klien.show", compact("klien"));
     }
 
     /**
@@ -109,44 +133,75 @@ class KlienController extends Controller
     {
         try {
             $data = $request->validate([
-                'nama' => 'required|string|max:255',
-                'cabang' => 'required|string|max:255',
-                'contact_person_id' => 'nullable|exists:kontak_klien,id',
+                "nama" => "required|string|max:255",
+                "cabang" => "required|string|max:255",
+                "contact_person_id" => "nullable|exists:kontak_klien,id",
             ]);
 
+            // Normalize empty string to null so MySQL won't try to store '' into an integer column
+            if (
+                array_key_exists("contact_person_id", $data) &&
+                $data["contact_person_id"] === ""
+            ) {
+                $data["contact_person_id"] = null;
+            }
+
             // Check if this combination already exists (excluding current record)
-            $exists = Klien::where('nama', $data['nama'])
-                          ->where('cabang', $data['cabang'])
-                          ->where('id', '!=', $klien->id)
-                          ->exists();
+            $exists = Klien::where("nama", $data["nama"])
+                ->where("cabang", $data["cabang"])
+                ->where("id", "!=", $klien->id)
+                ->exists();
 
             if ($exists) {
-                $message = 'Plant ini sudah terdaftar untuk perusahaan tersebut';
+                $message =
+                    "Plant ini sudah terdaftar untuk perusahaan tersebut";
                 if (request()->wantsJson() || request()->ajax()) {
-                    return response()->json(['success' => false, 'message' => $message], 422);
+                    return response()->json(
+                        ["success" => false, "message" => $message],
+                        422,
+                    );
                 }
-                return redirect()->back()->withErrors(['cabang' => $message])->withInput();
+                return redirect()
+                    ->back()
+                    ->withErrors(["cabang" => $message])
+                    ->withInput();
             }
 
             $klien->update($data);
 
             if (request()->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'Plant berhasil diperbarui']);
+                return response()->json([
+                    "success" => true,
+                    "message" => "Plant berhasil diperbarui",
+                ]);
             }
 
-            return redirect()->route('klien.index')->with('success', 'Klien berhasil diperbarui.');
+            return redirect()
+                ->route("klien.index")
+                ->with("success", "Klien berhasil diperbarui.");
         } catch (\Illuminate\Validation\ValidationException $e) {
             if (request()->wantsJson()) {
-                return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+                return response()->json(
+                    ["success" => false, "errors" => $e->errors()],
+                    422,
+                );
             }
-            
+
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             if (request()->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Gagal memperbarui plant'], 500);
+                return response()->json(
+                    [
+                        "success" => false,
+                        "message" => "Gagal memperbarui plant",
+                    ],
+                    500,
+                );
             }
 
-            return redirect()->route('klien.index')->with('error', 'Gagal memperbarui klien.');
+            return redirect()
+                ->route("klien.index")
+                ->with("error", "Gagal memperbarui klien.");
         }
     }
 
@@ -157,37 +212,45 @@ class KlienController extends Controller
     {
         try {
             $companyName = $klien->nama;
-            
+
             // Delete the branch
             $klien->delete();
-            
+
             // Check if this was the only real branch (excluding placeholder)
-            $remainingRealBranches = Klien::where('nama', $companyName)
-                                         ->where('cabang', '!=', 'Kantor Pusat')
-                                         ->count();
-            
+            $remainingRealBranches = Klien::where("nama", $companyName)
+                ->where("cabang", "!=", "Kantor Pusat")
+                ->count();
+
             if ($remainingRealBranches === 0) {
                 // Also delete the placeholder if no real branches remain
-                Klien::where('nama', $companyName)
-                     ->where('cabang', 'Kantor Pusat')
-                     ->whereNull('contact_person_id')
-                     ->delete();
-                $message = 'Plant dan perusahaan berhasil dihapus';
+                Klien::where("nama", $companyName)
+                    ->where("cabang", "Kantor Pusat")
+                    ->whereNull("contact_person_id")
+                    ->delete();
+                $message = "Plant dan perusahaan berhasil dihapus";
             } else {
-                $message = 'Plant berhasil dihapus';
+                $message = "Plant berhasil dihapus";
             }
 
             if (request()->wantsJson()) {
-                return response()->json(['success' => true, 'message' => $message]);
+                return response()->json([
+                    "success" => true,
+                    "message" => $message,
+                ]);
             }
 
-            return redirect()->route('klien.index')->with('success', $message);
+            return redirect()->route("klien.index")->with("success", $message);
         } catch (\Exception $e) {
             if (request()->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Gagal menghapus plant'], 500);
+                return response()->json(
+                    ["success" => false, "message" => "Gagal menghapus plant"],
+                    500,
+                );
             }
 
-            return redirect()->route('klien.index')->with('error', 'Gagal menghapus klien.');
+            return redirect()
+                ->route("klien.index")
+                ->with("error", "Gagal menghapus klien.");
         }
     }
 
@@ -198,25 +261,37 @@ class KlienController extends Controller
     {
         try {
             $data = $request->validate([
-                'old_nama' => 'required|string',
-                'nama' => 'required|string|max:255|unique:kliens,nama,' . $request->old_nama . ',nama',
+                "old_nama" => "required|string",
+                "nama" =>
+                    "required|string|max:255|unique:kliens,nama," .
+                    $request->old_nama .
+                    ",nama",
             ]);
 
             // Update all branches with the old company name
-            $updated = Klien::where('nama', $data['old_nama'])->update([
-                'nama' => $data['nama'],
-                'updated_at' => now()
+            $updated = Klien::where("nama", $data["old_nama"])->update([
+                "nama" => $data["nama"],
+                "updated_at" => now(),
             ]);
 
             if ($updated === 0) {
-                throw new \Exception('Perusahaan tidak ditemukan');
+                throw new \Exception("Perusahaan tidak ditemukan");
             }
 
-            return response()->json(['success' => true, 'message' => 'Perusahaan berhasil diperbarui']);
+            return response()->json([
+                "success" => true,
+                "message" => "Perusahaan berhasil diperbarui",
+            ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+            return response()->json(
+                ["success" => false, "errors" => $e->errors()],
+                422,
+            );
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                ["success" => false, "message" => $e->getMessage()],
+                500,
+            );
         }
     }
 
@@ -227,21 +302,30 @@ class KlienController extends Controller
     {
         try {
             $data = $request->validate([
-                'nama' => 'required|string',
+                "nama" => "required|string",
             ]);
 
             // Soft delete all branches with the company name
-            $deleted = Klien::where('nama', $data['nama'])->delete();
+            $deleted = Klien::where("nama", $data["nama"])->delete();
 
             if ($deleted === 0) {
-                throw new \Exception('Perusahaan tidak ditemukan');
+                throw new \Exception("Perusahaan tidak ditemukan");
             }
 
-            return response()->json(['success' => true, 'message' => 'Perusahaan berhasil dihapus']);
+            return response()->json([
+                "success" => true,
+                "message" => "Perusahaan berhasil dihapus",
+            ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+            return response()->json(
+                ["success" => false, "errors" => $e->errors()],
+                422,
+            );
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                ["success" => false, "message" => $e->getMessage()],
+                500,
+            );
         }
     }
 
@@ -252,43 +336,51 @@ class KlienController extends Controller
     {
         try {
             $validated = $request->validate([
-                'klien_id' => 'required|exists:kliens,id',
-                'nama' => 'required|string|max:255',
-                'satuan' => 'required|string|max:50',
-                'spesifikasi' => 'nullable|string',
-                'harga_approved' => 'nullable|numeric|min:0',
-                'status' => 'required|in:aktif,non_aktif,pending'
+                "klien_id" => "required|exists:kliens,id",
+                "nama" => "required|string|max:255",
+                "satuan" => "required|string|max:50",
+                "spesifikasi" => "nullable|string",
+                "harga_approved" => "nullable|numeric|min:0",
+                "status" => "required|in:aktif,non_aktif,pending",
             ]);
 
             $material = new BahanBakuKlien($validated);
-            
-            if ($validated['harga_approved']) {
+
+            if ($validated["harga_approved"]) {
                 $material->approved_at = now();
                 $material->approved_by_marketing = AuthFallbackService::id();
             }
-            
+
             $material->save();
 
             // Create initial price history if approved price is set
-            if ($validated['harga_approved']) {
+            if ($validated["harga_approved"]) {
                 RiwayatHargaKlien::createPriceHistory(
                     $material->id,
-                    $validated['harga_approved'],
+                    $validated["harga_approved"],
                     AuthFallbackService::id(),
-                    'Harga initial approval'
+                    "Harga initial approval",
                 );
             }
 
             return response()->json([
-                'success' => true, 
-                'message' => 'Material berhasil ditambahkan',
-                'data' => $material->load(['approvedByMarketing', 'riwayatHarga'])
+                "success" => true,
+                "message" => "Material berhasil ditambahkan",
+                "data" => $material->load([
+                    "approvedByMarketing",
+                    "riwayatHarga",
+                ]),
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+            return response()->json(
+                ["success" => false, "errors" => $e->errors()],
+                422,
+            );
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                ["success" => false, "message" => $e->getMessage()],
+                500,
+            );
         }
     }
 
@@ -299,15 +391,15 @@ class KlienController extends Controller
     {
         try {
             $validated = $request->validate([
-                'nama' => 'required|string|max:255',
-                'satuan' => 'required|string|max:50',
-                'spesifikasi' => 'nullable|string',
-                'harga_approved' => 'nullable|numeric|min:0',
-                'status' => 'required|in:aktif,non_aktif,pending'
+                "nama" => "required|string|max:255",
+                "satuan" => "required|string|max:50",
+                "spesifikasi" => "nullable|string",
+                "harga_approved" => "nullable|numeric|min:0",
+                "status" => "required|in:aktif,non_aktif,pending",
             ]);
 
             $oldPrice = $material->harga_approved;
-            $newPrice = $validated['harga_approved'];
+            $newPrice = $validated["harga_approved"];
 
             // Update material
             $material->fill($validated);
@@ -322,22 +414,30 @@ class KlienController extends Controller
                     $material->id,
                     $newPrice,
                     AuthFallbackService::id(),
-                    'Perubahan harga approved'
+                    "Perubahan harga approved",
                 );
             }
 
             $material->save();
 
             return response()->json([
-                'success' => true, 
-                'message' => 'Material berhasil diupdate',
-                'data' => $material->load(['approvedByMarketing', 'riwayatHarga'])
+                "success" => true,
+                "message" => "Material berhasil diupdate",
+                "data" => $material->load([
+                    "approvedByMarketing",
+                    "riwayatHarga",
+                ]),
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+            return response()->json(
+                ["success" => false, "errors" => $e->errors()],
+                422,
+            );
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                ["success" => false, "message" => $e->getMessage()],
+                500,
+            );
         }
     }
 
@@ -351,12 +451,14 @@ class KlienController extends Controller
             $material->delete();
 
             return response()->json([
-                'success' => true, 
-                'message' => "Material '{$materialName}' berhasil dihapus"
+                "success" => true,
+                "message" => "Material '{$materialName}' berhasil dihapus",
             ]);
-
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                ["success" => false, "message" => $e->getMessage()],
+                500,
+            );
         }
     }
 
@@ -366,33 +468,44 @@ class KlienController extends Controller
     public function getMaterialPriceHistory(BahanBakuKlien $material)
     {
         try {
-            $history = $material->riwayatHarga()
-                ->with('updatedByMarketing:id,nama')
-                ->orderBy('tanggal_perubahan', 'desc')
+            $history = $material
+                ->riwayatHarga()
+                ->with("updatedByMarketing:id,nama")
+                ->orderBy("tanggal_perubahan", "desc")
                 ->get()
                 ->map(function ($record) {
                     return [
-                        'id' => $record->id,
-                        'harga_lama' => $record->harga_lama,
-                        'harga_baru' => $record->harga_approved_baru, // Fix: use correct field name
-                        'formatted_harga_lama' => $record->formatted_harga_lama,
-                        'formatted_harga_baru' => $record->formatted_harga_baru,
-                        'tanggal_perubahan' => $record->tanggal_perubahan->format('d/m/Y H:i'),
-                        'keterangan' => $record->keterangan,
-                        'diubah_oleh' => $record->updatedByMarketing->nama ?? 'System'
+                        "id" => $record->id,
+                        "harga_lama" => $record->harga_lama,
+                        "harga_baru" => $record->harga_approved_baru, // Fix: use correct field name
+                        "formatted_harga_lama" => $record->formatted_harga_lama,
+                        "formatted_harga_baru" => $record->formatted_harga_baru,
+                        "tanggal_perubahan" => $record->tanggal_perubahan->format(
+                            "d/m/Y H:i",
+                        ),
+                        "keterangan" => $record->keterangan,
+                        "diubah_oleh" =>
+                            $record->updatedByMarketing->nama ?? "System",
                     ];
                 });
 
             return response()->json([
-                'success' => true,
-                'data' => [
-                    'material' => $material->only(['id', 'nama', 'satuan', 'harga_approved']),
-                    'history' => $history
-                ]
+                "success" => true,
+                "data" => [
+                    "material" => $material->only([
+                        "id",
+                        "nama",
+                        "satuan",
+                        "harga_approved",
+                    ]),
+                    "history" => $history,
+                ],
             ]);
-
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                ["success" => false, "message" => $e->getMessage()],
+                500,
+            );
         }
     }
 
@@ -403,11 +516,21 @@ class KlienController extends Controller
     {
         try {
             return response()->json([
-                'success' => true,
-                'data' => $material->only(['id', 'nama', 'satuan', 'spesifikasi', 'harga_approved', 'status'])
+                "success" => true,
+                "data" => $material->only([
+                    "id",
+                    "nama",
+                    "satuan",
+                    "spesifikasi",
+                    "harga_approved",
+                    "status",
+                ]),
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                ["success" => false, "message" => $e->getMessage()],
+                500,
+            );
         }
     }
 
@@ -422,30 +545,60 @@ class KlienController extends Controller
         }
 
         // Load history and format for blade
-        $history = $material->riwayatHarga()->orderBy('tanggal_perubahan', 'asc')->get();
+        $history = $material
+            ->riwayatHarga()
+            ->orderBy("tanggal_perubahan", "asc")
+            ->get();
 
-        $riwayatHarga = $history->map(function ($item) {
-            return [
-                'id' => $item->id,
-                'harga' => $item->harga_approved_baru ?? $item->harga_baru ?? 0,
-                'formatted_harga' => $item->formatted_harga_baru ?? number_format($item->harga_approved_baru ?? $item->harga_baru ?? 0, 0, ',', '.'),
-                'tanggal' => $item->tanggal_perubahan->toDateString(),
-                'formatted_tanggal' => $item->tanggal_perubahan->format('d M Y'),
-                'formatted_hari' => $item->tanggal_perubahan->format('l'),
-                'tipe_perubahan' => $item->tipe_perubahan ?? 'awal',
-                'formatted_selisih' => $item->formatted_selisih_harga ?? number_format($item->selisih_harga ?? 0, 0, ',', '.'),
-                'persentase_perubahan' => $item->persentase_perubahan ?? 0,
-                'badge_class' => $item->badge_class ?? 'bg-gray-100 text-gray-600',
-                'icon' => $item->icon ?? 'fas fa-minus'
-            ];
-        })->toArray();
+        $riwayatHarga = $history
+            ->map(function ($item) {
+                return [
+                    "id" => $item->id,
+                    "harga" =>
+                        $item->harga_approved_baru ?? ($item->harga_baru ?? 0),
+                    "formatted_harga" =>
+                        $item->formatted_harga_baru ??
+                        number_format(
+                            $item->harga_approved_baru ??
+                                ($item->harga_baru ?? 0),
+                            0,
+                            ",",
+                            ".",
+                        ),
+                    "tanggal" => $item->tanggal_perubahan->toDateString(),
+                    "formatted_tanggal" => $item->tanggal_perubahan->format(
+                        "d M Y",
+                    ),
+                    "formatted_hari" => $item->tanggal_perubahan->format("l"),
+                    "tipe_perubahan" => $item->tipe_perubahan ?? "awal",
+                    "formatted_selisih" =>
+                        $item->formatted_selisih_harga ??
+                        number_format($item->selisih_harga ?? 0, 0, ",", "."),
+                    "persentase_perubahan" => $item->persentase_perubahan ?? 0,
+                    "badge_class" =>
+                        $item->badge_class ?? "bg-gray-100 text-gray-600",
+                    "icon" => $item->icon ?? "fas fa-minus",
+                ];
+            })
+            ->toArray();
 
         // Basic stats for header cards
-        $prices = array_column($riwayatHarga, 'harga');
+        $prices = array_column($riwayatHarga, "harga");
         $stats = [
-            'max' => !empty($prices) ? max($prices) : ($material->harga_approved ?? 0),
-            'min' => !empty($prices) ? min($prices) : ($material->harga_approved ?? 0),
-            'days' => count($riwayatHarga) > 1 ? (\Carbon\Carbon::parse($riwayatHarga[0]['tanggal'])->diffInDays(\Carbon\Carbon::parse(end($riwayatHarga)['tanggal'])) ) : 0,
+            "max" => !empty($prices)
+                ? max($prices)
+                : $material->harga_approved ?? 0,
+            "min" => !empty($prices)
+                ? min($prices)
+                : $material->harga_approved ?? 0,
+            "days" =>
+                count($riwayatHarga) > 1
+                    ? \Carbon\Carbon::parse(
+                        $riwayatHarga[0]["tanggal"],
+                    )->diffInDays(
+                        \Carbon\Carbon::parse(end($riwayatHarga)["tanggal"]),
+                    )
+                    : 0,
         ];
 
         // trend calculations
@@ -457,28 +610,50 @@ class KlienController extends Controller
             } else {
                 $trendPercent = 0;
             }
-            $stats['trend_percent'] = abs($trendPercent);
-            $stats['trend'] = $last > $first ? 'naik' : ($last < $first ? 'turun' : 'stabil');
-            $stats['trend_prefix'] = $last > $first ? '+' : ($last < $first ? '' : '');
-            $stats['trend_class'] = $last > $first ? 'border-green-500' : ($last < $first ? 'border-red-500' : 'border-gray-500');
-            $stats['trend_text_class'] = $last > $first ? 'text-green-600' : ($last < $first ? 'text-red-600' : 'text-gray-600');
-            $stats['trend_icon_class'] = $last > $first ? 'text-green-500' : ($last < $first ? 'text-red-500' : 'text-gray-500');
-            $stats['trend_bg'] = $last > $first ? 'bg-green-100' : ($last < $first ? 'bg-red-100' : 'bg-gray-100');
+            $stats["trend_percent"] = abs($trendPercent);
+            $stats["trend"] =
+                $last > $first ? "naik" : ($last < $first ? "turun" : "stabil");
+            $stats["trend_prefix"] =
+                $last > $first ? "+" : ($last < $first ? "" : "");
+            $stats["trend_class"] =
+                $last > $first
+                    ? "border-green-500"
+                    : ($last < $first
+                        ? "border-red-500"
+                        : "border-gray-500");
+            $stats["trend_text_class"] =
+                $last > $first
+                    ? "text-green-600"
+                    : ($last < $first
+                        ? "text-red-600"
+                        : "text-gray-600");
+            $stats["trend_icon_class"] =
+                $last > $first
+                    ? "text-green-500"
+                    : ($last < $first
+                        ? "text-red-500"
+                        : "text-gray-500");
+            $stats["trend_bg"] =
+                $last > $first
+                    ? "bg-green-100"
+                    : ($last < $first
+                        ? "bg-red-100"
+                        : "bg-gray-100");
         } else {
-            $stats['trend_percent'] = 0;
-            $stats['trend'] = 'stabil';
-            $stats['trend_prefix'] = '';
-            $stats['trend_class'] = 'border-gray-500';
-            $stats['trend_text_class'] = 'text-gray-600';
-            $stats['trend_icon_class'] = 'text-gray-500';
-            $stats['trend_bg'] = 'bg-gray-100';
+            $stats["trend_percent"] = 0;
+            $stats["trend"] = "stabil";
+            $stats["trend_prefix"] = "";
+            $stats["trend_class"] = "border-gray-500";
+            $stats["trend_text_class"] = "text-gray-600";
+            $stats["trend_icon_class"] = "text-gray-500";
+            $stats["trend_bg"] = "bg-gray-100";
         }
 
-        return view('pages.marketing.klien.riwayat-harga', [
-            'klienData' => $klien,
-            'bahanBakuData' => $material,
-            'riwayatHarga' => $riwayatHarga,
-            'stats' => $stats
+        return view("pages.marketing.klien.riwayat-harga", [
+            "klienData" => $klien,
+            "bahanBakuData" => $material,
+            "riwayatHarga" => $riwayatHarga,
+            "stats" => $stats,
         ]);
     }
 }

@@ -157,6 +157,14 @@ class EditKlien extends Component
                 );
             }
 
+            // Normalize empty contact_person_id to null so DB won't try to insert '' into integer column
+            if (
+                array_key_exists("contact_person_id", $this->klienForm) &&
+                $this->klienForm["contact_person_id"] === ""
+            ) {
+                $this->klienForm["contact_person_id"] = null;
+            }
+
             $this->klien->update($this->klienForm);
 
             session()->flash("message", "Plant berhasil diperbarui");

@@ -13,11 +13,11 @@ class DaftarKontak extends Component
 
     // Form properties
     public $kontakForm = [
-        'nama' => '',
-        'klien_nama' => '',
-        'nomor_hp' => '',
-        'jabatan' => '',
-        'catatan' => '',
+        "nama" => "",
+        "klien_nama" => "",
+        "nomor_hp" => "",
+        "jabatan" => "",
+        "catatan" => "",
     ];
 
     // UI state
@@ -26,54 +26,59 @@ class DaftarKontak extends Component
     public $editingKontak = null;
 
     // Search
-    public $search = '';
-    public $selectedClient = '';
+    public $search = "";
+    public $selectedClient = "";
     public $clientOptions = [];
 
     // Delete confirmation
     public $deleteModal = [
-        'title' => '',
-        'message' => '',
-        'action' => null,
-        'actionParams' => [],
+        "title" => "",
+        "message" => "",
+        "action" => null,
+        "actionParams" => [],
     ];
 
     public function mount($klien = null)
     {
         // Require client parameter - redirect if not provided
         if (!$klien) {
-            return redirect()->route('klien.index')->with('error', 'Silakan pilih klien terlebih dahulu untuk mengelola kontak.');
+            return redirect()
+                ->route("klien.index")
+                ->with(
+                    "error",
+                    "Silakan pilih klien terlebih dahulu untuk mengelola kontak.",
+                );
         }
-        
+
         $this->loadClientOptions();
         $this->selectedClient = $klien;
-        $this->kontakForm['klien_nama'] = $klien;
+        $this->kontakForm["klien_nama"] = $klien;
     }
 
     public function render()
     {
         // Only show contacts for the selected client
-        $contacts = KontakKlien::where('klien_nama', $this->selectedClient)
-            ->when($this->search, function($query) {
-                $query->where(function($q) {
-                    $q->where('nama', 'like', '%' . $this->search . '%')
-                      ->orWhere('nomor_hp', 'like', '%' . $this->search . '%')
-                      ->orWhere('jabatan', 'like', '%' . $this->search . '%');
+        $contacts = KontakKlien::where("klien_nama", $this->selectedClient)
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where("nama", "like", "%" . $this->search . "%")
+                        ->orWhere("nomor_hp", "like", "%" . $this->search . "%")
+                        ->orWhere("jabatan", "like", "%" . $this->search . "%");
                 });
             })
-            ->orderBy('nama')
+            ->orderBy("nama")
             ->paginate(15);
 
-        return view('livewire.marketing.daftar-kontak', [
-            'contacts' => $contacts
+        return view("livewire.marketing.daftar-kontak", [
+            "contacts" => $contacts,
         ]);
     }
 
     public function loadClientOptions()
     {
-        $this->clientOptions = Klien::distinct('nama')
-            ->orderBy('nama')
-            ->pluck('nama')
+        $this->clientOptions = Klien::distinct("nama")
+            ->orderBy("nama")
+            ->pluck("nama")
             ->toArray();
     }
 
@@ -95,11 +100,12 @@ class DaftarKontak extends Component
     public function resetKontakForm()
     {
         $this->kontakForm = [
-            'nama' => '',
-            'klien_nama' => '',
-            'nomor_hp' => '',
-            'jabatan' => '',
-            'catatan' => '',
+            "nama" => "",
+            // Ensure the hidden klien_nama stays set to the currently selected client
+            "klien_nama" => $this->selectedClient ?? "",
+            "nomor_hp" => "",
+            "jabatan" => "",
+            "catatan" => "",
         ];
     }
 
@@ -108,55 +114,57 @@ class DaftarKontak extends Component
         $kontak = KontakKlien::findOrFail($kontakId);
         $this->editingKontak = $kontakId;
         $this->kontakForm = [
-            'nama' => $kontak->nama,
-            'klien_nama' => $kontak->klien_nama,
-            'nomor_hp' => $kontak->nomor_hp ?? '',
-            'jabatan' => $kontak->jabatan ?? '',
-            'catatan' => $kontak->catatan ?? '',
+            "nama" => $kontak->nama,
+            "klien_nama" => $kontak->klien_nama,
+            "nomor_hp" => $kontak->nomor_hp ?? "",
+            "jabatan" => $kontak->jabatan ?? "",
+            "catatan" => $kontak->catatan ?? "",
         ];
         $this->showKontakModal = true;
     }
 
     public function submitKontakForm()
     {
-        $this->validate([
-            'kontakForm.nama' => 'required|string|max:255',
-            'kontakForm.klien_nama' => 'required|string|max:255',
-            'kontakForm.nomor_hp' => 'nullable|string|max:20',
-            'kontakForm.jabatan' => 'nullable|string|max:255',
-            'kontakForm.catatan' => 'nullable|string|max:1000',
-        ], [
-            'kontakForm.nama.required' => 'Nama kontak wajib diisi',
-            'kontakForm.klien_nama.required' => 'Nama klien wajib diisi',
-        ]);
+        $this->validate(
+            [
+                "kontakForm.nama" => "required|string|max:255",
+                "kontakForm.klien_nama" => "required|string|max:255",
+                "kontakForm.nomor_hp" => "nullable|string|max:20",
+                "kontakForm.jabatan" => "nullable|string|max:255",
+                "kontakForm.catatan" => "nullable|string|max:1000",
+            ],
+            [
+                "kontakForm.nama.required" => "Nama kontak wajib diisi",
+                "kontakForm.klien_nama.required" => "Nama klien wajib diisi",
+            ],
+        );
 
         try {
             if ($this->editingKontak) {
                 // Update existing contact
                 $kontak = KontakKlien::findOrFail($this->editingKontak);
                 $kontak->update($this->kontakForm);
-                session()->flash('message', 'Kontak berhasil diperbarui');
+                session()->flash("message", "Kontak berhasil diperbarui");
             } else {
                 // Create new contact
                 KontakKlien::create($this->kontakForm);
-                session()->flash('message', 'Kontak berhasil ditambahkan');
+                session()->flash("message", "Kontak berhasil ditambahkan");
             }
 
             $this->closeKontakModal();
             $this->loadClientOptions();
-
         } catch (\Exception $e) {
-            $this->addError('kontakForm.nama', $e->getMessage());
+            $this->addError("kontakForm.nama", $e->getMessage());
         }
     }
 
     public function deleteKontak($kontakId, $kontakName)
     {
         $this->deleteModal = [
-            'title' => 'Hapus Kontak',
-            'message' => "Apakah Anda yakin ingin menghapus kontak \"{$kontakName}\"? Tindakan ini tidak dapat dibatalkan.",
-            'action' => 'performKontakDelete',
-            'actionParams' => [$kontakId],
+            "title" => "Hapus Kontak",
+            "message" => "Apakah Anda yakin ingin menghapus kontak \"{$kontakName}\"? Tindakan ini tidak dapat dibatalkan.",
+            "action" => "performKontakDelete",
+            "actionParams" => [$kontakId],
         ];
         $this->showDeleteModal = true;
     }
@@ -168,11 +176,16 @@ class DaftarKontak extends Component
             $kontakName = $kontak->nama;
             $kontak->delete();
 
-            session()->flash('message', "Kontak '{$kontakName}' berhasil dihapus");
+            session()->flash(
+                "message",
+                "Kontak '{$kontakName}' berhasil dihapus",
+            );
             $this->closeDeleteModal();
-
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus kontak: ' . $e->getMessage());
+            session()->flash(
+                "error",
+                "Gagal menghapus kontak: " . $e->getMessage(),
+            );
         }
     }
 
@@ -180,10 +193,10 @@ class DaftarKontak extends Component
     {
         $this->showDeleteModal = false;
         $this->deleteModal = [
-            'title' => '',
-            'message' => '',
-            'action' => null,
-            'actionParams' => [],
+            "title" => "",
+            "message" => "",
+            "action" => null,
+            "actionParams" => [],
         ];
     }
 
@@ -195,7 +208,7 @@ class DaftarKontak extends Component
 
     public function clearSearch()
     {
-        $this->search = '';
+        $this->search = "";
         $this->resetPage();
     }
 }

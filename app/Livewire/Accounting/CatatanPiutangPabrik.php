@@ -43,7 +43,7 @@ class CatatanPiutangPabrik extends Component
     public $jumlah_bayar;
     public $metode_pembayaran = '';
     public $catatan_pembayaran = '';
-    public $bukti_pembayaran;
+    public $bukti_pembayaran = [];
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -257,7 +257,7 @@ class CatatanPiutangPabrik extends Component
         $this->jumlah_bayar = $sisaPiutang; // Default ke sisa piutang
         $this->metode_pembayaran = '';
         $this->catatan_pembayaran = '';
-        $this->bukti_pembayaran = null;
+        $this->bukti_pembayaran = [];
 
         $this->showPembayaranModal = true;
         $this->dispatch('pembayaranModalOpened');
@@ -276,7 +276,7 @@ class CatatanPiutangPabrik extends Component
         $this->jumlah_bayar = null;
         $this->metode_pembayaran = '';
         $this->catatan_pembayaran = '';
-        $this->bukti_pembayaran = null;
+        $this->bukti_pembayaran = [];
     }
 
     public function savePembayaran()
@@ -290,10 +290,23 @@ class CatatanPiutangPabrik extends Component
             'tanggal_bayar' => 'required|date',
             'jumlah_bayar' => 'required|numeric|min:0.01|max:' . $sisaPiutang,
             'catatan_pembayaran' => 'nullable|string|max:500',
-            'bukti_pembayaran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'bukti_pembayaran.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:20480', // max 20MB per file
         ], [
             'jumlah_bayar.max' => 'Jumlah pembayaran tidak boleh melebihi sisa piutang (Rp ' . number_format($sisaPiutang, 0, ',', '.') . ')',
         ]);
+
+        // Check total file size if files are uploaded (max 20MB = 20480 KB)
+        if (!empty($this->bukti_pembayaran)) {
+            $totalSize = 0;
+            foreach ($this->bukti_pembayaran as $file) {
+                $totalSize += $file->getSize();
+            }
+
+            if ($totalSize > 20 * 1024 * 1024) { // 20MB in bytes
+                session()->flash('error', 'Total ukuran file tidak boleh melebihi 20 MB');
+                return;
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -306,9 +319,13 @@ class CatatanPiutangPabrik extends Component
                 'created_by' => Auth::id(),
             ];
 
-            // Upload bukti pembayaran
-            if ($this->bukti_pembayaran) {
-                $data['bukti_pembayaran'] = $this->bukti_pembayaran->store('bukti-pembayaran-pabrik', 'public');
+            // Upload bukti pembayaran - store multiple files
+            if (!empty($this->bukti_pembayaran)) {
+                $buktiPaths = [];
+                foreach ($this->bukti_pembayaran as $file) {
+                    $buktiPaths[] = $file->store('bukti-pembayaran-pabrik', 'public');
+                }
+                $data['bukti_pembayaran'] = json_encode($buktiPaths);
             }
 
             PembayaranPiutangPabrik::create($data);

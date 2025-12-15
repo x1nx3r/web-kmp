@@ -24,7 +24,7 @@ class ApprovePembayaran extends Component
     public $invoicePenagihan;
     public $approvalHistory;
     public $notes = '';
-    public $buktiPembayaran;
+    public $buktiPembayaran = [];
     public $canManage = false;
 
     // Piutang form
@@ -105,17 +105,31 @@ class ApprovePembayaran extends Component
             }
 
             // Validasi bukti pembayaran wajib untuk semua anggota keuangan
-            if (!$this->buktiPembayaran) {
+            if (empty($this->buktiPembayaran)) {
                 throw new \Exception('Bukti pembayaran wajib diupload untuk approval');
             }
 
-            // Validate file type and size
+            // Validate file type and size - multiple files with total max 20MB
             $this->validate([
-                'buktiPembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // max 5MB
+                'buktiPembayaran.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480', // max 20MB per file
             ]);
 
-            // Upload bukti pembayaran
-            $buktiPath = $this->buktiPembayaran->store('bukti-pembayaran', 'public');
+            // Check total file size (max 20MB = 20480 KB)
+            $totalSize = 0;
+            foreach ($this->buktiPembayaran as $file) {
+                $totalSize += $file->getSize();
+            }
+
+            if ($totalSize > 20 * 1024 * 1024) { // 20MB in bytes
+                throw new \Exception('Total ukuran file tidak boleh melebihi 20 MB');
+            }
+
+            // Upload bukti pembayaran - store multiple files
+            $buktiPaths = [];
+            foreach ($this->buktiPembayaran as $index => $file) {
+                $buktiPaths[] = $file->store('bukti-pembayaran', 'public');
+            }
+            $buktiPath = json_encode($buktiPaths);
 
             // Langsung complete untuk semua anggota keuangan
             $updateData = [

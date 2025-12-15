@@ -570,63 +570,97 @@
                         </h2>
                     </div>
                     <div class="p-6">
-                        <div class="flex flex-col items-center">
-                            @php
-                                $extension = pathinfo($approval->bukti_pembayaran, PATHINFO_EXTENSION);
-                                $isPdf = strtolower($extension) === 'pdf';
-                            @endphp
+                        @php
+                            // Check if bukti_pembayaran is JSON array or single file
+                            $buktiFiles = [];
+                            try {
+                                $decoded = json_decode($approval->bukti_pembayaran, true);
+                                if (is_array($decoded)) {
+                                    $buktiFiles = $decoded;
+                                } else {
+                                    $buktiFiles = [$approval->bukti_pembayaran];
+                                }
+                            } catch (\Exception $e) {
+                                $buktiFiles = [$approval->bukti_pembayaran];
+                            }
+                        @endphp
 
-                            @if($isPdf)
-                                {{-- PDF Preview --}}
-                                <div class="w-full max-w-2xl">
-                                    <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-6 text-center">
-                                        <i class="fas fa-file-pdf text-red-500 text-6xl mb-4"></i>
-                                        <p class="text-gray-700 font-medium mb-2">Dokumen PDF</p>
-                                        <p class="text-sm text-gray-500 mb-4">Bukti pembayaran dalam format PDF</p>
-                                        <a
-                                            href="{{ Storage::url($approval->bukti_pembayaran) }}"
-                                            target="_blank"
-                                            class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-                                        >
-                                            <i class="fas fa-external-link-alt mr-2"></i>
-                                            Buka PDF
-                                        </a>
-                                        <a
-                                            href="{{ Storage::url($approval->bukti_pembayaran) }}"
-                                            download
-                                            class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors ml-2"
-                                        >
-                                            <i class="fas fa-download mr-2"></i>
-                                            Download
-                                        </a>
-                                    </div>
-                                </div>
-                            @else
-                                {{-- Image Preview --}}
-                                <div class="relative w-full max-w-2xl bg-white p-4 rounded-lg">
-                                    <img
-                                        src="{{ Storage::url($approval->bukti_pembayaran) }}"
-                                        alt="Bukti Pembayaran"
-                                        class="w-full h-auto rounded-lg shadow-md border-2 border-gray-200 hover:border-green-400 transition-all cursor-pointer"
-                                        onclick="openPaymentModal('{{ Storage::url($approval->bukti_pembayaran) }}')"
-                                    >
-                                </div>
-                                <p class="mt-3 text-sm text-gray-500 flex items-center justify-center">
-                                    <i class="fas fa-info-circle mr-2"></i>
-                                    Klik gambar untuk memperbesar
-                                </p>
-                            @endif
+                        @if(count($buktiFiles) > 1)
+                            <p class="text-sm text-gray-600 mb-4 text-center">
+                                <i class="fas fa-files text-green-600 mr-2"></i>
+                                {{ count($buktiFiles) }} file terupload
+                            </p>
+                        @endif
 
-                            <div class="mt-4 text-center">
-                                <p class="text-xs text-gray-500">
-                                    <i class="fas fa-user mr-1"></i>
-                                    Diupload oleh: {{ $approval->manager->nama ?? '-' }}
-                                </p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    {{ $approval->manager_approved_at ? $approval->manager_approved_at->format('d M Y, H:i') : '-' }}
-                                </p>
-                            </div>
+                        <div class="grid grid-cols-1 @if(count($buktiFiles) > 1) md:grid-cols-2 @endif gap-6">
+                            @foreach($buktiFiles as $index => $filePath)
+                                @php
+                                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                                    $isPdf = strtolower($extension) === 'pdf';
+                                @endphp
+
+                                <div class="flex flex-col items-center">
+                                    @if(count($buktiFiles) > 1)
+                                        <p class="text-sm font-semibold text-gray-700 mb-3">
+                                            Bukti Pembayaran #{{ $index + 1 }}
+                                        </p>
+                                    @endif
+
+                                    @if($isPdf)
+                                        {{-- PDF Preview --}}
+                                        <div class="w-full">
+                                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-6 text-center">
+                                                <i class="fas fa-file-pdf text-red-500 text-5xl mb-3"></i>
+                                                <p class="text-gray-700 font-medium mb-2">Dokumen PDF</p>
+                                                <p class="text-xs text-gray-500 mb-4">Bukti pembayaran dalam format PDF</p>
+                                                <div class="flex flex-col sm:flex-row gap-2 justify-center">
+                                                    <a
+                                                        href="{{ Storage::url($filePath) }}"
+                                                        target="_blank"
+                                                        class="inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors text-sm"
+                                                    >
+                                                        <i class="fas fa-external-link-alt mr-2"></i>
+                                                        Buka PDF
+                                                    </a>
+                                                    <a
+                                                        href="{{ Storage::url($filePath) }}"
+                                                        download
+                                                        class="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors text-sm"
+                                                    >
+                                                        <i class="fas fa-download mr-2"></i>
+                                                        Download
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        {{-- Image Preview --}}
+                                        <div class="relative w-full bg-white p-4 rounded-lg">
+                                            <img
+                                                src="{{ Storage::url($filePath) }}"
+                                                alt="Bukti Pembayaran {{ $index + 1 }}"
+                                                class="w-full h-auto rounded-lg shadow-md border-2 border-gray-200 hover:border-green-400 transition-all cursor-pointer"
+                                                onclick="openPaymentModal('{{ Storage::url($filePath) }}')"
+                                            >
+                                        </div>
+                                        <p class="mt-2 text-xs text-gray-500 flex items-center justify-center">
+                                            <i class="fas fa-info-circle mr-2"></i>
+                                            Klik gambar untuk memperbesar
+                                        </p>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="mt-6 text-center border-t border-gray-200 pt-4">
+                            <p class="text-xs text-gray-500">
+                                <i class="fas fa-user mr-1"></i>
+                                Diupload oleh: {{ $approval->manager->nama ?? '-' }}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <i class="fas fa-clock mr-1"></i>
+                                {{ $approval->manager_approved_at ? $approval->manager_approved_at->format('d M Y, H:i') : '-' }}
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -810,13 +810,14 @@
                                             Bukti Pembayaran <span class="text-red-500 ml-1">*</span>
                                         </label>
                                         <p class="text-xs text-gray-600 mb-3">
-                                            Upload bukti pembayaran dalam format JPG, PNG, atau PDF (Max: 5MB)
+                                            Upload bukti pembayaran (multiple files) dalam format JPG, PNG, atau PDF (Total Max: 20MB)
                                         </p>
 
                                         <input
                                             type="file"
                                             wire:model="buktiPembayaran"
                                             accept=".jpg,.jpeg,.png,.pdf"
+                                            multiple
                                             class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
                                         >
 
@@ -831,34 +832,62 @@
                                             </div>
                                         </div>
 
-                                        @error('buktiPembayaran')
+                                        @error('buktiPembayaran.*')
                                             <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
                                         @enderror
 
                                         {{-- Preview --}}
-                                        @if($buktiPembayaran)
-                                            <div class="mt-3 p-3 bg-white border border-blue-200 rounded-md">
-                                                <p class="text-xs font-medium text-gray-700 mb-2 flex items-center">
-                                                    <i class="fas fa-file text-blue-600 mr-2"></i>
-                                                    File dipilih: {{ $buktiPembayaran->getClientOriginalName() }}
-                                                </p>
-                                                <p class="text-xs text-gray-500">
-                                                    Ukuran: {{ number_format($buktiPembayaran->getSize() / 1024, 2) }} KB
-                                                </p>
+                                        @if($buktiPembayaran && count($buktiPembayaran) > 0)
+                                            <div class="mt-3 space-y-2">
+                                                @php
+                                                    $totalSize = 0;
+                                                    foreach($buktiPembayaran as $file) {
+                                                        $totalSize += $file->getSize();
+                                                    }
+                                                @endphp
 
-                                                {{-- Image Preview --}}
-                                                @if(in_array($buktiPembayaran->getClientOriginalExtension(), ['jpg', 'jpeg', 'png']))
-                                                    <div class="mt-2">
-                                                        <img src="{{ $buktiPembayaran->temporaryUrl() }}" alt="Preview" class="w-full h-auto rounded border border-gray-200">
+                                                <div class="p-3 bg-white border border-blue-200 rounded-md">
+                                                    <p class="text-xs font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-files text-blue-600 mr-2"></i>
+                                                        {{ count($buktiPembayaran) }} file dipilih
+                                                        <span class="text-gray-500 ml-2">
+                                                            (Total: {{ number_format($totalSize / 1024 / 1024, 2) }} MB)
+                                                        </span>
+                                                    </p>
+
+                                                    @if($totalSize > 20 * 1024 * 1024)
+                                                        <p class="text-xs text-red-600 font-semibold">
+                                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                            Total ukuran file melebihi 20 MB!
+                                                        </p>
+                                                    @endif
+                                                </div>
+
+                                                @foreach($buktiPembayaran as $index => $file)
+                                                    <div class="p-3 bg-white border border-gray-200 rounded-md">
+                                                        <p class="text-xs font-medium text-gray-700 mb-1">
+                                                            <i class="fas fa-file text-blue-600 mr-2"></i>
+                                                            {{ $file->getClientOriginalName() }}
+                                                        </p>
+                                                        <p class="text-xs text-gray-500">
+                                                            Ukuran: {{ number_format($file->getSize() / 1024, 2) }} KB
+                                                        </p>
+
+                                                        {{-- Image Preview --}}
+                                                        @if(in_array($file->getClientOriginalExtension(), ['jpg', 'jpeg', 'png']))
+                                                            <div class="mt-2">
+                                                                <img src="{{ $file->temporaryUrl() }}" alt="Preview" class="w-full h-auto rounded border border-gray-200 max-h-48 object-contain">
+                                                            </div>
+                                                        @endif
                                                     </div>
-                                                @endif
+                                                @endforeach
                                             </div>
                                         @endif
 
                                         <div class="mt-2 flex items-start">
                                             <i class="fas fa-info-circle text-blue-500 text-xs mt-0.5 mr-1"></i>
                                             <p class="text-xs text-blue-700">
-                                                Bukti pembayaran wajib diupload untuk menyelesaikan approval.
+                                                Bukti pembayaran wajib diupload untuk menyelesaikan approval. Anda dapat mengupload multiple files dengan total maksimal 20 MB.
                                             </p>
                                         </div>
                                     @elseif($approval->bukti_pembayaran)
@@ -867,14 +896,42 @@
                                                 <i class="fas fa-file text-blue-600 mr-2"></i>
                                                 Bukti Pembayaran
                                             </label>
-                                            <a
-                                                href="{{ Storage::url($approval->bukti_pembayaran) }}"
-                                                target="_blank"
-                                                class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
-                                            >
-                                                <i class="fas fa-download mr-2"></i>
-                                                Lihat Bukti Pembayaran
-                                            </a>
+
+                                            @php
+                                                // Check if bukti_pembayaran is JSON array or single file
+                                                $buktiFiles = [];
+                                                try {
+                                                    $decoded = json_decode($approval->bukti_pembayaran, true);
+                                                    if (is_array($decoded)) {
+                                                        $buktiFiles = $decoded;
+                                                    } else {
+                                                        $buktiFiles = [$approval->bukti_pembayaran];
+                                                    }
+                                                } catch (\Exception $e) {
+                                                    $buktiFiles = [$approval->bukti_pembayaran];
+                                                }
+                                            @endphp
+
+                                            @if(count($buktiFiles) > 1)
+                                                <p class="text-xs text-gray-600 mb-3">{{ count($buktiFiles) }} file terupload</p>
+                                            @endif
+
+                                            <div class="space-y-2">
+                                                @foreach($buktiFiles as $index => $filePath)
+                                                    <a
+                                                        href="{{ Storage::url($filePath) }}"
+                                                        target="_blank"
+                                                        class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+                                                    >
+                                                        <i class="fas fa-download mr-2"></i>
+                                                        @if(count($buktiFiles) > 1)
+                                                            Lihat Bukti Pembayaran #{{ $index + 1 }}
+                                                        @else
+                                                            Lihat Bukti Pembayaran
+                                                        @endif
+                                                    </a>
+                                                @endforeach
+                                            </div>
                                         </div>
                                     </div>
                                 @endif

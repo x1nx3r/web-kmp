@@ -25,7 +25,7 @@ class ApprovePenagihan extends Component
     public $bankOptions = [
         'mandiri' => [
             'name' => 'Bank Mandiri',
-            'account_number' => '1680002439046',
+            'account_number' => '141-0080998883',
             'account_name' => 'PT. KAMIL MAJU PERSADA',
         ],
         'bca' => [

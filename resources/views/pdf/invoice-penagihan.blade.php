@@ -414,7 +414,7 @@
             <div>
                 Transfer <strong>Via Bank Mandiri</strong><br>
                 a/n <strong class="bank-account">PT. KAMIL MAJU PERSADA</strong><br>
-                No. Rek : <strong class="bank-account">1680002439046</strong>
+                No. Rek : <strong class="bank-account">141-0080998883</strong>
             </div>
         @endif
     </div>

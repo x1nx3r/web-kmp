@@ -259,8 +259,8 @@
                     @if($company && $company->address)
                         {{ $company->address }}<br>
                     @else
-                        Pengadangan Bumi Makmur Sukses Sejahtera B-20<br>
-                        Ronto Kalisari, Ds. Prambongan, Kec. Katonas, Gresik<br>
+                        Pergudangan Bumi Benowo Sukses Sejahtera B-20<br>
+                        Romokalisari, Ds. Prambangan, Kec. Kebomas, Gresik<br>
                     @endif
                     @if($company && $company->email)
                         Email : {{ $company->email }}<br>
@@ -270,7 +270,7 @@
                     @if($company && $company->phone)
                         Telp : {{ $company->phone }}
                     @else
-                        Telp : 085606614300
+                        Telp : 085606614900
                     @endif
                 </div>
             </td>

@@ -162,7 +162,7 @@
         }
 
         .total-row {
-            background-color: #2AB672;
+            background-color: #1C46F4;
             color: white;
             font-weight: bold;
             margin-top: 5px;
@@ -195,7 +195,7 @@
             padding: 10px 15px;
             font-weight: bold;
             font-size: 10pt;
-            margin-bottom: 120px;
+            margin-bottom: 80px;
             text-align: center;
         }
 
@@ -233,7 +233,9 @@
             margin-top: 50px;
             font-size: 10pt;
             font-weight: bold;
-            color: #333;
+            color: white;
+            background-color: #1C46F4;
+            padding: 15px;
         }
     </style>
 </head>
@@ -357,19 +359,16 @@
                     </tr>
                 </table>
 
-                @if($invoice->refraksi_value > 0)
-                    <table class="summary-row">
-                        <tr>
-                            <td class="summary-label">Refraksi</td>
-                            <td class="summary-value">Rp {{ number_format($invoice->refraksi_amount, 0, ',', '.') }}</td>
-                        </tr>
-                    </table>
-                @endif
-
                 <table class="summary-row">
                     <tr>
-                        <td class="summary-label">Biaya Kirim</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->subtotal - $pengiriman->total_harga_kirim + ($invoice->refraksi_amount ?? 0), 0, ',', '.') }}</td>
+                        <td class="summary-label">Refraksi</td>
+                        <td class="summary-value">
+                            @if($invoice->refraksi_value > 0)
+                                Rp {{ number_format($invoice->refraksi_amount, 0, ',', '.') }}
+                            @else
+                                -
+                            @endif
+                        </td>
                     </tr>
                 </table>
 
@@ -403,17 +402,17 @@
     {{-- Payment Information --}}
     <div class="payment-section">
         @if($invoice->bank_name)
-            <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong>Transfer</strong></div>
+            <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong class="bank-account">MSF</strong></div>
             <div>
                 Transfer <strong>Via {{ $invoice->bank_name }}</strong><br>
                 a/n <strong class="bank-account">{{ $invoice->bank_account_name }}</strong><br>
                 No. Rek : <strong class="bank-account">{{ $invoice->bank_account_number }}</strong>
             </div>
         @else
-            <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong>Transfer</strong></div>
+            <div style="margin-bottom: 5px;">Pembayaran dapat dilakukan melalui <strong class="bank-account">MSF</strong></div>
             <div>
-                Transfer <strong>Via Bank Mandiri</strong><br>
-                a/n <strong class="bank-account">PT. KAMIL MAJU PERSADA</strong><br>
+                Transfer <strong>Via Mandiri</strong><br>
+                a/n <strong class="bank-account">PT KAMIL MAJU PERSADA</strong><br>
                 No. Rek : <strong class="bank-account">141-0080998883</strong>
             </div>
         @endif

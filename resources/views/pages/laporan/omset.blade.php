@@ -11,7 +11,13 @@
                 <i class="fas fa-chart-line text-purple-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Total Omset Sampai Saat Ini</p>
+                <p class="text-sm text-gray-600 mb-2 flex items-center">
+                    Total Omset Sampai Saat Ini
+                    <span class="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded" 
+                          title="Termasuk Omset Sistem dan Omset Manual">
+                        <i class="fas fa-layer-group"></i>
+                    </span>
+                </p>
                 <h3 class="text-2xl font-bold text-purple-600">
                     @if($totalOmset >= 1000000000)
                         Rp {{ number_format($totalOmset / 1000000000, 2, ',', '.') }} Miliar
@@ -30,7 +36,13 @@
                 <i class="fas fa-gift text-blue-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Omset Tahun Ini ({{ date('Y') }})</p>
+                <p class="text-sm text-gray-600 mb-2 flex items-center">
+                    Omset Tahun Ini ({{ date('Y') }})
+                    <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded" 
+                          title="Termasuk Omset Sistem dan Omset Manual">
+                        <i class="fas fa-layer-group"></i>
+                    </span>
+                </p>
                 <h3 class="text-2xl font-bold text-blue-600">
                     @if($omsetTahunIniSummary >= 1000000000)
                         Rp {{ number_format($omsetTahunIniSummary / 1000000000, 2, ',', '.') }} Miliar
@@ -49,7 +61,13 @@
                 <i class="fas fa-calendar-alt text-green-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Omset Bulan Ini ({{ date('F Y') }})</p>
+                <p class="text-sm text-gray-600 mb-2 flex items-center">
+                    Omset Bulan Ini ({{ date('F Y') }})
+                    <span class="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded" 
+                          title="Termasuk Omset Sistem dan Omset Manual">
+                        <i class="fas fa-layer-group"></i>
+                    </span>
+                </p>
                 <h3 class="text-2xl font-bold text-green-600">
                     Rp {{ number_format($omsetBulanIniSummary / 1000000, 2, ',', '.') }} Juta
                 </h3>
@@ -250,6 +268,10 @@
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                     <i class="fas fa-trophy text-yellow-500 mr-2"></i>
                     Daftar Klien (Berdasarkan Omset)
+                    <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full" 
+                          title="Ranking berdasarkan Omset Sistem (transaksi terverifikasi)">
+                        <i class="fas fa-info-circle mr-1"></i>Omset Sistem
+                    </span>
                 </h3>
             </div>
             <div class="w-48">
@@ -325,6 +347,10 @@
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                     <i class="fas fa-award text-orange-500 mr-2"></i>
                     Daftar Supplier (Berdasarkan Omset)
+                    <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full" 
+                          title="Ranking berdasarkan Omset Sistem (transaksi terverifikasi)">
+                        <i class="fas fa-info-circle mr-1"></i>Omset Sistem
+                    </span>
                 </h3>
             </div>
             <div class="w-48">

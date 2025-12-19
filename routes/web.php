@@ -39,6 +39,7 @@ Route::middleware(["auth"])->group(function () {
             Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
             Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
             Route::post('/omset/set-target', [LaporanOmsetController::class, 'setTarget'])->name('omset.setTarget');
+            Route::post('/omset/save-omset-manual', [LaporanOmsetController::class, 'saveOmsetManual'])->name('omset.saveOmsetManual');
             Route::get('/omset/target-by-year', [LaporanOmsetController::class, 'getTargetByYear'])->name('omset.getTargetByYear');
             Route::get('/omset/available-years', [LaporanOmsetController::class, 'getAvailableYears'])->name('omset.getAvailableYears');
 

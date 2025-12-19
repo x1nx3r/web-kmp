@@ -7,6 +7,7 @@ use App\Models\Klien;
 use App\Models\Order;
 use App\Models\Pengiriman;
 use App\Models\TargetOmset;
+use App\Models\OmsetManual;
 use Illuminate\Http\Request;
 use App\Models\BahanBakuKlien;
 use App\Models\InvoicePenagihan;
@@ -39,38 +40,68 @@ class OmsetController extends Controller
             $selectedYearTarget = $availableYearsTarget[0] ?? Carbon::now()->year;
         }
         
-        // Calculate Total Omset (all time) - using amount_after_refraksi from invoice_penagihan
-        $totalOmset = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        // Calculate Total Omset (all time) - Sistem + Manual
+        $totalOmsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        $totalOmsetManual = OmsetManual::sum('omset_manual') ?? 0;
+        
+        $totalOmset = $totalOmsetSistem + $totalOmsetManual;
         
         // ========== SUMMARY CARDS (ALWAYS CURRENT/NOW) ==========
-        // Calculate Omset Tahun Ini (NOW - untuk summary card atas)
-        $omsetTahunIniSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        // Calculate Omset Tahun Ini (NOW - untuk summary card atas) - Sistem + Manual
+        $omsetTahunIniSistemSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Calculate Omset Bulan Ini (NOW - untuk summary card atas)
-        $omsetBulanIniSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        $omsetTahunIniManualSummary = OmsetManual::where('tahun', Carbon::now()->year)
+            ->sum('omset_manual') ?? 0;
+        
+        $omsetTahunIniSummary = $omsetTahunIniSistemSummary + $omsetTahunIniManualSummary;
+        
+        // Calculate Omset Bulan Ini (NOW - untuk summary card atas) - Sistem + Manual
+        $omsetBulanIniSistemSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        $omsetBulanIniManualSummary = OmsetManual::where('tahun', Carbon::now()->year)
+            ->where('bulan', Carbon::now()->month)
+            ->value('omset_manual') ?? 0;
+        
+        $omsetBulanIniSummary = $omsetBulanIniSistemSummary + $omsetBulanIniManualSummary;
         
         // ========== TARGET ANALYSIS (SELECTED YEAR) ==========
-        // Calculate Omset untuk tahun yang dipilih - untuk Target Analysis Card
-        $omsetTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        // Calculate Omset Sistem untuk tahun yang dipilih
+        $omsetSistemTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Calculate Omset Bulan Ini untuk selected year - untuk Target Analysis Card
-        $omsetBulanIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        // Calculate Omset Manual untuk tahun yang dipilih
+        $omsetManualTahunIni = OmsetManual::where('tahun', $selectedYearTarget)
+            ->sum('omset_manual') ?? 0;
+        
+        // Total Omset Tahunan = Sistem + Manual
+        $omsetTahunIni = $omsetSistemTahunIni + $omsetManualTahunIni;
+        
+        // Calculate Omset Sistem Bulan Ini untuk selected year
+        $omsetSistemBulanIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
             ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Calculate Omset Manual Bulan Ini
+        $omsetManualBulanIni = OmsetManual::where('tahun', $selectedYearTarget)
+            ->where('bulan', Carbon::now()->month)
+            ->value('omset_manual') ?? 0;
+        
+        // Total Omset Bulan Ini = Sistem + Manual
+        $omsetBulanIni = $omsetSistemBulanIni + $omsetManualBulanIni;
         
         // Get Target Omset for selected year
         $targetOmset = TargetOmset::getTargetForYear($selectedYearTarget);
@@ -82,10 +113,16 @@ class OmsetController extends Controller
         // Calculate Omset Minggu Ini (current week) - GUNAKAN tanggal_kirim dari pengiriman
         $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();
-        $omsetMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        $omsetSistemMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->where('pengiriman.status', 'berhasil')
             ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Omset manual untuk minggu ini (dibagi 4 dari omset manual bulan ini)
+        $omsetManualMingguIni = $omsetManualBulanIni / 4;
+        
+        // Total Omset Minggu Ini = Sistem + Manual
+        $omsetMingguIni = $omsetSistemMingguIni + $omsetManualMingguIni;
         
         // Calculate Progress Percentages
         $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
@@ -95,17 +132,28 @@ class OmsetController extends Controller
         // Calculate Monthly Breakdown dengan detail mingguan (4 minggu per bulan)
         $rekapBulanan = [];
         for ($bulan = 1; $bulan <= 12; $bulan++) {
-            // Omset total bulan - GUNAKAN tanggal_kirim dari pengiriman
-            $omsetBulan = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            // Omset sistem (dari transaksi real)
+            $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                 ->where('pengiriman.status', 'berhasil')
                 ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
                 ->whereMonth('pengiriman.tanggal_kirim', $bulan)
                 ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
             
+            // Omset manual (input manual untuk data historis)
+            $omsetManualData = OmsetManual::where('tahun', $selectedYearTarget)
+                ->where('bulan', $bulan)
+                ->first();
+            $omsetManual = $omsetManualData ? (float)$omsetManualData->omset_manual : 0;
+            
+            // Total omset = omset sistem + omset manual
+            $omsetBulan = $omsetSistem + $omsetManual;
+            
             $progressBulanIni = $targetBulanan > 0 ? ($omsetBulan / $targetBulanan) * 100 : 0;
             $selisih = $omsetBulan - $targetBulanan;
             
             // Calculate weekly breakdown for this month - SETIAP BULAN 4 MINGGU (7 hari per minggu)
+            // Untuk omset manual, dibagi rata 4 minggu
+            $omsetManualPerMinggu = $omsetManual / 4;
             $mingguanDetail = [];
             $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
             $endDate = $startDate->copy()->endOfMonth();
@@ -131,10 +179,14 @@ class OmsetController extends Controller
                     break;
                 }
                 
-                $omsetMinggu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                // Omset sistem mingguan
+                $omsetSistemMinggu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                     ->where('pengiriman.status', 'berhasil')
                     ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
                     ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                
+                // Total omset minggu = omset sistem + (omset manual / 4)
+                $omsetMinggu = $omsetSistemMinggu + $omsetManualPerMinggu;
                 
                 $progressMingguIni = $targetMingguan > 0 ? ($omsetMinggu / $targetMingguan) * 100 : 0;
                 
@@ -147,6 +199,8 @@ class OmsetController extends Controller
             
             $rekapBulanan[$bulan] = [
                 'realisasi' => $omsetBulan,
+                'omset_sistem' => $omsetSistem,
+                'omset_manual' => $omsetManual,
                 'progress' => $progressBulanIni,
                 'selisih' => $selisih,
                 'mingguan' => $mingguanDetail
@@ -185,6 +239,23 @@ class OmsetController extends Controller
                 'target_tahunan' => $targetOmsetData->target_tahunan ?? 0,
                 'target_bulanan' => $targetOmsetData->target_bulanan ?? 0,
                 'target_mingguan' => $targetOmsetData->target_mingguan ?? 0,
+            ]);
+        }
+        
+        // Handle AJAX request for Get Omset Sistem
+        if ($request->ajax() && $request->get('ajax') === 'get_omset_sistem') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $bulan = $request->get('bulan', Carbon::now()->month);
+            
+            // Get omset sistem untuk bulan tertentu
+            $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->where('pengiriman.status', 'berhasil')
+                ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                ->whereMonth('pengiriman.tanggal_kirim', $bulan)
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            return response()->json([
+                'omset_sistem' => $omsetSistem
             ]);
         }
         
@@ -653,6 +724,52 @@ class OmsetController extends Controller
                 'success' => true,
                 'years_with_target' => $yearsWithTarget,
                 'current_year' => Carbon::now()->year
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function saveOmsetManual(Request $request)
+    {
+        try {
+            // Check if user is direktur
+            if (Auth::user()->role !== 'direktur') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya Direktur yang dapat menginput omset manual'
+                ], 403);
+            }
+            
+            $request->validate([
+                'tahun' => 'required|integer|min:2020|max:2100',
+                'bulan' => 'required|integer|min:1|max:12',
+                'omset_manual' => 'required|numeric|min:0'
+            ]);
+            
+            $omsetManual = OmsetManual::updateOrCreate(
+                [
+                    'tahun' => $request->tahun,
+                    'bulan' => $request->bulan
+                ],
+                [
+                    'omset_manual' => $request->omset_manual,
+                    'updated_by' => Auth::id()
+                ]
+            );
+            
+            // Set created_by only on creation
+            if ($omsetManual->wasRecentlyCreated) {
+                $omsetManual->created_by = Auth::id();
+                $omsetManual->save();
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Omset manual berhasil disimpan'
             ]);
         } catch (\Exception $e) {
             return response()->json([

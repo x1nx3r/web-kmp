@@ -179,6 +179,9 @@
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Progress</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Selisih</th>
                         <th class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                        @if(auth()->user()->role === 'direktur')
+                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -190,8 +193,10 @@
                     @foreach($months as $index => $month)
                         @php
                             $bulanNum = $index + 1;
-                            $data = $rekapBulanan[$bulanNum] ?? ['realisasi' => 0, 'progress' => 0, 'selisih' => 0, 'mingguan' => []];
+                            $data = $rekapBulanan[$bulanNum] ?? ['realisasi' => 0, 'progress' => 0, 'selisih' => 0, 'mingguan' => [], 'omset_sistem' => 0, 'omset_manual' => 0];
                             $realisasi = $data['realisasi'];
+                            $omsetSistem = $data['omset_sistem'] ?? 0;
+                            $omsetManual = $data['omset_manual'] ?? 0;
                             $progress = $data['progress'];
                             $selisih = $data['selisih'];
                             $mingguanData = $data['mingguan'] ?? [];
@@ -214,8 +219,26 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
                                 Rp {{ number_format($targetBulanan ?? 0, 0, ',', '.') }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                                Rp {{ number_format($realisasi, 0, ',', '.') }}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                <div class="space-y-1">
+                                    <div class="font-semibold text-gray-900">
+                                        Rp {{ number_format($realisasi, 0, ',', '.') }}
+                                    </div>
+                                    @if($omsetManual > 0 || $omsetSistem > 0)
+                                        <div class="text-xs text-gray-500">
+                                            @if($omsetSistem > 0)
+                                                <span class="inline-flex items-center">
+                                                    (Sistem) Rp {{ number_format($omsetSistem, 0, ',', '.') }}
+                                                </span>
+                                            @endif
+                                            @if($omsetManual > 0)
+                                                <span class="inline-flex items-center {{ $omsetSistem > 0 ? 'ml-2' : '' }}">
+                                                    (Manual) Rp {{ number_format($omsetManual, 0, ',', '.') }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
                                 <span class="font-bold {{ $statusClass }}">{{ number_format($progress, 1) }}%</span>
@@ -244,6 +267,15 @@
                                     </span>
                                 @endif
                             </td>
+                            @if(auth()->user()->role === 'direktur')
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <button onclick="openOmsetManualModal({{ $bulanNum }}, '{{ $month }}', {{ $omsetManual }})" 
+                                        class="px-3 py-1.5 {{ $omsetManual > 0 ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' }} rounded-lg text-xs font-semibold transition-colors">
+                                    <i class="fas {{ $omsetManual > 0 ? 'fa-edit' : 'fa-plus' }} mr-1"></i>
+                                    {{ $omsetManual > 0 ? 'Edit' : 'Input' }}
+                                </button>
+                            </td>
+                            @endif
                         </tr>
                         {{-- Weekly Detail Row (Hidden by default) --}}
                         @if(count($mingguanData) > 0)
@@ -297,6 +329,7 @@
                             {{ (($omsetTahunIni ?? 0) - ($targetTahunan ?? 0)) >= 0 ? '+' : '' }}Rp {{ number_format(($omsetTahunIni ?? 0) - ($targetTahunan ?? 0), 0, ',', '.') }}
                         </td>
                         <td></td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -305,8 +338,8 @@
 </div>
 
 {{-- Modal Set Target --}}
-<div id="targetModal" class="fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all">
+<div id="targetModal" class="fixed inset-0 bg-white/20 bg-opacity-50 hidden z-50 backdrop-blur-xs" style="display: none; align-items: center; justify-content: center;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
         <div class="bg-green-500 p-6 rounded-t-xl">
             <h3 class="text-2xl font-bold text-white flex items-center">
                 <i class="fas fa-bullseye mr-3"></i>
@@ -385,10 +418,204 @@
     </div>
 </div>
 
+{{-- Modal Input Omset Manual --}}
+<div id="omsetManualModal" class="fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 hidden z-50" style="display: none; align-items: center; justify-content: center;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+        <div class="bg-gradient-to-r from-green-500 to-teal-500 p-6 rounded-t-xl">
+            <h3 class="text-2xl font-bold text-white flex items-center">
+                <i class="fas fa-hand-holding-usd mr-3"></i>
+                Input Omset Manual
+            </h3>
+            <p class="text-white text-sm mt-1 opacity-90">
+                <span id="omsetManualBulanLabel"></span>
+            </p>
+        </div>
+        <form id="omsetManualForm" class="p-6">
+            @csrf
+            <input type="hidden" id="omsetManualBulan" name="bulan">
+            <input type="hidden" id="omsetManualTahun" name="tahun">
+            
+            <div class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                    <div class="text-sm text-blue-800">
+                        <p class="font-semibold mb-1">Catatan Penting:</p>
+                        <ul class="list-disc list-inside space-y-1 text-xs">
+                            <li><strong>Omset Manual</strong> untuk input data historis sebelum sistem berjalan</li>
+                            <li><strong>Omset Sistem</strong> otomatis dari transaksi aktual</li>
+                            <li>Total omset = Omset Sistem + Omset Manual</li>
+                            <li>Data mingguan akan dibagi rata (÷ 4 minggu)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-coins mr-1 text-green-600"></i>
+                    Omset Manual Bulanan
+                </label>
+                <div class="relative">
+                    <span class="absolute left-3 top-3 text-gray-400 font-medium">Rp</span>
+                    <input type="text" 
+                           id="omsetManualInput" 
+                           name="omset_manual"
+                           class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 font-semibold"
+                           placeholder="0"
+                           oninput="formatOmsetManualInput(this)">
+                </div>
+                <p class="mt-2 text-xs text-gray-500">
+                    <i class="fas fa-calculator mr-1"></i>
+                    Input hanya untuk omset manual, omset sistem akan ditambahkan otomatis
+                </p>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="button" 
+                        onclick="closeOmsetManualModal()"
+                        class="flex-1 px-4 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                    <i class="fas fa-times mr-2"></i>Batal
+                </button>
+                <button type="submit"
+                        class="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold rounded-lg hover:from-green-600 hover:to-teal-600 transition-all shadow-lg">
+                    <i class="fas fa-save mr-2"></i>Simpan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 // Available years for target (from server)
 const availableYearsTarget = @json($availableYearsTarget);
 let currentYearTarget = {{ $selectedYearTarget }};
+
+// Store omset sistem for modal calculation
+let currentOmsetSistem = 0;
+
+// Open omset manual modal
+function openOmsetManualModal(bulan, namaBulan, omsetManualSaatIni) {
+    // Check if user is direktur
+    @if(auth()->user()->role !== 'direktur')
+        alert('⚠️ Akses Ditolak\n\nHanya Direktur yang dapat input omset manual.\nAnda hanya memiliki akses untuk melihat data.');
+        return;
+    @endif
+    
+    const modal = document.getElementById('omsetManualModal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    document.getElementById('omsetManualBulan').value = bulan;
+    document.getElementById('omsetManualTahun').value = currentYearTarget;
+    document.getElementById('omsetManualBulanLabel').textContent = namaBulan + ' ' + currentYearTarget;
+    
+    // Set existing value if any
+    if (omsetManualSaatIni > 0) {
+        document.getElementById('omsetManualInput').value = parseInt(omsetManualSaatIni).toLocaleString('id-ID');
+    } else {
+        document.getElementById('omsetManualInput').value = '';
+    }
+    
+    // Fetch omset sistem for this month
+    fetchOmsetSistem(currentYearTarget, bulan);
+}
+
+function closeOmsetManualModal() {
+    const modal = document.getElementById('omsetManualModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+    document.getElementById('omsetManualInput').value = '';
+    currentOmsetSistem = 0;
+}
+
+function formatOmsetManualInput(input) {
+    let value = input.value.replace(/\D/g, '');
+    if (value) {
+        value = parseInt(value).toLocaleString('id-ID');
+    }
+    input.value = value;
+    updateTotalOmsetDisplay();
+}
+
+function updateTotalOmsetDisplay() {
+    const omsetManualInput = document.getElementById('omsetManualInput').value;
+    const omsetManual = omsetManualInput ? parseInt(omsetManualInput.replace(/\D/g, '')) : 0;
+    const totalOmset = currentOmsetSistem + omsetManual;
+    
+    document.getElementById('omsetSistemDisplay').textContent = 'Rp ' + currentOmsetSistem.toLocaleString('id-ID');
+    document.getElementById('totalOmsetDisplay').textContent = 'Rp ' + totalOmset.toLocaleString('id-ID');
+}
+
+function fetchOmsetSistem(tahun, bulan) {
+    fetch('{{ route("laporan.omset") }}?ajax=get_omset_sistem&tahun=' + tahun + '&bulan=' + bulan, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        currentOmsetSistem = data.omset_sistem || 0;
+        updateTotalOmsetDisplay();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        currentOmsetSistem = 0;
+        updateTotalOmsetDisplay();
+    });
+}
+
+// Handle omset manual form submit
+document.getElementById('omsetManualForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const omsetManualInput = document.getElementById('omsetManualInput').value;
+    const cleanValue = omsetManualInput.replace(/\D/g, '');
+    const bulan = document.getElementById('omsetManualBulan').value;
+    const tahun = document.getElementById('omsetManualTahun').value;
+    
+    // Validate
+    if (!cleanValue) {
+        alert('Mohon masukkan nilai omset manual');
+        return;
+    }
+    
+    // Send AJAX request
+    fetch('{{ route("laporan.omset.saveOmsetManual") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            tahun: tahun,
+            bulan: bulan,
+            omset_manual: cleanValue
+        })
+    })
+    .then(response => {
+        if (response.status === 403) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Akses ditolak');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('✅ Omset manual berhasil disimpan!');
+            closeOmsetManualModal();
+            // Reload page to refresh data
+            loadTargetAnalysisData(currentYearTarget);
+        } else {
+            alert('❌ Gagal menyimpan omset manual\n\n' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ ' + error.message);
+    });
+});
+
+// ...existing code...
 
 // Change target year with slide navigation
 function changeTargetYearSlide(direction) {
@@ -443,7 +670,9 @@ function openTargetModal() {
         return;
     @endif
     
-    document.getElementById('targetModal').classList.remove('hidden');
+    const modal = document.getElementById('targetModal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
     
     // Set tahun to current selected year
     document.getElementById('targetTahunInput').value = currentYearTarget;
@@ -454,7 +683,9 @@ function openTargetModal() {
 }
 
 function closeTargetModal() {
-    document.getElementById('targetModal').classList.add('hidden');
+    const modal = document.getElementById('targetModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
 }
 
 function updateTargetPreview() {

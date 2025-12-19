@@ -7,6 +7,7 @@ use App\Models\OrderDetail;
 use App\Models\InvoicePenagihan;
 use App\Models\Pengiriman;
 use App\Models\TargetOmset;
+use App\Models\OmsetManual;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -22,26 +23,45 @@ class DashboardController extends Controller
         $targetBulanan = $targetOmset->target_bulanan ?? 0;
         $targetTahunan = $targetOmset->target_tahunan ?? 0;
         
-        // Omset Minggu Ini
+        // Omset Minggu Ini - Sistem
         $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();
-        $omsetMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+        $omsetSistemMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Omset Bulan Ini
-        $omsetBulanIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+        // Omset Manual Minggu Ini (dibagi 4 dari bulan ini)
+        $omsetManualBulanIni = OmsetManual::where('tahun', Carbon::now()->year)
+            ->where('bulan', Carbon::now()->month)
+            ->value('omset_manual') ?? 0;
+        $omsetManualMingguIni = $omsetManualBulanIni / 4;
+        
+        // Total Omset Minggu Ini
+        $omsetMingguIni = $omsetSistemMingguIni + $omsetManualMingguIni;
+        
+        // Omset Bulan Ini - Sistem
+        $omsetSistemBulanIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
-        // Omset Tahun Ini
-        $omsetTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+        // Total Omset Bulan Ini
+        $omsetBulanIni = $omsetSistemBulanIni + $omsetManualBulanIni;
+        
+        // Omset Tahun Ini - Sistem
+        $omsetSistemTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+        
+        // Omset Manual Tahun Ini
+        $omsetManualTahunIni = OmsetManual::where('tahun', Carbon::now()->year)
+            ->sum('omset_manual') ?? 0;
+        
+        // Total Omset Tahun Ini
+        $omsetTahunIni = $omsetSistemTahunIni + $omsetManualTahunIni;
         
         // Progress Percentages
         $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
@@ -72,6 +92,11 @@ class DashboardController extends Controller
             ->where('pengiriman.status', 'berhasil')
             ->sum(DB::raw('COALESCE(invoice_penagihan.qty_after_refraksi, pengiriman.total_qty_kirim)'));
         
+        // ========== PENGIRIMAN GAGAL MINGGU INI ==========
+        $pengirimanGagalMingguIni = Pengiriman::whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
+            ->where('status', 'gagal')
+            ->count();
+        
         // ========== ORDER BULAN INI ==========
         $orderBulanIni = Order::whereYear('tanggal_order', Carbon::now()->year)
             ->whereMonth('tanggal_order', Carbon::now()->month)
@@ -87,10 +112,18 @@ class DashboardController extends Controller
             $weekStart = Carbon::now()->subWeeks($i)->startOfWeek();
             $weekEnd = Carbon::now()->subWeeks($i)->endOfWeek();
             
-            $omset = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->where('pengiriman.status', 'berhasil')
+            $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd])
                 ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            // Get omset manual for the month of this week
+            $omsetManualWeek = OmsetManual::where('tahun', $weekStart->year)
+                ->where('bulan', $weekStart->month)
+                ->value('omset_manual') ?? 0;
+            $omsetManualWeek = $omsetManualWeek / 4; // Divide by 4 weeks
+            
+            $omset = $omsetSistem + $omsetManualWeek;
             
             $omsetTrend[] = [
                 'week' => 'Minggu ' . ($i == 0 ? 'Ini' : $i),
@@ -124,7 +157,11 @@ class DashboardController extends Controller
             'targetBulanan',
             'targetTahunan',
             'omsetMingguIni',
+            'omsetSistemMingguIni',
+            'omsetManualMingguIni',
             'omsetBulanIni',
+            'omsetSistemBulanIni',
+            'omsetManualBulanIni',
             'omsetTahunIni',
             'progressMinggu',
             'progressBulan',
@@ -134,6 +171,7 @@ class DashboardController extends Controller
             'poBerjalan',
             'pengirimanMingguIni',
             'totalQtyPengirimanMingguIni',
+            'pengirimanGagalMingguIni',
             'orderBulanIni',
             'nilaiOrderBulanIni',
             'omsetTrend',

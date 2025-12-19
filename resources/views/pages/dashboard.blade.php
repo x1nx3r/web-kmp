@@ -22,7 +22,7 @@
             {{-- Realisasi --}}
             <div class="bg-gray-50 rounded-lg p-5">
                 <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Realisasi</p>
-                <h3 class="text-3xl font-bold text-gray-900 mb-3">
+                <h3 class="text-3xl font-bold text-gray-900 mb-2">
                     @if($omsetMingguIni >= 1000000000)
                         Rp {{ number_format($omsetMingguIni / 1000000000, 1, ',', '.') }}M
                     @elseif($omsetMingguIni >= 1000000)
@@ -31,19 +31,40 @@
                         Rp {{ number_format($omsetMingguIni, 0, ',', '.') }}
                     @endif
                 </h3>
-                @if($progressMinggu >= 100)
-                    <span class="inline-flex items-center gap-1 text-sm text-green-600">
-                        <i class="fas fa-check-circle"></i> Target Tercapai
-                    </span>
-                @elseif($progressMinggu >= 75)
-                    <span class="inline-flex items-center gap-1 text-sm text-yellow-600">
-                        <i class="fas fa-clock"></i> Hampir Tercapai
-                    </span>
-                @else
-                    <span class="inline-flex items-center gap-1 text-sm text-red-600">
-                        <i class="fas fa-exclamation-circle"></i> Perlu Ditingkatkan
-                    </span>
-                @endif
+                
+                {{-- Breakdown Sistem & Manual --}}
+                <div class="mt-3 pt-3 border-t border-gray-200 space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-600 flex items-center">(Sistem) 
+                        </span>
+                        <span class="font-semibold text-gray-700">
+                           Rp {{ number_format($omsetSistemMingguIni / 1000000, 1, ',', '.') }}Jt
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-600 flex items-center">(Manual)
+                        </span>
+                        <span class="font-semibold text-gray-700">
+                            Rp {{ number_format($omsetManualMingguIni / 1000000, 1, ',', '.') }}Jt
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    @if($progressMinggu >= 100)
+                        <span class="inline-flex items-center gap-1 text-sm text-green-600">
+                            <i class="fas fa-check-circle"></i> Target Tercapai
+                        </span>
+                    @elseif($progressMinggu >= 75)
+                        <span class="inline-flex items-center gap-1 text-sm text-yellow-600">
+                            <i class="fas fa-clock"></i> Hampir Tercapai
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1 text-sm text-red-600">
+                            <i class="fas fa-exclamation-circle"></i> Perlu Ditingkatkan
+                        </span>
+                    @endif
+                </div>
             </div>
 
             {{-- Target --}}
@@ -80,7 +101,7 @@
     </div>
 
     {{-- Ringkasan Utama --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {{-- Outstanding PO --}}
         <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
             <div class="flex items-center gap-3 mb-4">
@@ -118,6 +139,18 @@
                     Rp {{ number_format($omsetBulanIni, 0, ',', '.') }}
                 @endif
             </p>
+            
+            {{-- Breakdown Sistem & Manual --}}
+            <div class="flex items-center gap-2 mt-2 mb-1 text-xs text-gray-600">
+                <span class="inline-flex items-center gap-1" title="Omset dari sistem">
+                    (Sistem) {{ number_format($omsetSistemBulanIni / 1000000, 1, ',', '.') }}Jt
+                </span>
+                <span class="text-gray-300">|</span>
+                <span class="inline-flex items-center gap-1" title="Omset manual">
+                    (Manual) {{ number_format($omsetManualBulanIni / 1000000, 1, ',', '.') }}Jt
+                </span>
+            </div>
+            
             <p class="text-sm text-gray-500">{{ number_format($progressBulan, 1) }}% dari target</p>
         </div>
 
@@ -131,6 +164,18 @@
             </div>
             <p class="text-2xl font-bold text-gray-900 mb-1">{{ number_format($pengirimanMingguIni) }}</p>
             <p class="text-sm text-gray-500">{{ number_format($totalQtyPengirimanMingguIni, 0, ',', '.') }} Qty Total</p>
+        </div>
+
+        {{-- Pengiriman Gagal Minggu Ini --}}
+        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-times-circle text-red-500 text-xl"></i>
+                </div>
+                <h3 class="text-sm text-gray-500">Pengiriman Gagal</h3>
+            </div>
+            <p class="text-2xl font-bold text-red-600 mb-1">{{ number_format($pengirimanGagalMingguIni) }}</p>
+            <p class="text-sm text-gray-500">Minggu Ini</p>
         </div>
 
         {{-- Order Bulan Ini --}}

@@ -1176,7 +1176,9 @@ class ForecastingController extends Controller
             Log::info("Creating pengiriman with no: {$noPengiriman}");
             
             // 1. Create Pengiriman record with NULL values for qty and harga (pembatalan)
-            // Data forecast disimpan di catatan saja untuk referensi
+            // Format catatan: [Alasan] | Dibatalkan pada: [Tanggal Waktu]
+            $catatanPembatalan = $request->alasan_batal . ' | Dibatalkan pada: ' . $timestamp->format('d M Y H:i');
+            
             $pengirimanId = DB::table('pengiriman')->insertGetId([
                 'purchase_order_id' => $forecast->purchase_order_id,
                 'purchasing_id' => $forecast->purchasing_id,
@@ -1187,7 +1189,7 @@ class ForecastingController extends Controller
                 'total_qty_kirim' => null, // Set NULL karena pembatalan
                 'total_harga_kirim' => null, // Set NULL karena pembatalan
                 'status' => 'gagal',
-                'catatan' => $request->alasan_batal,
+                'catatan' => $catatanPembatalan,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp
             ]);

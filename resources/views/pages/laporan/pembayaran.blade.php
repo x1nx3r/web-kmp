@@ -3,11 +3,11 @@
 @section('report-content')
 
 {{-- Summary Cards --}}
-<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     {{-- Total Pembayaran --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <div class="flex items-start space-x-4">
-            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
                 <i class="fas fa-money-bill-wave text-blue-600 text-xl"></i>
             </div>
             <div class="flex-1">
@@ -26,11 +26,11 @@
     {{-- Pembayaran Tahun Ini --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <div class="flex items-start space-x-4">
-            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
                 <i class="fas fa-calendar-check text-green-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Pembayaran Tahun Ini</p>
+                <p class="text-sm text-gray-600 mb-2">Pembayaran Tahun Ini ({{ date('Y') }})</p>
                 <h3 class="text-2xl font-bold text-green-600">
                     @if($pembayaranTahunIni >= 1000000000)
                         Rp {{ number_format($pembayaranTahunIni / 1000000000, 2, ',', '.') }} Miliar
@@ -45,28 +45,35 @@
     {{-- Pembayaran Bulan Ini --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <div class="flex items-start space-x-4">
-            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center shrink-0">
                 <i class="fas fa-calendar-day text-purple-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Pembayaran Bulan Ini</p>
+                <p class="text-sm text-gray-600 mb-2">Pembayaran Bulan Ini ({{ date('F Y') }})</p>
                 <h3 class="text-2xl font-bold text-purple-600">
                     Rp {{ number_format($pembayaranBulanIni / 1000000, 2, ',', '.') }} Juta
                 </h3>
             </div>
         </div>
     </div>
+</div>
 
+{{-- Secondary Summary Cards --}}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
     {{-- Total Piutang Supplier --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <div class="flex items-start space-x-4">
-            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center shrink-0">
                 <i class="fas fa-exclamation-triangle text-orange-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Piutang Supplier</p>
+                <p class="text-sm text-gray-600 mb-2">Total Piutang Supplier</p>
                 <h3 class="text-2xl font-bold text-orange-600">
-                    Rp {{ number_format($totalPiutangSupplier / 1000000, 2, ',', '.') }} Juta
+                    @if($totalPiutangSupplier >= 1000000000)
+                        Rp {{ number_format($totalPiutangSupplier / 1000000000, 2, ',', '.') }} Miliar
+                    @else
+                        Rp {{ number_format($totalPiutangSupplier / 1000000, 2, ',', '.') }} Juta
+                    @endif
                 </h3>
             </div>
         </div>
@@ -75,13 +82,13 @@
     {{-- Jumlah Transaksi --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <div class="flex items-start space-x-4">
-            <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center shrink-0">
                 <i class="fas fa-receipt text-teal-600 text-xl"></i>
             </div>
             <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2">Jumlah Transaksi</p>
+                <p class="text-sm text-gray-600 mb-2">Total Transaksi Pembayaran</p>
                 <h3 class="text-2xl font-bold text-teal-600">
-                    {{ number_format($jumlahTransaksi) }}
+                    {{ number_format($jumlahTransaksi) }} <span class="text-base font-normal text-gray-500">transaksi</span>
                 </h3>
             </div>
         </div>

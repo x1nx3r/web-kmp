@@ -9,6 +9,7 @@ use App\Models\Klien;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PurchaseOrderController extends Controller
 {
@@ -198,5 +199,125 @@ class PurchaseOrderController extends Controller
     {
         // TODO: Implement export functionality
         return response()->json(['message' => 'Export functionality will be implemented']);
+    }
+    
+    public function exportOutstandingPdf()
+    {
+        // Get outstanding order details
+        $outstandingDetails = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+            ->whereNotIn('order_details.status', ['selesai'])
+            ->select(
+                'orders.po_number',
+                'orders.no_order',
+                'kliens.nama as klien_nama',
+                'kliens.cabang as klien_cabang',
+                'bahan_baku_klien.nama as material_nama',
+                'order_details.qty',
+                'order_details.harga_jual',
+                'order_details.total_harga',
+                'order_details.status as detail_status'
+            )
+            ->orderBy('orders.po_number')
+            ->orderBy('kliens.nama')
+            ->get();
+        
+        // Calculate totals
+        $totalQty = $outstandingDetails->sum('qty');
+        $totalNilai = $outstandingDetails->sum('total_harga');
+        $totalPO = $outstandingDetails->pluck('po_number')->unique()->count();
+        
+        // Load PDF view
+        $pdf = Pdf::loadView('pages.laporan.pdf.outstanding', [
+            'outstandingDetails' => $outstandingDetails,
+            'totalQty' => $totalQty,
+            'totalNilai' => $totalNilai,
+            'totalPO' => $totalPO,
+            'generatedAt' => now()->format('d/m/Y H:i')
+        ]);
+        
+        // Set paper size and orientation
+        $pdf->setPaper('A4', 'landscape');
+        
+        // Generate filename with timestamp
+        $filename = 'Outstanding_PO_' . now()->format('Ymd_His') . '.pdf';
+        
+        // Return PDF download
+        return $pdf->download($filename);
+    }
+    
+    public function exportClientPdf(Request $request)
+    {
+        // Get filter parameters
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Build date filter query
+        $dateFilterQuery = function($query) use ($periode, $startDate, $endDate) {
+            if ($periode === 'tahun_ini') {
+                $query->whereYear('tanggal_order', Carbon::now()->year);
+            } elseif ($periode === 'bulan_ini') {
+                $query->whereYear('tanggal_order', Carbon::now()->year)
+                      ->whereMonth('tanggal_order', Carbon::now()->month);
+            } elseif ($periode === 'custom' && $startDate && $endDate) {
+                $query->whereBetween('tanggal_order', [$startDate, $endDate]);
+            }
+            // 'all' = no date filter
+        };
+        
+        // Get PO by client data
+        $poByClient = Order::select(
+                'kliens.id as klien_id',
+                'kliens.nama as klien_nama',
+                'kliens.cabang',
+                DB::raw('COUNT(orders.id) as total_po'),
+                DB::raw('SUM(orders.total_amount) as total_nilai'),
+                DB::raw('SUM(orders.total_qty) as total_qty')
+            )
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+            ->where($dateFilterQuery)
+            ->groupBy('kliens.id', 'kliens.nama', 'kliens.cabang')
+            ->orderBy('total_nilai', 'desc')
+            ->get();
+        
+        // Calculate totals
+        $totalKlien = $poByClient->count();
+        $totalPO = $poByClient->sum('total_po');
+        $totalNilai = $poByClient->sum('total_nilai');
+        
+        // Build filter info text
+        $filterInfo = null;
+        if ($periode === 'tahun_ini') {
+            $filterInfo = 'Tahun ' . Carbon::now()->year;
+        } elseif ($periode === 'bulan_ini') {
+            $filterInfo = Carbon::now()->isoFormat('MMMM YYYY');
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $filterInfo = Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } else {
+            $filterInfo = 'Semua Data';
+        }
+        
+        // Load PDF view
+        $pdf = Pdf::loadView('pages.laporan.pdf.client', [
+            'poByClient' => $poByClient,
+            'totalKlien' => $totalKlien,
+            'totalPO' => $totalPO,
+            'totalNilai' => $totalNilai,
+            'filterInfo' => $filterInfo,
+            'generatedAt' => now()->format('d/m/Y H:i')
+        ]);
+        
+        // Set paper size and orientation
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Generate filename with timestamp
+        $filename = 'PO_By_Client_' . now()->format('Ymd_His') . '.pdf';
+        
+        // Return PDF download
+        return $pdf->download($filename);
     }
 }

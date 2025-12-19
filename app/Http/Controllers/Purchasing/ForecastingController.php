@@ -54,7 +54,7 @@ class ForecastingController extends Controller
         }, function($query) {
             $query->orderBy('created_at', 'desc');
         })
-        ->paginate(5, ['*'], 'page_buat_forecasting')
+        ->paginate(10, ['*'], 'page_buat_forecasting')
         ->withQueryString();
 
         // Ambil forecast berdasarkan status dengan eager loading dan pagination

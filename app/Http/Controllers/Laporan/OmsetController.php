@@ -42,7 +42,7 @@ class OmsetController extends Controller
         
         // Calculate Total Omset (all time) - Sistem + Manual
         $totalOmsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
         $totalOmsetManual = OmsetManual::sum('omset_manual') ?? 0;
@@ -52,7 +52,7 @@ class OmsetController extends Controller
         // ========== SUMMARY CARDS (ALWAYS CURRENT/NOW) ==========
         // Calculate Omset Tahun Ini (NOW - untuk summary card atas) - Sistem + Manual
         $omsetTahunIniSistemSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
@@ -63,7 +63,7 @@ class OmsetController extends Controller
         
         // Calculate Omset Bulan Ini (NOW - untuk summary card atas) - Sistem + Manual
         $omsetBulanIniSistemSummary = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
@@ -77,7 +77,7 @@ class OmsetController extends Controller
         // ========== TARGET ANALYSIS (SELECTED YEAR) ==========
         // Calculate Omset Sistem untuk tahun yang dipilih
         $omsetSistemTahunIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
@@ -90,7 +90,7 @@ class OmsetController extends Controller
         
         // Calculate Omset Sistem Bulan Ini untuk selected year
         $omsetSistemBulanIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
             ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
@@ -114,7 +114,7 @@ class OmsetController extends Controller
         $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();
         $omsetSistemMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
@@ -134,7 +134,7 @@ class OmsetController extends Controller
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             // Omset sistem (dari transaksi real)
             $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->where('pengiriman.status', 'berhasil')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
                 ->whereMonth('pengiriman.tanggal_kirim', $bulan)
                 ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
@@ -181,7 +181,7 @@ class OmsetController extends Controller
                 
                 // Omset sistem mingguan
                 $omsetSistemMinggu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                    ->where('pengiriman.status', 'berhasil')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                     ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
                     ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
                 
@@ -249,7 +249,7 @@ class OmsetController extends Controller
             
             // Get omset sistem untuk bulan tertentu
             $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->where('pengiriman.status', 'berhasil')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereYear('pengiriman.tanggal_kirim', $tahun)
                 ->whereMonth('pengiriman.tanggal_kirim', $bulan)
                 ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
@@ -268,7 +268,7 @@ class OmsetController extends Controller
                 ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
                 ->select('kliens.id as klien_id', 'kliens.nama', 'kliens.cabang',
                     DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
-                ->where('pengiriman.status', 'berhasil')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereNull('pengiriman.deleted_at')
                 ->whereNull('kliens.deleted_at')
                 ->groupBy('kliens.id', 'kliens.nama', 'kliens.cabang');
@@ -312,7 +312,7 @@ class OmsetController extends Controller
                 ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
                 ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
                     DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
-                ->where('pengiriman.status', 'berhasil')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereNull('pengiriman.deleted_at')
                 ->whereNull('pengiriman_details.deleted_at')
                 ->whereNull('bahan_baku_supplier.deleted_at')
@@ -396,7 +396,7 @@ class OmsetController extends Controller
                 ->join('users', 'order_winners.user_id', '=', 'users.id')
                 ->select('order_winners.user_id', 'users.nama', 
                     DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
-                ->where('pengiriman.status', 'berhasil')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->groupBy('order_winners.user_id', 'users.nama');
             
             // Apply filter for marketing
@@ -430,7 +430,7 @@ class OmsetController extends Controller
         if ($request->ajax() && $request->get('ajax') === 'procurement') {
             $omsetProcurementQuery = InvoicePenagihan::select('pengiriman.purchasing_id', DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
                 ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->where('pengiriman.status', 'berhasil')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->groupBy('pengiriman.purchasing_id');
             
             // Apply filter for procurement
@@ -470,7 +470,7 @@ class OmsetController extends Controller
             ->join('users', 'order_winners.user_id', '=', 'users.id')
             ->select('order_winners.user_id', 'users.nama', 
                 DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->groupBy('order_winners.user_id', 'users.nama');
         
         // Apply filter for marketing
@@ -502,7 +502,7 @@ class OmsetController extends Controller
         // Omset Procurement by PIC (from InvoicePenagihan with pengiriman status 'berhasil')
         $omsetProcurementQuery = InvoicePenagihan::select('pengiriman.purchasing_id', DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
             ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->groupBy('pengiriman.purchasing_id');
         
         // Apply filter for procurement
@@ -573,7 +573,7 @@ class OmsetController extends Controller
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->select('kliens.id as klien_id', 'kliens.nama', 'kliens.cabang',
                 DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereNull('pengiriman.deleted_at')
             ->whereNull('kliens.deleted_at')
             ->groupBy('kliens.id', 'kliens.nama', 'kliens.cabang');
@@ -594,7 +594,7 @@ class OmsetController extends Controller
         $topKlien = $topKlienQuery->orderBy('total', 'desc')
             ->get();
         
-        // Get Top Supplier data
+        // Get Top Supplier data (NON-AJAX)
         // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
         $topSupplierQuery = DB::table('pengiriman')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
@@ -603,7 +603,7 @@ class OmsetController extends Controller
             ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
             ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
                 DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
-            ->where('pengiriman.status', 'berhasil')
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereNull('pengiriman.deleted_at')
             ->whereNull('pengiriman_details.deleted_at')
             ->whereNull('bahan_baku_supplier.deleted_at')

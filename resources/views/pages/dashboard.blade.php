@@ -101,7 +101,7 @@
     </div>
 
     {{-- Ringkasan Utama --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {{-- Outstanding PO --}}
         <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
             <div class="flex items-center gap-3 mb-4">
@@ -164,6 +164,18 @@
             </div>
             <p class="text-2xl font-bold text-gray-900 mb-1">{{ number_format($pengirimanMingguIni) }}</p>
             <p class="text-sm text-gray-500">{{ number_format($totalQtyPengirimanMingguIni, 0, ',', '.') }} Qty Total</p>
+        </div>
+
+        {{-- Pengiriman Gagal Minggu Ini --}}
+        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-times-circle text-red-500 text-xl"></i>
+                </div>
+                <h3 class="text-sm text-gray-500">Pengiriman Gagal</h3>
+            </div>
+            <p class="text-2xl font-bold text-red-600 mb-1">{{ number_format($pengirimanGagalMingguIni) }}</p>
+            <p class="text-sm text-gray-500">Minggu Ini</p>
         </div>
 
         {{-- Order Bulan Ini --}}

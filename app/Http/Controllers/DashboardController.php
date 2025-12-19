@@ -92,6 +92,11 @@ class DashboardController extends Controller
             ->where('pengiriman.status', 'berhasil')
             ->sum(DB::raw('COALESCE(invoice_penagihan.qty_after_refraksi, pengiriman.total_qty_kirim)'));
         
+        // ========== PENGIRIMAN GAGAL MINGGU INI ==========
+        $pengirimanGagalMingguIni = Pengiriman::whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
+            ->where('status', 'gagal')
+            ->count();
+        
         // ========== ORDER BULAN INI ==========
         $orderBulanIni = Order::whereYear('tanggal_order', Carbon::now()->year)
             ->whereMonth('tanggal_order', Carbon::now()->month)
@@ -166,6 +171,7 @@ class DashboardController extends Controller
             'poBerjalan',
             'pengirimanMingguIni',
             'totalQtyPengirimanMingguIni',
+            'pengirimanGagalMingguIni',
             'orderBulanIni',
             'nilaiOrderBulanIni',
             'omsetTrend',

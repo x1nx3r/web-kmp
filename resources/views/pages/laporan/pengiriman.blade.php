@@ -157,9 +157,10 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
                     <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                         <option value="">Semua Status</option>
-                        <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="menunggu_verifikasi" {{ $status == 'menunggu_verifikasi' ? 'selected' : '' }}>Menunggu Verifikasi</option>
                         <option value="berhasil" {{ $status == 'berhasil' ? 'selected' : '' }}>Berhasil</option>
+                        <option value="menunggu_fisik" {{ $status == 'menunggu_fisik' ? 'selected' : '' }}>Menunggu Fisik</option>
+                        <option value="menunggu_verifikasi" {{ $status == 'menunggu_verifikasi' ? 'selected' : '' }}>Menunggu Verifikasi</option>
+                        <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="gagal" {{ $status == 'gagal' ? 'selected' : '' }}>Gagal</option>
                     </select>
                 </div>

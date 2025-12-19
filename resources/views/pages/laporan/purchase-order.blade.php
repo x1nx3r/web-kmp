@@ -90,6 +90,12 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">Nilai Outstanding</h3>
                 <p class="text-xs md:text-sm text-gray-500">Distribusi nilai outstanding per PO</p>
             </div>
+            @if($outstandingChartData->count() > 0)
+                <button onclick="openOutstandingModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-list"></i>
+                    <span class="hidden sm:inline">Detail</span>
+                </button>
+            @endif
         </div>
         
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
@@ -172,6 +178,12 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Klien</h3>
                 <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per klien</p>
             </div>
+            @if($poByClient->count() > 0)
+                <button onclick="openClientModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-list"></i>
+                    <span class="hidden sm:inline">Detail</span>
+                </button>
+            @endif
         </div>
         
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
@@ -611,6 +623,328 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 @endif
+
+// Modal Functions
+function openOutstandingModal() {
+    document.getElementById('outstandingModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeOutstandingModal() {
+    document.getElementById('outstandingModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function openClientModal() {
+    document.getElementById('clientModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeClientModal() {
+    document.getElementById('clientModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const outstandingModal = document.getElementById('outstandingModal');
+    const clientModal = document.getElementById('clientModal');
+    
+    if (event.target === outstandingModal) {
+        closeOutstandingModal();
+    }
+    if (event.target === clientModal) {
+        closeClientModal();
+    }
+});
 </script>
+
+{{-- Outstanding Details Modal --}}
+<div id="outstandingModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white">
+        {{-- Header --}}
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail Outstanding Order</h3>
+                <p class="text-sm text-gray-500 mt-1">Daftar semua item yang masih outstanding</p>
+            </div>
+            <button onclick="closeOutstandingModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-red-50 rounded-lg p-4 border border-red-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-exclamation-circle text-red-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-red-600 font-medium">Total Outstanding</p>
+                        <p class="text-lg font-bold text-red-700">
+                            Rp {{ number_format($totalOutstanding, 0, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-file-alt text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-blue-600 font-medium">Total PO</p>
+                        <p class="text-lg font-bold text-blue-700">{{ $poBerjalan }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-boxes text-orange-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-orange-600 font-medium">Total Qty</p>
+                        <p class="text-lg font-bold text-orange-700">{{ number_format($totalQtyOutstanding, 0, ',', '.') }} kg</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.outstanding.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pabrik</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty (kg)</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga (Rp/kg)</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @php
+                        $no = 1;
+                        $outstandingDetails = \App\Models\OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                            ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
+                            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                            ->whereNotIn('order_details.status', ['selesai'])
+                            ->select(
+                                'orders.po_number',
+                                'orders.no_order',
+                                'kliens.nama as klien_nama',
+                                'kliens.cabang as klien_cabang',
+                                'bahan_baku_klien.nama as material_nama',
+                                'order_details.qty',
+                                'order_details.harga_jual',
+                                'order_details.total_harga',
+                                'order_details.status as detail_status'
+                            )
+                            ->orderBy('orders.po_number')
+                            ->orderBy('kliens.nama')
+                            ->get();
+                    @endphp
+                    
+                    @forelse($outstandingDetails as $detail)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ $detail->po_number ?: $detail->no_order }}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-900">
+                                {{ $detail->klien_nama }}
+                                @if($detail->klien_cabang)
+                                    <span class="text-xs text-gray-500">({{ $detail->klien_cabang }})</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-900">
+                                {{ $detail->material_nama ?: '-' }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                                {{ number_format($detail->qty, 2, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                                {{ number_format($detail->harga_jual, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                {{ number_format($detail->total_harga, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                                <i class="fas fa-inbox text-4xl mb-2"></i>
+                                <p>Tidak ada data outstanding</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot class="bg-gray-50 sticky bottom-0">
+                    <tr class="font-bold">
+                        <td colspan="4" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            {{ number_format($totalQtyOutstanding, 2, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">-</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            {{ number_format($totalOutstanding, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeOutstandingModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- PO By Client Modal --}}
+<div id="clientModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-5xl shadow-lg rounded-xl bg-white">
+        {{-- Header --}}
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail PO Berdasarkan Klien</h3>
+                <p class="text-sm text-gray-500 mt-1">Akumulasi Purchase Order per Pabrik/Klien</p>
+            </div>
+            <button onclick="closeClientModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-building text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-blue-600 font-medium">Total Klien</p>
+                        <p class="text-lg font-bold text-blue-700">{{ $poByClient->count() }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-file-invoice text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-green-600 font-medium">Total PO</p>
+                        <p class="text-lg font-bold text-green-700">{{ number_format($poByClient->sum('total_po'), 0, ',', '.') }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-purple-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-purple-600 font-medium">Total Nilai</p>
+                        <p class="text-lg font-bold text-purple-700">
+                            Rp {{ number_format($poByClient->sum('total_nilai'), 0, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.client.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <input type="hidden" name="periode" value="{{ $periode }}">
+                <input type="hidden" name="start_date" value="{{ $startDate }}">
+                <input type="hidden" name="end_date" value="{{ $endDate }}">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pabrik</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah PO</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga Semua PO</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @php $no = 1; @endphp
+                    @forelse($poByClient as $client)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-900">
+                                <div class="font-medium">{{ $client->klien_nama }}</div>
+                                @if($client->cabang)
+                                    <div class="text-xs text-gray-500">{{ $client->cabang }}</div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center font-medium">
+                                {{ number_format($client->total_po, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
+                                Rp {{ number_format($client->total_nilai, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                                <i class="fas fa-inbox text-4xl mb-2"></i>
+                                <p>Tidak ada data klien</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot class="bg-gray-50 sticky bottom-0">
+                    <tr class="font-bold">
+                        <td colspan="2" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-center">
+                            {{ number_format($poByClient->sum('total_po'), 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            Rp {{ number_format($poByClient->sum('total_nilai'), 0, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeClientModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
 
 @endsection

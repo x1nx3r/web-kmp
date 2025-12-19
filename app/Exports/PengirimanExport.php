@@ -44,10 +44,10 @@ class PengirimanExport implements
         $data = [];
         
         // Baris 1: Judul
-        $data[] = ['LAPORAN PENGIRIMAN', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['LAPORAN PENGIRIMAN', '', '', '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 2: Periode
-        $data[] = ['Periode: ' . date('d/m/Y', strtotime($this->startDate)) . ' - ' . date('d/m/Y', strtotime($this->endDate)), '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['Periode: ' . date('d/m/Y', strtotime($this->startDate)) . ' - ' . date('d/m/Y', strtotime($this->endDate)), '', '', '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 3: Filter
         $filterInfo = [];
@@ -65,16 +65,16 @@ class PengirimanExport implements
         }
         
         if (!empty($filterInfo)) {
-            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', '', '', '', ''];
         } else {
-            $data[] = ['Filter: Semua Data', '', '', '', '', '', '', '', '', '', '', ''];
+            $data[] = ['Filter: Semua Data', '', '', '', '', '', '', '', '', '', '', '', ''];
         }
         
         // Baris 4: Waktu ekspor
-        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', '', '', '', ''];
         
         // Baris 5: Kosong
-        $data[] = ['', '', '', '', '', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', '', '', '', '', ''];
         
         // Header tabel
         $data[] = [
@@ -89,7 +89,8 @@ class PengirimanExport implements
             'Total Harga Forecasting',
             'QTY Pengiriman',
             'Total Harga Pengiriman',
-            'Keterangan'
+            'Keterangan',
+            'Status'
         ];
 
         // Data pengiriman
@@ -138,6 +139,16 @@ class PengirimanExport implements
                 }
             }
 
+            // Format status untuk display
+            $statusDisplay = match($pengiriman->status) {
+                'berhasil' => 'Berhasil',
+                'menunggu_fisik' => 'Menunggu Fisik',
+                'menunggu_verifikasi' => 'Menunggu Verifikasi',
+                'pending' => 'Pending',
+                'gagal' => 'Gagal',
+                default => ucfirst($pengiriman->status ?? 'N/A')
+            };
+
             $data[] = [
                 $pengiriman->tanggal_kirim ? 
                     \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d/m/Y') : 'N/A',
@@ -151,7 +162,8 @@ class PengirimanExport implements
                 (float)(($pengiriman->forecast && $pengiriman->forecast->total_harga_forecast) ? $pengiriman->forecast->total_harga_forecast : 0),
                 number_format((float)$displayQty, 2),
                 (float)$displayHarga,
-                $keterangan
+                $keterangan,
+                $statusDisplay
             ];
         }
 
@@ -167,7 +179,7 @@ class PengirimanExport implements
         $lastRow = 6 + $pengirimanData->count(); // 6 adalah jumlah baris header + info
         
         // Style untuk judul (baris 1)
-        $sheet->mergeCells('A1:L1');
+        $sheet->mergeCells('A1:M1');
         $sheet->getStyle('A1')->applyFromArray([
             'font' => [
                 'bold' => true,
@@ -181,7 +193,7 @@ class PengirimanExport implements
 
         // Style untuk info periode, filter, dan waktu ekspor (baris 2-4)
         foreach ([2, 3, 4] as $row) {
-            $sheet->mergeCells("A{$row}:L{$row}");
+            $sheet->mergeCells("A{$row}:M{$row}");
             $sheet->getStyle("A{$row}")->applyFromArray([
                 'font' => [
                     'size' => 10,
@@ -194,7 +206,7 @@ class PengirimanExport implements
         }
 
         // Style untuk header tabel (baris 6)
-        $sheet->getStyle('A6:L6')->applyFromArray([
+        $sheet->getStyle('A6:M6')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'],
@@ -221,7 +233,7 @@ class PengirimanExport implements
 
         // Style untuk data (baris 7 dan seterusnya)
         if ($lastRow > 6) {
-            $sheet->getStyle("A7:L{$lastRow}")->applyFromArray([
+            $sheet->getStyle("A7:M{$lastRow}")->applyFromArray([
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_TOP,
                     'wrapText' => true,
@@ -242,6 +254,10 @@ class PengirimanExport implements
             // Kolom hari (B) - rata tengah
             $sheet->getStyle("B7:B{$lastRow}")->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            
+            // Kolom status (M) - rata tengah
+            $sheet->getStyle("M7:M{$lastRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
             // Kolom angka (G, H, I, J, K) - rata kanan
             foreach (['G', 'H', 'I', 'J', 'K'] as $col) {
@@ -260,7 +276,7 @@ class PengirimanExport implements
             // Zebra striping - baris bergantian
             for ($row = 7; $row <= $lastRow; $row++) {
                 if ($row % 2 == 0) {
-                    $sheet->getStyle("A{$row}:L{$row}")->applyFromArray([
+                    $sheet->getStyle("A{$row}:M{$row}")->applyFromArray([
                         'fill' => [
                             'fillType' => Fill::FILL_SOLID,
                             'startColor' => ['rgb' => 'F2F2F2'], // Abu-abu muda
@@ -326,6 +342,7 @@ class PengirimanExport implements
             'J' => 18,  // QTY Pengiriman
             'K' => 22,  // Total Harga Pengiriman
             'L' => 40,  // Keterangan
+            'M' => 20,  // Status
         ];
     }
 

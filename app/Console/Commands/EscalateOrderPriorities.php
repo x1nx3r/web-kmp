@@ -26,13 +26,17 @@ class EscalateOrderPriorities extends Command
     protected $description = "Automatically escalate order priorities based on PO end date proximity";
 
     /**
-     * Priority thresholds in days.
+     * Priority thresholds are no longer relied on here; the command uses a literal mapping:
+     * - tinggi: remaining days > 60
+     * - sedang: remaining days > 30 and <= 60
+     * - rendah: remaining days <= 30
+     *
+     * Keep a minimal constant map for clarity / future use.
      */
     protected const PRIORITY_THRESHOLDS = [
-        "mendesak" => 3, // ≤3 days
-        "tinggi" => 7, // ≤7 days
-        "normal" => 14, // ≤14 days
-        "rendah" => PHP_INT_MAX, // >14 days
+        "tinggi" => 60,
+        "sedang" => 30,
+        "rendah" => PHP_INT_MAX,
     ];
 
     /**
@@ -59,6 +63,7 @@ class EscalateOrderPriorities extends Command
         $escalatedOrders = [];
 
         foreach ($orders as $order) {
+            // Use the legacy `priority` column exclusively (priority_v2 removed).
             $oldPriority = $order->priority;
             $newPriority = $this->calculatePriority($order->po_end_date);
 
@@ -86,6 +91,7 @@ class EscalateOrderPriorities extends Command
                 );
 
                 if (!$isDryRun) {
+                    // Write into the legacy enum column `priority`. Surgical migration path expects writes to `priority`.
                     $order->update([
                         "priority" => $newPriority,
                         "priority_calculated_at" => now(),
@@ -118,12 +124,14 @@ class EscalateOrderPriorities extends Command
     {
         $days = $this->getDaysRemaining($poEndDate);
 
-        if ($days <= self::PRIORITY_THRESHOLDS["mendesak"]) {
-            return "mendesak";
-        } elseif ($days <= self::PRIORITY_THRESHOLDS["tinggi"]) {
+        // Literal mapping (more time remaining => higher priority):
+        // - tinggi: remaining days > 60
+        // - sedang: remaining days > 30 and <= 60
+        // - rendah: remaining days <= 30
+        if ($days > 60) {
             return "tinggi";
-        } elseif ($days <= self::PRIORITY_THRESHOLDS["normal"]) {
-            return "normal";
+        } elseif ($days > 30) {
+            return "sedang";
         }
 
         return "rendah";

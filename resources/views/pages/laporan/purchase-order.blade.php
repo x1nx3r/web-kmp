@@ -97,7 +97,7 @@
                 </button>
             @endif
         </div>
-        
+
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($outstandingChartData->count() > 0)
                 <canvas id="chartOutstanding"></canvas>
@@ -118,7 +118,7 @@
                 <p class="text-xs md:text-sm text-gray-500">Distribusi status purchase order</p>
             </div>
         </div>
-        
+
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($poByStatus->count() > 0)
                 <canvas id="chartPOByStatus"></canvas>
@@ -185,7 +185,7 @@
                 </button>
             @endif
         </div>
-        
+
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($poByClient->count() > 0)
                 <canvas id="chartPOByClient"></canvas>
@@ -206,7 +206,7 @@
                 <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per marketing</p>
             </div>
         </div>
-        
+
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
             @if($orderWinners->count() > 0)
                 <canvas id="chartOrderWinners"></canvas>
@@ -230,7 +230,7 @@
                 <p class="text-xs md:text-sm text-gray-500">Total nilai PO per bulan</p>
             </div>
         </div>
-        
+
         <div style="height: 250px; max-height: 350px;">
             <canvas id="chartPOTrend"></canvas>
         </div>
@@ -244,7 +244,7 @@
                 <p class="text-xs md:text-sm text-gray-500">Distribusi prioritas purchase order</p>
             </div>
         </div>
-        
+
         <div style="height: 250px; max-height: 350px;">
             <canvas id="chartPOByPriority"></canvas>
         </div>
@@ -259,7 +259,7 @@
 document.getElementById('periodeFilter').addEventListener('change', function() {
     const startDateDiv = document.getElementById('startDateDiv');
     const endDateDiv = document.getElementById('endDateDiv');
-    
+
     if (this.value === 'custom') {
         startDateDiv.classList.remove('hidden');
         endDateDiv.classList.remove('hidden');
@@ -280,7 +280,7 @@ const chartColors = [
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartPOByClient').getContext('2d');
     const isMobile = window.innerWidth < 768;
-    
+
     new Chart(ctx, {
         type: 'pie',
         data: {
@@ -296,13 +296,13 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { 
+                legend: {
                     position: isMobile ? 'bottom' : 'right',
-                    labels: { 
+                    labels: {
                         padding: isMobile ? 10 : 20,
                         font: { size: isMobile ? 10 : 12 },
                         boxWidth: isMobile ? 10 : 15
-                    } 
+                    }
                 },
                 tooltip: {
                     callbacks: {
@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartPOByStatus').getContext('2d');
     const isMobile = window.innerWidth < 768;
-    
+
     new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -358,13 +358,13 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { 
+                legend: {
                     position: isMobile ? 'bottom' : 'right',
-                    labels: { 
+                    labels: {
                         padding: isMobile ? 10 : 20,
                         font: { size: isMobile ? 10 : 12 },
                         boxWidth: isMobile ? 10 : 15
-                    } 
+                    }
                 },
                 tooltip: {
                     callbacks: {
@@ -451,9 +451,8 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartPOByPriority').getContext('2d');
     const priorityColors = {
-        'mendesak': '#EF4444',
-        'tinggi': '#F59E0B',
-        'normal': '#3B82F6',
+        'tinggi': '#EF4444',
+        'sedang': '#F59E0B',
         'rendah': '#6B7280'
     };
     new Chart(ctx, {
@@ -496,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const klienData = @json($outstandingChartData->pluck('klien_nama')->toArray());
     const orderStatusData = @json($outstandingChartData->pluck('order_status')->toArray());
     const namaMaterialData = @json($outstandingChartData->pluck('nama_material')->toArray());
-    
+
     new Chart(ctx, {
         type: 'pie',
         data: {
@@ -512,13 +511,13 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { 
+                legend: {
                     position: isMobile ? 'bottom' : 'right',
-                    labels: { 
+                    labels: {
                         padding: isMobile ? 8 : 15,
                         font: { size: isMobile ? 9 : 11 },
                         boxWidth: isMobile ? 10 : 12
-                    } 
+                    }
                 },
                 tooltip: {
                     callbacks: {
@@ -536,7 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const klien = klienData[context.dataIndex];
                             const orderStatus = orderStatusData[context.dataIndex];
                             const namaMaterial = namaMaterialData[context.dataIndex];
-                            
+
                             return [
                                 'PO: ' + context.label,
                                 'Klien: ' + klien,
@@ -568,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartOrderWinners').getContext('2d');
     const isMobile = window.innerWidth < 768;
-    
+
     new Chart(ctx, {
         type: 'pie',
         data: {
@@ -584,13 +583,13 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { 
+                legend: {
                     position: isMobile ? 'bottom' : 'right',
-                    labels: { 
+                    labels: {
                         padding: isMobile ? 10 : 20,
                         font: { size: isMobile ? 10 : 12 },
                         boxWidth: isMobile ? 10 : 15
-                    } 
+                    }
                 },
                 tooltip: {
                     callbacks: {
@@ -649,7 +648,7 @@ function closeClientModal() {
 document.addEventListener('click', function(event) {
     const outstandingModal = document.getElementById('outstandingModal');
     const clientModal = document.getElementById('clientModal');
-    
+
     if (event.target === outstandingModal) {
         closeOutstandingModal();
     }
@@ -760,7 +759,7 @@ document.addEventListener('click', function(event) {
                             ->orderBy('kliens.nama')
                             ->get();
                     @endphp
-                    
+
                     @forelse($outstandingDetails as $detail)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>

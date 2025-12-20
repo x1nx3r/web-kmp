@@ -6,19 +6,19 @@
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <form id="order-form" action="{{ route('marketing.orders.store') }}" method="POST" class="space-y-6">
         @csrf
-        
+
         {{-- Header Component --}}
         <x-order.header />
-        
+
         {{-- Client Selector Component --}}
         <x-order.client-selector :clients="$clients" />
-        
+
         {{-- Order Info Section Component --}}
         <x-order.info-section />
-        
+
         {{-- Order Details Component --}}
         <x-order.order-details :materials="$materials" :suppliers="$suppliers" />
-        
+
         {{-- Action Buttons Component --}}
         <x-order.action-buttons />
     </form>
@@ -29,7 +29,7 @@
         <!-- Form -->
         <form action="{{ route('orders.store') }}" method="POST" id="order-form" class="space-y-6">
             @csrf
-            
+
             <!-- Basic Info Card -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div class="px-6 py-4 border-b border-gray-200">
@@ -44,8 +44,8 @@
                             <label for="klien_id" class="block text-sm font-medium text-gray-700 mb-2">
                                 Klien <span class="text-red-500">*</span>
                             </label>
-                            <select name="klien_id" id="klien_id" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klien_id') border-red-500 @enderror" 
+                            <select name="klien_id" id="klien_id"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('klien_id') border-red-500 @enderror"
                                     required>
                                 <option value="">Pilih Klien</option>
                                 @foreach($kliens as $klien)
@@ -58,43 +58,42 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        
+
                         <div>
                             <label for="tanggal_order" class="block text-sm font-medium text-gray-700 mb-2">
                                 Tanggal Order <span class="text-red-500">*</span>
                             </label>
-                            <input type="date" name="tanggal_order" id="tanggal_order" 
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('tanggal_order') border-red-500 @enderror" 
+                            <input type="date" name="tanggal_order" id="tanggal_order"
+                                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('tanggal_order') border-red-500 @enderror"
                                    value="{{ old('tanggal_order', date('Y-m-d')) }}" required>
                             @error('tanggal_order')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         <div>
                             <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
                                 Prioritas <span class="text-red-500">*</span>
                             </label>
-                            <select name="priority" id="priority" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('priority') border-red-500 @enderror" 
+                            <select name="priority" id="priority"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('priority') border-red-500 @enderror"
                                     required>
                                 <option value="">Pilih Prioritas</option>
                                 <option value="rendah" {{ old('priority') == 'rendah' ? 'selected' : '' }}>Rendah</option>
-                                <option value="normal" {{ old('priority') == 'normal' ? 'selected' : '' }}>Normal</option>
+                                <option value="sedang" {{ old('priority') == 'sedang' ? 'selected' : '' }}>Sedang</option>
                                 <option value="tinggi" {{ old('priority') == 'tinggi' ? 'selected' : '' }}>Tinggi</option>
-                                <option value="mendesak" {{ old('priority') == 'mendesak' ? 'selected' : '' }}>Mendesak</option>
                             </select>
                             @error('priority')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        
+
                         <div>
                             <label for="catatan" class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
-                            <textarea name="catatan" id="catatan" rows="3" 
-                                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('catatan') border-red-500 @enderror" 
+                            <textarea name="catatan" id="catatan" rows="3"
+                                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('catatan') border-red-500 @enderror"
                                       placeholder="Catatan tambahan untuk order ini">{{ old('catatan') }}</textarea>
                             @error('catatan')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -126,7 +125,7 @@
                     <div id="order-details">
                         <!-- Dynamic order details will be added here -->
                     </div>
-                    
+
                     @error('order_details')
                         <div class="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">{{ $message }}</div>
                     @enderror
@@ -159,7 +158,7 @@
                 <i class="fas fa-trash"></i>
             </button>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Material <span class="text-red-500">*</span></label>
@@ -187,49 +186,49 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Qty <span class="text-red-500">*</span></label>
-                <input type="number" name="order_details[INDEX][qty]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent qty-input" 
+                <input type="number" name="order_details[INDEX][qty]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent qty-input"
                        step="0.01" min="0.01" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Satuan <span class="text-red-500">*</span></label>
-                <input type="text" name="order_details[INDEX][satuan]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                <input type="text" name="order_details[INDEX][satuan]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                        placeholder="kg, ton, box, dll" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Harga Supplier <span class="text-red-500">*</span></label>
-                <input type="number" name="order_details[INDEX][harga_supplier]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent supplier-price" 
+                <input type="number" name="order_details[INDEX][harga_supplier]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent supplier-price"
                        step="0.01" min="0" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Harga Jual <span class="text-red-500">*</span></label>
-                <input type="number" name="order_details[INDEX][harga_jual]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent selling-price" 
+                <input type="number" name="order_details[INDEX][harga_jual]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent selling-price"
                        step="0.01" min="0" required>
             </div>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Spesifikasi Khusus</label>
-                <textarea name="order_details[INDEX][spesifikasi_khusus]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="2" 
+                <textarea name="order_details[INDEX][spesifikasi_khusus]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="2"
                           placeholder="Spesifikasi khusus untuk item ini"></textarea>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
-                <textarea name="order_details[INDEX][catatan]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="2" 
+                <textarea name="order_details[INDEX][catatan]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="2"
                           placeholder="Catatan untuk item ini"></textarea>
             </div>
         </div>
-        
+
         <!-- Margin Info -->
         <div class="mt-4">
             <div class="margin-info p-3 bg-gray-100 rounded-lg">
                 <p class="text-sm text-gray-600">
-                    <strong>Margin:</strong> 
-                    <span class="margin-amount font-semibold">Rp 0</span> 
+                    <strong>Margin:</strong>
+                    <span class="margin-amount font-semibold">Rp 0</span>
                     (<span class="margin-percentage font-semibold">0%</span>)
                 </p>
             </div>

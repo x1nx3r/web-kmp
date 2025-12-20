@@ -38,9 +38,8 @@ class OrderFactory extends Factory
             ]),
             "priority" => $this->faker->randomElement([
                 "rendah",
-                "normal",
+                "sedang",
                 "tinggi",
-                "mendesak",
             ]),
         ];
     }
@@ -156,7 +155,8 @@ class OrderFactory extends Factory
     {
         return $this->state(
             fn(array $attributes) => [
-                "priority" => "mendesak",
+                // Legacy 'mendesak' maps to the new top level 'tinggi'
+                "priority" => "tinggi",
             ],
         );
     }

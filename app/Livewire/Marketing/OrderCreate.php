@@ -43,7 +43,8 @@ class OrderCreate extends Component
     public $poStartDate;
     public $poEndDate;
     public $poDocument;
-    public $priority = "normal";
+    // Default to the new middle bucket 'sedang'
+    public $priority = "sedang";
     public $catatan = "";
     public $poWinnerId = null;
     public $availableWinners = [];
@@ -117,6 +118,7 @@ class OrderCreate extends Component
                     $order->po_end_date,
                 )->format("Y-m-d")
                 : $this->poEndDate;
+            // Prefer the legacy column `priority` (surgical migration path)
             $this->priority = $order->priority ?? $this->priority;
             $this->catatan = $order->catatan ?? $this->catatan;
             $this->existingPoDocumentPath = $order->po_document_path;
@@ -457,12 +459,14 @@ class OrderCreate extends Component
         $end = Carbon::parse($this->poEndDate);
         $days = now()->diffInDays($end, false);
 
-        if ($days <= 3) {
-            $this->priority = "mendesak";
-        } elseif ($days <= 7) {
+        // Literal mapping (more time remaining => higher priority):
+        // - tinggi: remaining days > 60
+        // - sedang: remaining days > 30 and <= 60
+        // - rendah: remaining days <= 30
+        if ($days > 60) {
             $this->priority = "tinggi";
-        } elseif ($days <= 14) {
-            $this->priority = "normal";
+        } elseif ($days > 30) {
+            $this->priority = "sedang";
         } else {
             $this->priority = "rendah";
         }
@@ -504,7 +508,8 @@ class OrderCreate extends Component
             "poStartDate" => "required|date",
             "poEndDate" => "required|date|after_or_equal:poStartDate",
             "poDocument" => "nullable|file|mimes:jpg,jpeg,png,pdf|max:5120",
-            "priority" => "required|in:rendah,normal,tinggi,mendesak",
+            // Use new allowed values for the UI-level priority field
+            "priority" => "required|in:rendah,sedang,tinggi",
         ]);
 
         $this->updatePriorityFromSchedule();
@@ -550,6 +555,7 @@ class OrderCreate extends Component
                 "po_end_date" => $this->poEndDate,
                 "po_document_path" => $poDocumentPath,
                 "po_document_original_name" => $poOriginalName,
+                // Write into the legacy `priority` column (surgical migration path).
                 "priority" => $this->priority,
                 "status" => "draft",
                 "catatan" => $this->catatan,
@@ -632,7 +638,8 @@ class OrderCreate extends Component
             "poStartDate" => "required|date",
             "poEndDate" => "required|date|after_or_equal:poStartDate",
             "poDocument" => "nullable|file|mimes:jpg,jpeg,png|max:5120",
-            "priority" => "required|in:rendah,normal,tinggi,mendesak",
+            // validation updated to accept new priority values
+            "priority" => "required|in:rendah,sedang,tinggi",
         ]);
 
         if (
@@ -694,6 +701,7 @@ class OrderCreate extends Component
                 "po_end_date" => $this->poEndDate,
                 "po_document_path" => $poDocumentPath,
                 "po_document_original_name" => $poOriginalName,
+                // Update the legacy `priority` enum column directly (surgical migration path).
                 "priority" => $this->priority,
                 "catatan" => $this->catatan,
             ]);

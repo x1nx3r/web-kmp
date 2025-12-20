@@ -164,7 +164,7 @@
                 <x-order.priority-badge :priority="$priority" />
             </div>
             <p class="text-xs text-gray-500">
-                Prioritas dihitung otomatis dari jarak hari menuju tanggal berakhir PO: ≤3 hari = Mendesak, ≤7 hari = Tinggi, ≤14 hari = Normal, selebihnya Rendah.
+                Prioritas dihitung otomatis dari jarak hari menuju tanggal berakhir PO: &gt;60 hari = Tinggi, &gt;30 sampai 60 hari = Sedang, ≤30 hari = Rendah.
             </p>
         </div>
     </div>

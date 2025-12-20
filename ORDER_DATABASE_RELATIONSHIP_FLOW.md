@@ -59,7 +59,7 @@ INSERT INTO orders (
     po_document_original_name,      -- Original PO filename
     
     -- Order Management
-    priority,                       -- enum: rendah|normal|tinggi|mendesak
+    priority,                       -- enum: rendah|sedang|tinggi
     catatan,                        -- General order notes
     status,                         -- enum: draft|dikonfirmasi|diproses|selesai|dibatalkan (simplified - no sebagian_dikirim)
     

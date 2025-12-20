@@ -319,7 +319,7 @@ public function saveOrder()
         'selectedKlien' => 'required',
         'selectedKlienCabang' => 'required',
         'tanggalOrder' => 'required|date',
-        'priority' => 'required|in:rendah,normal,tinggi,mendesak',
+        'priority' => 'required|in:rendah,sedang,tinggi',
     ]);
 
     if (empty($this->selectedOrderItems)) {

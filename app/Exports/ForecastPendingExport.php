@@ -87,6 +87,9 @@ class ForecastPendingExport implements
         // Data forecasts
         $forecasts = $this->getForecastData();
         
+        // Variable untuk menghitung total
+        $grandTotal = 0;
+        
         foreach ($forecasts as $forecast) {
             // Ambil data forecast details
             $forecastDetails = collect($forecast->forecastDetails ?? []);
@@ -111,6 +114,9 @@ class ForecastPendingExport implements
                     $bahanBaku = $detail->bahanBakuSupplier;
                     $supplier = optional($bahanBaku)->supplier;
                     $picSupplier = optional($supplier)->picPurchasing;
+                    
+                    $totalHargaDetail = (float)($detail->total_harga_forecast ?? 0);
+                    $grandTotal += $totalHargaDetail;
 
                     $data[] = [
                         $forecast->tanggal_forecast ? Carbon::parse($forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
@@ -121,12 +127,29 @@ class ForecastPendingExport implements
                         optional(optional($forecast->order)->klien)->nama ?? 'N/A',
                         (float)($detail->qty_forecast ?? 0),
                         (float)($detail->harga_satuan_forecast ?? 0),
-                        (float)($detail->total_harga_forecast ?? 0),
+                        $totalHargaDetail,
                         optional($picSupplier)->nama ?? 'N/A'
                     ];
                 }
             }
         }
+        
+        // Tambahkan baris kosong
+        $data[] = ['', '', '', '', '', '', '', '', '', ''];
+        
+        // Tambahkan baris TOTAL
+        $data[] = [
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            $grandTotal,
+            ''
+        ];
 
         return $data;
     }
@@ -137,6 +160,8 @@ class ForecastPendingExport implements
     public function styles(Worksheet $sheet)
     {
         $lastRow = $sheet->getHighestRow();
+        $totalRow = $lastRow; // Baris total
+        $dataEndRow = $lastRow - 2; // Baris terakhir data (sebelum baris kosong dan total)
         
         // Style for title
         $sheet->mergeCells('A1:J1');
@@ -195,7 +220,7 @@ class ForecastPendingExport implements
         $sheet->getRowDimension(5)->setRowHeight(25);
 
         // Style for data rows
-        for ($row = 6; $row <= $lastRow; $row++) {
+        for ($row = 6; $row <= $dataEndRow; $row++) {
             $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
                 'borders' => [
                     'allBorders' => [
@@ -228,11 +253,39 @@ class ForecastPendingExport implements
         }
 
         // Number format for currency columns
-        for ($row = 6; $row <= $lastRow; $row++) {
+        for ($row = 6; $row <= $dataEndRow; $row++) {
             $sheet->getStyle("G{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
             $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('#,##0');
         }
+        
+        // Style untuk baris TOTAL
+        $sheet->mergeCells("A{$totalRow}:H{$totalRow}");
+        $sheet->setCellValue("A{$totalRow}", "TOTAL");
+        $sheet->getStyle("A{$totalRow}:J{$totalRow}")->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 12,
+                'color' => ['rgb' => 'FFFFFF']
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '10B981'] // Green-500
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_RIGHT,
+                'vertical' => Alignment::VERTICAL_CENTER
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000']
+                ]
+            ]
+        ]);
+        $sheet->getStyle("I{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("I{$totalRow}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getRowDimension($totalRow)->setRowHeight(25);
 
         // Auto-size all columns except merged cells
         foreach (range('A', 'J') as $col) {

@@ -81,7 +81,8 @@ class OrderController extends Controller
         $request->validate([
             "klien_id" => "required|exists:kliens,id",
             "tanggal_order" => "required|date",
-            "priority" => "required|in:rendah,normal,tinggi,mendesak",
+            // Accept new priority values (zero-downtime): rendah, sedang, tinggi
+            "priority" => "required|in:rendah,sedang,tinggi",
             "po_number" => "nullable|string|max:50",
             "po_start_date" => "nullable|date",
             "po_end_date" => "nullable|date|after_or_equal:po_start_date",
@@ -104,6 +105,8 @@ class OrderController extends Controller
             "klien_id" => $request->klien_id,
             "created_by" => AuthFallbackService::id(),
             "tanggal_order" => $request->tanggal_order,
+            // Write into the legacy enum column `priority`. This controller is now aligned
+            // with the surgical migration plan that updates the enum in-place.
             "priority" => $request->priority,
             "po_number" => $request->po_number,
             "po_start_date" => $request->po_start_date,
@@ -414,7 +417,8 @@ class OrderController extends Controller
         $request->validate([
             "klien_id" => "required|exists:kliens,id",
             "tanggal_order" => "required|date",
-            "priority" => "required|in:rendah,normal,tinggi,mendesak",
+            // Accept new priority values (zero-downtime): rendah, sedang, tinggi
+            "priority" => "required|in:rendah,sedang,tinggi",
             "po_number" => "nullable|string|max:50",
             "po_start_date" => "nullable|date",
             "po_end_date" => "nullable|date|after_or_equal:po_start_date",
@@ -436,6 +440,7 @@ class OrderController extends Controller
         $order->update([
             "klien_id" => $request->klien_id,
             "tanggal_order" => $request->tanggal_order,
+            // Update the legacy `priority` enum column directly (surgical migration path).
             "priority" => $request->priority,
             "po_number" => $request->po_number,
             "po_start_date" => $request->po_start_date,

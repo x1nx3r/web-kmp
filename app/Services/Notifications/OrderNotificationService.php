@@ -30,21 +30,26 @@ class OrderNotificationService extends BaseNotificationService
 
     /**
      * Priority levels in order of urgency (highest to lowest)
+     *
+     * Updated to the zero-downtime priority set:
+     * - tinggi (highest)
+     * - sedang (middle)
+     * - rendah (lowest)
      */
     public const PRIORITY_LEVELS = [
-        "mendesak" => 4,
         "tinggi" => 3,
-        "normal" => 2,
+        "sedang" => 2,
         "rendah" => 1,
     ];
 
     /**
      * Priority labels for display
+     *
+     * Labels updated to match the new priority vocabulary.
      */
     public const PRIORITY_LABELS = [
-        "mendesak" => "Mendesak",
         "tinggi" => "Tinggi",
-        "normal" => "Normal",
+        "sedang" => "Sedang",
         "rendah" => "Rendah",
     ];
 
@@ -357,8 +362,9 @@ class OrderNotificationService extends BaseNotificationService
             return 0;
         }
 
-        // Only notify for escalation to tinggi or mendesak
-        if (!in_array($newPriority, ["tinggi", "mendesak"])) {
+        // Only notify for escalation to the top-level priority 'tinggi'
+        // (legacy 'mendesak' was removed in the zero-downtime migration)
+        if ($newPriority !== "tinggi") {
             return 0;
         }
 
@@ -428,21 +434,22 @@ class OrderNotificationService extends BaseNotificationService
      */
     protected static function getPriorityIconConfig(string $priority): array
     {
+        // Icons/colors adjusted for the new priority levels: tinggi, sedang, rendah
         return match ($priority) {
-            "mendesak" => [
-                "icon" => "exclamation-circle",
-                "icon_bg" => "bg-red-100",
-                "icon_color" => "text-red-600",
-            ],
             "tinggi" => [
                 "icon" => "exclamation-triangle",
                 "icon_bg" => "bg-orange-100",
                 "icon_color" => "text-orange-600",
             ],
-            "normal" => [
+            "sedang" => [
                 "icon" => "clipboard-list",
                 "icon_bg" => "bg-blue-100",
                 "icon_color" => "text-blue-600",
+            ],
+            "rendah" => [
+                "icon" => "clipboard-list",
+                "icon_bg" => "bg-gray-100",
+                "icon_color" => "text-gray-600",
             ],
             default => [
                 "icon" => "clipboard-list",

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class Order extends Model
 {
@@ -202,7 +203,8 @@ class Order extends Model
 
     public function scopeUrgent($query)
     {
-        return $query->where("priority", "mendesak");
+        // Use the legacy `priority` column.
+        return $query->where("priority", "tinggi");
     }
 
     /**
@@ -210,7 +212,8 @@ class Order extends Model
      */
     public function getIsUrgentAttribute(): bool
     {
-        return $this->priority === "mendesak";
+        // Use the legacy `priority` column.
+        return $this->priority === "tinggi";
     }
 
     public function getCompletionPercentageAttribute(): float
@@ -437,16 +440,16 @@ class Order extends Model
         $baseDate = $baseDate ?? now();
         $daysUntilDue = $baseDate->diffInDays($this->po_end_date, false);
 
-        if ($daysUntilDue <= 3) {
-            return "mendesak";
-        }
-
-        if ($daysUntilDue <= 7) {
+        // Literal mapping requested:
+        // - tinggi when remaining days > 60
+        // - sedang when remaining days > 30 and <= 60
+        // - rendah when remaining days <= 30
+        if ($daysUntilDue > 60) {
             return "tinggi";
         }
 
-        if ($daysUntilDue <= 14) {
-            return "normal";
+        if ($daysUntilDue > 30) {
+            return "sedang";
         }
 
         return "rendah";
@@ -457,6 +460,8 @@ class Order extends Model
         $calculated = $this->determinePriority();
 
         if ($calculated) {
+            // Write computed priority into the legacy `priority` enum column.
+            // The surgical migration path expects the application to write into `priority`.
             $this->priority = $calculated;
             $this->priority_calculated_at = now();
         }

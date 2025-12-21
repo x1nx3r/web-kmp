@@ -78,9 +78,8 @@
                             <select name="priority" id="priority" class="form-select @error('priority') is-invalid @enderror" required>
                                 <option value="">Pilih Prioritas</option>
                                 <option value="rendah" {{ old('priority', $order->priority) == 'rendah' ? 'selected' : '' }}>Rendah</option>
-                                <option value="normal" {{ old('priority', $order->priority) == 'normal' ? 'selected' : '' }}>Normal</option>
+                                <option value="sedang" {{ old('priority', $order->priority) == 'sedang' ? 'selected' : '' }}>Sedang</option>
                                 <option value="tinggi" {{ old('priority', $order->priority) == 'tinggi' ? 'selected' : '' }}>Tinggi</option>
-                                <option value="mendesak" {{ old('priority', $order->priority) == 'mendesak' ? 'selected' : '' }}>Mendesak</option>
                             </select>
                             @error('priority')
                                 <div class="invalid-feedback">{{ $message }}</div>

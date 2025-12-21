@@ -309,7 +309,7 @@ class RiwayatOrder extends Component
                         // Sort by priority: mendesak > tinggi > normal > rendah
                         $query
                             ->orderByRaw(
-                                "FIELD(priority, 'mendesak', 'tinggi', 'normal', 'rendah')",
+                                "FIELD(priority, 'tinggi', 'sedang', 'rendah')",
                             )
                             ->orderBy("tanggal_order", "desc");
                         break;
@@ -317,7 +317,7 @@ class RiwayatOrder extends Component
                         // Sort by priority: rendah > normal > tinggi > mendesak
                         $query
                             ->orderByRaw(
-                                "FIELD(priority, 'rendah', 'normal', 'tinggi', 'mendesak')",
+                                "FIELD(priority, 'rendah', 'sedang', 'tinggi')",
                             )
                             ->orderBy("tanggal_order", "desc");
                         break;
@@ -343,7 +343,7 @@ class RiwayatOrder extends Component
                         // Default to priority desc
                         $query
                             ->orderByRaw(
-                                "FIELD(priority, 'mendesak', 'tinggi', 'normal', 'rendah')",
+                                "FIELD(priority, 'tinggi', 'sedang', 'rendah')",
                             )
                             ->orderBy("tanggal_order", "desc");
                 }

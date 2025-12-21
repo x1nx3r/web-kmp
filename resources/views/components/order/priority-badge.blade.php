@@ -7,24 +7,19 @@ $priorityConfig = [
         'icon' => 'fa-arrow-down',
         'text' => 'Rendah'
     ],
-    'normal' => [
+    'sedang' => [
         'class' => 'bg-blue-100 text-blue-800',
         'icon' => 'fa-minus',
-        'text' => 'Normal'
+        'text' => 'Sedang'
     ],
     'tinggi' => [
         'class' => 'bg-orange-100 text-orange-800',
         'icon' => 'fa-arrow-up',
         'text' => 'Tinggi'
-    ],
-    'mendesak' => [
-        'class' => 'bg-red-100 text-red-800',
-        'icon' => 'fa-exclamation',
-        'text' => 'Mendesak'
     ]
 ];
 
-$config = $priorityConfig[$priority] ?? $priorityConfig['normal'];
+$config = $priorityConfig[$priority] ?? $priorityConfig['sedang'];
 @endphp
 
 <span class="px-2 py-1 {{ $config['class'] }} text-xs font-medium rounded-full">

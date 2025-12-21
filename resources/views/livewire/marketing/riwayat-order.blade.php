@@ -204,9 +204,8 @@
                     >
                         <option value="">Semua Prioritas</option>
                         <option value="rendah">Rendah</option>
-                        <option value="normal">Normal</option>
+                        <option value="sedang">Sedang</option>
                         <option value="tinggi">Tinggi</option>
-                        <option value="mendesak">Mendesak</option>
                     </select>
                 </div>
 

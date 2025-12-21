@@ -93,8 +93,65 @@ class DashboardController extends Controller
         // Target Adjusted untuk bulan ini
         $targetBulananAdjusted = $targetBulanan + $sisaTargetSebelumnya;
         
-        // Target Adjusted untuk minggu ini (1/4 dari target bulanan adjusted)
-        $targetMingguanAdjusted = $targetBulananAdjusted / 4;
+        // Target mingguan BASE (untuk bulan ini)
+        $targetMingguanBase = $targetBulananAdjusted / 4;
+        
+        // Calculate target mingguan adjusted untuk minggu ini dengan carry forward dari minggu-minggu sebelumnya di bulan ini
+        $sisaTargetMingguanSebelumnya = 0;
+        
+        // Hitung minggu ke berapa sekarang dalam bulan ini (1-4)
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $currentWeekOfMonth = 1;
+        $tempDate = $startOfMonth->copy();
+        
+        while ($tempDate->addDays(7)->lte(Carbon::now()->startOfWeek())) {
+            $currentWeekOfMonth++;
+        }
+        $currentWeekOfMonth = min($currentWeekOfMonth, 4); // Max 4 minggu
+        
+        // Loop dari minggu 1 sampai minggu sebelum minggu ini
+        for ($w = 1; $w < $currentWeekOfMonth; $w++) {
+            // Hitung range tanggal untuk minggu ini
+            if ($w == 1) {
+                $weekStart = $startOfMonth->copy();
+            } else {
+                $weekStart = $startOfMonth->copy()->addDays(($w - 1) * 7);
+            }
+            
+            if ($w == 4) {
+                $weekEnd = $startOfMonth->copy()->endOfMonth();
+            } else {
+                $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+            }
+            
+            // Hitung omset sistem untuk minggu ini
+            $omsetSistemWeek = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            // Omset manual untuk minggu ini (1/4 dari omset manual bulan ini)
+            $omsetManualWeek = $omsetManualBulanIni / 4;
+            
+            // Total omset minggu
+            $omsetTotalWeek = $omsetSistemWeek + $omsetManualWeek;
+            
+            // Target untuk minggu ini (dengan carry forward)
+            $targetWeek = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
+            
+            // Selisih
+            $selisihWeek = $omsetTotalWeek - $targetWeek;
+            
+            // Update sisa target untuk minggu berikutnya
+            if ($selisihWeek < 0) {
+                $sisaTargetMingguanSebelumnya = $targetWeek - $omsetTotalWeek;
+            } else {
+                $sisaTargetMingguanSebelumnya = 0;
+            }
+        }
+        
+        // Target Adjusted untuk minggu ini = base + sisa dari minggu-minggu sebelumnya
+        $targetMingguanAdjusted = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
         
         // Progress Percentages dengan target adjusted
         $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;

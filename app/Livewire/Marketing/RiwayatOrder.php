@@ -4,6 +4,7 @@ namespace App\Livewire\Marketing;
 
 use App\Models\Order;
 use App\Models\Klien;
+use App\Models\BahanBakuKlien;
 use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -19,6 +20,7 @@ class RiwayatOrder extends Component
     public $statusFilter = "";
     public $klienFilter = "";
     public $priorityFilter = "";
+    public $materialFilter = "";
     public $sortBy = "priority_desc";
     public $perPage = 10;
 
@@ -41,6 +43,7 @@ class RiwayatOrder extends Component
         "statusFilter" => ["except" => ""],
         "klienFilter" => ["except" => ""],
         "priorityFilter" => ["except" => ""],
+        "materialFilter" => ["except" => ""],
         "sortBy" => ["except" => "priority_desc"],
         "selectedMonth" => ["except" => ""],
         "selectedYear" => ["except" => ""],
@@ -68,6 +71,11 @@ class RiwayatOrder extends Component
     }
 
     public function updatingKlienFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingMaterialFilter()
     {
         $this->resetPage();
     }
@@ -125,6 +133,7 @@ class RiwayatOrder extends Component
             "statusFilter",
             "klienFilter",
             "priorityFilter",
+            "materialFilter",
             "sortBy",
         ]);
         $this->selectedMonth = now()->month;
@@ -296,6 +305,17 @@ class RiwayatOrder extends Component
             ->when($this->priorityFilter, function (Builder $query) {
                 $query->where("priority", $this->priorityFilter);
             })
+            ->when($this->materialFilter, function (Builder $query) {
+                // Filter orders by material name (case-insensitive).
+                // We look up the related bahanBakuKlien for each orderDetail and compare LOWER(nama)
+                $query->whereHas("orderDetails", function (Builder $q) {
+                    $q->whereHas("bahanBakuKlien", function (Builder $bq) {
+                        $bq->whereRaw("LOWER(nama) = ?", [
+                            strtolower($this->materialFilter),
+                        ]);
+                    });
+                });
+            })
             ->when($this->selectedMonth && $this->selectedYear, function (
                 Builder $query,
             ) {
@@ -306,7 +326,7 @@ class RiwayatOrder extends Component
             ->when($this->sortBy, function (Builder $query) {
                 switch ($this->sortBy) {
                     case "priority_desc":
-                        // Sort by priority: mendesak > tinggi > normal > rendah
+                        // Sort by priority: tinggi > sedang > rendah
                         $query
                             ->orderByRaw(
                                 "FIELD(priority, 'tinggi', 'sedang', 'rendah')",
@@ -314,10 +334,59 @@ class RiwayatOrder extends Component
                             ->orderBy("tanggal_order", "desc");
                         break;
                     case "priority_asc":
-                        // Sort by priority: rendah > normal > tinggi > mendesak
+                        // Sort by priority: rendah > sedang > tinggi
                         $query
                             ->orderByRaw(
                                 "FIELD(priority, 'rendah', 'sedang', 'tinggi')",
+                            )
+                            ->orderBy("tanggal_order", "desc");
+                        break;
+                    case "client_asc":
+                        // Sort by client (klien.nama) A → Z using correlated subquery (case-insensitive)
+                        $query
+                            ->orderByRaw(
+                                "
+                            (SELECT LOWER(COALESCE(nama, '')) FROM kliens WHERE kliens.id = orders.klien_id) ASC
+                        ",
+                            )
+                            ->orderBy("tanggal_order", "desc");
+                        break;
+                    case "client_desc":
+                        // Sort by client (klien.nama) Z → A (case-insensitive)
+                        $query
+                            ->orderByRaw(
+                                "
+                            (SELECT LOWER(COALESCE(nama, '')) FROM kliens WHERE kliens.id = orders.klien_id) DESC
+                        ",
+                            )
+                            ->orderBy("tanggal_order", "desc");
+                        break;
+                    case "material_asc":
+                        // Sort by material name (minimal alphabetic bahan_baku_klien.nama) A → Z (case-insensitive)
+                        // Note: correct table name is `bahan_baku_klien` and we lower the value for case-insensitive ordering.
+                        $query
+                            ->orderByRaw(
+                                "
+                            (SELECT LOWER(COALESCE(MIN(b.nama), ''))
+                             FROM bahan_baku_klien b
+                             JOIN order_details od2 ON od2.bahan_baku_klien_id = b.id
+                             WHERE od2.order_id = orders.id
+                            ) ASC
+                        ",
+                            )
+                            ->orderBy("tanggal_order", "desc");
+                        break;
+                    case "material_desc":
+                        // Sort by material name (minimal alphabetic) Z → A (case-insensitive)
+                        $query
+                            ->orderByRaw(
+                                "
+                            (SELECT LOWER(COALESCE(MIN(b.nama), ''))
+                             FROM bahan_baku_klien b
+                             JOIN order_details od2 ON od2.bahan_baku_klien_id = b.id
+                             WHERE od2.order_id = orders.id
+                            ) DESC
+                        ",
                             )
                             ->orderBy("tanggal_order", "desc");
                         break;
@@ -417,6 +486,18 @@ class RiwayatOrder extends Component
             "orders" => $this->getOrders(),
             "statusCounts" => $this->getStatusCounts(),
             "kliens" => Klien::orderBy("nama")->get(),
+            // Provide a deduplicated, case-insensitive list of material names.
+            // We return only the material names (string) so the select will use the name as the value.
+            "materials" => \Illuminate\Support\Facades\DB::table(
+                "bahan_baku_klien",
+            )
+                ->selectRaw("MIN(nama) as nama")
+                ->when($this->klienFilter, function ($q) {
+                    $q->where("klien_id", $this->klienFilter);
+                })
+                ->groupBy(\Illuminate\Support\Facades\DB::raw("LOWER(nama)"))
+                ->orderByRaw("LOWER(nama)")
+                ->pluck("nama"),
             "availableYears" => $this->getAvailableYears(),
             "currentMonthName" => $this->getMonthName($this->selectedMonth),
         ])->layout("layouts.app");

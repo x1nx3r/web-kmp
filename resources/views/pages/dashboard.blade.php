@@ -71,12 +71,12 @@
             <div class="bg-gray-50 rounded-lg p-5">
                 <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Target Mingguan</p>
                 <h3 class="text-3xl font-bold text-gray-900 mb-3">
-                    @if($targetMingguan >= 1000000000)
-                        Rp {{ number_format($targetMingguan / 1000000000, 1, ',', '.') }}M
-                    @elseif($targetMingguan >= 1000000)
-                        Rp {{ number_format($targetMingguan / 1000000, 1, ',', '.') }}Jt
+                    @if($targetMingguanAdjusted >= 1000000000)
+                        Rp {{ number_format($targetMingguanAdjusted / 1000000000, 1, ',', '.') }}M
+                    @elseif($targetMingguanAdjusted >= 1000000)
+                        Rp {{ number_format($targetMingguanAdjusted / 1000000, 1, ',', '.') }}Jt
                     @else
-                        Rp {{ number_format($targetMingguan, 0, ',', '.') }}
+                        Rp {{ number_format($targetMingguanAdjusted, 0, ',', '.') }}
                     @endif
                 </h3>
                 <p class="text-sm text-gray-500">Per minggu</p>
@@ -90,10 +90,10 @@
                     <div class="{{ $progressMinggu >= 100 ? 'bg-green-500' : 'bg-blue-500' }} h-full rounded-full" style="width: {{ min($progressMinggu, 100) }}%"></div>
                 </div>
                 <p class="text-sm text-gray-500">
-                    @if($targetMingguan > $omsetMingguIni)
-                        Kurang Rp {{ number_format(($targetMingguan - $omsetMingguIni) / 1000000, 1, ',', '.') }}Jt
+                    @if($targetMingguanAdjusted > $omsetMingguIni)
+                        Kurang Rp {{ number_format(($targetMingguanAdjusted - $omsetMingguIni) / 1000000, 1, ',', '.') }}Jt
                     @else
-                        Lebih Rp {{ number_format(($omsetMingguIni - $targetMingguan) / 1000000, 1, ',', '.') }}Jt
+                        Lebih Rp {{ number_format(($omsetMingguIni - $targetMingguanAdjusted) / 1000000, 1, ',', '.') }}Jt
                     @endif
                 </p>
             </div>

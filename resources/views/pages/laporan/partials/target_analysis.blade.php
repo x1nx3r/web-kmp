@@ -48,7 +48,7 @@
                         Minggu Ini
                         <span class="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Week {{ date('W') }}</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetMingguan ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetMingguanAdjusted ?? 0, 0, ',', '.') }}</p>
                 </div>
                 <div class="w-16 h-16">
                     <canvas id="chartProgressMinggu"></canvas>
@@ -72,7 +72,7 @@
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, ($targetMingguan ?? 0) - ($omsetMingguIni ?? 0)), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, ($targetMingguanAdjusted ?? 0) - ($omsetMingguIni ?? 0)), 0, ',', '.') }}
                     </span>
                 </div>
             </div>
@@ -86,7 +86,7 @@
                         Bulan Ini
                         <span class="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">{{ date('M') }}</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetBulanan ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetBulananAdjusted ?? 0, 0, ',', '.') }}</p>
                 </div>
                 <div class="w-16 h-16">
                     <canvas id="chartProgressBulan"></canvas>
@@ -110,7 +110,7 @@
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, ($targetBulanan ?? 0) - ($omsetBulanIni ?? 0)), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, ($targetBulananAdjusted ?? 0) - ($omsetBulanIni ?? 0)), 0, ',', '.') }}
                     </span>
                 </div>
             </div>
@@ -193,8 +193,9 @@
                     @foreach($months as $index => $month)
                         @php
                             $bulanNum = $index + 1;
-                            $data = $rekapBulanan[$bulanNum] ?? ['realisasi' => 0, 'progress' => 0, 'selisih' => 0, 'mingguan' => [], 'omset_sistem' => 0, 'omset_manual' => 0];
-                            $realisasi = $data['realisasi'];
+                            $data = $rekapBulanan[$bulanNum] ?? ['realisasi' => 0, 'target' => 0, 'progress' => 0, 'selisih' => 0, 'mingguan' => [], 'omset_sistem' => 0, 'omset_manual' => 0, 'omset_bulan_ini' => 0];
+                            $realisasi = $data['omset_bulan_ini'] ?? 0; // Omset bulan ini saja (bukan kumulatif)
+                            $targetBulananAdjusted = $data['target'] ?? 0; // Target adjusted dengan carry forward
                             $omsetSistem = $data['omset_sistem'] ?? 0;
                             $omsetManual = $data['omset_manual'] ?? 0;
                             $progress = $data['progress'];
@@ -217,7 +218,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
-                                Rp {{ number_format($targetBulanan ?? 0, 0, ',', '.') }}
+                                <div class="font-semibold">Rp {{ number_format($targetBulananAdjusted, 0, ',', '.') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
                                 <div class="space-y-1">
@@ -225,15 +226,15 @@
                                         Rp {{ number_format($realisasi, 0, ',', '.') }}
                                     </div>
                                     @if($omsetManual > 0 || $omsetSistem > 0)
-                                        <div class="text-xs text-gray-500">
+                                        <div class="text-xs text-gray-400">
                                             @if($omsetSistem > 0)
                                                 <span class="inline-flex items-center">
-                                                    (Sistem) Rp {{ number_format($omsetSistem, 0, ',', '.') }}
+                                                    S: Rp {{ number_format($omsetSistem, 0, ',', '.') }}
                                                 </span>
                                             @endif
                                             @if($omsetManual > 0)
                                                 <span class="inline-flex items-center {{ $omsetSistem > 0 ? 'ml-2' : '' }}">
-                                                    (Manual) Rp {{ number_format($omsetManual, 0, ',', '.') }}
+                                                    M: Rp {{ number_format($omsetManual, 0, ',', '.') }}
                                                 </span>
                                             @endif
                                         </div>
@@ -280,10 +281,15 @@
                         {{-- Weekly Detail Row (Hidden by default) --}}
                         @if(count($mingguanData) > 0)
                             <tr id="weekly-{{ $bulanNum }}" class="hidden bg-gray-50">
-                                <td colspan="6" class="px-6 py-4">
+                                <td colspan="{{ auth()->user()->role === 'direktur' ? '7' : '6' }}" class="px-6 py-4">
                                     <div class="ml-8 space-y-2">
                                         <p class="text-xs font-semibold text-gray-700 mb-3">📊 Detail Mingguan {{ $month }}:</p>
                                         @foreach($mingguanData as $minggu => $weekData)
+                                            @php
+                                                $targetMingguanWeek = $weekData['target'] ?? 0;
+                                                $omsetWeek = $weekData['omset'] ?? 0;
+                                                $progressWeek = $weekData['progress'] ?? 0;
+                                            @endphp
                                             <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
                                                 <div class="flex items-center space-x-3">
                                                     <span class="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
@@ -292,17 +298,20 @@
                                                     <span class="text-xs text-gray-500">
                                                         {{ $weekData['tanggal'] }}
                                                     </span>
+                                                    <span class="text-xs text-gray-400">
+                                                        Target: Rp {{ number_format($targetMingguanWeek, 0, ',', '.') }}
+                                                    </span>
                                                 </div>
                                                 <div class="flex items-center space-x-4">
                                                     <span class="text-sm font-semibold text-gray-700">
-                                                        Rp {{ number_format($weekData['omset'], 0, ',', '.') }}
+                                                        Rp {{ number_format($omsetWeek, 0, ',', '.') }}
                                                     </span>
                                                     <div class="w-32 bg-gray-200 rounded-full h-2">
                                                         <div class="bg-indigo-500 h-2 rounded-full" 
-                                                             style="width: {{ min(100, $weekData['progress']) }}%"></div>
+                                                             style="width: {{ min(100, $progressWeek) }}%"></div>
                                                     </div>
-                                                    <span class="text-sm font-bold {{ $weekData['progress'] >= 100 ? 'text-green-600' : ($weekData['progress'] >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
-                                                        {{ number_format($weekData['progress'], 1) }}%
+                                                    <span class="text-sm font-bold {{ $progressWeek >= 100 ? 'text-green-600' : ($progressWeek >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
+                                                        {{ number_format($progressWeek, 1) }}%
                                                     </span>
                                                 </div>
                                             </div>

@@ -124,13 +124,57 @@ class OmsetController extends Controller
         // Total Omset Minggu Ini = Sistem + Manual
         $omsetMingguIni = $omsetSistemMingguIni + $omsetManualMingguIni;
         
-        // Calculate Progress Percentages
-        $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
-        $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
+        // Calculate Adjusted Target untuk bulan dan minggu saat ini (dengan carry forward)
+        // Hitung total sisa target dari bulan-bulan sebelumnya di tahun yang dipilih
+        $bulanSekarang = Carbon::now()->month;
+        $sisaTargetSebelumnya = 0;
+        
+        // Hanya hitung sisa jika tahun yang dipilih adalah tahun sekarang
+        if ($selectedYearTarget == Carbon::now()->year) {
+            for ($b = 1; $b < $bulanSekarang; $b++) {
+                $omsetSistemBulanLalu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
+                    ->whereMonth('pengiriman.tanggal_kirim', $b)
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                
+                $omsetManualBulanLalu = OmsetManual::where('tahun', $selectedYearTarget)
+                    ->where('bulan', $b)
+                    ->value('omset_manual') ?? 0;
+                
+                $omsetTotalBulanLalu = $omsetSistemBulanLalu + $omsetManualBulanLalu;
+                $targetBulanLalu = $targetBulanan + $sisaTargetSebelumnya;
+                $selisihBulanLalu = $omsetTotalBulanLalu - $targetBulanLalu;
+                
+                if ($selisihBulanLalu < 0) {
+                    $sisaTargetSebelumnya = $targetBulanLalu - $omsetTotalBulanLalu;
+                } else {
+                    $sisaTargetSebelumnya = 0;
+                }
+            }
+        }
+        
+        // Target Adjusted untuk bulan ini
+        $targetBulananAdjusted = $targetBulanan + $sisaTargetSebelumnya;
+        
+        // Target Adjusted untuk minggu ini (1/4 dari target bulanan adjusted)
+        $targetMingguanAdjusted = $targetBulananAdjusted / 4;
+        
+        // Calculate Progress Percentages dengan target adjusted
+        $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;
+        $progressBulan = $targetBulananAdjusted > 0 ? ($omsetBulanIni / $targetBulananAdjusted) * 100 : 0;
         $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
         
         // Calculate Monthly Breakdown dengan detail mingguan (4 minggu per bulan)
+        // DENGAN LOGIKA AKUMULASI SISA TARGET
+        // Contoh: Target bulanan 100M
+        // - Januari: Target 100M, Realisasi 50M → Sisa 50M yang belum tercapai
+        // - Februari: Target 150M (100M + 50M sisa Jan), Realisasi 0M → Sisa 150M
+        // - Maret: Target 250M (100M + 150M sisa Feb), dst
+        // Yang diakumulasi adalah SISA TARGET yang belum tercapai
         $rekapBulanan = [];
+        $sisaTargetAkumulasi = 0; // Akumulasi sisa target yang belum tercapai
+        
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             // Omset sistem (dari transaksi real)
             $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
@@ -145,11 +189,33 @@ class OmsetController extends Controller
                 ->first();
             $omsetManual = $omsetManualData ? (float)$omsetManualData->omset_manual : 0;
             
-            // Total omset = omset sistem + omset manual
+            // Total omset bulan ini = omset sistem + omset manual
             $omsetBulan = $omsetSistem + $omsetManual;
             
-            $progressBulanIni = $targetBulanan > 0 ? ($omsetBulan / $targetBulanan) * 100 : 0;
-            $selisih = $omsetBulan - $targetBulanan;
+            // Target bulan ini = Target bulanan asli + Sisa target akumulasi dari bulan-bulan sebelumnya
+            // Januari: 100M + 0 = 100M
+            // Februari: 100M + 50M (sisa Jan yang belum tercapai) = 150M
+            // Maret: 100M + 150M (total sisa Jan+Feb) = 250M
+            $targetBulananAdjusted = $targetBulanan + $sisaTargetAkumulasi;
+            
+            // Selisih bulan ini = Realisasi bulan ini - Target bulan ini (adjusted)
+            $selisihBulanIni = $omsetBulan - $targetBulananAdjusted;
+            
+            // Update akumulasi SISA TARGET untuk bulan berikutnya
+            // Jika target tidak tercapai penuh, sisanya bertambah
+            if ($selisihBulanIni < 0) {
+                // Target tidak tercapai, sisa = target adjusted yang belum tercapai
+                $sisaTargetAkumulasi = $targetBulananAdjusted - $omsetBulan;
+            } else {
+                // Target tercapai, tidak ada sisa (reset ke 0)
+                $sisaTargetAkumulasi = 0;
+            }
+            
+            // Progress berdasarkan target bulan ini (adjusted)
+            $progressBulanIni = $targetBulananAdjusted > 0 ? ($omsetBulan / $targetBulananAdjusted) * 100 : 0;
+            
+            // Target mingguan = target bulanan adjusted / 4 minggu
+            $targetMingguanAdjusted = $targetBulananAdjusted / 4;
             
             // Calculate weekly breakdown for this month - SETIAP BULAN 4 MINGGU (7 hari per minggu)
             // Untuk omset manual, dibagi rata 4 minggu
@@ -188,21 +254,25 @@ class OmsetController extends Controller
                 // Total omset minggu = omset sistem + (omset manual / 4)
                 $omsetMinggu = $omsetSistemMinggu + $omsetManualPerMinggu;
                 
-                $progressMingguIni = $targetMingguan > 0 ? ($omsetMinggu / $targetMingguan) * 100 : 0;
+                // Gunakan target mingguan yang sudah disesuaikan
+                $progressMingguIni = $targetMingguanAdjusted > 0 ? ($omsetMinggu / $targetMingguanAdjusted) * 100 : 0;
                 
                 $mingguanDetail[$minggu] = [
                     'omset' => $omsetMinggu,
                     'progress' => $progressMingguIni,
+                    'target' => $targetMingguanAdjusted,
                     'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
                 ];
             }
             
             $rekapBulanan[$bulan] = [
-                'realisasi' => $omsetBulan,
+                'realisasi' => $omsetBulan, // Realisasi bulan ini saja
+                'omset_bulan_ini' => $omsetBulan, // Omset bulan ini saja
                 'omset_sistem' => $omsetSistem,
                 'omset_manual' => $omsetManual,
+                'target' => $targetBulananAdjusted, // Target adjusted dengan carry forward
                 'progress' => $progressBulanIni,
-                'selisih' => $selisih,
+                'selisih' => $selisihBulanIni,
                 'mingguan' => $mingguanDetail
             ];
         }
@@ -638,6 +708,8 @@ class OmsetController extends Controller
             'targetTahunan',
             'targetBulanan',
             'targetMingguan',
+            'targetBulananAdjusted',   // Target bulan ini dengan carry forward
+            'targetMingguanAdjusted',  // Target minggu ini dengan carry forward
             'progressMinggu',
             'progressBulan',
             'progressTahun',

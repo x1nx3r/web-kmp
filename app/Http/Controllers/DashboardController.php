@@ -63,9 +63,42 @@ class DashboardController extends Controller
         // Total Omset Tahun Ini
         $omsetTahunIni = $omsetSistemTahunIni + $omsetManualTahunIni;
         
-        // Progress Percentages
-        $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
-        $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
+        // Calculate Adjusted Target untuk bulan dan minggu saat ini (dengan carry forward)
+        // Hitung total sisa target dari bulan-bulan sebelumnya
+        $bulanSekarang = Carbon::now()->month;
+        $sisaTargetSebelumnya = 0;
+        
+        for ($b = 1; $b < $bulanSekarang; $b++) {
+            $omsetSistemBulanLalu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereYear('pengiriman.tanggal_kirim', $currentYear)
+                ->whereMonth('pengiriman.tanggal_kirim', $b)
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            $omsetManualBulanLalu = OmsetManual::where('tahun', $currentYear)
+                ->where('bulan', $b)
+                ->value('omset_manual') ?? 0;
+            
+            $omsetTotalBulanLalu = $omsetSistemBulanLalu + $omsetManualBulanLalu;
+            $targetBulanLalu = $targetBulanan + $sisaTargetSebelumnya;
+            $selisihBulanLalu = $omsetTotalBulanLalu - $targetBulanLalu;
+            
+            if ($selisihBulanLalu < 0) {
+                $sisaTargetSebelumnya = $targetBulanLalu - $omsetTotalBulanLalu;
+            } else {
+                $sisaTargetSebelumnya = 0;
+            }
+        }
+        
+        // Target Adjusted untuk bulan ini
+        $targetBulananAdjusted = $targetBulanan + $sisaTargetSebelumnya;
+        
+        // Target Adjusted untuk minggu ini (1/4 dari target bulanan adjusted)
+        $targetMingguanAdjusted = $targetBulananAdjusted / 4;
+        
+        // Progress Percentages dengan target adjusted
+        $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;
+        $progressBulan = $targetBulananAdjusted > 0 ? ($omsetBulanIni / $targetBulananAdjusted) * 100 : 0;
         $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
         
         // ========== OUTSTANDING PO ==========
@@ -156,6 +189,8 @@ class DashboardController extends Controller
             'targetMingguan',
             'targetBulanan',
             'targetTahunan',
+            'targetMingguanAdjusted',
+            'targetBulananAdjusted',
             'omsetMingguIni',
             'omsetSistemMingguIni',
             'omsetManualMingguIni',

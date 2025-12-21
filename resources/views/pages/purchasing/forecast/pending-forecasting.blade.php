@@ -272,6 +272,12 @@
                                         
                                         <div class="flex space-x-1">
                                             <button type="button" 
+                                                    onclick="openDeleteForecastModal({{ $forecast->id }}, '{{ $forecast->no_forecast }}')"
+                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1 rounded flex items-center transition-colors"
+                                                    title="Hapus Forecast">
+                                                <i class="fas fa-trash mr-1"></i>Hapus
+                                            </button>
+                                            <button type="button" 
                                                     onclick="openForecastDetailModal({{ json_encode([
                                                         'id' => $forecast->id,
                                                         'no_forecast' => $forecast->no_forecast,
@@ -295,8 +301,9 @@
                                                             ];
                                                         })
                                                     ]) }})"
-                                                    class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded flex items-center transition-colors">
-                                                <i class="fas fa-cog mr-1"></i>Kelola
+                                                    class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded flex items-center transition-colors"
+                                                    title="Detail Forecast">
+                                                <i class="fas fa-eye mr-1"></i>Detail
                                             </button>
                                         </div>
                                     </div>

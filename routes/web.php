@@ -518,6 +518,10 @@ Route::middleware(["auth"])->group(function () {
             ForecastingController::class,
             "batalkanForecast",
         ])->name("forecasting.batal");
+        Route::post("/forecasting/{id}/delete", [
+            ForecastingController::class,
+            "deleteForecast",
+        ])->name("forecasting.delete");
         Route::get("/forecasting/export-pending", [
             ForecastingController::class,
             "exportPending",

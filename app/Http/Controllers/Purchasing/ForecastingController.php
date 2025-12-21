@@ -501,13 +501,23 @@ class ForecastingController extends Controller
             
             // Log::info('Creating forecast for Order ID:', ['purchase_order_id' => $request->purchase_order_id]);
 
-            // Generate nomor forecast otomatis (simplified untuk debugging)
+            // Generate nomor forecast otomatis dengan pengecekan duplikat
             $year = date('Y');
             $month = date('m');
             
-            // Simple counter using max ID untuk sementara
-            $maxId = Forecast::max('id') ?? 0;
-            $nextNumber = $maxId + 1;
+            // Cari nomor forecast terakhir untuk bulan ini (termasuk yang soft deleted)
+            $latestForecast = Forecast::withTrashed()
+                ->where('no_forecast', 'like', 'FC-' . $year . $month . '-%')
+                ->orderBy('no_forecast', 'desc')
+                ->first();
+            
+            if ($latestForecast) {
+                // Extract number dari no_forecast terakhir
+                $lastNumber = (int) substr($latestForecast->no_forecast, -4);
+                $nextNumber = $lastNumber + 1;
+            } else {
+                $nextNumber = 1;
+            }
             
             $noForecast = 'FC-' . $year . $month . '-' . sprintf('%04d', $nextNumber);
 
@@ -1304,6 +1314,104 @@ class ForecastingController extends Controller
         } catch (\Exception $e) {
             Log::error('Error exporting pending forecasts: ' . $e->getMessage());
             return back()->with('error', 'Gagal mengekspor data forecast pending.');
+        }
+    }
+
+    /**
+     * Delete forecast (soft delete)
+     */
+    public function deleteForecast(Request $request, $id)
+    {
+        Log::info("deleteForecast called with ID: {$id}");
+        Log::info("Request data: " . json_encode($request->all()));
+        
+        // Authorization: Only direktur, manager_purchasing, and PIC Purchasing can delete forecast
+        $user = Auth::user();
+        
+        // First, get the forecast to check PIC
+        $forecast = Forecast::find($id);
+        
+        if (!$forecast) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forecast tidak ditemukan'
+            ], 404);
+        }
+        
+        // Check authorization
+        $canDelete = $user->role === 'direktur' || 
+                     $user->role === 'manager_purchasing' ||
+                     ($user->id == $forecast->purchasing_id);
+        
+        if (!$canDelete) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus forecast ini. Hanya direktur, manager purchasing, dan PIC Purchasing yang dapat menghapus forecast.'
+            ], 403);
+        }
+        
+        // Check if forecast status is still pending
+        if ($forecast->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya forecast dengan status pending yang dapat dihapus'
+            ], 400);
+        }
+        
+        // Validation
+        try {
+            $request->validate([
+                'alasan_hapus' => 'required|string|min:10|max:500'
+            ], [
+                'alasan_hapus.required' => 'Alasan penghapusan harus diisi',
+                'alasan_hapus.min' => 'Alasan penghapusan minimal 10 karakter',
+                'alasan_hapus.max' => 'Alasan penghapusan maksimal 500 karakter'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed in deleteForecast:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Data yang diinputkan tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            Log::info("Deleting forecast ID: {$id}");
+            
+            $noForecast = $forecast->no_forecast;
+            
+            // Log alasan penghapusan untuk audit trail
+            Log::info("Forecast {$noForecast} dihapus oleh {$user->nama} dengan alasan: {$request->alasan_hapus}");
+            
+            // Soft delete forecast details first
+            $forecast->forecastDetails()->delete();
+            
+            // Soft delete forecast
+            $forecast->delete();
+            
+            Log::info("Forecast {$noForecast} berhasil dihapus (soft delete)");
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Forecast berhasil dihapus'
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error deleting forecast - Exception: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ' line: ' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus forecast: ' . $e->getMessage(),
+                'debug_info' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
     }
 }

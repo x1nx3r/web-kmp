@@ -620,6 +620,9 @@ document.addEventListener('DOMContentLoaded', function() {
 {{-- Include Universal Success Modal --}}
 @include('components.success-modal')
 
+{{-- Include Delete Forecast Modal --}}
+@include('pages.purchasing.forecast.modals.delete-forecast-modal')
+
 {{-- Include Batal Pengiriman Modal --}}
 @include('pages.purchasing.forecast.pending-forecasting.batal')
 

@@ -124,13 +124,110 @@ class OmsetController extends Controller
         // Total Omset Minggu Ini = Sistem + Manual
         $omsetMingguIni = $omsetSistemMingguIni + $omsetManualMingguIni;
         
-        // Calculate Progress Percentages
-        $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
-        $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
+        // Calculate Adjusted Target untuk bulan dan minggu saat ini (dengan carry forward)
+        // Hitung total sisa target dari bulan-bulan sebelumnya di tahun yang dipilih
+        $bulanSekarang = Carbon::now()->month;
+        $sisaTargetSebelumnya = 0;
+        
+        // Hanya hitung sisa jika tahun yang dipilih adalah tahun sekarang
+        if ($selectedYearTarget == Carbon::now()->year) {
+            for ($b = 1; $b < $bulanSekarang; $b++) {
+                $omsetSistemBulanLalu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
+                    ->whereMonth('pengiriman.tanggal_kirim', $b)
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                
+                $omsetManualBulanLalu = OmsetManual::where('tahun', $selectedYearTarget)
+                    ->where('bulan', $b)
+                    ->value('omset_manual') ?? 0;
+                
+                $omsetTotalBulanLalu = $omsetSistemBulanLalu + $omsetManualBulanLalu;
+                $targetBulanLalu = $targetBulanan + $sisaTargetSebelumnya;
+                $selisihBulanLalu = $omsetTotalBulanLalu - $targetBulanLalu;
+                
+                if ($selisihBulanLalu < 0) {
+                    $sisaTargetSebelumnya = $targetBulanLalu - $omsetTotalBulanLalu;
+                } else {
+                    $sisaTargetSebelumnya = 0;
+                }
+            }
+        }
+        
+        // Target Adjusted untuk bulan ini
+        $targetBulananAdjusted = $targetBulanan + $sisaTargetSebelumnya;
+        
+        // Target mingguan BASE (untuk bulan ini)
+        $targetMingguanBase = $targetBulananAdjusted / 4;
+        
+        // Calculate target mingguan adjusted untuk minggu ini dengan carry forward dari minggu-minggu sebelumnya di bulan ini
+        $sisaTargetMingguanSebelumnya = 0;
+        
+        if ($selectedYearTarget == Carbon::now()->year) {
+            // Hitung minggu ke berapa sekarang dalam bulan ini (1-4)
+            $startOfMonth = Carbon::now()->startOfMonth();
+            $currentWeekOfMonth = 1;
+            $tempDate = $startOfMonth->copy();
+            
+            while ($tempDate->addDays(7)->lte(Carbon::now()->startOfWeek())) {
+                $currentWeekOfMonth++;
+            }
+            $currentWeekOfMonth = min($currentWeekOfMonth, 4); // Max 4 minggu
+            
+            // Loop dari minggu 1 sampai minggu sebelum minggu ini
+            for ($w = 1; $w < $currentWeekOfMonth; $w++) {
+                // Hitung range tanggal untuk minggu ini
+                if ($w == 1) {
+                    $weekStart = $startOfMonth->copy();
+                } else {
+                    $weekStart = $startOfMonth->copy()->addDays(($w - 1) * 7);
+                }
+                
+                if ($w == 4) {
+                    $weekEnd = $startOfMonth->copy()->endOfMonth();
+                } else {
+                    $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+                }
+                
+                // Hitung omset sistem untuk minggu ini
+                $omsetSistemWeek = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                
+                // Omset manual untuk minggu ini (1/4 dari omset manual bulan ini)
+                $omsetManualWeek = $omsetManualBulanIni / 4;
+                
+                // Total omset minggu
+                $omsetTotalWeek = $omsetSistemWeek + $omsetManualWeek;
+                
+                // Target untuk minggu ini (dengan carry forward)
+                $targetWeek = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
+                
+                // Selisih
+                $selisihWeek = $omsetTotalWeek - $targetWeek;
+                
+                // Update sisa target untuk minggu berikutnya
+                if ($selisihWeek < 0) {
+                    $sisaTargetMingguanSebelumnya = $targetWeek - $omsetTotalWeek;
+                } else {
+                    $sisaTargetMingguanSebelumnya = 0;
+                }
+            }
+        }
+        
+        // Target Adjusted untuk minggu ini = base + sisa dari minggu-minggu sebelumnya
+        $targetMingguanAdjusted = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
+        
+        // Calculate Progress Percentages dengan target adjusted
+        $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;
+        $progressBulan = $targetBulananAdjusted > 0 ? ($omsetBulanIni / $targetBulananAdjusted) * 100 : 0;
         $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
         
-        // Calculate Monthly Breakdown dengan detail mingguan (4 minggu per bulan)
+  
         $rekapBulanan = [];
+        $sisaTargetAkumulasi = 0; // Akumulasi sisa target yang belum tercapai
+        
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             // Omset sistem (dari transaksi real)
             $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
@@ -145,18 +242,43 @@ class OmsetController extends Controller
                 ->first();
             $omsetManual = $omsetManualData ? (float)$omsetManualData->omset_manual : 0;
             
-            // Total omset = omset sistem + omset manual
+            // Total omset bulan ini = omset sistem + omset manual
             $omsetBulan = $omsetSistem + $omsetManual;
             
-            $progressBulanIni = $targetBulanan > 0 ? ($omsetBulan / $targetBulanan) * 100 : 0;
-            $selisih = $omsetBulan - $targetBulanan;
+            // Target bulan ini = Target bulanan asli + Sisa target akumulasi dari bulan-bulan sebelumnya
+            // Januari: 100M + 0 = 100M
+            // Februari: 100M + 50M (sisa Jan yang belum tercapai) = 150M
+            // Maret: 100M + 150M (total sisa Jan+Feb) = 250M
+            $targetBulananAdjusted = $targetBulanan + $sisaTargetAkumulasi;
             
-            // Calculate weekly breakdown for this month - SETIAP BULAN 4 MINGGU (7 hari per minggu)
+            // Selisih bulan ini = Realisasi bulan ini - Target bulan ini (adjusted)
+            $selisihBulanIni = $omsetBulan - $targetBulananAdjusted;
+            
+            // Update akumulasi SISA TARGET untuk bulan berikutnya
+            // Jika target tidak tercapai penuh, sisanya bertambah
+            if ($selisihBulanIni < 0) {
+                // Target tidak tercapai, sisa = target adjusted yang belum tercapai
+                $sisaTargetAkumulasi = $targetBulananAdjusted - $omsetBulan;
+            } else {
+                // Target tercapai, tidak ada sisa (reset ke 0)
+                $sisaTargetAkumulasi = 0;
+            }
+            
+            // Progress berdasarkan target bulan ini (adjusted)
+            $progressBulanIni = $targetBulananAdjusted > 0 ? ($omsetBulan / $targetBulananAdjusted) * 100 : 0;
+            
+            // Target mingguan BASE = target bulanan adjusted / 4 minggu
+            $targetMingguanBase = $targetBulananAdjusted / 4;
+            
+            // Calculate weekly breakdown for this month - DENGAN CARRY FORWARD MINGGUAN
             // Untuk omset manual, dibagi rata 4 minggu
             $omsetManualPerMinggu = $omsetManual / 4;
             $mingguanDetail = [];
             $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
             $endDate = $startDate->copy()->endOfMonth();
+            
+            // Sisa target akumulasi untuk minggu-minggu dalam bulan ini
+            $sisaTargetMingguanAkumulasi = 0;
             
             // Bagi bulan menjadi tepat 4 minggu (7 hari per minggu = 28 hari)
             // Sisa hari di akhir bulan (29, 30, 31) masuk ke minggu ke-4
@@ -188,21 +310,44 @@ class OmsetController extends Controller
                 // Total omset minggu = omset sistem + (omset manual / 4)
                 $omsetMinggu = $omsetSistemMinggu + $omsetManualPerMinggu;
                 
-                $progressMingguIni = $targetMingguan > 0 ? ($omsetMinggu / $targetMingguan) * 100 : 0;
+                // Target minggu ini = Target mingguan base + Sisa target dari minggu-minggu sebelumnya
+                // Minggu 1: 25M + 0 = 25M
+                // Minggu 2: 25M + sisa minggu 1 = 25M + 20M = 45M (jika minggu 1 hanya capai 5M)
+                // Minggu 3: 25M + total sisa minggu 1+2 = 25M + 65M = 90M (jika minggu 2 hanya capai 0M)
+                // dst
+                $targetMingguIniAdjusted = $targetMingguanBase + $sisaTargetMingguanAkumulasi;
+                
+                // Selisih minggu ini
+                $selisihMingguIni = $omsetMinggu - $targetMingguIniAdjusted;
+                
+                // Update akumulasi sisa target mingguan untuk minggu berikutnya
+                if ($selisihMingguIni < 0) {
+                    // Target tidak tercapai, sisa bertambah
+                    $sisaTargetMingguanAkumulasi = $targetMingguIniAdjusted - $omsetMinggu;
+                } else {
+                    // Target tercapai, reset sisa ke 0
+                    $sisaTargetMingguanAkumulasi = 0;
+                }
+                
+                // Progress berdasarkan target minggu ini (adjusted)
+                $progressMingguIni = $targetMingguIniAdjusted > 0 ? ($omsetMinggu / $targetMingguIniAdjusted) * 100 : 0;
                 
                 $mingguanDetail[$minggu] = [
                     'omset' => $omsetMinggu,
                     'progress' => $progressMingguIni,
+                    'target' => $targetMingguIniAdjusted,
                     'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
                 ];
             }
             
             $rekapBulanan[$bulan] = [
-                'realisasi' => $omsetBulan,
+                'realisasi' => $omsetBulan, // Realisasi bulan ini saja
+                'omset_bulan_ini' => $omsetBulan, // Omset bulan ini saja
                 'omset_sistem' => $omsetSistem,
                 'omset_manual' => $omsetManual,
+                'target' => $targetBulananAdjusted, // Target adjusted dengan carry forward
                 'progress' => $progressBulanIni,
-                'selisih' => $selisih,
+                'selisih' => $selisihBulanIni,
                 'mingguan' => $mingguanDetail
             ];
         }
@@ -638,6 +783,8 @@ class OmsetController extends Controller
             'targetTahunan',
             'targetBulanan',
             'targetMingguan',
+            'targetBulananAdjusted',   // Target bulan ini dengan carry forward
+            'targetMingguanAdjusted',  // Target minggu ini dengan carry forward
             'progressMinggu',
             'progressBulan',
             'progressTahun',
@@ -777,6 +924,178 @@ class OmsetController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+    
+    public function getMarketingDetails(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per marketing with PO details
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
+            ->join('users', 'order_winners.user_id', '=', 'users.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->select(
+                'users.nama as marketing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        return response()->json($details);
+    }
+    
+    public function exportMarketingPDF(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per marketing
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
+            ->join('users', 'order_winners.user_id', '=', 'users.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->select(
+                'users.nama as marketing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        // Group by marketing
+        $groupedData = $details->groupBy('marketing_nama');
+        
+        $pdf = \PDF::loadView('pages.laporan.pdf.omset-marketing', [
+            'groupedData' => $groupedData,
+            'periode' => $periode,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'totalOverall' => $details->sum('total_nilai')
+        ]);
+        
+        return $pdf->download('Omset_Marketing_'.date('Y-m-d').'.pdf');
+    }
+    
+    public function getProcurementDetails(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per procurement with PO details
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id')
+            ->select(
+                'users.nama as purchasing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        return response()->json($details);
+    }
+    
+    public function exportProcurementPDF(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per procurement
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id')
+            ->select(
+                'users.nama as purchasing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        // Group by procurement
+        $groupedData = $details->groupBy('purchasing_nama');
+        
+        $pdf = \PDF::loadView('pages.laporan.pdf.omset-procurement', [
+            'groupedData' => $groupedData,
+            'periode' => $periode,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'totalOverall' => $details->sum('total_nilai')
+        ]);
+        
+        return $pdf->download('Omset_Procurement_'.date('Y-m-d').'.pdf');
     }
     
     public function export(Request $request)

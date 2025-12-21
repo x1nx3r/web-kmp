@@ -63,9 +63,99 @@ class DashboardController extends Controller
         // Total Omset Tahun Ini
         $omsetTahunIni = $omsetSistemTahunIni + $omsetManualTahunIni;
         
-        // Progress Percentages
-        $progressMinggu = $targetMingguan > 0 ? ($omsetMingguIni / $targetMingguan) * 100 : 0;
-        $progressBulan = $targetBulanan > 0 ? ($omsetBulanIni / $targetBulanan) * 100 : 0;
+        // Calculate Adjusted Target untuk bulan dan minggu saat ini (dengan carry forward)
+        // Hitung total sisa target dari bulan-bulan sebelumnya
+        $bulanSekarang = Carbon::now()->month;
+        $sisaTargetSebelumnya = 0;
+        
+        for ($b = 1; $b < $bulanSekarang; $b++) {
+            $omsetSistemBulanLalu = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereYear('pengiriman.tanggal_kirim', $currentYear)
+                ->whereMonth('pengiriman.tanggal_kirim', $b)
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            $omsetManualBulanLalu = OmsetManual::where('tahun', $currentYear)
+                ->where('bulan', $b)
+                ->value('omset_manual') ?? 0;
+            
+            $omsetTotalBulanLalu = $omsetSistemBulanLalu + $omsetManualBulanLalu;
+            $targetBulanLalu = $targetBulanan + $sisaTargetSebelumnya;
+            $selisihBulanLalu = $omsetTotalBulanLalu - $targetBulanLalu;
+            
+            if ($selisihBulanLalu < 0) {
+                $sisaTargetSebelumnya = $targetBulanLalu - $omsetTotalBulanLalu;
+            } else {
+                $sisaTargetSebelumnya = 0;
+            }
+        }
+        
+        // Target Adjusted untuk bulan ini
+        $targetBulananAdjusted = $targetBulanan + $sisaTargetSebelumnya;
+        
+        // Target mingguan BASE (untuk bulan ini)
+        $targetMingguanBase = $targetBulananAdjusted / 4;
+        
+        // Calculate target mingguan adjusted untuk minggu ini dengan carry forward dari minggu-minggu sebelumnya di bulan ini
+        $sisaTargetMingguanSebelumnya = 0;
+        
+        // Hitung minggu ke berapa sekarang dalam bulan ini (1-4)
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $currentWeekOfMonth = 1;
+        $tempDate = $startOfMonth->copy();
+        
+        while ($tempDate->addDays(7)->lte(Carbon::now()->startOfWeek())) {
+            $currentWeekOfMonth++;
+        }
+        $currentWeekOfMonth = min($currentWeekOfMonth, 4); // Max 4 minggu
+        
+        // Loop dari minggu 1 sampai minggu sebelum minggu ini
+        for ($w = 1; $w < $currentWeekOfMonth; $w++) {
+            // Hitung range tanggal untuk minggu ini
+            if ($w == 1) {
+                $weekStart = $startOfMonth->copy();
+            } else {
+                $weekStart = $startOfMonth->copy()->addDays(($w - 1) * 7);
+            }
+            
+            if ($w == 4) {
+                $weekEnd = $startOfMonth->copy()->endOfMonth();
+            } else {
+                $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+            }
+            
+            // Hitung omset sistem untuk minggu ini
+            $omsetSistemWeek = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            // Omset manual untuk minggu ini (1/4 dari omset manual bulan ini)
+            $omsetManualWeek = $omsetManualBulanIni / 4;
+            
+            // Total omset minggu
+            $omsetTotalWeek = $omsetSistemWeek + $omsetManualWeek;
+            
+            // Target untuk minggu ini (dengan carry forward)
+            $targetWeek = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
+            
+            // Selisih
+            $selisihWeek = $omsetTotalWeek - $targetWeek;
+            
+            // Update sisa target untuk minggu berikutnya
+            if ($selisihWeek < 0) {
+                $sisaTargetMingguanSebelumnya = $targetWeek - $omsetTotalWeek;
+            } else {
+                $sisaTargetMingguanSebelumnya = 0;
+            }
+        }
+        
+        // Target Adjusted untuk minggu ini = base + sisa dari minggu-minggu sebelumnya
+        $targetMingguanAdjusted = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
+        
+        // Progress Percentages dengan target adjusted
+        $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;
+        $progressBulan = $targetBulananAdjusted > 0 ? ($omsetBulanIni / $targetBulananAdjusted) * 100 : 0;
         $progressTahun = $targetTahunan > 0 ? ($omsetTahunIni / $targetTahunan) * 100 : 0;
         
         // ========== OUTSTANDING PO ==========
@@ -156,6 +246,8 @@ class DashboardController extends Controller
             'targetMingguan',
             'targetBulanan',
             'targetTahunan',
+            'targetMingguanAdjusted',
+            'targetBulananAdjusted',
             'omsetMingguIni',
             'omsetSistemMingguIni',
             'omsetManualMingguIni',

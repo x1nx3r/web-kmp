@@ -44,6 +44,10 @@ Route::middleware(["auth"])->group(function () {
             Route::post('/omset/save-omset-manual', [LaporanOmsetController::class, 'saveOmsetManual'])->name('omset.saveOmsetManual');
             Route::get('/omset/target-by-year', [LaporanOmsetController::class, 'getTargetByYear'])->name('omset.getTargetByYear');
             Route::get('/omset/available-years', [LaporanOmsetController::class, 'getAvailableYears'])->name('omset.getAvailableYears');
+            Route::get('/omset/marketing-details', [LaporanOmsetController::class, 'getMarketingDetails'])->name('omset.marketingDetails');
+            Route::post('/omset/marketing-pdf', [LaporanOmsetController::class, 'exportMarketingPDF'])->name('omset.marketingPDF');
+            Route::get('/omset/procurement-details', [LaporanOmsetController::class, 'getProcurementDetails'])->name('omset.procurementDetails');
+            Route::post('/omset/procurement-pdf', [LaporanOmsetController::class, 'exportProcurementPDF'])->name('omset.procurementPDF');
 
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
             Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');

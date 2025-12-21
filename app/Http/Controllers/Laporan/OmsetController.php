@@ -926,6 +926,178 @@ class OmsetController extends Controller
         }
     }
     
+    public function getMarketingDetails(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per marketing with PO details
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
+            ->join('users', 'order_winners.user_id', '=', 'users.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->select(
+                'users.nama as marketing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        return response()->json($details);
+    }
+    
+    public function exportMarketingPDF(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per marketing
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
+            ->join('users', 'order_winners.user_id', '=', 'users.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->select(
+                'users.nama as marketing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        // Group by marketing
+        $groupedData = $details->groupBy('marketing_nama');
+        
+        $pdf = \PDF::loadView('pages.laporan.pdf.omset-marketing', [
+            'groupedData' => $groupedData,
+            'periode' => $periode,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'totalOverall' => $details->sum('total_nilai')
+        ]);
+        
+        return $pdf->download('Omset_Marketing_'.date('Y-m-d').'.pdf');
+    }
+    
+    public function getProcurementDetails(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per procurement with PO details
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id')
+            ->select(
+                'users.nama as purchasing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        return response()->json($details);
+    }
+    
+    public function exportProcurementPDF(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get omset details per procurement
+        $query = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id')
+            ->select(
+                'users.nama as purchasing_nama',
+                'orders.no_order',
+                'orders.po_number',
+                'kliens.nama as klien_nama',
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total_nilai')
+            )
+            ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            ->groupBy('users.nama', 'orders.no_order', 'orders.po_number', 'kliens.nama');
+        
+        // Apply filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+        }
+        
+        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        
+        // Group by procurement
+        $groupedData = $details->groupBy('purchasing_nama');
+        
+        $pdf = \PDF::loadView('pages.laporan.pdf.omset-procurement', [
+            'groupedData' => $groupedData,
+            'periode' => $periode,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'totalOverall' => $details->sum('total_nilai')
+        ]);
+        
+        return $pdf->download('Omset_Procurement_'.date('Y-m-d').'.pdf');
+    }
+    
     public function export(Request $request)
     {
         // TODO: Implement export functionality

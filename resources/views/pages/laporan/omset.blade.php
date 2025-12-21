@@ -88,33 +88,41 @@
                 <h3 class="text-lg font-semibold text-gray-900">Omset Marketing</h3>
                 <p class="text-sm text-gray-500">Berdasarkan PIC Marketing</p>
             </div>
-            <div class="w-48">
-                <select name="periode_marketing" 
-                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        onchange="toggleCustomDateMarketing(this.value)">
-                    <option value="all" {{ $periode == 'all' ? 'selected' : '' }}>Semua Data</option>
-                    <option value="tahun_ini" {{ $periode == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
-                    <option value="bulan_ini" {{ $periode == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
-                    <option value="custom" {{ $periode == 'custom' ? 'selected' : '' }}>Custom</option>
-                </select>
-                
-                {{-- Custom Date Range for Marketing --}}
-                <div id="customDateMarketing" class="mt-2 space-y-2" style="display: {{ $periode == 'custom' ? 'block' : 'none' }}">
-                    <input type="date" 
-                           name="start_date_marketing" 
-                           value="{{ request('start_date_marketing') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="Tanggal Mulai">
-                    <input type="date" 
-                           name="end_date_marketing" 
-                           value="{{ request('end_date_marketing') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="Tanggal Akhir">
-                    <button type="button" 
-                            onclick="submitMarketingCustom()"
-                            class="w-full px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
-                        <i class="fas fa-filter mr-1"></i> Filter
+            <div class="flex items-center gap-2">
+                @if($omsetMarketing->count() > 0)
+                    <button onclick="openMarketingModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                        <i class="fas fa-list"></i>
+                        <span class="hidden sm:inline">Detail</span>
                     </button>
+                @endif
+                <div class="w-48">
+                    <select name="periode_marketing" 
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            onchange="toggleCustomDateMarketing(this.value)">
+                        <option value="all" {{ $periode == 'all' ? 'selected' : '' }}>Semua Data</option>
+                        <option value="tahun_ini" {{ $periode == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
+                        <option value="bulan_ini" {{ $periode == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
+                        <option value="custom" {{ $periode == 'custom' ? 'selected' : '' }}>Custom</option>
+                    </select>
+                    
+                    {{-- Custom Date Range for Marketing --}}
+                    <div id="customDateMarketing" class="mt-2 space-y-2" style="display: {{ $periode == 'custom' ? 'block' : 'none' }}">
+                        <input type="date" 
+                               name="start_date_marketing" 
+                               value="{{ request('start_date_marketing') }}"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Tanggal Mulai">
+                        <input type="date" 
+                               name="end_date_marketing" 
+                               value="{{ request('end_date_marketing') }}"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Tanggal Akhir">
+                        <button type="button" 
+                                onclick="submitMarketingCustom()"
+                                class="w-full px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+                            <i class="fas fa-filter mr-1"></i> Filter
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -138,39 +146,47 @@
                 <h3 class="text-lg font-semibold text-gray-900">Omset Procurement</h3>
                 <p class="text-sm text-gray-500">Berdasarkan PIC Purchasing</p>
             </div>
-            <div class="w-48">
-                <input type="hidden" name="periode_marketing" value="{{ $periode }}">
-                @if($periode == 'custom')
-                    <input type="hidden" name="start_date_marketing" value="{{ request('start_date_marketing') }}">
-                    <input type="hidden" name="end_date_marketing" value="{{ request('end_date_marketing') }}">
-                @endif
-                
-                <select name="periode_procurement" 
-                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        onchange="toggleCustomDateProcurement(this.value)">
-                    <option value="all" {{ $periodeProcurement == 'all' ? 'selected' : '' }}>Semua Data</option>
-                    <option value="tahun_ini" {{ $periodeProcurement == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
-                    <option value="bulan_ini" {{ $periodeProcurement == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
-                    <option value="custom" {{ $periodeProcurement == 'custom' ? 'selected' : '' }}>Custom</option>
-                </select>
-                
-                {{-- Custom Date Range for Procurement --}}
-                <div id="customDateProcurement" class="mt-2 space-y-2" style="display: {{ $periodeProcurement == 'custom' ? 'block' : 'none' }}">
-                    <input type="date" 
-                           name="start_date_procurement" 
-                           value="{{ request('start_date_procurement') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                           placeholder="Tanggal Mulai">
-                    <input type="date" 
-                           name="end_date_procurement" 
-                           value="{{ request('end_date_procurement') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                           placeholder="Tanggal Akhir">
-                    <button type="button"
-                            onclick="submitProcurementCustom()"
-                            class="w-full px-3 py-2 text-sm bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-                        <i class="fas fa-filter mr-1"></i> Filter
+            <div class="flex items-center gap-2">
+                @if($omsetProcurement->count() > 0)
+                    <button onclick="openProcurementModal()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                        <i class="fas fa-list"></i>
+                        <span class="hidden sm:inline">Detail</span>
                     </button>
+                @endif
+                <div class="w-48">
+                    <input type="hidden" name="periode_marketing" value="{{ $periode }}">
+                    @if($periode == 'custom')
+                        <input type="hidden" name="start_date_marketing" value="{{ request('start_date_marketing') }}">
+                        <input type="hidden" name="end_date_marketing" value="{{ request('end_date_marketing') }}">
+                    @endif
+                    
+                    <select name="periode_procurement" 
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            onchange="toggleCustomDateProcurement(this.value)">
+                        <option value="all" {{ $periodeProcurement == 'all' ? 'selected' : '' }}>Semua Data</option>
+                        <option value="tahun_ini" {{ $periodeProcurement == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
+                        <option value="bulan_ini" {{ $periodeProcurement == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
+                        <option value="custom" {{ $periodeProcurement == 'custom' ? 'selected' : '' }}>Custom</option>
+                    </select>
+                    
+                    {{-- Custom Date Range for Procurement --}}
+                    <div id="customDateProcurement" class="mt-2 space-y-2" style="display: {{ $periodeProcurement == 'custom' ? 'block' : 'none' }}">
+                        <input type="date" 
+                               name="start_date_procurement" 
+                               value="{{ request('start_date_procurement') }}"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                               placeholder="Tanggal Mulai">
+                        <input type="date" 
+                               name="end_date_procurement" 
+                               value="{{ request('end_date_procurement') }}"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                               placeholder="Tanggal Akhir">
+                        <button type="button"
+                                onclick="submitProcurementCustom()"
+                                class="w-full px-3 py-2 text-sm bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
+                            <i class="fas fa-filter mr-1"></i> Filter
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1153,6 +1169,285 @@ document.addEventListener('DOMContentLoaded', function() {
     const dataNilai = @json($nilaiOrderPerBulan);
     chartNilaiOrderPerBulan = createLineChart(ctxNilai, dataNilai);
 });
+
+// Marketing Modal Functions
+function openMarketingModal() {
+    const periode = document.querySelector('[name="periode_marketing"]').value;
+    const startDate = document.querySelector('[name="start_date_marketing"]')?.value || '';
+    const endDate = document.querySelector('[name="end_date_marketing"]')?.value || '';
+    
+    fetch(`{{ route('laporan.omset.marketingDetails') }}?periode=${periode}&start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            displayMarketingDetails(data);
+            document.getElementById('marketingModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function closeMarketingModal() {
+    document.getElementById('marketingModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function displayMarketingDetails(data) {
+    const groupedData = {};
+    let totalOverall = 0;
+    
+    data.forEach(item => {
+        if (!groupedData[item.marketing_nama]) {
+            groupedData[item.marketing_nama] = [];
+        }
+        groupedData[item.marketing_nama].push(item);
+        totalOverall += parseFloat(item.total_nilai);
+    });
+    
+    let html = '';
+    Object.keys(groupedData).forEach(marketing => {
+        const items = groupedData[marketing];
+        const subtotal = items.reduce((sum, item) => sum + parseFloat(item.total_nilai), 0);
+        
+        html += `
+            <div class="mb-6">
+                <div class="bg-blue-600 text-white px-4 py-2 rounded-t-lg flex justify-between items-center">
+                    <strong>Marketing: ${marketing}</strong>
+                    <span>Total: Rp ${subtotal.toLocaleString('id-ID')}</span>
+                </div>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No PO</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pabrik</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Nilai</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${items.map((item, idx) => `
+                            <tr>
+                                <td class="px-4 py-2 text-sm">${idx + 1}</td>
+                                <td class="px-4 py-2 text-sm">${item.po_number || '-'}</td>
+                                <td class="px-4 py-2 text-sm">${item.klien_nama}</td>
+                                <td class="px-4 py-2 text-sm text-right">Rp ${parseFloat(item.total_nilai).toLocaleString('id-ID')}</td>
+                            </tr>
+                        `).join('')}
+                        <tr class="bg-blue-50 font-bold">
+                            <td colspan="4" class="px-4 py-2 text-sm text-right">Subtotal:</td>
+                            <td class="px-4 py-2 text-sm text-right">Rp ${subtotal.toLocaleString('id-ID')}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+    
+    html += `
+        <div class="bg-indigo-100 p-4 rounded-lg mt-4">
+            <div class="flex justify-between items-center">
+                <strong class="text-lg">TOTAL KESELURUHAN:</strong>
+                <strong class="text-lg text-indigo-700">Rp ${totalOverall.toLocaleString('id-ID')}</strong>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('marketingDetailsContent').innerHTML = html;
+}
+
+// Procurement Modal Functions
+function openProcurementModal() {
+    const periode = document.querySelector('[name="periode_procurement"]').value;
+    const startDate = document.querySelector('[name="start_date_procurement"]')?.value || '';
+    const endDate = document.querySelector('[name="end_date_procurement"]')?.value || '';
+    
+    fetch(`{{ route('laporan.omset.procurementDetails') }}?periode=${periode}&start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            displayProcurementDetails(data);
+            document.getElementById('procurementModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function closeProcurementModal() {
+    document.getElementById('procurementModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function displayProcurementDetails(data) {
+    const groupedData = {};
+    let totalOverall = 0;
+    
+    data.forEach(item => {
+        if (!groupedData[item.purchasing_nama]) {
+            groupedData[item.purchasing_nama] = [];
+        }
+        groupedData[item.purchasing_nama].push(item);
+        totalOverall += parseFloat(item.total_nilai);
+    });
+    
+    let html = '';
+    Object.keys(groupedData).forEach(procurement => {
+        const items = groupedData[procurement];
+        const subtotal = items.reduce((sum, item) => sum + parseFloat(item.total_nilai), 0);
+        
+        html += `
+            <div class="mb-6">
+                <div class="bg-green-600 text-white px-4 py-2 rounded-t-lg flex justify-between items-center">
+                    <strong>Procurement: ${procurement}</strong>
+                    <span>Total: Rp ${subtotal.toLocaleString('id-ID')}</span>
+                </div>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No PO</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pabrik</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Nilai</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${items.map((item, idx) => `
+                            <tr>
+                                <td class="px-4 py-2 text-sm">${idx + 1}</td>
+                                <td class="px-4 py-2 text-sm">${item.po_number || '-'}</td>
+                                <td class="px-4 py-2 text-sm">${item.klien_nama}</td>
+                                <td class="px-4 py-2 text-sm text-right">Rp ${parseFloat(item.total_nilai).toLocaleString('id-ID')}</td>
+                            </tr>
+                        `).join('')}
+                        <tr class="bg-green-50 font-bold">
+                            <td colspan="4" class="px-4 py-2 text-sm text-right">Subtotal:</td>
+                            <td class="px-4 py-2 text-sm text-right">Rp ${subtotal.toLocaleString('id-ID')}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+    
+    html += `
+        <div class="bg-green-100 p-4 rounded-lg mt-4">
+            <div class="flex justify-between items-center">
+                <strong class="text-lg">TOTAL KESELURUHAN:</strong>
+                <strong class="text-lg text-green-700">Rp ${totalOverall.toLocaleString('id-ID')}</strong>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('procurementDetailsContent').innerHTML = html;
+}
+
+// Export PDF Functions
+function exportMarketingPDF() {
+    const periode = document.querySelector('[name="periode_marketing"]').value;
+    const startDate = document.querySelector('[name="start_date_marketing"]')?.value || '';
+    const endDate = document.querySelector('[name="end_date_marketing"]')?.value || '';
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("laporan.omset.marketingPDF") }}';
+    form.target = '_blank';
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    form.innerHTML = `
+        <input type="hidden" name="_token" value="${csrfToken}">
+        <input type="hidden" name="periode" value="${periode}">
+        <input type="hidden" name="start_date" value="${startDate}">
+        <input type="hidden" name="end_date" value="${endDate}">
+    `;
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+function exportProcurementPDF() {
+    const periode = document.querySelector('[name="periode_procurement"]').value;
+    const startDate = document.querySelector('[name="start_date_procurement"]')?.value || '';
+    const endDate = document.querySelector('[name="end_date_procurement"]')?.value || '';
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("laporan.omset.procurementPDF") }}';
+    form.target = '_blank';
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    form.innerHTML = `
+        <input type="hidden" name="_token" value="${csrfToken}">
+        <input type="hidden" name="periode" value="${periode}">
+        <input type="hidden" name="start_date" value="${startDate}">
+        <input type="hidden" name="end_date" value="${endDate}">
+    `;
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
 </script>
+
+{{-- Marketing Details Modal --}}
+<div id="marketingModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail Omset Marketing</h3>
+                <p class="text-sm text-gray-500 mt-1">Rincian PO per Marketing</p>
+            </div>
+            <button onclick="closeMarketingModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="mb-4 flex justify-end">
+            <button onclick="exportMarketingPDF()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i>
+                Download PDF
+            </button>
+        </div>
+
+        <div id="marketingDetailsContent" class="overflow-x-auto max-h-96 overflow-y-auto">
+            <!-- Content will be loaded dynamically -->
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeMarketingModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- Procurement Details Modal --}}
+<div id="procurementModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail Omset Procurement</h3>
+                <p class="text-sm text-gray-500 mt-1">Rincian PO per Procurement</p>
+            </div>
+            <button onclick="closeProcurementModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="mb-4 flex justify-end">
+            <button onclick="exportProcurementPDF()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i>
+                Download PDF
+            </button>
+        </div>
+
+        <div id="procurementDetailsContent" class="overflow-x-auto max-h-96 overflow-y-auto">
+            <!-- Content will be loaded dynamically -->
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeProcurementModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
 
 @endsection

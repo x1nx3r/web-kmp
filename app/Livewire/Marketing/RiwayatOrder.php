@@ -152,35 +152,116 @@ class RiwayatOrder extends Component
         }
     }
 
+    /**
+     * Delete order (STRICT - only draft orders without forecasts/pengiriman)
+     */
     public function confirmDelete($orderId)
     {
         $this->orderToDelete = $orderId;
         $this->showDeleteModal = true;
     }
 
-    public function deleteOrder()
-    {
-        if ($this->orderToDelete) {
-            $order = Order::find($this->orderToDelete);
-            if ($order && $order->status === "draft") {
-                $order->delete();
-                session()->flash("message", "Order berhasil dihapus.");
-            } else {
-                session()->flash(
-                    "error",
-                    "Order tidak dapat dihapus. Hanya order dengan status draft yang dapat dihapus.",
-                );
-            }
-        }
-
-        $this->showDeleteModal = false;
-        $this->orderToDelete = null;
-    }
-
     public function cancelDelete()
     {
         $this->showDeleteModal = false;
         $this->orderToDelete = null;
+    }
+
+    public function deleteOrder()
+    {
+        try {
+            $order = Order::with(['orderDetails', 'forecasts', 'pengiriman', 'consultations', 'winner'])->findOrFail($this->orderToDelete);
+
+            // STRICT VALIDATION: Hanya bisa hapus order dengan kondisi berikut
+            
+            // 1. Tidak boleh ada forecast terkait (STRICT - cek dulu sebelum status)
+            if ($order->forecasts()->count() > 0) {
+                session()->flash('error', 'Order tidak dapat dihapus karena sudah memiliki forecasting terkait! Hapus forecasting terlebih dahulu.');
+                $this->showDeleteModal = false;
+                $this->orderToDelete = null;
+                return;
+            }
+
+            // 2. Tidak boleh ada pengiriman terkait (STRICT - cek dulu sebelum status)
+            if ($order->pengiriman()->count() > 0) {
+                session()->flash('error', 'Order tidak dapat dihapus karena sudah memiliki pengiriman terkait! Hapus pengiriman terlebih dahulu.');
+                $this->showDeleteModal = false;
+                $this->orderToDelete = null;
+                return;
+            }
+
+            // 3. Authorization: Only Marketing and Direktur can delete
+            $user = auth()->user();
+            $allowedRoles = ['direktur', 'manager_marketing', 'staff_marketing'];
+            
+            if (!in_array($user->role, $allowedRoles)) {
+                session()->flash('error', 'Anda tidak memiliki akses untuk menghapus order! Hanya Direktur dan tim Marketing yang dapat menghapus order.');
+                $this->showDeleteModal = false;
+                $this->orderToDelete = null;
+                return;
+            }
+
+            // 4. For staff marketing, can only delete own orders
+            if ($user->role === 'staff_marketing' && $order->created_by !== $user->id) {
+                session()->flash('error', 'Anda hanya dapat menghapus order yang Anda buat sendiri!');
+                $this->showDeleteModal = false;
+                $this->orderToDelete = null;
+                return;
+            }
+
+            // Begin transaction
+            \DB::beginTransaction();
+
+            try {
+                $orderNumber = $order->po_number ?? $order->no_order;
+
+                // Delete related data (with soft delete if applicable)
+                
+                // 1. Delete order winner (if exists)
+                if ($order->winner) {
+                    $order->winner->delete();
+                }
+
+                // 2. Delete consultations
+                \App\Models\OrderConsultation::where('order_id', $order->id)->delete();
+
+                // 3. Delete order suppliers (nested in order details)
+                foreach ($order->orderDetails as $detail) {
+                    \App\Models\OrderSupplier::where('order_detail_id', $detail->id)->delete();
+                }
+
+                // 4. Delete order details
+                \App\Models\OrderDetail::where('order_id', $order->id)->delete();
+
+                // 5. Delete PO document if exists
+                if ($order->po_document_path && \Storage::disk('public')->exists($order->po_document_path)) {
+                    \Storage::disk('public')->delete($order->po_document_path);
+                }
+
+                // 6. Finally, delete the order itself
+                $order->delete();
+
+                \DB::commit();
+
+                \Log::info("Order #{$orderNumber} successfully deleted by user #{$user->id}");
+
+                session()->flash('message', "Order {$orderNumber} berhasil dihapus!");
+                $this->showDeleteModal = false;
+                $this->orderToDelete = null;
+
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error in deleteOrder: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            session()->flash('error', 'Gagal menghapus order: ' . $e->getMessage());
+            $this->showDeleteModal = false;
+            $this->orderToDelete = null;
+        }
     }
 
     public function confirmOrder($orderId)

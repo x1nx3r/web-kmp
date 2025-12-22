@@ -1,4 +1,47 @@
 <div class="min-h-screen bg-gray-50">
+    {{-- Flash Messages --}}
+    @if (session()->has('message'))
+        <div x-data="{ show: true }" 
+             x-init="setTimeout(() => show = false, 5000)" 
+             x-show="show" 
+             x-transition
+             class="fixed top-4 right-4 z-50 max-w-md">
+            <div class="bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-white text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold">Berhasil!</p>
+                    <p class="text-sm text-green-100">{{ session('message') }}</p>
+                </div>
+                <button @click="show = false" class="text-white/80 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div x-data="{ show: true }" 
+             x-init="setTimeout(() => show = false, 8000)" 
+             x-show="show" 
+             x-transition
+             class="fixed top-4 right-4 z-50 max-w-md">
+            <div class="bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold">Gagal!</p>
+                    <p class="text-sm text-red-100">{{ session('error') }}</p>
+                </div>
+                <button @click="show = false" class="text-white/80 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+
     {{-- Header Section --}}
     <div class="bg-white border-b border-gray-200 shadow-sm">
         <div class="px-6 py-6">
@@ -579,13 +622,6 @@
                                         <i class="fas fa-check mr-1"></i>
                                         Konfirmasi
                                     </button>
-                                    <button
-                                        wire:click="confirmDelete({{ $order->id }})"
-                                        class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
-                                    >
-                                        <i class="fas fa-trash mr-1"></i>
-                                        Hapus
-                                    </button>
                                 @elseif($order->status === 'dikonfirmasi')
                                     <button
                                         wire:click="startProcessing({{ $order->id }})"
@@ -603,6 +639,16 @@
                                         Selesaikan
                                     </button>
                                 @endif
+
+                                {{-- Tombol Hapus muncul di SEMUA status --}}
+                                <button
+                                    wire:click="confirmDelete({{ $order->id }})"
+                                    class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                    title="Hapus Order (hanya jika tidak ada forecast/pengiriman)"
+                                >
+                                    <i class="fas fa-trash mr-1"></i>
+                                    Hapus
+                                </button>
 
                                 @if(!in_array($order->status, ['selesai', 'dibatalkan']))
                                     <button
@@ -662,25 +708,81 @@
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="cancelDelete"></div>
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Hapus Order</h3>
+                <div class="relative bg-white rounded-xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
+                    {{-- Header --}}
+                    <div class="px-6 py-4 bg-red-600 rounded-t-xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-trash text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">Konfirmasi Hapus Order</h3>
+                                <p class="text-sm text-red-100">Tindakan ini tidak dapat dibatalkan!</p>
+                            </div>
+                        </div>
                     </div>
+
+                    {{-- Content --}}
                     <div class="p-6">
-                        <p class="text-gray-600">Apakah Anda yakin ingin menghapus order ini? Tindakan ini tidak dapat dibatalkan.</p>
+                        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl mr-3 mt-0.5"></i>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-red-900 mb-2">Peringatan Penting!</h4>
+                                    <p class="text-sm text-red-800 mb-3">
+                                        Order ini akan <strong>dihapus permanen</strong> beserta semua data terkait:
+                                    </p>
+                                    <ul class="text-sm text-red-800 space-y-1 list-disc list-inside">
+                                        <li>Semua detail material order</li>
+                                        <li>Data supplier yang dipilih</li>
+                                        <li>Konsultasi yang telah dilakukan</li>
+                                        <li>Dokumen PO (jika ada)</li>
+                                        <li>Data winner (jika ada)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-blue-600 text-xl mr-3 mt-0.5"></i>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-blue-900 mb-2">Syarat Hapus Order (STRICT)</h4>
+                                    <p class="text-sm text-blue-800">
+                                        Hanya order dengan kondisi berikut yang bisa dihapus:
+                                    </p>
+                                    <ul class="text-sm text-blue-800 space-y-1 mt-2 list-disc list-inside">
+                                        <li><strong>Status = DRAFT</strong> (belum dikonfirmasi)</li>
+                                        <li><strong>Tidak ada forecasting</strong> terkait</li>
+                                        <li><strong>Tidak ada pengiriman</strong> terkait</li>
+                                    </ul>
+                                    <p class="text-xs text-blue-700 mt-3 font-medium">
+                                        💡 Jika tidak memenuhi syarat, gunakan fitur "Batalkan" sebagai alternatif.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="text-gray-700 font-medium">
+                            Apakah Anda yakin ingin <span class="text-red-600">menghapus order ini</span>?
+                        </p>
                     </div>
-                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+
+                    {{-- Footer Actions --}}
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex justify-end space-x-3">
                         <button
                             wire:click="cancelDelete"
-                            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            class="px-4 py-2 text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors font-medium"
                         >
+                            <i class="fas fa-times mr-1"></i>
                             Batal
                         </button>
                         <button
                             wire:click="deleteOrder"
-                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium shadow-lg hover:shadow-xl"
                         >
-                            Hapus Order
+                            <i class="fas fa-trash mr-1"></i>
+                            Ya, Hapus Order
                         </button>
                     </div>
                 </div>

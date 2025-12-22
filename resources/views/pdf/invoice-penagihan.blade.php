@@ -332,12 +332,17 @@
         </thead>
         <tbody>
             @forelse($pengiriman->details as $index => $detail)
+                @php
+                    $hargaJual = $detail->orderDetail->harga_jual ?? 0;
+                    $qtyKirim = $detail->qty_kirim ?? 0;
+                    $totalHargaItem = $qtyKirim * $hargaJual;
+                @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
-                    <td class="text-center">{{ number_format($detail->qty_kirim, 2, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($detail->purchaseOrderBahanBaku->harga_satuan ?? $detail->harga_satuan ?? 0, 0, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($detail->total_harga, 0, ',', '.') }}</td>
+                    <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($hargaJual, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($totalHargaItem, 0, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
@@ -355,7 +360,7 @@
                 <table class="summary-row">
                     <tr>
                         <td class="summary-label">Total Harga</td>
-                        <td class="summary-value">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $pengiriman->total_harga_kirim, 0, ',', '.') }}</td>
                     </tr>
                 </table>
 

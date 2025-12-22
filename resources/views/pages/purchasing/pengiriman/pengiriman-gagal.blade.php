@@ -173,11 +173,18 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button onclick="openDetailModalGagal({{ $pengiriman->id }})" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-md transition-colors duration-150">
-                                        <i class="fas fa-eye mr-1"></i>
-                                        Detail
-                                    </button>
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="openDetailModalGagal({{ $pengiriman->id }})" 
+                                                class="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-md transition-colors duration-150">
+                                            <i class="fas fa-eye mr-1"></i>
+                                            Detail
+                                        </button>
+                                        <button onclick="confirmDeletePengirimanGagal({{ $pengiriman->id }}, '{{ $pengiriman->no_pengiriman }}')" 
+                                                class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors duration-150">
+                                            <i class="fas fa-trash mr-1"></i>
+                                            Hapus
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -263,7 +270,6 @@
                                             <span class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default rounded-r-md leading-5" aria-hidden="true">
                                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                                </svg>
                                             </span>
                                         </span>
                                     @endif
@@ -574,4 +580,86 @@ document.addEventListener('click', function(event) {
         closeDetailModalGagal();
     }
 });
+
+// Function to confirm delete pengiriman gagal
+function confirmDeletePengirimanGagal(pengirimanId, noPengiriman) {
+    if (confirm(`Apakah Anda yakin ingin menghapus pengiriman ${noPengiriman}?\n\nPerhatian: Forecasting yang terkait juga akan dihapus!`)) {
+        deletePengirimanGagal(pengirimanId);
+    }
+}
+
+// Function to delete pengiriman gagal
+function deletePengirimanGagal(pengirimanId) {
+    // Show loading state
+    const loadingMessage = document.createElement('div');
+    loadingMessage.id = 'deleteLoadingMessage';
+    loadingMessage.className = 'fixed top-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center';
+    loadingMessage.innerHTML = `
+        <i class="fas fa-spinner fa-spin mr-2"></i>
+        Menghapus pengiriman...
+    `;
+    document.body.appendChild(loadingMessage);
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    // Delete pengiriman
+    fetch(`/procurement/pengiriman/${pengirimanId}/delete-gagal`, {
+        method: 'DELETE',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Remove loading message
+        document.getElementById('deleteLoadingMessage')?.remove();
+        
+        if (data.success) {
+            // Show success message
+            const successMessage = document.createElement('div');
+            successMessage.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center';
+            successMessage.innerHTML = `
+                <i class="fas fa-check-circle mr-2"></i>
+                ${data.message}
+            `;
+            document.body.appendChild(successMessage);
+            
+            // Reload page after 1.5 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.message || 'Gagal menghapus pengiriman');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting pengiriman:', error);
+        
+        // Remove loading message
+        document.getElementById('deleteLoadingMessage')?.remove();
+        
+        // Show error message
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'fixed top-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center';
+        errorMessage.innerHTML = `
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            Gagal menghapus pengiriman: ${error.message}
+        `;
+        document.body.appendChild(errorMessage);
+        
+        // Remove error message after 5 seconds
+        setTimeout(() => {
+            errorMessage.remove();
+        }, 5000);
+    });
+}
 </script>

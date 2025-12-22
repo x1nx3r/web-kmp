@@ -7,6 +7,8 @@ use App\Models\Pengiriman;
 use App\Models\PengirimanDetail;
 use App\Models\Order;
 use App\Models\Klien;
+use App\Models\Forecast;
+use App\Models\ForecastDetail;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -1979,6 +1981,99 @@ class PengirimanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal merevisi pengiriman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete failed pengiriman and its associated forecast
+     * Only for pengiriman with status 'gagal'
+     */
+    public function deletePengirimanGagal($id)
+    {
+        try {
+            // Check user authorization - Only Direktur, Manager Purchasing, and Staff Purchasing can delete
+            $user = Auth::user();
+            if (!in_array($user->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk menghapus pengiriman. Hanya Direktur, Manager Purchasing, dan Staff Purchasing yang dapat melakukan aksi ini.'
+                ], 403);
+            }
+
+            // Find the pengiriman
+            $pengiriman = Pengiriman::with(['forecast', 'pengirimanDetails'])->findOrFail($id);
+
+            // Check if status is gagal
+            if ($pengiriman->status !== 'gagal') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya pengiriman dengan status gagal yang dapat dihapus'
+                ], 400);
+            }
+
+            // For Staff Purchasing, ensure they are the PIC
+            if ($user->role === 'staff_purchasing') {
+                if ($pengiriman->purchasing_id !== $user->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda hanya dapat menghapus pengiriman yang Anda tangani sebagai PIC.'
+                    ], 403);
+                }
+            }
+
+            // Begin transaction
+            DB::beginTransaction();
+
+            try {
+                $noPengiriman = $pengiriman->no_pengiriman;
+                $forecastId = $pengiriman->forecast_id;
+
+                // Delete pengiriman details first (cascade will not work with soft deletes)
+                PengirimanDetail::where('pengiriman_id', $pengiriman->id)->delete();
+
+                // Delete the pengiriman (soft delete)
+                $pengiriman->delete();
+
+                // If there's an associated forecast, delete it too
+                if ($forecastId) {
+                    $forecast = Forecast::find($forecastId);
+                    if ($forecast) {
+                        // Delete forecast details first
+                        ForecastDetail::where('forecast_id', $forecast->id)->delete();
+                        
+                        // Delete the forecast (soft delete)
+                        $forecast->delete();
+                        
+                        Log::info("Forecast #{$forecast->no_forecast} deleted along with pengiriman #{$noPengiriman}");
+                    }
+                }
+
+                DB::commit();
+
+                Log::info("Pengiriman gagal #{$noPengiriman} and its forecast successfully deleted by user #{$user->id}");
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Pengiriman {$noPengiriman} dan forecasting terkait berhasil dihapus"
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengiriman tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error in deletePengirimanGagal: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus pengiriman: ' . $e->getMessage()
             ], 500);
         }
     }

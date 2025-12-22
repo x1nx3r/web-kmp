@@ -619,14 +619,10 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "uploadFotoTandaTerima",
         ])->name("purchasing.pengiriman.upload-foto-tanda-terima");
-        Route::get("pengiriman/{pengiriman}/aksi-modal", [
+        Route::delete("pengiriman/{pengiriman}/delete-gagal", [
             PengirimanController::class,
-            "getAksiModal",
-        ])->name("purchasing.pengiriman.aksi-modal");
-        Route::get("bahan-baku-supplier/{id}/harga", [
-            PengirimanController::class,
-            "getBahanBakuHarga",
-        ])->name("purchasing.bahan-baku-supplier.harga");
+            "deletePengirimanGagal",
+        ])->name("purchasing.pengiriman.delete-gagal");
     });
 
     // Accounting routes - accessible to all authenticated users

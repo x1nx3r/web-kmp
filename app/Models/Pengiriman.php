@@ -333,8 +333,9 @@ class Pengiriman extends Model
         $yearMonth = now()->format('Ym'); // Format: 202511
         $prefix = "PGR/{$yearMonth}/";
 
-        // Cari nomor pengiriman terakhir di bulan ini
+        // Cari nomor pengiriman terakhir di bulan ini (excluding soft deleted)
         $lastPengiriman = self::where('no_pengiriman', 'LIKE', $prefix . '%')
+            ->withTrashed()  // Include soft deleted to avoid duplicate numbers
             ->orderBy('no_pengiriman', 'desc')
             ->first();
 

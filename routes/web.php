@@ -555,6 +555,19 @@ Route::middleware(["auth"])->group(function () {
             "update" => "purchasing.pengiriman.update",
             "destroy" => "purchasing.pengiriman.destroy",
         ]);
+        
+        // Aksi modal route (untuk pengiriman masuk)
+        Route::get("pengiriman/{pengiriman}/aksi-modal", [
+            PengirimanController::class,
+            "getAksiModal",
+        ])->name("purchasing.pengiriman.aksi-modal");
+        
+        // Delete pengiriman gagal route (STRICT - hanya jika tidak ada forecast/pengiriman terkait)
+        Route::delete("pengiriman/{pengiriman}/delete-gagal", [
+            PengirimanController::class,
+            "deletePengirimanGagal",
+        ])->name("purchasing.pengiriman.delete-gagal");
+        
         Route::put("pengiriman/{pengiriman}/status", [
             PengirimanController::class,
             "updateStatus",
@@ -619,10 +632,6 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "uploadFotoTandaTerima",
         ])->name("purchasing.pengiriman.upload-foto-tanda-terima");
-        Route::delete("pengiriman/{pengiriman}/delete-gagal", [
-            PengirimanController::class,
-            "deletePengirimanGagal",
-        ])->name("purchasing.pengiriman.delete-gagal");
     });
 
     // Accounting routes - accessible to all authenticated users

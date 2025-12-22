@@ -41,7 +41,9 @@ class ApprovalPembayaran extends Component
             'pengiriman.purchasing',
             'staff',
             'manager'
-        ]);
+        ])
+        // Filter out approvals with deleted pengiriman (whereHas ensures pengiriman exists)
+        ->whereHas('pengiriman');
 
         // Filter by active tab
         if ($this->activeTab === 'pending') {

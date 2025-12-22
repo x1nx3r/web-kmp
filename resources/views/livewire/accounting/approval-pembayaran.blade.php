@@ -160,9 +160,14 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($approvals as $approval)
+                        {{-- Skip if pengiriman is null (deleted) --}}
+                        @if(!$approval->pengiriman)
+                            @continue
+                        @endif
+                        
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
+                                <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman ?? '-' }}</div>
                                 <div class="text-xs text-gray-500">PO: {{ $approval->pengiriman->purchaseOrder->po_number ?? '-' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -170,7 +175,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">
-                                    Rp {{ number_format($approval->amount_after_refraksi > 0 ? $approval->amount_after_refraksi : $approval->pengiriman->total_harga_kirim, 0, ',', '.') }}
+                                    Rp {{ number_format($approval->amount_after_refraksi > 0 ? $approval->amount_after_refraksi : ($approval->pengiriman->total_harga_kirim ?? 0), 0, ',', '.') }}
                                 </div>
                                 @if($approval->refraksi_value > 0)
                                     <div class="text-xs text-red-600">

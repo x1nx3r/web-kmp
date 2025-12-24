@@ -1,9 +1,9 @@
 <div class="min-h-screen bg-gray-50">
     {{-- Flash Messages --}}
     @if (session()->has('message'))
-        <div x-data="{ show: true }" 
-             x-init="setTimeout(() => show = false, 5000)" 
-             x-show="show" 
+        <div x-data="{ show: true }"
+             x-init="setTimeout(() => show = false, 5000)"
+             x-show="show"
              x-transition
              class="fixed top-4 right-4 z-50 max-w-md">
             <div class="bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3">
@@ -22,9 +22,9 @@
     @endif
 
     @if (session()->has('error'))
-        <div x-data="{ show: true }" 
-             x-init="setTimeout(() => show = false, 8000)" 
-             x-show="show" 
+        <div x-data="{ show: true }"
+             x-init="setTimeout(() => show = false, 8000)"
+             x-show="show"
              x-transition
              class="fixed top-4 right-4 z-50 max-w-md">
             <div class="bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3">
@@ -70,7 +70,7 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="flex items-center space-x-2">
-                    <select wire:model.live="selectedMonth" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <select id="selectedMonth" wire:model.live="selectedMonth" onchange="(function(){const p=new URLSearchParams(window.location.search);p.set('selectedMonth',this.value);const yEl=document.getElementById('selectedYear');if(yEl) p.set('selectedYear', yEl.value);window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');}).call(this)" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                         <option value="1">Januari</option>
                         <option value="2">Februari</option>
                         <option value="3">Maret</option>
@@ -84,7 +84,7 @@
                         <option value="11">November</option>
                         <option value="12">Desember</option>
                     </select>
-                    <select wire:model.live="selectedYear" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <select id="selectedYear" wire:model.live="selectedYear" onchange="(function(){const p=new URLSearchParams(window.location.search);p.set('selectedYear',this.value);const mEl=document.getElementById('selectedMonth');if(mEl) p.set('selectedMonth', mEl.value);window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');}).call(this)" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                         @foreach($availableYears as $year)
                             <option value="{{ $year }}">{{ $year }}</option>
                         @endforeach
@@ -92,7 +92,7 @@
                 </div>
                 <div class="flex items-center space-x-2">
                     @if($selectedMonth != now()->month || $selectedYear != now()->year)
-                        <button wire:click="goToCurrentMonth" class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        <button onclick="(function(){const d=new Date();const m=d.getMonth()+1;const y=d.getFullYear();const p=new URLSearchParams(window.location.search);p.set('selectedMonth',m);p.set('selectedYear',y);window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');})();" class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                             <i class="fas fa-calendar-day mr-1"></i>
                             Kembali Ke Bulan Ini
                         </button>
@@ -901,4 +901,120 @@
             </div>
         </div>
     @endif
+
+    {{-- Client-side script to preserve URL params when reloading after Livewire update --}}
+    <script>
+        (function () {
+            // Guard for environments without Livewire loaded yet
+            window.__reloadAfterLivewire = window.__reloadAfterLivewire || false;
+
+            function buildAndReplaceUrl() {
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const monthEl = document.getElementById('selectedMonth');
+                    const yearEl = document.getElementById('selectedYear');
+
+                    if (monthEl) {
+                        // Only set if value present
+                        params.set('selectedMonth', monthEl.value);
+                    }
+                    if (yearEl) {
+                        params.set('selectedYear', yearEl.value);
+                    }
+
+                    // Preserve other existing params already in URL (search, filters, etc.)
+                    const newSearch = params.toString();
+                    const newUrl = window.location.pathname + (newSearch ? ('?' + newSearch) : '');
+
+                    // Replace only if different
+                    if (newUrl !== window.location.pathname + window.location.search) {
+                        window.location.replace(newUrl);
+                    } else {
+                        // As a fallback, do a soft reload to ensure DOM state is consistent
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    // Fall back to a normal reload if anything fails
+                    console.error('Error building URL for reload:', e);
+                    window.location.reload();
+                }
+            }
+
+            // If Livewire is available, hook into the processed message lifecycle.
+            // We use 'message.processed' to act after Livewire has applied DOM diff and updated history state.
+            function attachLivewireHook() {
+                if (window.Livewire && typeof window.Livewire.hook === 'function') {
+                    // Hook will be called many times; we only act when reload flag is set
+                    window.Livewire.hook('message.processed', function(message, component) {
+                        if (window.__reloadAfterLivewire) {
+                            // reset flag
+                            window.__reloadAfterLivewire = false;
+                            // small delay to allow Livewire to finish history updates
+                            setTimeout(buildAndReplaceUrl, 60);
+                        }
+                    });
+                } else {
+                    // If Livewire isn't available, attach onchange handlers to fallback to reload preserving params
+                    const month = document.getElementById('selectedMonth');
+                    const year = document.getElementById('selectedYear');
+
+                    if (month) {
+                        month.addEventListener('change', function () {
+                            // set params and reload (fallback)
+                            try {
+                                const params = new URLSearchParams(window.location.search);
+                                params.set('selectedMonth', month.value);
+                                if (year) params.set('selectedYear', year.value);
+                                const newSearch = params.toString();
+                                const newUrl = window.location.pathname + (newSearch ? ('?' + newSearch) : '');
+                                window.location.replace(newUrl);
+                            } catch (e) {
+                                window.location.reload();
+                            }
+                        });
+                    }
+                    if (year) {
+                        year.addEventListener('change', function () {
+                            try {
+                                const params = new URLSearchParams(window.location.search);
+                                if (month) params.set('selectedMonth', month.value);
+                                params.set('selectedYear', year.value);
+                                const newSearch = params.toString();
+                                const newUrl = window.location.pathname + (newSearch ? ('?' + newSearch) : '');
+                                window.location.replace(newUrl);
+                            } catch (e) {
+                                window.location.reload();
+                            }
+                        });
+                    }
+                }
+            }
+
+            // If Livewire is not yet loaded, wait for DOMContentLoaded and then attach.
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', attachLivewireHook);
+            } else {
+                attachLivewireHook();
+            }
+
+            // Additionally, whenever user changes either select, set the reload flag so the Livewire hook will redirect
+            document.addEventListener('change', function (e) {
+                const target = e.target;
+                if (!target) return;
+                if (target.id === 'selectedMonth' || target.id === 'selectedYear') {
+                    window.__reloadAfterLivewire = true;
+                }
+            });
+
+            // For the "Kembali Ke Bulan Ini" button we set the reload flag inline via onclick attribute.
+            // But also listen for clicks on any element with data attribute if needed in future.
+            document.addEventListener('click', function (e) {
+                const el = e.target.closest && e.target.closest('button[wire\\:click="goToCurrentMonth"], button[onclick]');
+                if (el && el.getAttribute && el.getAttribute('wire:click') === 'goToCurrentMonth') {
+                    // ensure flag is set (in case onclick wasn't present)
+                    window.__reloadAfterLivewire = true;
+                }
+            });
+        })();
+    </script>
 </div>

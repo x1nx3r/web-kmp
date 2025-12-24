@@ -21,6 +21,107 @@ use Carbon\Carbon;
 
 class PengirimanController extends Controller
 {
+    /**
+     * Reduce qty on OrderDetail - ONLY ONCE per pengiriman
+     * This method should be called whenever status changes (except to 'gagal')
+     * It ensures qty is only reduced once using the qty_reduced flag
+     */
+    private function reduceOrderDetailQty(Pengiriman $pengiriman)
+    {
+        // Check if qty has already been reduced
+        if ($pengiriman->qty_reduced) {
+            Log::info("Qty already reduced for Pengiriman ID: {$pengiriman->id}, skipping reduction");
+            return false;
+        }
+
+        // Load details with orderDetail relationship if not loaded
+        if (!$pengiriman->relationLoaded('details')) {
+            $pengiriman->load('details.orderDetail');
+        }
+
+        $detailsUpdated = 0;
+        
+        // Update related OrderDetail records
+        foreach ($pengiriman->details as $detail) {
+            if ($detail->orderDetail) {
+                $orderDetail = $detail->orderDetail;
+                
+                // Decrease qty by qty_kirim
+                $oldQty = (float)$orderDetail->qty;
+                $newQty = $oldQty - (float)$detail->qty_kirim;
+                $orderDetail->qty = max(0, $newQty); // Ensure qty doesn't go negative
+                
+                // Recalculate total_harga based on new qty and harga_jual
+                $orderDetail->total_harga = (float)$orderDetail->qty * (float)$orderDetail->harga_jual;
+                
+                // Save quietly to prevent triggering the 'saved' event that updates parent Order
+                $orderDetail->saveQuietly();
+                
+                $detailsUpdated++;
+                
+                Log::info("Reduced OrderDetail ID: {$orderDetail->id}, Old Qty: {$oldQty}, Reduced by: {$detail->qty_kirim}, New Qty: {$orderDetail->qty}, New Total: {$orderDetail->total_harga}");
+            }
+        }
+
+        // Mark as qty_reduced
+        $pengiriman->qty_reduced = true;
+        $pengiriman->saveQuietly(); // Use saveQuietly to not trigger observers
+        
+        Log::info("Marked Pengiriman ID: {$pengiriman->id} as qty_reduced. Updated {$detailsUpdated} order details.");
+        
+        return true;
+    }
+
+    /**
+     * Restore qty on OrderDetail when pengiriman is cancelled/failed
+     * This should only be called if qty was previously reduced
+     */
+    private function restoreOrderDetailQty(Pengiriman $pengiriman)
+    {
+        // Only restore if qty was previously reduced
+        if (!$pengiriman->qty_reduced) {
+            Log::info("Qty was never reduced for Pengiriman ID: {$pengiriman->id}, skipping restore");
+            return false;
+        }
+
+        // Load details with orderDetail relationship if not loaded
+        if (!$pengiriman->relationLoaded('details')) {
+            $pengiriman->load('details.orderDetail');
+        }
+
+        $detailsRestored = 0;
+        
+        // Restore related OrderDetail records
+        foreach ($pengiriman->details as $detail) {
+            if ($detail->orderDetail) {
+                $orderDetail = $detail->orderDetail;
+                
+                // Increase qty by qty_kirim (restore)
+                $oldQty = (float)$orderDetail->qty;
+                $newQty = $oldQty + (float)$detail->qty_kirim;
+                $orderDetail->qty = $newQty;
+                
+                // Recalculate total_harga based on new qty and harga_jual
+                $orderDetail->total_harga = (float)$orderDetail->qty * (float)$orderDetail->harga_jual;
+                
+                // Save quietly to prevent triggering the 'saved' event
+                $orderDetail->saveQuietly();
+                
+                $detailsRestored++;
+                
+                Log::info("Restored OrderDetail ID: {$orderDetail->id}, Old Qty: {$oldQty}, Restored by: {$detail->qty_kirim}, New Qty: {$orderDetail->qty}, New Total: {$orderDetail->total_harga}");
+            }
+        }
+
+        // Mark as qty NOT reduced anymore
+        $pengiriman->qty_reduced = false;
+        $pengiriman->saveQuietly();
+        
+        Log::info("Marked Pengiriman ID: {$pengiriman->id} as qty NOT reduced. Restored {$detailsRestored} order details.");
+        
+        return true;
+    }
+
     public function index(Request $request): View
     {
         // Base query dengan eager loading
@@ -842,6 +943,10 @@ class PengirimanController extends Controller
                 }
             }
 
+            // IMPORTANT: Reduce qty from order_detail when status becomes menunggu_fisik
+            // This ensures qty is reduced only once, regardless of future status changes
+            $this->reduceOrderDetailQty($pengiriman);
+
             // Commit transaction
             DB::commit();
 
@@ -1013,6 +1118,10 @@ class PengirimanController extends Controller
                 "catatan" => $newCatatan,
                 "status" => "gagal",
             ]);
+
+            // IMPORTANT: Restore qty to order_detail when pengiriman is cancelled
+            // This will only restore if qty was previously reduced
+            $this->restoreOrderDetailQty($pengiriman);
 
             // Commit transaction
             DB::commit();
@@ -1643,15 +1752,32 @@ class PengirimanController extends Controller
                 ], 403);
             }
             
-            // Update status to menunggu_verifikasi (next stage in workflow)
-            $pengiriman->status = 'menunggu_verifikasi';
-            $pengiriman->save();
+            // Start database transaction
+            DB::beginTransaction();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Pengiriman berhasil diverifikasi fisik dan menunggu verifikasi dokumen',
-                'pengiriman' => $pengiriman
-            ]);
+            try {
+                // Update status to menunggu_verifikasi (next stage in workflow)
+                $pengiriman->status = 'menunggu_verifikasi';
+                $pengiriman->save();
+                
+                // IMPORTANT: Reduce qty from order_detail when verified physically
+                // This ensures qty is reduced only once, regardless of future status changes
+                $this->reduceOrderDetailQty($pengiriman);
+                
+                // Commit transaction
+                DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pengiriman berhasil diverifikasi fisik dan menunggu verifikasi dokumen',
+                    'pengiriman' => $pengiriman
+                ]);
+                
+            } catch (\Exception $e) {
+                // Rollback on error
+                DB::rollBack();
+                throw $e;
+            }
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
@@ -1701,33 +1827,17 @@ class PengirimanController extends Controller
                 $pengiriman->status = 'berhasil';
                 $pengiriman->save();
                 
-                // Update related OrderDetail records
-                foreach ($pengiriman->details as $detail) {
-                    if ($detail->orderDetail) {
-                        $orderDetail = $detail->orderDetail;
-                        
-                        // Decrease qty by qty_kirim
-                        $newQty = (float)$orderDetail->qty - (float)$detail->qty_kirim;
-                        $orderDetail->qty = max(0, $newQty); // Ensure qty doesn't go negative
-                        
-                        // Recalculate total_harga based on new qty and harga_jual
-                        $orderDetail->total_harga = (float)$orderDetail->qty * (float)$orderDetail->harga_jual;
-                        
-                        // Save quietly to prevent triggering the 'saved' event that updates parent Order
-                        $orderDetail->saveQuietly();
-                        
-                        Log::info('Updated OrderDetail ID: ' . $orderDetail->id . 
-                                  ', New Qty: ' . $orderDetail->qty . 
-                                  ', New Total: ' . $orderDetail->total_harga);
-                    }
-                }
+                // IMPORTANT: Try to reduce qty if not already reduced
+                // This handles edge cases where pengiriman was already in menunggu_verifikasi before the update
+                // For new workflow, qty should already be reduced when status changed to menunggu_fisik
+                $this->reduceOrderDetailQty($pengiriman);
                 
                 // Commit the transaction
                 DB::commit();
                 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Pengiriman berhasil diverifikasi dan qty order detail telah diperbarui',
+                    'message' => 'Pengiriman berhasil diverifikasi',
                     'pengiriman' => $pengiriman
                 ]);
                 
@@ -1954,6 +2064,10 @@ class PengirimanController extends Controller
             } else {
                 $pengiriman->catatan = $revisiCatatan;
             }
+            
+            // IMPORTANT: Restore qty to order_detail when pengiriman is revised back to pending
+            // This will only restore if qty was previously reduced
+            $this->restoreOrderDetailQty($pengiriman);
             
             // Update status back to pending
             $pengiriman->status = 'pending';

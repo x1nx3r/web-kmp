@@ -27,6 +27,7 @@ class Pengiriman extends Model
         'foto_tanda_terima',
         'foto_tanda_terima_uploaded_at',
         'status',
+        'qty_reduced',
         'catatan',
         'catatan_refraksi',
         'rating',
@@ -40,6 +41,7 @@ class Pengiriman extends Model
         'total_qty_sisa' => 'decimal:2',
         'bukti_foto_bongkar_uploaded_at' => 'datetime',
         'foto_tanda_terima_uploaded_at' => 'datetime',
+        'qty_reduced' => 'boolean',
     ];
 
     protected $dates = ['deleted_at'];

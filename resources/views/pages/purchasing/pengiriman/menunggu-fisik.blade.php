@@ -479,7 +479,7 @@ function submitSearchFisik() {
     
     currentParams.delete('fisik_page');
     
-    window.location.href = '/pengiriman?' + currentParams.toString();
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Apply filters function for server-side filtering

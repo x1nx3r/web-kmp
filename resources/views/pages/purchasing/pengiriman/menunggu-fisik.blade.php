@@ -207,6 +207,13 @@
                                                     <i class="fas fa-box-open mr-1"></i>
                                                     Menunggu Fisik
                                                 </span>
+                                                @if(isset($pengiriman->partialInfo) && $pengiriman->partialInfo['isPartial'])
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300" 
+                                                          title="Pengiriman sebagian: {{ $pengiriman->partialInfo['percentage'] }}% dari forecast ({{ number_format($pengiriman->partialInfo['totalQtyKirim'], 0, ',', '.') }} kg dari {{ number_format($pengiriman->partialInfo['totalQtyForecast'], 0, ',', '.') }} kg)">
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                        Kirim Sebagian ({{ $pengiriman->partialInfo['percentage'] }}%)
+                                                    </span>
+                                                @endif
                                             </div>
                                             
                                             {{-- Row 2: Detail Info --}}

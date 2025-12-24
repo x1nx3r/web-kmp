@@ -22,6 +22,61 @@ use Carbon\Carbon;
 class PengirimanController extends Controller
 {
     /**
+     * Check if pengiriman is partial delivery (<=70% of forecast)
+     * Returns array with percentage and isPartial flag
+     * Uses direct fields from pengiriman and forecast tables (no details needed)
+     */
+    private function checkPartialDelivery(Pengiriman $pengiriman)
+    {
+        try {
+            // Load forecast if not already loaded
+            if (!$pengiriman->relationLoaded('forecast')) {
+                $pengiriman->load('forecast');
+            }
+            
+            // If no forecast, return not partial
+            if (!$pengiriman->forecast) {
+                return [
+                    'isPartial' => false,
+                    'percentage' => 0,
+                    'totalQtyKirim' => 0,
+                    'totalQtyForecast' => 0
+                ];
+            }
+            
+            // Get total qty from forecast table directly
+            $totalQtyForecast = (float) $pengiriman->forecast->total_qty_forecast;
+            
+            // Get total qty kirim from pengiriman table directly
+            $totalQtyKirim = (float) $pengiriman->total_qty_kirim;
+            
+            // Calculate percentage
+            $percentage = 0;
+            if ($totalQtyForecast > 0) {
+                $percentage = ($totalQtyKirim / $totalQtyForecast) * 100;
+            }
+            
+            // Check if partial (<=70%)
+            $isPartial = $percentage > 0 && $percentage <= 70;
+            
+            return [
+                'isPartial' => $isPartial,
+                'percentage' => round($percentage, 2),
+                'totalQtyKirim' => $totalQtyKirim,
+                'totalQtyForecast' => $totalQtyForecast
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in checkPartialDelivery: ' . $e->getMessage());
+            return [
+                'isPartial' => false,
+                'percentage' => 0,
+                'totalQtyKirim' => 0,
+                'totalQtyForecast' => 0
+            ];
+        }
+    }
+    
+    /**
      * Reduce qty on OrderDetail - ONLY ONCE per pengiriman
      * This method should be called whenever status changes (except to 'gagal')
      * It ensures qty is only reduced once using the qty_reduced flag
@@ -131,6 +186,7 @@ class PengirimanController extends Controller
                 "order.klien:id,nama,cabang",
                 "purchasing:id,nama",
                 "pengirimanDetails",
+                "forecast:id,total_qty_forecast",
                 "approvalPembayaran:id,pengiriman_id,refraksi_type,refraksi_value,refraksi_amount,qty_before_refraksi,qty_after_refraksi,amount_before_refraksi,amount_after_refraksi,bukti_pembayaran",
             ])
                 ->whereNotNull("purchase_order_id")
@@ -374,7 +430,6 @@ class PengirimanController extends Controller
 
             return $query;
         };
-
         // Get data for each status
         $pengirimanMasuk = $baseQuery("pending")->paginate(
             10,
@@ -401,6 +456,19 @@ class PengirimanController extends Controller
             ["*"],
             "gagal_page",
         );
+        
+        // Add partial delivery info to each item
+        foreach ($menungguVerifikasi as $pengiriman) {
+            $pengiriman->partialInfo = $this->checkPartialDelivery($pengiriman);
+        }
+        
+        foreach ($menungguFisik as $pengiriman) {
+            $pengiriman->partialInfo = $this->checkPartialDelivery($pengiriman);
+        }
+        
+        foreach ($pengirimanBerhasil as $pengiriman) {
+            $pengiriman->partialInfo = $this->checkPartialDelivery($pengiriman);
+        }
 
         return view(
             "pages.purchasing.pengiriman",

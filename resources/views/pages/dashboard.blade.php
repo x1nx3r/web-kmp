@@ -125,7 +125,7 @@
     </div>
 
     {{-- Ringkasan Utama --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div class="grid grid-cols-3 md:grid-cols-3 gap-4">
         {{-- Outstanding PO --}}
         <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
             <div class="flex items-center gap-3 mb-4">
@@ -177,32 +177,7 @@
             
             <p class="text-sm text-gray-500">{{ number_format($progressBulan, 1) }}% dari target</p>
         </div>
-
-        {{-- Pengiriman Minggu Ini --}}
-        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-truck text-blue-500 text-xl"></i>
-                </div>
-                <h3 class="text-sm text-gray-500">Pengiriman Minggu Ini</h3>
-            </div>
-            <p class="text-2xl font-bold text-gray-900 mb-1">{{ number_format($pengirimanMingguIni) }}</p>
-            <p class="text-sm text-gray-500">{{ number_format($totalQtyPengirimanMingguIni, 0, ',', '.') }} Qty Total</p>
-        </div>
-
-        {{-- Pengiriman Gagal Minggu Ini --}}
-        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-times-circle text-red-500 text-xl"></i>
-                </div>
-                <h3 class="text-sm text-gray-500">Pengiriman Gagal</h3>
-            </div>
-            <p class="text-2xl font-bold text-red-600 mb-1">{{ number_format($pengirimanGagalMingguIni) }}</p>
-            <p class="text-sm text-gray-500">Minggu Ini</p>
-        </div>
-
-        {{-- Order Bulan Ini --}}
+            {{-- Order Bulan Ini --}}
         <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
@@ -220,8 +195,49 @@
                     Rp {{ number_format($nilaiOrderBulanIni, 0, ',', '.') }}
                 @endif
             </p>
+    </div>
+    </div>
+
+    {{-- Informasi Pengiriman Minggu Ini --}}
+    <div class="grid grid-cols-3 md:grid-cols-3 gap-4">
+        {{-- Pengiriman Berhasil (Selain Bongkar Sebagian) Minggu Ini --}}
+        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                </div>
+                <h3 class="text-sm text-gray-500">Pengiriman Berhasil</h3>
+            </div>
+            <p class="text-2xl font-bold text-green-600 mb-1">{{ number_format($pengirimanBerhasilNormalMingguIni) }}</p>
+            <p class="text-sm text-gray-500">Minggu Ini</p>
+        </div>
+
+        {{-- Bongkar Sebagian (<=70%) Minggu Ini --}}
+        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 bg-yellow-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-box-open text-yellow-500 text-xl"></i>
+                </div>
+                <h3 class="text-sm text-gray-500">Bongkar Sebagian</h3>
+            </div>
+            <p class="text-2xl font-bold text-yellow-600 mb-1">{{ number_format($pengirimanBongkarSebagianMingguIni) }}</p>
+            <p class="text-sm text-gray-500">Minggu Ini (≤70%)</p>
+        </div>
+
+        {{-- Pengiriman Gagal Minggu Ini --}}
+        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-times-circle text-red-500 text-xl"></i>
+                </div>
+                <h3 class="text-sm text-gray-500">Pengiriman Gagal</h3>
+            </div>
+            <p class="text-2xl font-bold text-red-600 mb-1">{{ number_format($pengirimanGagalMingguIni) }}</p>
+            <p class="text-sm text-gray-500">Minggu Ini</p>
         </div>
     </div>
+
+
 
     {{-- Charts Section --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">

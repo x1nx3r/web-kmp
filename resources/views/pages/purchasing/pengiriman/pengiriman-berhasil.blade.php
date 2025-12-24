@@ -174,15 +174,24 @@
                                     <div class="text-xs">{{ $pengiriman->hari_kirim ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        <i class="fas fa-check-circle mr-1"></i>
-                                        {{ ucfirst($pengiriman->status) }}
-                                    </span>
-                                    @if($pengiriman->catatan)
-                                        <div class="text-xs text-gray-600 mt-1">
-                                            <i class="fas fa-sticky-note mr-1"></i>{{ $pengiriman->catatan }}
-                                        </div>
-                                    @endif
+                                    <div class="flex flex-col gap-1">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            {{ ucfirst($pengiriman->status) }}
+                                        </span>
+                                        @if(isset($pengiriman->partialInfo) && $pengiriman->partialInfo['isPartial'])
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300 w-fit" 
+                                                  title="Pengiriman sebagian: {{ $pengiriman->partialInfo['percentage'] }}% dari forecast ({{ number_format($pengiriman->partialInfo['totalQtyKirim'], 0, ',', '.') }} kg dari {{ number_format($pengiriman->partialInfo['totalQtyForecast'], 0, ',', '.') }} kg)">
+                                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                Kirim Sebagian
+                                            </span>
+                                        @endif
+                                        @if($pengiriman->catatan)
+                                            <div class="text-xs text-gray-600 mt-1">
+                                                <i class="fas fa-sticky-note mr-1"></i>{{ $pengiriman->catatan }}
+                                            </div>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex flex-col gap-2">

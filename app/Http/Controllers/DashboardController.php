@@ -173,9 +173,24 @@ class DashboardController extends Controller
         $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])->count();
         
         // ========== PENGIRIMAN MINGGU INI ==========
-        $pengirimanMingguIni = Pengiriman::whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
-            ->where('status', 'berhasil')
-            ->count();
+        // Get all pengiriman berhasil this week with forecast data
+        $pengirimanBerhasilMingguIni = Pengiriman::with('forecast:id,total_qty_forecast')
+            ->whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
+            ->get();
+        
+        // Count pengiriman bongkar sebagian (<=70%)
+        $pengirimanBongkarSebagianMingguIni = 0;
+        foreach ($pengirimanBerhasilMingguIni as $pengiriman) {
+            if ($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast > 0) {
+                $percentage = ($pengiriman->total_qty_kirim / $pengiriman->forecast->total_qty_forecast) * 100;
+                if ($percentage > 0 && $percentage <= 70) {
+                    $pengirimanBongkarSebagianMingguIni++;
+                }
+            }
+        }
+        
+        // Count pengiriman berhasil selain bongkar sebagian
+        $pengirimanBerhasilNormalMingguIni = $pengirimanBerhasilMingguIni->count() - $pengirimanBongkarSebagianMingguIni;
         
         $totalQtyPengirimanMingguIni = Pengiriman::leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
@@ -261,7 +276,8 @@ class DashboardController extends Controller
             'totalOutstanding',
             'totalQtyOutstanding',
             'poBerjalan',
-            'pengirimanMingguIni',
+            'pengirimanBerhasilNormalMingguIni',
+            'pengirimanBongkarSebagianMingguIni',
             'totalQtyPengirimanMingguIni',
             'pengirimanGagalMingguIni',
             'orderBulanIni',

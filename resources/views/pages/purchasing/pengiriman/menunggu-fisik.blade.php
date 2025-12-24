@@ -13,20 +13,27 @@
                         </div>
                         Pencarian Menunggu Fisik
                     </label>
-                    <div class="relative">
-                        <input type="text" 
-                               id="searchInputFisik" 
-                               name="search_fisik"
-                               value="{{ request('search_fisik') }}"
-                               placeholder="Cari No. PO atau nama purchasing..." 
-                               class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-purple-200 focus:border-purple-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-fisik"
-                               onkeyup="debounceSearchFisik()"
-                               onchange="submitSearchFisik()">
-                        <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
-                            <div class="w-3 h-3 sm:w-6 sm:h-6 bg-purple-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-search text-purple-500 text-xs sm:text-sm"></i>
+                    <div class="relative flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" 
+                                   id="searchInputFisik" 
+                                   name="search_fisik"
+                                   value="{{ request('search_fisik') }}"
+                                   placeholder="Cari No. PO atau nama purchasing..." 
+                                   class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-purple-200 focus:border-purple-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-fisik"
+                                   onkeypress="handleSearchKeyPressFisik(event)">
+                            <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
+                                <div class="w-3 h-3 sm:w-6 sm:h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-search text-purple-500 text-xs sm:text-sm"></i>
+                                </div>
                             </div>
                         </div>
+                        <button type="button" 
+                                onclick="submitSearchFisik()"
+                                class="px-4 sm:px-6 py-2 sm:py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm whitespace-nowrap">
+                            <i class="fas fa-search mr-0 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Cari</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -200,6 +207,13 @@
                                                     <i class="fas fa-box-open mr-1"></i>
                                                     Menunggu Fisik
                                                 </span>
+                                                @if(isset($pengiriman->partialInfo) && $pengiriman->partialInfo['isPartial'])
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300" 
+                                                          title="Pengiriman sebagian: {{ $pengiriman->partialInfo['percentage'] }}% dari forecast ({{ number_format($pengiriman->partialInfo['totalQtyKirim'], 0, ',', '.') }} kg dari {{ number_format($pengiriman->partialInfo['totalQtyForecast'], 0, ',', '.') }} kg)">
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                        Kirim Sebagian ({{ $pengiriman->partialInfo['percentage'] }}%)
+                                                    </span>
+                                                @endif
                                             </div>
                                             
                                             {{-- Row 2: Detail Info --}}
@@ -449,13 +463,12 @@
 // Variables for current pengiriman
 let currentPengirimanIdFisik = null;
 
-// Debounced search function for server-side filtering
-let searchTimeoutFisik;
-function debounceSearchFisik() {
-    clearTimeout(searchTimeoutFisik);
-    searchTimeoutFisik = setTimeout(() => {
+// Handle Enter key press in search input
+function handleSearchKeyPressFisik(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
         submitSearchFisik();
-    }, 1000);
+    }
 }
 
 // Submit search to server
@@ -473,7 +486,7 @@ function submitSearchFisik() {
     
     currentParams.delete('fisik_page');
     
-    window.location.href = '/pengiriman?' + currentParams.toString();
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Apply filters function for server-side filtering

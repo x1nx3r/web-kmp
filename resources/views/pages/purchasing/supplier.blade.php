@@ -64,19 +64,27 @@
                     </div>
                     Pencarian
                 </label>
-                <div class="relative">
-                    <input type="text" 
-                           name="search" 
-                           id="searchInput"
-                           value="{{ request('search') }}" 
-                           placeholder="Cari nama supplier, PIC purchasing, atau bahan baku..." 
-                           class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm"
-                           onkeyup="debounceSearch()">
-                    <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
-                        <div class="w-3 h-3 sm:w-6 sm:h-6 bg-green-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-search text-green-500 text-xs sm:text-sm"></i>
+                <div class="relative flex gap-2">
+                    <div class="relative flex-1">
+                        <input type="text" 
+                               name="search" 
+                               id="searchInput"
+                               value="{{ request('search') }}" 
+                               placeholder="Cari nama supplier, PIC purchasing, atau bahan baku..." 
+                               class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm"
+                               onkeypress="handleSearchKeyPress(event)">
+                        <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
+                            <div class="w-3 h-3 sm:w-6 sm:h-6 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-search text-green-500 text-xs sm:text-sm"></i>
+                            </div>
                         </div>
                     </div>
+                    <button type="button" 
+                            onclick="applyFilters()"
+                            class="px-4 sm:px-6 py-2 sm:py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm whitespace-nowrap">
+                        <i class="fas fa-search mr-0 sm:mr-2"></i>
+                        <span class="hidden sm:inline">Cari</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -650,14 +658,12 @@
 
 @push('scripts')
 <script>
-let searchTimeout;
-
-// Debounce function untuk search
-function debounceSearch() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(function() {
+// Handle Enter key press in search input
+function handleSearchKeyPress(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
         applyFilters();
-    }, 500); // Wait 500ms after user stops typing
+    }
 }
 
 // Apply filters function

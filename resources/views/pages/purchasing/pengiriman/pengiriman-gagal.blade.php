@@ -13,20 +13,27 @@
                         </div>
                         Pencarian Pengiriman Gagal
                     </label>
-                    <div class="relative">
-                        <input type="text" 
-                               id="searchInputGagal" 
-                               name="search_gagal"
-                               value="{{ request('search_gagal') }}"
-                               placeholder="Cari No. Pengiriman, No. PO, atau nama purchasing..." 
-                               class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-gagal"
-                               onkeyup="debounceSearchGagal()"
-                               onchange="submitSearchGagal()">
-                        <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
-                            <div class="w-3 h-3 sm:w-6 sm:h-6 bg-red-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-search text-red-500 text-xs sm:text-sm"></i>
+                    <div class="relative flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" 
+                                   id="searchInputGagal" 
+                                   name="search_gagal"
+                                   value="{{ request('search_gagal') }}"
+                                   placeholder="Cari No. Pengiriman, No. PO, atau nama purchasing..." 
+                                   class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-gagal"
+                                   onkeypress="handleSearchKeyPressGagal(event)">
+                            <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
+                                <div class="w-3 h-3 sm:w-6 sm:h-6 bg-red-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-search text-red-500 text-xs sm:text-sm"></i>
+                                </div>
                             </div>
                         </div>
+                        <button type="button" 
+                                onclick="submitSearchGagal()"
+                                class="px-4 sm:px-6 py-2 sm:py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm whitespace-nowrap">
+                            <i class="fas fa-search mr-0 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Cari</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -316,15 +323,12 @@
 </div>
 
 <script>
-// Debounce timer for search
-let searchTimeoutGagal = null;
-
-// Function to handle search with debounce
-function debounceSearchGagal() {
-    clearTimeout(searchTimeoutGagal);
-    searchTimeoutGagal = setTimeout(() => {
+// Handle Enter key press in search input
+function handleSearchKeyPressGagal(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
         submitSearchGagal();
-    }, 300); // Wait 300ms after user stops typing
+    }
 }
 
 // Function to submit search form

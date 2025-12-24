@@ -176,7 +176,7 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">
                                     Rp {{ number_format($approval->amount_after_refraksi > 0 ? $approval->amount_after_refraksi : ($approval->pengiriman->total_harga_kirim ?? 0), 0, ',', '.') }}
-                                </div>
+                                </div>  
                                 @if($approval->refraksi_value > 0)
                                     <div class="text-xs text-red-600">
                                         <i class="fas fa-arrow-down mr-1"></i>Refraksi: Rp {{ number_format($approval->refraksi_amount, 0, ',', '.') }}

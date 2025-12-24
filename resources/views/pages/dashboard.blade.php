@@ -12,8 +12,32 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">Omset Minggu Ini</h2>
+                @php
+                    // Calculate week number within the month (1-4) - same as laporan
+                    $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+                    $currentWeekOfMonth = 1;
+                    $tempDate = $startOfMonth->copy();
+                    
+                    while ($tempDate->addDays(7)->lte(\Carbon\Carbon::now()->startOfWeek())) {
+                        $currentWeekOfMonth++;
+                    }
+                    $currentWeekOfMonth = min($currentWeekOfMonth, 4);
+                    
+                    // Calculate date range for this week based on month divisions
+                    if ($currentWeekOfMonth == 1) {
+                        $weekStart = $startOfMonth->copy();
+                    } else {
+                        $weekStart = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+                    }
+                    
+                    if ($currentWeekOfMonth == 4) {
+                        $weekEnd = $startOfMonth->copy()->endOfMonth();
+                    } else {
+                        $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+                    }
+                @endphp
                 <p class="text-sm text-gray-500 mt-1">
-                    {{ \Carbon\Carbon::now()->startOfWeek()->format('d M') }} - {{ \Carbon\Carbon::now()->endOfWeek()->format('d M Y') }}
+                    {{ $weekStart->format('d M') }} - {{ $weekEnd->format('d M Y') }}
                 </p>
             </div>
         </div>

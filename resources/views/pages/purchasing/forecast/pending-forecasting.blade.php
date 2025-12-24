@@ -13,20 +13,27 @@
                         </div>
                         Pencarian Forecast Pending
                     </label>
-                    <div class="relative">
-                        <input type="text" 
-                               id="searchInputPending" 
-                               name="search_pending"
-                               value="{{ request('search_pending') }}"
-                               placeholder="Cari No. PO, nama klien, atau no forecast..." 
-                               class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-pending"
-                               onkeyup="debounceSearchPending()"
-                               onchange="submitSearchPending()">
-                        <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
-                            <div class="w-3 h-3 sm:w-6 sm:h-6 bg-yellow-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-search text-yellow-500 text-xs sm:text-sm"></i>
+                    <div class="relative flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" 
+                                   id="searchInputPending" 
+                                   name="search_pending"
+                                   value="{{ request('search_pending') }}"
+                                   placeholder="Cari No. PO, nama klien, atau no forecast..." 
+                                   class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-pending"
+                                   onkeypress="handleSearchKeyPressPending(event)">
+                            <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
+                                <div class="w-3 h-3 sm:w-6 sm:h-6 bg-yellow-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-search text-yellow-500 text-xs sm:text-sm"></i>
+                                </div>
                             </div>
                         </div>
+                        <button type="button" 
+                                onclick="submitSearchPending()"
+                                class="px-4 sm:px-6 py-2 sm:py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm whitespace-nowrap">
+                            <i class="fas fa-search mr-0 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Cari</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -448,13 +455,12 @@
     </div>
 </div>
 <script>
-// Debounced search function for server-side filtering
-let searchTimeoutPending;
-function debounceSearchPending() {
-    clearTimeout(searchTimeoutPending);
-    searchTimeoutPending = setTimeout(() => {
+// Handle Enter key press in search input
+function handleSearchKeyPressPending(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
         submitSearchPending();
-    }, 1000); // Wait 1 second before submitting
+    }
 }
 
 // Submit search to server
@@ -693,17 +699,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.forecast-list').forEach(list => {
         list.style.display = 'none';
     });
-    
-    // Add event listeners for search input
-    const searchInput = document.getElementById('searchInputPending');
-    if (searchInput) {
-        searchInput.addEventListener('input', debounceSearchPending);
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                submitSearchPending();
-            }
-        });
-    }
 });
 </script>
 

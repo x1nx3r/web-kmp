@@ -188,10 +188,14 @@ class DashboardController extends Controller
         }
         
         // Get all pengiriman with status menunggu_fisik, menunggu_verifikasi, dan berhasil
-        $pengirimanMingguIni = Pengiriman::with('forecast:id,total_qty_forecast')
+        $pengirimanMingguIni = Pengiriman::with(['forecast:id,total_qty_forecast', 'order.klien', 'purchasing'])
             ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
             ->get();
+        
+        // Prepare arrays untuk menyimpan detail pengiriman berdasarkan kategori
+        $pengirimanNormalList = [];
+        $pengirimanBongkarSebagianList = [];
         
         // Count pengiriman normal (>70%) dan bongkar sebagian (<=70%)
         $pengirimanNormalMingguIni = 0;
@@ -204,13 +208,49 @@ class DashboardController extends Controller
                 if ($percentage > 70) {
                     // Pengiriman Normal (>70%)
                     $pengirimanNormalMingguIni++;
+                    $pengirimanNormalList[] = [
+                        'id' => $pengiriman->id,
+                        'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                        'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                        'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                        'cabang' => $pengiriman->order->klien->cabang ?? null,
+                        'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                        'total_qty_forecast' => $pengiriman->forecast->total_qty_forecast,
+                        'percentage' => round($percentage, 2),
+                        'status' => $pengiriman->status,
+                        'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                    ];
                 } elseif ($percentage > 0 && $percentage <= 70) {
                     // Bongkar Sebagian (>0% dan <=70%)
                     $pengirimanBongkarSebagianMingguIni++;
+                    $pengirimanBongkarSebagianList[] = [
+                        'id' => $pengiriman->id,
+                        'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                        'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                        'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                        'cabang' => $pengiriman->order->klien->cabang ?? null,
+                        'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                        'total_qty_forecast' => $pengiriman->forecast->total_qty_forecast,
+                        'percentage' => round($percentage, 2),
+                        'status' => $pengiriman->status,
+                        'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                    ];
                 }
             } else {
                 // Jika tidak ada forecast, anggap sebagai pengiriman normal
                 $pengirimanNormalMingguIni++;
+                $pengirimanNormalList[] = [
+                    'id' => $pengiriman->id,
+                    'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                    'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                    'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                    'cabang' => $pengiriman->order->klien->cabang ?? null,
+                    'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                    'total_qty_forecast' => 0,
+                    'percentage' => 0,
+                    'status' => $pengiriman->status,
+                    'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                ];
             }
         }
         
@@ -220,9 +260,24 @@ class DashboardController extends Controller
             ->sum(DB::raw('COALESCE(invoice_penagihan.qty_after_refraksi, pengiriman.total_qty_kirim)'));
         
         // ========== PENGIRIMAN GAGAL MINGGU INI ==========
-        $pengirimanGagalMingguIni = Pengiriman::whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
+        $pengirimanGagalList = Pengiriman::with(['order.klien', 'purchasing'])
+            ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
             ->where('status', 'gagal')
-            ->count();
+            ->get()
+            ->map(function($pengiriman) {
+                return [
+                    'id' => $pengiriman->id,
+                    'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                    'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                    'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                    'cabang' => $pengiriman->order->klien->cabang ?? null,
+                    'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                    'catatan' => $pengiriman->catatan ?? '-',
+                    'status' => $pengiriman->status,
+                    'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                ];
+            })
+            ->toArray();
         
         // ========== ORDER BULAN INI ==========
         $orderBulanIni = Order::whereYear('tanggal_order', Carbon::now()->year)
@@ -371,7 +426,9 @@ class DashboardController extends Controller
             'pengirimanNormalMingguIni',
             'pengirimanBongkarSebagianMingguIni',
             'totalQtyPengirimanMingguIni',
-            'pengirimanGagalMingguIni',
+            'pengirimanGagalList',
+            'pengirimanNormalList',
+            'pengirimanBongkarSebagianList',
             'orderBulanIni',
             'nilaiOrderBulanIni',
             'omsetTrend',

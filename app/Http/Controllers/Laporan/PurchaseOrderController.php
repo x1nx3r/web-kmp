@@ -568,4 +568,57 @@ class PurchaseOrderController extends Controller
         // Return PDF download
         return $pdf->download($filename);
     }
+    
+    /**
+     * Export PO Trend to PDF
+     */
+    public function exportTrendPdf()
+    {
+        // Get trend data (12 months)
+        $poTrendByMonth = [];
+        $monthLabels = [];
+        
+        for ($i = 11; $i >= 0; $i--) {
+            $date = Carbon::now()->subMonths($i);
+            $monthLabels[] = $date->format('M Y');
+            
+            $data = Order::whereYear('tanggal_order', $date->year)
+                ->whereMonth('tanggal_order', $date->month)
+                ->whereIn('status', ['dikonfirmasi', 'diproses'])
+                ->select(
+                    DB::raw('COUNT(*) as total_po'),
+                    DB::raw('SUM(total_amount) as total_nilai')
+                )
+                ->first();
+            
+            $poTrendByMonth[] = [
+                'month' => $date->format('M Y'),
+                'total_po' => $data->total_po ?? 0,
+                'total_nilai' => floatval($data->total_nilai ?? 0)
+            ];
+        }
+        
+        // Calculate totals
+        $totalPO = array_sum(array_column($poTrendByMonth, 'total_po'));
+        $totalNilai = array_sum(array_column($poTrendByMonth, 'total_nilai'));
+        $avgPerPO = $totalPO > 0 ? $totalNilai / $totalPO : 0;
+        
+        // Load PDF view
+        $pdf = Pdf::loadView('pages.laporan.pdf.po-trend', [
+            'poTrendByMonth' => $poTrendByMonth,
+            'totalPO' => $totalPO,
+            'totalNilai' => $totalNilai,
+            'avgPerPO' => $avgPerPO,
+            'generatedAt' => now()->format('d/m/Y H:i')
+        ]);
+        
+        // Set paper size and orientation
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Generate filename with timestamp
+        $filename = 'PO_Trend_12_Bulan_' . now()->format('Ymd_His') . '.pdf';
+        
+        // Return PDF download
+        return $pdf->download($filename);
+    }
 }

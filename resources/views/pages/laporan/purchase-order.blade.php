@@ -238,6 +238,10 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">Trend PO 12 Bulan Terakhir</h3>
                 <p class="text-xs md:text-sm text-gray-500">Total nilai PO per bulan</p>
             </div>
+            <button onclick="openPOTrendModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-list"></i>
+                <span class="hidden sm:inline">Detail</span>
+            </button>
         </div>
 
         <div style="height: 250px; max-height: 350px;">
@@ -673,6 +677,89 @@ function closeOrderWinnerModal() {
     document.body.style.overflow = 'auto';
 }
 
+function openPOTrendModal() {
+    document.getElementById('poTrendModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Initialize chart in modal after it's visible
+    setTimeout(() => {
+        const ctx = document.getElementById('chartPOTrendModal').getContext('2d');
+        
+        // Destroy existing chart if any
+        if (window.poTrendModalChart) {
+            window.poTrendModalChart.destroy();
+        }
+        
+        window.poTrendModalChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @json($monthLabels),
+                datasets: [{
+                    label: 'Total Nilai PO',
+                    data: @json(array_column($poTrendByMonth, 'total_nilai')),
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y || 0;
+                                let formattedValue = '';
+                                if (value >= 1000000000) {
+                                    formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
+                                } else if (value >= 1000000) {
+                                    formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
+                                } else {
+                                    formattedValue = 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                                return formattedValue;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                if (value >= 1000000000) {
+                                    return 'Rp ' + (value / 1000000000).toFixed(0) + ' M';
+                                } else if (value >= 1000000) {
+                                    return 'Rp ' + (value / 1000000).toFixed(0) + ' Jt';
+                                } else {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }, 100);
+}
+
+function closePOTrendModal() {
+    document.getElementById('poTrendModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    
+    // Destroy chart when closing modal
+    if (window.poTrendModalChart) {
+        window.poTrendModalChart.destroy();
+        window.poTrendModalChart = null;
+    }
+}
+
 function displayOrderWinnerDetails(data) {
     let totalOverall = 0;
     let totalPOOverall = 0;
@@ -822,6 +909,7 @@ document.addEventListener('click', function(event) {
     const outstandingModal = document.getElementById('outstandingModal');
     const clientModal = document.getElementById('clientModal');
     const orderWinnerModal = document.getElementById('orderWinnerModal');
+    const poTrendModal = document.getElementById('poTrendModal');
 
     if (event.target === outstandingModal) {
         closeOutstandingModal();
@@ -831,6 +919,9 @@ document.addEventListener('click', function(event) {
     }
     if (event.target === orderWinnerModal) {
         closeOrderWinnerModal();
+    }
+    if (event.target === poTrendModal) {
+        closePOTrendModal();
     }
 });
 </script>
@@ -1149,6 +1240,147 @@ document.addEventListener('click', function(event) {
 
         <div class="mt-6 flex justify-end">
             <button onclick="closeOrderWinnerModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- PO Trend Details Modal --}}
+<div id="poTrendModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail Trend PO 12 Bulan Terakhir</h3>
+                <p class="text-sm text-gray-500 mt-1">Rincian jumlah dan nilai PO per bulan</p>
+            </div>
+            <button onclick="closePOTrendModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-calendar-alt text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-blue-600 font-medium">Periode</p>
+                        <p class="text-lg font-bold text-blue-700">12 Bulan</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-file-alt text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-green-600 font-medium">Total PO</p>
+                        <p class="text-lg font-bold text-green-700">
+                            {{ number_format(array_sum(array_column($poTrendByMonth, 'total_po')), 0, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-purple-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-purple-600 font-medium">Total Nilai</p>
+                        <p class="text-lg font-bold text-purple-700">
+                            @php
+                                $totalNilaiTrend = array_sum(array_column($poTrendByMonth, 'total_nilai'));
+                            @endphp
+                            Rp {{ number_format($totalNilaiTrend, 0, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.trend.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bulan</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah PO</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Nilai</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rata-rata per PO</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @php $no = 1; @endphp
+                    @foreach($poTrendByMonth as $trend)
+                        @php
+                            $avgPerPO = $trend['total_po'] > 0 ? $trend['total_nilai'] / $trend['total_po'] : 0;
+                        @endphp
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ $trend['month'] }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center font-semibold">
+                                {{ number_format($trend['total_po'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
+                                Rp {{ number_format($trend['total_nilai'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                                Rp {{ number_format($avgPerPO, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-gray-50 sticky bottom-0">
+                    <tr class="font-bold">
+                        <td colspan="2" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-center">
+                            {{ number_format(array_sum(array_column($poTrendByMonth, 'total_po')), 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            Rp {{ number_format($totalNilaiTrend, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            @php
+                                $totalPOTrend = array_sum(array_column($poTrendByMonth, 'total_po'));
+                                $avgOverall = $totalPOTrend > 0 ? $totalNilaiTrend / $totalPOTrend : 0;
+                            @endphp
+                            Rp {{ number_format($avgOverall, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {{-- Chart Preview --}}
+        <div class="mt-6 bg-gray-50 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-gray-700 mb-3">Visualisasi Trend</h4>
+            <div style="height: 200px;">
+                <canvas id="chartPOTrendModal"></canvas>
+            </div>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closePOTrendModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Tutup
             </button>
         </div>

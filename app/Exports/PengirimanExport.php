@@ -120,6 +120,13 @@ class PengirimanExport implements
                 return (float)(optional($detail->orderDetail)->harga_jual ?? 0);
             })->sum();
 
+            // QTY Forecasting
+            $qtyForecasting = (float)(($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast) ? 
+                $pengiriman->forecast->total_qty_forecast : 0);
+            
+            // Total Harga Forecasting = QTY Forecasting x Harga Jual
+            $totalHargaForecasting = $qtyForecasting * $hargaJual;
+
             // Untuk status 'berhasil', tidak tampilkan catatan
             $keterangan = '-';
             if ($pengiriman->status !== 'berhasil' && $pengiriman->catatan) {
@@ -157,9 +164,9 @@ class PengirimanExport implements
                 $suppliers ?: 'N/A',
                 $bahanBakuPO ?: 'Tidak ada detail',
                 (optional(optional($pengiriman->order)->klien)->nama ?? 'N/A') . ' - ' . (optional(optional($pengiriman->order)->klien)->cabang ?? 'N/A'),
-                number_format((float)(($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast) ? $pengiriman->forecast->total_qty_forecast : 0), 2),
+                number_format($qtyForecasting, 2),
                 (float)$hargaJual,
-                (float)(($pengiriman->forecast && $pengiriman->forecast->total_harga_forecast) ? $pengiriman->forecast->total_harga_forecast : 0),
+                (float)$totalHargaForecasting,
                 number_format((float)$displayQty, 2),
                 (float)$displayHarga,
                 $keterangan,

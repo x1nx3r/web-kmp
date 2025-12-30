@@ -173,32 +173,54 @@ class DashboardController extends Controller
         $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])->count();
         
         // ========== PENGIRIMAN MINGGU INI ==========
-        // Get all pengiriman berhasil this week with forecast data
-        $pengirimanBerhasilMingguIni = Pengiriman::with('forecast:id,total_qty_forecast')
-            ->whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
+        // Menggunakan logic yang sama dengan omset (pembagian bulan menjadi 4 minggu)
+        // Hitung range tanggal untuk minggu ini berdasarkan pembagian bulan
+        if ($currentWeekOfMonth == 1) {
+            $weekStartPengiriman = $startOfMonth->copy();
+        } else {
+            $weekStartPengiriman = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+        }
+        
+        if ($currentWeekOfMonth == 4) {
+            $weekEndPengiriman = $startOfMonth->copy()->endOfMonth();
+        } else {
+            $weekEndPengiriman = $weekStartPengiriman->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+        }
+        
+        // Get all pengiriman with status menunggu_fisik, menunggu_verifikasi, dan berhasil
+        $pengirimanMingguIni = Pengiriman::with('forecast:id,total_qty_forecast')
+            ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
             ->get();
         
-        // Count pengiriman bongkar sebagian (<=70%)
+        // Count pengiriman normal (>70%) dan bongkar sebagian (<=70%)
+        $pengirimanNormalMingguIni = 0;
         $pengirimanBongkarSebagianMingguIni = 0;
-        foreach ($pengirimanBerhasilMingguIni as $pengiriman) {
+        
+        foreach ($pengirimanMingguIni as $pengiriman) {
             if ($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast > 0) {
                 $percentage = ($pengiriman->total_qty_kirim / $pengiriman->forecast->total_qty_forecast) * 100;
-                if ($percentage > 0 && $percentage <= 70) {
+                
+                if ($percentage > 70) {
+                    // Pengiriman Normal (>70%)
+                    $pengirimanNormalMingguIni++;
+                } elseif ($percentage > 0 && $percentage <= 70) {
+                    // Bongkar Sebagian (>0% dan <=70%)
                     $pengirimanBongkarSebagianMingguIni++;
                 }
+            } else {
+                // Jika tidak ada forecast, anggap sebagai pengiriman normal
+                $pengirimanNormalMingguIni++;
             }
         }
         
-        // Count pengiriman berhasil selain bongkar sebagian
-        $pengirimanBerhasilNormalMingguIni = $pengirimanBerhasilMingguIni->count() - $pengirimanBongkarSebagianMingguIni;
-        
         $totalQtyPengirimanMingguIni = Pengiriman::leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
-            ->where('pengiriman.status', 'berhasil')
+            ->whereBetween('pengiriman.tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->sum(DB::raw('COALESCE(invoice_penagihan.qty_after_refraksi, pengiriman.total_qty_kirim)'));
         
         // ========== PENGIRIMAN GAGAL MINGGU INI ==========
-        $pengirimanGagalMingguIni = Pengiriman::whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
+        $pengirimanGagalMingguIni = Pengiriman::whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
             ->where('status', 'gagal')
             ->count();
         
@@ -346,7 +368,7 @@ class DashboardController extends Controller
             'totalOutstanding',
             'totalQtyOutstanding',
             'poBerjalan',
-            'pengirimanBerhasilNormalMingguIni',
+            'pengirimanNormalMingguIni',
             'pengirimanBongkarSebagianMingguIni',
             'totalQtyPengirimanMingguIni',
             'pengirimanGagalMingguIni',

@@ -206,10 +206,10 @@
                 <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
                     <i class="fas fa-check-circle text-green-500 text-xl"></i>
                 </div>
-                <h3 class="text-sm text-gray-500">Pengiriman Berhasil</h3>
+                <h3 class="text-sm text-gray-500">Pengiriman Normal</h3>
             </div>
-            <p class="text-2xl font-bold text-green-600 mb-1">{{ number_format($pengirimanBerhasilNormalMingguIni) }}</p>
-            <p class="text-sm text-gray-500">Minggu Ini</p>
+            <p class="text-2xl font-bold text-green-600 mb-1">{{ number_format($pengirimanNormalMingguIni) }}</p>
+            <p class="text-sm text-gray-500">Minggu Ini (>70%)</p>
         </div>
 
         {{-- Bongkar Sebagian (<=70%) Minggu Ini --}}

@@ -621,4 +621,39 @@ class PurchaseOrderController extends Controller
         // Return PDF download
         return $pdf->download($filename);
     }
+    
+    /**
+     * Export PO Priority to PDF
+     */
+    public function exportPriorityPdf()
+    {
+        // Get priority data
+        $poByPriority = Order::select('priority', DB::raw('COUNT(*) as total'), DB::raw('SUM(total_amount) as nilai'))
+            ->whereIn('status', ['dikonfirmasi', 'diproses'])
+            ->groupBy('priority')
+            ->get();
+        
+        // Calculate totals
+        $totalPO = $poByPriority->sum('total');
+        $totalNilai = $poByPriority->sum('nilai');
+        $avgPerPO = $totalPO > 0 ? $totalNilai / $totalPO : 0;
+        
+        // Load PDF view
+        $pdf = Pdf::loadView('pages.laporan.pdf.po-priority', [
+            'poByPriority' => $poByPriority,
+            'totalPO' => $totalPO,
+            'totalNilai' => $totalNilai,
+            'avgPerPO' => $avgPerPO,
+            'generatedAt' => now()->format('d/m/Y H:i')
+        ]);
+        
+        // Set paper size and orientation
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Generate filename with timestamp
+        $filename = 'PO_Berdasarkan_Prioritas_' . now()->format('Ymd_His') . '.pdf';
+        
+        // Return PDF download
+        return $pdf->download($filename);
+    }
 }

@@ -256,6 +256,10 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Prioritas</h3>
                 <p class="text-xs md:text-sm text-gray-500">Distribusi prioritas purchase order</p>
             </div>
+            <button onclick="openPOPriorityModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-list"></i>
+                <span class="hidden sm:inline">Detail</span>
+            </button>
         </div>
 
         <div style="height: 250px; max-height: 350px;">
@@ -760,6 +764,94 @@ function closePOTrendModal() {
     }
 }
 
+function openPOPriorityModal() {
+    document.getElementById('poPriorityModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Initialize chart in modal after it's visible
+    setTimeout(() => {
+        const ctx = document.getElementById('chartPOPriorityModal').getContext('2d');
+        
+        // Destroy existing chart if any
+        if (window.poPriorityModalChart) {
+            window.poPriorityModalChart.destroy();
+        }
+        
+        const priorityColors = {
+            'tinggi': '#EF4444',
+            'sedang': '#F59E0B',
+            'rendah': '#6B7280'
+        };
+        
+        const labels = [@foreach($poByPriority as $item) '{{ ucfirst($item->priority) }}', @endforeach];
+        const data = [@foreach($poByPriority as $item) {{ $item->nilai }}, @endforeach];
+        const colors = [@foreach($poByPriority as $item) priorityColors['{{ $item->priority }}'], @endforeach];
+        
+        window.poPriorityModalChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Nilai (Rp)',
+                    data: data,
+                    backgroundColor: colors,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y || 0;
+                                let formattedValue = '';
+                                if (value >= 1000000000) {
+                                    formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
+                                } else if (value >= 1000000) {
+                                    formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
+                                } else {
+                                    formattedValue = 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                                return formattedValue;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                if (value >= 1000000000) {
+                                    return 'Rp ' + (value / 1000000000).toFixed(0) + ' M';
+                                } else if (value >= 1000000) {
+                                    return 'Rp ' + (value / 1000000).toFixed(0) + ' Jt';
+                                } else {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }, 100);
+}
+
+function closePOPriorityModal() {
+    document.getElementById('poPriorityModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    
+    // Destroy chart when closing modal
+    if (window.poPriorityModalChart) {
+        window.poPriorityModalChart.destroy();
+        window.poPriorityModalChart = null;
+    }
+}
+
 function displayOrderWinnerDetails(data) {
     let totalOverall = 0;
     let totalPOOverall = 0;
@@ -910,6 +1002,7 @@ document.addEventListener('click', function(event) {
     const clientModal = document.getElementById('clientModal');
     const orderWinnerModal = document.getElementById('orderWinnerModal');
     const poTrendModal = document.getElementById('poTrendModal');
+    const poPriorityModal = document.getElementById('poPriorityModal');
 
     if (event.target === outstandingModal) {
         closeOutstandingModal();
@@ -922,6 +1015,9 @@ document.addEventListener('click', function(event) {
     }
     if (event.target === poTrendModal) {
         closePOTrendModal();
+    }
+    if (event.target === poPriorityModal) {
+        closePOPriorityModal();
     }
 });
 </script>
@@ -1381,6 +1477,189 @@ document.addEventListener('click', function(event) {
         {{-- Footer --}}
         <div class="mt-6 flex justify-end">
             <button onclick="closePOTrendModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- PO Priority Details Modal --}}
+<div id="poPriorityModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail PO Berdasarkan Prioritas</h3>
+                <p class="text-sm text-gray-500 mt-1">Distribusi PO berdasarkan tingkat prioritas</p>
+            </div>
+            <button onclick="closePOPriorityModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-red-50 rounded-lg p-4 border border-red-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-exclamation-circle text-red-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-red-600 font-medium">Prioritas Tinggi</p>
+                        <p class="text-lg font-bold text-red-700">
+                            {{ $poByPriority->where('priority', 'tinggi')->first()->total ?? 0 }} PO
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-minus-circle text-orange-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-orange-600 font-medium">Prioritas Sedang</p>
+                        <p class="text-lg font-bold text-orange-700">
+                            {{ $poByPriority->where('priority', 'sedang')->first()->total ?? 0 }} PO
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-300">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-info-circle text-gray-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600 font-medium">Prioritas Rendah</p>
+                        <p class="text-lg font-bold text-gray-700">
+                            {{ $poByPriority->where('priority', 'rendah')->first()->total ?? 0 }} PO
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.priority.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prioritas</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah PO</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Nilai</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rata-rata per PO</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Persentase</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @php 
+                        $no = 1; 
+                        $totalNilaiPriority = $poByPriority->sum('nilai');
+                    @endphp
+                    @foreach($poByPriority as $priority)
+                        @php
+                            $avgPerPO = $priority->total > 0 ? $priority->nilai / $priority->total : 0;
+                            $percentage = $totalNilaiPriority > 0 ? ($priority->nilai / $totalNilaiPriority) * 100 : 0;
+                            
+                            // Set badge color based on priority
+                            $badgeColor = match($priority->priority) {
+                                'tinggi' => 'bg-red-100 text-red-800',
+                                'sedang' => 'bg-orange-100 text-orange-800',
+                                'rendah' => 'bg-gray-100 text-gray-800',
+                                default => 'bg-blue-100 text-blue-800'
+                            };
+                        @endphp
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full {{ $badgeColor }}">
+                                    {{ ucfirst($priority->priority) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center font-semibold">
+                                {{ number_format($priority->total, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
+                                Rp {{ number_format($priority->nilai, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                                Rp {{ number_format($avgPerPO, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">
+                                {{ number_format($percentage, 1, ',', '.') }}%
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-gray-50 sticky bottom-0">
+                    <tr class="font-bold">
+                        <td colspan="2" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-center">
+                            {{ number_format($poByPriority->sum('total'), 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            Rp {{ number_format($totalNilaiPriority, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            @php
+                                $totalPO = $poByPriority->sum('total');
+                                $avgOverall = $totalPO > 0 ? $totalNilaiPriority / $totalPO : 0;
+                            @endphp
+                            Rp {{ number_format($avgOverall, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-center">100.0%</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {{-- Chart Preview --}}
+        <div class="mt-6 bg-gray-50 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-gray-700 mb-3">Visualisasi Distribusi</h4>
+            <div style="height: 200px;">
+                <canvas id="chartPOPriorityModal"></canvas>
+            </div>
+        </div>
+
+        {{-- Analysis --}}
+        <div class="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                <i class="fas fa-chart-line"></i>
+                Analisis
+            </h4>
+            <ul class="text-sm text-blue-800 space-y-1">
+                @php
+                    $tinggiData = $poByPriority->where('priority', 'tinggi')->first();
+                    $sedangData = $poByPriority->where('priority', 'sedang')->first();
+                    $rendahData = $poByPriority->where('priority', 'rendah')->first();
+                @endphp
+                @if($tinggiData)
+                <li>• Prioritas Tinggi: {{ $tinggiData->total }} PO dengan total nilai Rp {{ number_format($tinggiData->nilai, 0, ',', '.') }}</li>
+                @endif
+                @if($sedangData)
+                <li>• Prioritas Sedang: {{ $sedangData->total }} PO dengan total nilai Rp {{ number_format($sedangData->nilai, 0, ',', '.') }}</li>
+                @endif
+                @if($rendahData)
+                <li>• Prioritas Rendah: {{ $rendahData->total }} PO dengan total nilai Rp {{ number_format($rendahData->nilai, 0, ',', '.') }}</li>
+                @endif
+            </ul>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closePOPriorityModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Tutup
             </button>
         </div>

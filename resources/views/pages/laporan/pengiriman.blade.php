@@ -1,9 +1,10 @@
 @extends('pages.laporan.base')
 
 @section('report-content')
-<!-- Weekly Statistics Cards -->
-<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
-    <div class="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform ">
+<!-- Weekly and Yearly Statistics Cards - Baris 1 (4 cards) -->
+<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+    <!-- Pengiriman Minggu Ini -->
+    <div class="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
         <div class="flex items-center">
             <div class="p-2 sm:p-3 rounded-xl bg-blue-500 text-white shadow-lg">
                 <i class="fas fa-calendar-week text-lg sm:text-2xl"></i>
@@ -16,6 +17,7 @@
         </div>
     </div>
     
+    <!-- Tonase Minggu Ini -->
     <div class="bg-white rounded-xl shadow-lg border border-green-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
         <div class="flex items-center">
             <div class="p-2 sm:p-3 rounded-xl bg-green-500 text-white shadow-lg">
@@ -23,41 +25,75 @@
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
                 <p class="text-xs sm:text-sm font-medium text-green-700 truncate">Tonase Minggu Ini</p>
-                <p class="text-xl sm:text-2xl font-bold text-green-900">{{ number_format($weeklyStats['total_tonase']) . ' Kg' }}</p>
-                <p class="text-xs text-green-600">Senin 00:01 - Minggu 23:59</p>
+                <p class="text-xl sm:text-2xl font-bold text-green-900">{{ number_format($weeklyStats['total_tonase']) }} Kg</p>
+                <p class="text-xs text-green-600 truncate">{{ $weeklyStats['week_start'] }} - {{ $weeklyStats['week_end'] }}</p>
             </div>
         </div>
     </div>
     
-    <div class="bg-white rounded-xl shadow-lg border border-purple-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform ">
+    <!-- Pengiriman Tahun Ini -->
+    <div class="bg-white rounded-xl shadow-lg border border-purple-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
         <div class="flex items-center">
             <div class="p-2 sm:p-3 rounded-xl bg-purple-500 text-white shadow-lg">
-                <i class="fas fa-truck text-lg sm:text-2xl"></i>
+                <i class="fas fa-calendar-alt text-lg sm:text-2xl"></i>
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-purple-700 truncate">Total Pengiriman</p>
-                <p class="text-xl sm:text-2xl font-bold text-purple-900">{{ number_format($totalStats['total_pengiriman']) }}</p>
-                <p class="text-xs text-purple-600">Keseluruhan</p>
+                <p class="text-xs sm:text-sm font-medium text-purple-700 truncate">Pengiriman Tahun Ini</p>
+                <p class="text-xl sm:text-2xl font-bold text-purple-900">{{ number_format($yearlyStats['total_pengiriman']) }}</p>
+                <p class="text-xs text-purple-600">Tahun {{ $yearlyStats['year'] }}</p>
             </div>
         </div>
     </div>
     
-    <div class="bg-white rounded-xl shadow-lg border border-orange-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform ">
+    <!-- Tonase Tahun Ini -->
+    <div class="bg-white rounded-xl shadow-lg border border-orange-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
         <div class="flex items-center">
             <div class="p-2 sm:p-3 rounded-xl bg-orange-500 text-white shadow-lg">
                 <i class="fas fa-balance-scale text-lg sm:text-2xl"></i>
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-orange-700 truncate">Total Tonase</p>
-                <p class="text-xl sm:text-2xl font-bold text-orange-900">{{ number_format($totalStats['total_tonase']) . ' Kg' }}</p>
-                <p class="text-xs text-orange-600">Keseluruhan</p>
+                <p class="text-xs sm:text-sm font-medium text-orange-700 truncate">Tonase Tahun Ini</p>
+                <p class="text-xl sm:text-2xl font-bold text-orange-900">{{ number_format($yearlyStats['total_tonase']) }} Kg</p>
+                <p class="text-xs text-orange-600">Tahun {{ $yearlyStats['year'] }}</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Additional Summary Cards -->
+<!-- Total Statistics Cards - Baris 2 (2 cards) -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
+    <!-- Pengiriman Total -->
+    <div class="bg-white rounded-xl shadow-lg border border-indigo-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-xl bg-indigo-500 text-white shadow-lg">
+                <i class="fas fa-truck text-lg sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-indigo-700 truncate">Pengiriman Total</p>
+                <p class="text-xl sm:text-2xl font-bold text-indigo-900">{{ number_format($totalStats['total_pengiriman']) }}</p>
+                <p class="text-xs text-indigo-600">Keseluruhan</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tonase Total -->
+    <div class="bg-white rounded-xl shadow-lg border border-cyan-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-xl bg-cyan-500 text-white shadow-lg">
+                <i class="fas fa-balance-scale-right text-lg sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-cyan-700 truncate">Tonase Total</p>
+                <p class="text-xl sm:text-2xl font-bold text-cyan-900">{{ number_format($totalStats['total_tonase']) }} Kg</p>
+                <p class="text-xs text-cyan-600">Keseluruhan</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Statistics Cards - Baris 3 (3 cards) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
+    <!-- Harga Jual Minggu Ini -->
     <div class="bg-white rounded-xl shadow-lg border border-emerald-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
         <div class="flex items-center">
             <div class="p-2 sm:p-3 rounded-xl bg-emerald-500 text-white shadow-lg">
@@ -71,15 +107,30 @@
         </div>
     </div>
     
+    <!-- Harga Jual Tahun Ini -->
     <div class="bg-white rounded-xl shadow-lg border border-teal-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
         <div class="flex items-center">
             <div class="p-2 sm:p-3 rounded-xl bg-teal-500 text-white shadow-lg">
                 <i class="fas fa-chart-line text-lg sm:text-2xl"></i>
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-teal-700 truncate">Harga Jual Tahun {{ $yearlyHargaStats['year'] }}</p>
-                <p class="text-xl sm:text-2xl font-bold text-teal-900">Rp {{ number_format($yearlyHargaStats['total_harga_tahun'], 0, ',', '.') }}</p>
-                <p class="text-xs text-teal-600">Total keseluruhan tahun</p>
+                <p class="text-xs sm:text-sm font-medium text-teal-700 truncate">Harga Jual Tahun Ini</p>
+                <p class="text-xl sm:text-2xl font-bold text-teal-900">Rp {{ number_format($yearlyStats['total_harga'], 0, ',', '.') }}</p>
+                <p class="text-xs text-teal-600">Tahun {{ $yearlyStats['year'] }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Harga Jual Total -->
+    <div class="bg-white rounded-xl shadow-lg border border-pink-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-xl bg-pink-500 text-white shadow-lg">
+                <i class="fas fa-dollar-sign text-lg sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-pink-700 truncate">Harga Jual Total</p>
+                <p class="text-xl sm:text-2xl font-bold text-pink-900">Rp {{ number_format($totalStats['total_harga'], 0, ',', '.') }}</p>
+                <p class="text-xs text-pink-600">Keseluruhan</p>
             </div>
         </div>
     </div>
@@ -290,6 +341,14 @@
                                     </span>
                                     @break
                                 
+                                @case('menunggu_fisik')
+                                    <span class="inline-flex items-center px-2 sm:px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-1.5 animate-pulse"></div>
+                                        <span class="hidden sm:inline">Menunggu Fisik</span>
+                                        <span class="sm:hidden">MF</span>
+                                    </span>
+                                    @break
+                                
                                 @case('menunggu_verifikasi')
                                     <span class="inline-flex items-center px-2 sm:px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 shadow-sm">
                                         <div class="w-2 h-2 bg-orange-500 rounded-full mr-1.5 animate-pulse"></div>
@@ -487,7 +546,7 @@ function initCombinedChart() {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: currentDataType === 'pengiriman' ? 'Jumlah Pengiriman (Status: Berhasil)' : 'Tonase dalam Kg (Status: Berhasil)'
+                        
                     },
                     grid: {
                         color: 'rgba(0, 0, 0, 0.1)'
@@ -562,9 +621,7 @@ function initCombinedChart() {
                             const unit = currentDataType === 'pengiriman' ? 'pengiriman' : 'Kg';
                             return `${label}: ${value.toLocaleString('id-ID')} ${unit}`;
                         },
-                        footer: function(context) {
-                            return 'Status: Berhasil';
-                        }
+                        
                     },
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     titleColor: '#fff',
@@ -594,8 +651,8 @@ function updateChartDataType(dataType) {
     });
     
     combinedChart.options.scales.y.title.text = dataType === 'pengiriman' ? 
-        'Jumlah Pengiriman (Status: Berhasil)' : 
-        'Tonase dalam Kg (Status: Berhasil)';
+        'Jumlah Pengiriman (Status: Menunggu Fisik, Menunggu Verifikasi, Berhasil)' : 
+        'Tonase dalam Kg (Status: Menunggu Fisik, Menunggu Verifikasi, Berhasil)';
     
     combinedChart.update('active');
 }

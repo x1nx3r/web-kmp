@@ -27,18 +27,32 @@ class PengirimanController extends Controller
         $purchasing = $request->get('purchasing');
         $search = $request->get('search');
         
-        // Calculate weekly statistics (Monday 00:01 to Sunday 23:59)
-        $today = now();
-        if ($today->dayOfWeek === Carbon::MONDAY) {
-            $weekStart = $today->copy()->startOfDay();
-        } else {
-            $weekStart = $today->copy()->previous(Carbon::MONDAY)->startOfDay();
+        // Calculate weekly statistics - mengikuti logic dari dashboard (pembagian bulan menjadi 4 minggu)
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $currentWeekOfMonth = 1;
+        $tempDate = $startOfMonth->copy();
+        
+        while ($tempDate->addDays(7)->lte(Carbon::now()->startOfWeek())) {
+            $currentWeekOfMonth++;
         }
-        $weekEnd = $weekStart->copy()->addDays(6)->endOfDay();
+        $currentWeekOfMonth = min($currentWeekOfMonth, 4);
+        
+        // Calculate date range for this week based on month divisions
+        if ($currentWeekOfMonth == 1) {
+            $weekStart = $startOfMonth->copy();
+        } else {
+            $weekStart = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+        }
+        
+        if ($currentWeekOfMonth == 4) {
+            $weekEnd = $startOfMonth->copy()->endOfMonth();
+        } else {
+            $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+        }
         
         $weeklyStats = $this->getWeeklyStats($weekStart, $weekEnd);
+        $yearlyStats = $this->getYearlyStats(now()->year);
         $totalStats = $this->getTotalStats();
-        $yearlyHargaStats = $this->getYearlyHargaStats(now()->year);
         
         // Get year range from tanggal_kirim
         $yearRange = $this->getYearRange();
@@ -94,8 +108,8 @@ class PengirimanController extends Controller
             'title', 
             'activeTab',
             'weeklyStats',
+            'yearlyStats',
             'totalStats',
-            'yearlyHargaStats',
             'chartData',
             'yearRange',
             'pengirimanData',
@@ -137,22 +151,22 @@ class PengirimanController extends Controller
             $dateField = 'pengiriman.created_at';
         }
         
-        // Hanya tampilkan pengiriman dengan status berhasil
-        $weeklyData = Pengiriman::whereBetween($dateField, [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')])
-            ->where('pengiriman.status', 'berhasil')  // Filter hanya status berhasil
+        // Tampilkan pengiriman dengan status menunggu_fisik, menunggu_verifikasi, dan berhasil
+        $weeklyData = Pengiriman::whereBetween($dateField, [$weekStart, $weekEnd])
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
                 COUNT(DISTINCT pengiriman.id) as total_pengiriman,
                 COALESCE(SUM(
                     CASE 
-                        WHEN invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
                         THEN invoice_penagihan.qty_after_refraksi 
                         ELSE pengiriman.total_qty_kirim 
                     END
                 ), 0) as total_tonase,
                 COALESCE(SUM(
                     CASE 
-                        WHEN invoice_penagihan.amount_after_refraksi IS NOT NULL 
+                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
                         THEN invoice_penagihan.amount_after_refraksi 
                         ELSE pengiriman.total_harga_kirim 
                     END
@@ -164,31 +178,78 @@ class PengirimanController extends Controller
             'total_pengiriman' => $weeklyData->total_pengiriman ?? 0,
             'total_tonase' => $weeklyData->total_tonase ?? 0,
             'total_harga' => $weeklyData->total_harga ?? 0,
-            'week_start' => $weekStart->format('d M Y') . ' (Senin)',
-            'week_end' => $weekEnd->format('d M Y') . ' (Minggu)'
+            'week_start' => $weekStart->format('d M'),
+            'week_end' => $weekEnd->format('d M Y')
         ];
     }
     
-    private function getTotalStats()
+    private function getYearlyStats($year)
     {
-        // Hanya tampilkan pengiriman dengan status berhasil
-        $totalData = Pengiriman::where('pengiriman.status', 'berhasil')  // Filter hanya status berhasil
+        $dateField = 'pengiriman.tanggal_kirim';
+        $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
+        if (!$testQuery) {
+            $dateField = 'pengiriman.created_at';
+        }
+        
+        // Tampilkan pengiriman dengan status menunggu_fisik, menunggu_verifikasi, dan berhasil
+        $yearlyData = Pengiriman::whereYear($dateField, $year)
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
                 COUNT(DISTINCT pengiriman.id) as total_pengiriman,
                 COALESCE(SUM(
                     CASE 
-                        WHEN invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
                         THEN invoice_penagihan.qty_after_refraksi 
                         ELSE pengiriman.total_qty_kirim 
                     END
-                ), 0) as total_tonase
+                ), 0) as total_tonase,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.amount_after_refraksi 
+                        ELSE pengiriman.total_harga_kirim 
+                    END
+                ), 0) as total_harga
+            ')
+            ->first();
+            
+        return [
+            'total_pengiriman' => $yearlyData->total_pengiriman ?? 0,
+            'total_tonase' => $yearlyData->total_tonase ?? 0,
+            'total_harga' => $yearlyData->total_harga ?? 0,
+            'year' => $year
+        ];
+    }
+    
+    private function getTotalStats()
+    {
+        // Tampilkan pengiriman dengan status menunggu_fisik, menunggu_verifikasi, dan berhasil
+        $totalData = Pengiriman::whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->selectRaw('
+                COUNT(DISTINCT pengiriman.id) as total_pengiriman,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.qty_after_refraksi 
+                        ELSE pengiriman.total_qty_kirim 
+                    END
+                ), 0) as total_tonase,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
+                        THEN invoice_penagihan.amount_after_refraksi 
+                        ELSE pengiriman.total_harga_kirim 
+                    END
+                ), 0) as total_harga
             ')
             ->first();
             
         return [
             'total_pengiriman' => $totalData->total_pengiriman ?? 0,
-            'total_tonase' => $totalData->total_tonase ?? 0
+            'total_tonase' => $totalData->total_tonase ?? 0,
+            'total_harga' => $totalData->total_harga ?? 0
         ];
     }
     
@@ -200,14 +261,14 @@ class PengirimanController extends Controller
             $dateField = 'pengiriman.created_at';
         }
         
-        // Hanya tampilkan pengiriman dengan status berhasil
+        // Tampilkan pengiriman dengan status menunggu_fisik, menunggu_verifikasi, dan berhasil
         $yearlyData = Pengiriman::whereYear($dateField, $year)
-            ->where('pengiriman.status', 'berhasil')  // Filter hanya status berhasil
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
                 COALESCE(SUM(
                     CASE 
-                        WHEN invoice_penagihan.amount_after_refraksi IS NOT NULL 
+                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
                         THEN invoice_penagihan.amount_after_refraksi 
                         ELSE pengiriman.total_harga_kirim 
                     END
@@ -232,10 +293,10 @@ class PengirimanController extends Controller
             $dateField = 'pengiriman.created_at';
         }
         
-        // Get monthly data for the specified year - ONLY status 'berhasil'
+        // Get monthly data for the specified year - status menunggu_fisik, menunggu_verifikasi, dan berhasil
         // Untuk status berhasil, ambil qty dan harga dari invoice_penagihan
         $monthlyData = Pengiriman::whereYear($dateField, $year)
-            ->where('pengiriman.status', 'berhasil')  // Tambahkan prefix 'pengiriman.' untuk menghindari ambiguitas
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw("
                 MONTH({$dateField}) as month,
@@ -243,7 +304,7 @@ class PengirimanController extends Controller
                 COUNT(DISTINCT pengiriman.id) as total_pengiriman,
                 COALESCE(SUM(
                     CASE 
-                        WHEN invoice_penagihan.qty_after_refraksi IS NOT NULL 
+                        WHEN pengiriman.status = 'berhasil' AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
                         THEN invoice_penagihan.qty_after_refraksi 
                         ELSE pengiriman.total_qty_kirim 
                     END

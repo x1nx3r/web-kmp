@@ -37,6 +37,8 @@ Route::middleware(["auth"])->group(function () {
             Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
             Route::post('/purchase-order/outstanding/pdf', [LaporanPOController::class, 'exportOutstandingPdf'])->name('po.outstanding.pdf');
             Route::post('/purchase-order/client/pdf', [LaporanPOController::class, 'exportClientPdf'])->name('po.client.pdf');
+            Route::get('/purchase-order/order-winner/details', [LaporanPOController::class, 'orderWinnerDetails'])->name('po.orderWinnerDetails');
+            Route::post('/purchase-order/order-winner/pdf', [LaporanPOController::class, 'exportOrderWinnerPdf'])->name('po.orderWinnerPDF');
 
             Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
             Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');

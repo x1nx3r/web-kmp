@@ -203,8 +203,16 @@
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">Top 10 Order Winners</h3>
-                <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per marketing</p>
+                <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per marketing ({{ $orderWinners->count() }} data)</p>
             </div>
+            @if($orderWinners->count() > 0)
+                <button onclick="openOrderWinnerModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-list"></i>
+                    <span class="hidden sm:inline">Detail</span>
+                </button>
+            @else
+                <span class="text-xs text-red-500">(Tidak ada data untuk ditampilkan)</span>
+            @endif
         </div>
 
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
@@ -214,6 +222,7 @@
                 <div class="text-center text-gray-400">
                     <i class="fas fa-inbox text-4xl mb-2"></i>
                     <p class="text-sm">Tidak ada data order winner</p>
+                    <p class="text-xs mt-2">Pastikan ada data di tabel order_winners dan orders dengan status dikonfirmasi/diproses/selesai</p>
                 </div>
             @endif
         </div>
@@ -644,16 +653,184 @@ function closeClientModal() {
     document.body.style.overflow = 'auto';
 }
 
+function openOrderWinnerModal() {
+    const periode = '{{ $periode }}';
+    const startDate = '{{ $startDate }}';
+    const endDate = '{{ $endDate }}';
+    
+    fetch(`{{ route('laporan.po.orderWinnerDetails') }}?periode=${periode}&start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            displayOrderWinnerDetails(data);
+            document.getElementById('orderWinnerModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function closeOrderWinnerModal() {
+    document.getElementById('orderWinnerModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function displayOrderWinnerDetails(data) {
+    let totalOverall = 0;
+    let totalPOOverall = 0;
+    
+    let html = '';
+    
+    // Loop through Marketing
+    data.forEach(marketing => {
+        totalOverall += marketing.total_nilai;
+        totalPOOverall += marketing.total_po;
+        
+        html += `
+            <div class="mb-6">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-lg"><i class="fas fa-user-tie mr-2"></i>${marketing.marketing_nama}</h4>
+                            <p class="text-sm opacity-90">${marketing.total_po} PO</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm opacity-90">Total Nilai</p>
+                            <p class="font-bold text-xl">Rp ${(marketing.total_nilai / 1000000).toFixed(1)} Jt</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+        `;
+        
+        // Loop through Klien for this Marketing
+        marketing.kliens.forEach((klien, klienIndex) => {
+            html += `
+                <div class="bg-gray-50 p-3 ${klienIndex > 0 ? 'border-t border-gray-300' : ''}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h5 class="font-semibold text-gray-800"><i class="fas fa-building mr-2"></i>${klien.klien_nama}</h5>
+                            <p class="text-xs text-gray-600">${klien.total_po} PO</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-600">Total</p>
+                            <p class="font-semibold text-gray-800">Rp ${(klien.total_nilai / 1000000).toFixed(1)} Jt</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Loop through Cabang for this Klien
+            klien.cabangs.forEach((cabang, cabangIndex) => {
+                html += `
+                    <div class="bg-white px-6 py-3 ${cabangIndex > 0 ? 'border-t border-gray-200' : ''}">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h6 class="font-medium text-gray-700"><i class="fas fa-map-marker-alt mr-2 text-orange-500"></i>${cabang.cabang_nama}</h6>
+                                <p class="text-xs text-gray-500">${cabang.total_po} PO</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-500">Subtotal</p>
+                                <p class="font-medium text-gray-700">Rp ${(cabang.total_nilai / 1000000).toFixed(1)} Jt</p>
+                            </div>
+                        </div>
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">No PO</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">Tanggal</th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-600">Status</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-600">Nilai PO</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                // Loop through Orders for this Cabang
+                cabang.orders.forEach(order => {
+                    const nilaiFormatted = (parseFloat(order.total_nilai) / 1000000).toFixed(1);
+                    const statusBadge = order.order_status === 'selesai' ? 'bg-green-100 text-green-800' : 
+                                       order.order_status === 'diproses' ? 'bg-blue-100 text-blue-800' : 
+                                       'bg-yellow-100 text-yellow-800';
+                    
+                    html += `
+                        <tr class="border-t border-gray-100 hover:bg-gray-50">
+                            <td class="px-3 py-2 text-gray-800">${order.po_number}</td>
+                            <td class="px-3 py-2 text-gray-600">${order.tanggal_order}</td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full ${statusBadge}">
+                                    ${order.order_status.charAt(0).toUpperCase() + order.order_status.slice(1)}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 text-right font-medium text-gray-800">Rp ${nilaiFormatted} Jt</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-4 rounded-lg mt-4">
+            <div class="flex justify-between items-center">
+                <div class="text-white">
+                    <span class="font-bold text-lg">GRAND TOTAL</span>
+                    <p class="text-sm opacity-90">${totalPOOverall} Total PO</p>
+                </div>
+                <span class="text-white font-bold text-2xl">Rp ${(totalOverall / 1000000).toFixed(1)} Jt</span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('orderWinnerDetailsContent').innerHTML = html;
+}
+
+function exportOrderWinnerPDF() {
+    const periode = '{{ $periode }}';
+    const startDate = '{{ $startDate }}';
+    const endDate = '{{ $endDate }}';
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("laporan.po.orderWinnerPDF") }}';
+    form.target = '_blank';
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    form.innerHTML = `
+        <input type="hidden" name="_token" value="${csrfToken}">
+        <input type="hidden" name="periode" value="${periode}">
+        <input type="hidden" name="start_date" value="${startDate}">
+        <input type="hidden" name="end_date" value="${endDate}">
+    `;
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
     const outstandingModal = document.getElementById('outstandingModal');
     const clientModal = document.getElementById('clientModal');
+    const orderWinnerModal = document.getElementById('orderWinnerModal');
 
     if (event.target === outstandingModal) {
         closeOutstandingModal();
     }
     if (event.target === clientModal) {
         closeClientModal();
+    }
+    if (event.target === orderWinnerModal) {
+        closeOrderWinnerModal();
     }
 });
 </script>
@@ -940,6 +1117,38 @@ document.addEventListener('click', function(event) {
         {{-- Footer --}}
         <div class="mt-6 flex justify-end">
             <button onclick="closeClientModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- Order Winner Details Modal --}}
+<div id="orderWinnerModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail Order Winners</h3>
+                <p class="text-sm text-gray-500 mt-1">Rincian PO yang dimenangkan per marketing</p>
+            </div>
+            <button onclick="closeOrderWinnerModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="mb-4 flex justify-end">
+            <button onclick="exportOrderWinnerPDF()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i>
+                Download PDF
+            </button>
+        </div>
+
+        <div id="orderWinnerDetailsContent" class="overflow-x-auto max-h-96 overflow-y-auto">
+            <!-- Content will be loaded dynamically -->
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeOrderWinnerModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Tutup
             </button>
         </div>

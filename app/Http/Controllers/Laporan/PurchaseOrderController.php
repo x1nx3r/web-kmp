@@ -320,4 +320,252 @@ class PurchaseOrderController extends Controller
         // Return PDF download
         return $pdf->download($filename);
     }
+    
+    /**
+     * Get Order Winner Details for AJAX
+     * Grouped by Marketing > Klien > Cabang > PO
+     */
+    public function orderWinnerDetails(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Build date filter query
+        $query = DB::table('order_winners')
+            ->join('orders', 'order_winners.order_id', '=', 'orders.id')
+            ->join('users', 'order_winners.user_id', '=', 'users.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+            ->select(
+                'users.id as user_id',
+                'users.nama as marketing_nama',
+                'kliens.id as klien_id',
+                'kliens.nama as klien_nama',
+                'kliens.cabang as klien_cabang',
+                'orders.id as order_id',
+                'orders.po_number',
+                'orders.tanggal_order',
+                'orders.status as order_status',
+                'orders.total_amount as total_nilai',
+                'orders.total_qty'
+            )
+            ->orderBy('users.nama')
+            ->orderBy('kliens.nama')
+            ->orderBy('kliens.cabang')
+            ->orderBy('orders.tanggal_order', 'desc');
+        
+        // Apply date filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('orders.tanggal_order', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('orders.tanggal_order', Carbon::now()->year)
+                  ->whereMonth('orders.tanggal_order', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('orders.tanggal_order', [$startDate, $endDate]);
+        }
+        
+        $details = $query->get();
+        
+        // Group by Marketing > Klien > Cabang > PO
+        $groupedData = [];
+        
+        foreach ($details as $item) {
+            $marketingKey = $item->marketing_nama;
+            $klienKey = $item->klien_nama;
+            $cabangKey = $item->klien_cabang ?: 'Tanpa Cabang';
+            
+            if (!isset($groupedData[$marketingKey])) {
+                $groupedData[$marketingKey] = [
+                    'marketing_nama' => $item->marketing_nama,
+                    'total_nilai' => 0,
+                    'total_po' => 0,
+                    'kliens' => []
+                ];
+            }
+            
+            if (!isset($groupedData[$marketingKey]['kliens'][$klienKey])) {
+                $groupedData[$marketingKey]['kliens'][$klienKey] = [
+                    'klien_nama' => $item->klien_nama,
+                    'total_nilai' => 0,
+                    'total_po' => 0,
+                    'cabangs' => []
+                ];
+            }
+            
+            if (!isset($groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey])) {
+                $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey] = [
+                    'cabang_nama' => $cabangKey,
+                    'total_nilai' => 0,
+                    'total_po' => 0,
+                    'orders' => []
+                ];
+            }
+            
+            // Add order to cabang
+            $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey]['orders'][] = [
+                'po_number' => $item->po_number,
+                'tanggal_order' => Carbon::parse($item->tanggal_order)->format('d M Y'),
+                'order_status' => $item->order_status,
+                'total_nilai' => $item->total_nilai,
+                'total_qty' => $item->total_qty
+            ];
+            
+            // Update totals
+            $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey]['total_nilai'] += $item->total_nilai;
+            $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey]['total_po']++;
+            
+            $groupedData[$marketingKey]['kliens'][$klienKey]['total_nilai'] += $item->total_nilai;
+            $groupedData[$marketingKey]['kliens'][$klienKey]['total_po']++;
+            
+            $groupedData[$marketingKey]['total_nilai'] += $item->total_nilai;
+            $groupedData[$marketingKey]['total_po']++;
+        }
+        
+        // Convert associative arrays to indexed arrays for JSON
+        foreach ($groupedData as &$marketing) {
+            $marketing['kliens'] = array_values($marketing['kliens']);
+            foreach ($marketing['kliens'] as &$klien) {
+                $klien['cabangs'] = array_values($klien['cabangs']);
+            }
+        }
+        
+        return response()->json(array_values($groupedData));
+    }
+    
+    /**
+     * Export Order Winner to PDF
+     * Grouped by Marketing > Klien > Cabang > PO
+     */
+    public function exportOrderWinnerPdf(Request $request)
+    {
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Get data
+        $query = DB::table('order_winners')
+            ->join('orders', 'order_winners.order_id', '=', 'orders.id')
+            ->join('users', 'order_winners.user_id', '=', 'users.id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+            ->select(
+                'users.id as user_id',
+                'users.nama as marketing_nama',
+                'kliens.id as klien_id',
+                'kliens.nama as klien_nama',
+                'kliens.cabang as klien_cabang',
+                'orders.id as order_id',
+                'orders.po_number',
+                'orders.tanggal_order',
+                'orders.status as order_status',
+                'orders.total_amount as total_nilai',
+                'orders.total_qty'
+            )
+            ->orderBy('users.nama')
+            ->orderBy('kliens.nama')
+            ->orderBy('kliens.cabang')
+            ->orderBy('orders.tanggal_order', 'desc');
+        
+        // Apply date filter
+        if ($periode === 'tahun_ini') {
+            $query->whereYear('orders.tanggal_order', Carbon::now()->year);
+        } elseif ($periode === 'bulan_ini') {
+            $query->whereYear('orders.tanggal_order', Carbon::now()->year)
+                  ->whereMonth('orders.tanggal_order', Carbon::now()->month);
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('orders.tanggal_order', [$startDate, $endDate]);
+        }
+        
+        $details = $query->get();
+        
+        // Group by Marketing > Klien > Cabang > PO
+        $groupedData = [];
+        $totalNilai = 0;
+        $totalPO = 0;
+        
+        foreach ($details as $item) {
+            $marketingKey = $item->marketing_nama;
+            $klienKey = $item->klien_nama;
+            $cabangKey = $item->klien_cabang ?: 'Tanpa Cabang';
+            
+            if (!isset($groupedData[$marketingKey])) {
+                $groupedData[$marketingKey] = [
+                    'marketing_nama' => $item->marketing_nama,
+                    'total_nilai' => 0,
+                    'total_po' => 0,
+                    'kliens' => []
+                ];
+            }
+            
+            if (!isset($groupedData[$marketingKey]['kliens'][$klienKey])) {
+                $groupedData[$marketingKey]['kliens'][$klienKey] = [
+                    'klien_nama' => $item->klien_nama,
+                    'total_nilai' => 0,
+                    'total_po' => 0,
+                    'cabangs' => []
+                ];
+            }
+            
+            if (!isset($groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey])) {
+                $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey] = [
+                    'cabang_nama' => $cabangKey,
+                    'total_nilai' => 0,
+                    'total_po' => 0,
+                    'orders' => []
+                ];
+            }
+            
+            // Add order to cabang
+            $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey]['orders'][] = [
+                'po_number' => $item->po_number,
+                'tanggal_order' => Carbon::parse($item->tanggal_order)->format('d/m/Y'),
+                'order_status' => $item->order_status,
+                'total_nilai' => $item->total_nilai,
+                'total_qty' => $item->total_qty
+            ];
+            
+            // Update totals
+            $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey]['total_nilai'] += $item->total_nilai;
+            $groupedData[$marketingKey]['kliens'][$klienKey]['cabangs'][$cabangKey]['total_po']++;
+            
+            $groupedData[$marketingKey]['kliens'][$klienKey]['total_nilai'] += $item->total_nilai;
+            $groupedData[$marketingKey]['kliens'][$klienKey]['total_po']++;
+            
+            $groupedData[$marketingKey]['total_nilai'] += $item->total_nilai;
+            $groupedData[$marketingKey]['total_po']++;
+            
+            $totalNilai += $item->total_nilai;
+            $totalPO++;
+        }
+        
+        // Filter info
+        if ($periode === 'tahun_ini') {
+            $filterInfo = 'Tahun ' . Carbon::now()->year;
+        } elseif ($periode === 'bulan_ini') {
+            $filterInfo = Carbon::now()->format('F Y');
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $filterInfo = Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } else {
+            $filterInfo = 'Semua Data';
+        }
+        
+        // Load PDF view
+        $pdf = Pdf::loadView('pages.laporan.pdf.order-winner', [
+            'groupedData' => $groupedData,
+            'totalPO' => $totalPO,
+            'totalNilai' => $totalNilai,
+            'filterInfo' => $filterInfo,
+            'generatedAt' => now()->format('d/m/Y H:i')
+        ]);
+        
+        // Set paper size and orientation
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Generate filename with timestamp
+        $filename = 'Order_Winners_' . now()->format('Ymd_His') . '.pdf';
+        
+        // Return PDF download
+        return $pdf->download($filename);
+    }
 }

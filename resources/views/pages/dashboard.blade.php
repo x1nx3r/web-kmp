@@ -569,6 +569,32 @@ const pengirimanData = {
 let currentModalType = '';
 let currentModalData = [];
 
+// Helper function to get tab name based on modal type and status  
+function getTabName() {
+    if (currentModalType === 'gagal') {
+        return 'gagal';
+    }
+    // For normal and bongkar, they can be berhasil, menunggu_verifikasi, or menunggu_fisik
+    // We'll use berhasil as default since most will be completed
+    return 'masuk'; // Go to masuk tab to see all pending shipments
+}
+
+// Helper function to get individual tab based on status
+function getTabByStatus(status) {
+    switch(status) {
+        case 'berhasil':
+            return 'pengiriman-berhasil';
+        case 'menunggu_verifikasi':
+            return 'menunggu-verifikasi';
+        case 'menunggu_fisik':
+            return 'menunggu-fisik';
+        case 'gagal':
+            return 'pengiriman-gagal';
+        default:
+            return 'pengiriman-masuk';
+    }
+}
+
 function showPengirimanModal(type) {
     const modal = document.getElementById('pengirimanModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -658,7 +684,7 @@ function showPengirimanModal(type) {
             
             row.innerHTML = `
                 <td class="px-4 py-3">
-                    <a href="/procurement/pengiriman/${item.id}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                    <a href="{{ route('purchasing.pengiriman.index') }}?tab=${getTabByStatus(item.status)}&detail=${item.id}" class="text-blue-600 hover:text-blue-800 hover:underline">
                         ${item.po_number || '-'}
                     </a>
                 </td>
@@ -669,6 +695,16 @@ function showPengirimanModal(type) {
                 <td class="px-4 py-3 text-right">${extraContent}</td>
                 <td class="px-4 py-3 text-center">${statusBadge}</td>
             `;
+            
+            // Add click event to entire row
+            row.style.cursor = 'pointer';
+            row.classList.add('hover:bg-gray-100', 'transition-colors');
+            row.addEventListener('click', function(e) {
+                // Don't navigate if clicking on the link itself
+                if (e.target.tagName !== 'A' && !e.target.closest('a')) {
+                    window.location.href = `{{ route('purchasing.pengiriman.index') }}?tab=${getTabByStatus(item.status)}&detail=${item.id}`;
+                }
+            });
             
             modalTableBody.appendChild(row);
         });

@@ -117,6 +117,12 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Status</h3>
                 <p class="text-xs md:text-sm text-gray-500">Distribusi status purchase order</p>
             </div>
+            @if($poByStatus->count() > 0)
+                <button onclick="openStatusModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-list"></i>
+                    <span class="hidden sm:inline">Detail</span>
+                </button>
+            @endif
         </div>
 
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
@@ -651,6 +657,16 @@ function closeOutstandingModal() {
     document.body.style.overflow = 'auto';
 }
 
+function openStatusModal() {
+    document.getElementById('statusModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeStatusModal() {
+    document.getElementById('statusModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
 function openClientModal() {
     document.getElementById('clientModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -999,6 +1015,7 @@ function exportOrderWinnerPDF() {
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
     const outstandingModal = document.getElementById('outstandingModal');
+    const statusModal = document.getElementById('statusModal');
     const clientModal = document.getElementById('clientModal');
     const orderWinnerModal = document.getElementById('orderWinnerModal');
     const poTrendModal = document.getElementById('poTrendModal');
@@ -1006,6 +1023,9 @@ document.addEventListener('click', function(event) {
 
     if (event.target === outstandingModal) {
         closeOutstandingModal();
+    }
+    if (event.target === statusModal) {
+        closeStatusModal();
     }
     if (event.target === clientModal) {
         closeClientModal();
@@ -1176,6 +1196,150 @@ document.addEventListener('click', function(event) {
         {{-- Footer --}}
         <div class="mt-6 flex justify-end">
             <button onclick="closeOutstandingModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- PO By Status Modal --}}
+<div id="statusModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-xl bg-white">
+        {{-- Header --}}
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail PO Berdasarkan Status</h3>
+                <p class="text-sm text-gray-500 mt-1">Distribusi status purchase order</p>
+            </div>
+            <button onclick="closeStatusModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            @foreach($poByStatus as $status)
+                @php
+                    $statusConfig = match($status->status) {
+                        'draft' => ['color' => 'gray', 'icon' => 'fa-file-alt', 'label' => 'Draft'],
+                        'dikonfirmasi' => ['color' => 'yellow', 'icon' => 'fa-check-circle', 'label' => 'Dikonfirmasi'],
+                        'diproses' => ['color' => 'blue', 'icon' => 'fa-cog', 'label' => 'Diproses'],
+                        'selesai' => ['color' => 'green', 'icon' => 'fa-check-double', 'label' => 'Selesai'],
+                        'dibatalkan' => ['color' => 'red', 'icon' => 'fa-times-circle', 'label' => 'Dibatalkan'],
+                        default => ['color' => 'gray', 'icon' => 'fa-file', 'label' => ucfirst($status->status)]
+                    };
+                @endphp
+                <div class="bg-{{ $statusConfig['color'] }}-50 rounded-lg p-4 border border-{{ $statusConfig['color'] }}-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-{{ $statusConfig['color'] }}-100 rounded-lg flex items-center justify-center">
+                            <i class="fas {{ $statusConfig['icon'] }} text-{{ $statusConfig['color'] }}-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-{{ $statusConfig['color'] }}-600 font-medium">{{ $statusConfig['label'] }}</p>
+                            <p class="text-lg font-bold text-{{ $statusConfig['color'] }}-700">{{ number_format($status->total, 0, ',', '.') }} PO</p>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.status.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Detail PO Per Status --}}
+        <div class="space-y-6 max-h-[500px] overflow-y-auto">
+            @foreach($poByStatus as $status)
+                @php
+                    $statusConfig = match($status->status) {
+                        'draft' => ['color' => 'gray', 'icon' => 'fa-file-alt', 'label' => 'Draft'],
+                        'dikonfirmasi' => ['color' => 'yellow', 'icon' => 'fa-check-circle', 'label' => 'Dikonfirmasi'],
+                        'diproses' => ['color' => 'blue', 'icon' => 'fa-cog', 'label' => 'Diproses'],
+                        'selesai' => ['color' => 'green', 'icon' => 'fa-check-double', 'label' => 'Selesai'],
+                        'dibatalkan' => ['color' => 'red', 'icon' => 'fa-times-circle', 'label' => 'Dibatalkan'],
+                        default => ['color' => 'gray', 'icon' => 'fa-file', 'label' => ucfirst($status->status)]
+                    };
+                    $poDetails = $poDetailsByStatus[$status->status] ?? [];
+                    $totalPOStatus = $poByStatus->sum('total');
+                    $percentage = $totalPOStatus > 0 ? ($status->total / $totalPOStatus) * 100 : 0;
+                @endphp
+                
+                <div class="border border-{{ $statusConfig['color'] }}-200 rounded-lg overflow-hidden">
+                    {{-- Status Header --}}
+                    <div class="bg-{{ $statusConfig['color'] }}-50 px-4 py-3 border-b border-{{ $statusConfig['color'] }}-200">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-{{ $statusConfig['color'] }}-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas {{ $statusConfig['icon'] }} text-{{ $statusConfig['color'] }}-600"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-{{ $statusConfig['color'] }}-900">{{ $statusConfig['label'] }}</h4>
+                                    <p class="text-xs text-{{ $statusConfig['color'] }}-600">
+                                        {{ number_format($status->total, 0, ',', '.') }} PO 
+                                        ({{ number_format($percentage, 1, ',', '.') }}%)
+                                        • Total: Rp {{ number_format($status->nilai, 0, ',', '.') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {{-- PO List --}}
+                    @if(count($poDetails) > 0)
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No PO</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Klien</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($poDetails as $po)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-2 text-sm text-gray-900 font-medium">{{ $po['po_number'] }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-900">{{ $po['klien_nama'] }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-600">{{ $po['tanggal_order'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="px-4 py-6 text-center text-gray-500">
+                            <i class="fas fa-inbox text-3xl mb-2"></i>
+                            <p class="text-sm">Tidak ada PO dengan status ini</p>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Analysis --}}
+        <div class="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                <i class="fas fa-chart-line"></i>
+                Ringkasan
+            </h4>
+            <ul class="text-sm text-blue-800 space-y-1">
+                <li>• Total PO: {{ number_format($totalPOStatus, 0, ',', '.') }} purchase order</li>
+                @foreach($poByStatus as $status)
+                    <li>• {{ ucfirst($status->status) }}: {{ number_format($status->total, 0, ',', '.') }} PO ({{ number_format($totalPOStatus > 0 ? ($status->total / $totalPOStatus) * 100 : 0, 1, ',', '.') }}%)</li>
+                @endforeach
+            </ul>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeStatusModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Tutup
             </button>
         </div>

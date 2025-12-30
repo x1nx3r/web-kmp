@@ -67,6 +67,25 @@ class PurchaseOrderController extends Controller
             ->groupBy('status')
             ->get();
         
+        // Get PO details for each status (for modal) - hanya nomor PO, klien, dan tanggal
+        $poDetailsByStatus = [];
+        foreach ($poByStatus as $statusData) {
+            $poDetails = Order::with('klien')
+                ->where('status', $statusData->status)
+                ->orderBy('po_number')
+                ->get()
+                ->map(function($order) {
+                    return [
+                        'po_number' => $order->po_number ?: $order->no_order,
+                        'klien_nama' => $order->klien->nama ?? '-',
+                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-'
+                    ];
+                })
+                ->toArray();
+            
+            $poDetailsByStatus[$statusData->status] = $poDetails;
+        }
+        
         // ========== PO BY PRIORITY (dikonfirmasi & diproses only) - NO FILTER ==========
         $poByPriority = Order::select('priority', DB::raw('COUNT(*) as total'), DB::raw('SUM(total_amount) as nilai'))
             ->whereIn('status', ['dikonfirmasi', 'diproses'])
@@ -184,6 +203,7 @@ class PurchaseOrderController extends Controller
             'poBerjalan',
             'avgNilaiPerPO',
             'poByStatus',
+            'poDetailsByStatus',
             'poByPriority',
             'poByClient',
             'poTrendByMonth',
@@ -652,6 +672,62 @@ class PurchaseOrderController extends Controller
         
         // Generate filename with timestamp
         $filename = 'PO_Berdasarkan_Prioritas_' . now()->format('Ymd_His') . '.pdf';
+        
+        // Return PDF download
+        return $pdf->download($filename);
+    }
+    
+    /**
+     * Export PO Status to PDF
+     */
+    public function exportStatusPdf()
+    {
+        // Get status data
+        $poByStatus = Order::select('status', DB::raw('COUNT(*) as total'), DB::raw('SUM(total_amount) as nilai'))
+            ->groupBy('status')
+            ->get();
+        
+        // Get PO details for each status
+        $poDetailsByStatus = [];
+        foreach ($poByStatus as $statusData) {
+            $poDetails = Order::with('klien')
+                ->where('status', $statusData->status)
+                ->orderBy('po_number')
+                ->get()
+                ->map(function($order) {
+                    return [
+                        'po_number' => $order->po_number ?: $order->no_order,
+                        'klien_nama' => $order->klien->nama ?? '-',
+                        'cabang' => $order->klien->cabang ?? '-',
+                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'total_amount' => $order->total_amount,
+                        'total_qty' => $order->total_qty,
+                        'priority' => $order->priority ?? '-'
+                    ];
+                })
+                ->toArray();
+            
+            $poDetailsByStatus[$statusData->status] = $poDetails;
+        }
+        
+        // Calculate totals
+        $totalPO = $poByStatus->sum('total');
+        $totalNilai = $poByStatus->sum('nilai');
+        
+        // Load PDF view
+        $pdf = Pdf::loadView('pages.laporan.pdf.po-status', [
+            'poByStatus' => $poByStatus,
+            'poDetailsByStatus' => $poDetailsByStatus,
+            'totalPO' => $totalPO,
+            'totalNilai' => $totalNilai,
+            'generatedAt' => now()->format('d/m/Y H:i')
+        ]);
+        
+        // Set paper size and orientation
+        $pdf->setPaper('A4', 'landscape');
+        
+        // Generate filename with timestamp
+        $filename = 'PO_Berdasarkan_Status_' . now()->format('Ymd_His') . '.pdf';
         
         // Return PDF download
         return $pdf->download($filename);

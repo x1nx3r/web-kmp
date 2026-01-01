@@ -117,6 +117,12 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Status</h3>
                 <p class="text-xs md:text-sm text-gray-500">Distribusi status purchase order</p>
             </div>
+            @if($poByStatus->count() > 0)
+                <button onclick="openStatusModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-list"></i>
+                    <span class="hidden sm:inline">Detail</span>
+                </button>
+            @endif
         </div>
 
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
@@ -203,8 +209,16 @@
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">Top 10 Order Winners</h3>
-                <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per marketing</p>
+                <p class="text-xs md:text-sm text-gray-500">Distribusi nilai PO per marketing ({{ $orderWinners->count() }} data)</p>
             </div>
+            @if($orderWinners->count() > 0)
+                <button onclick="openOrderWinnerModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-list"></i>
+                    <span class="hidden sm:inline">Detail</span>
+                </button>
+            @else
+                <span class="text-xs text-red-500">(Tidak ada data untuk ditampilkan)</span>
+            @endif
         </div>
 
         <div class="flex justify-center items-center" style="height: 300px; max-height: 400px;">
@@ -214,6 +228,7 @@
                 <div class="text-center text-gray-400">
                     <i class="fas fa-inbox text-4xl mb-2"></i>
                     <p class="text-sm">Tidak ada data order winner</p>
+                    <p class="text-xs mt-2">Pastikan ada data di tabel order_winners dan orders dengan status dikonfirmasi/diproses/selesai</p>
                 </div>
             @endif
         </div>
@@ -229,6 +244,10 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">Trend PO 12 Bulan Terakhir</h3>
                 <p class="text-xs md:text-sm text-gray-500">Total nilai PO per bulan</p>
             </div>
+            <button onclick="openPOTrendModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-list"></i>
+                <span class="hidden sm:inline">Detail</span>
+            </button>
         </div>
 
         <div style="height: 250px; max-height: 350px;">
@@ -243,6 +262,10 @@
                 <h3 class="text-base md:text-lg font-semibold text-gray-900">PO Berdasarkan Prioritas</h3>
                 <p class="text-xs md:text-sm text-gray-500">Distribusi prioritas purchase order</p>
             </div>
+            <button onclick="openPOPriorityModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-list"></i>
+                <span class="hidden sm:inline">Detail</span>
+            </button>
         </div>
 
         <div style="height: 250px; max-height: 350px;">
@@ -634,6 +657,16 @@ function closeOutstandingModal() {
     document.body.style.overflow = 'auto';
 }
 
+function openStatusModal() {
+    document.getElementById('statusModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeStatusModal() {
+    document.getElementById('statusModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
 function openClientModal() {
     document.getElementById('clientModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -644,16 +677,367 @@ function closeClientModal() {
     document.body.style.overflow = 'auto';
 }
 
+function openOrderWinnerModal() {
+    const periode = '{{ $periode }}';
+    const startDate = '{{ $startDate }}';
+    const endDate = '{{ $endDate }}';
+    
+    fetch(`{{ route('laporan.po.orderWinnerDetails') }}?periode=${periode}&start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            displayOrderWinnerDetails(data);
+            document.getElementById('orderWinnerModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function closeOrderWinnerModal() {
+    document.getElementById('orderWinnerModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function openPOTrendModal() {
+    document.getElementById('poTrendModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Initialize chart in modal after it's visible
+    setTimeout(() => {
+        const ctx = document.getElementById('chartPOTrendModal').getContext('2d');
+        
+        // Destroy existing chart if any
+        if (window.poTrendModalChart) {
+            window.poTrendModalChart.destroy();
+        }
+        
+        window.poTrendModalChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @json($monthLabels),
+                datasets: [{
+                    label: 'Total Nilai PO',
+                    data: @json(array_column($poTrendByMonth, 'total_nilai')),
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y || 0;
+                                let formattedValue = '';
+                                if (value >= 1000000000) {
+                                    formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
+                                } else if (value >= 1000000) {
+                                    formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
+                                } else {
+                                    formattedValue = 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                                return formattedValue;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                if (value >= 1000000000) {
+                                    return 'Rp ' + (value / 1000000000).toFixed(0) + ' M';
+                                } else if (value >= 1000000) {
+                                    return 'Rp ' + (value / 1000000).toFixed(0) + ' Jt';
+                                } else {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }, 100);
+}
+
+function closePOTrendModal() {
+    document.getElementById('poTrendModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    
+    // Destroy chart when closing modal
+    if (window.poTrendModalChart) {
+        window.poTrendModalChart.destroy();
+        window.poTrendModalChart = null;
+    }
+}
+
+function openPOPriorityModal() {
+    document.getElementById('poPriorityModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Initialize chart in modal after it's visible
+    setTimeout(() => {
+        const ctx = document.getElementById('chartPOPriorityModal').getContext('2d');
+        
+        // Destroy existing chart if any
+        if (window.poPriorityModalChart) {
+            window.poPriorityModalChart.destroy();
+        }
+        
+        const priorityColors = {
+            'tinggi': '#EF4444',
+            'sedang': '#F59E0B',
+            'rendah': '#6B7280'
+        };
+        
+        const labels = [@foreach($poByPriority as $item) '{{ ucfirst($item->priority) }}', @endforeach];
+        const data = [@foreach($poByPriority as $item) {{ $item->nilai }}, @endforeach];
+        const colors = [@foreach($poByPriority as $item) priorityColors['{{ $item->priority }}'], @endforeach];
+        
+        window.poPriorityModalChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Nilai (Rp)',
+                    data: data,
+                    backgroundColor: colors,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y || 0;
+                                let formattedValue = '';
+                                if (value >= 1000000000) {
+                                    formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
+                                } else if (value >= 1000000) {
+                                    formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
+                                } else {
+                                    formattedValue = 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                                return formattedValue;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                if (value >= 1000000000) {
+                                    return 'Rp ' + (value / 1000000000).toFixed(0) + ' M';
+                                } else if (value >= 1000000) {
+                                    return 'Rp ' + (value / 1000000).toFixed(0) + ' Jt';
+                                } else {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }, 100);
+}
+
+function closePOPriorityModal() {
+    document.getElementById('poPriorityModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    
+    // Destroy chart when closing modal
+    if (window.poPriorityModalChart) {
+        window.poPriorityModalChart.destroy();
+        window.poPriorityModalChart = null;
+    }
+}
+
+function displayOrderWinnerDetails(data) {
+    let totalOverall = 0;
+    let totalPOOverall = 0;
+    
+    let html = '';
+    
+    // Loop through Marketing
+    data.forEach(marketing => {
+        totalOverall += marketing.total_nilai;
+        totalPOOverall += marketing.total_po;
+        
+        html += `
+            <div class="mb-6">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-lg"><i class="fas fa-user-tie mr-2"></i>${marketing.marketing_nama}</h4>
+                            <p class="text-sm opacity-90">${marketing.total_po} PO</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm opacity-90">Total Nilai</p>
+                            <p class="font-bold text-xl">Rp ${(marketing.total_nilai / 1000000).toFixed(1)} Jt</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+        `;
+        
+        // Loop through Klien for this Marketing
+        marketing.kliens.forEach((klien, klienIndex) => {
+            html += `
+                <div class="bg-gray-50 p-3 ${klienIndex > 0 ? 'border-t border-gray-300' : ''}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h5 class="font-semibold text-gray-800"><i class="fas fa-building mr-2"></i>${klien.klien_nama}</h5>
+                            <p class="text-xs text-gray-600">${klien.total_po} PO</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-600">Total</p>
+                            <p class="font-semibold text-gray-800">Rp ${(klien.total_nilai / 1000000).toFixed(1)} Jt</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Loop through Cabang for this Klien
+            klien.cabangs.forEach((cabang, cabangIndex) => {
+                html += `
+                    <div class="bg-white px-6 py-3 ${cabangIndex > 0 ? 'border-t border-gray-200' : ''}">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h6 class="font-medium text-gray-700"><i class="fas fa-map-marker-alt mr-2 text-orange-500"></i>${cabang.cabang_nama}</h6>
+                                <p class="text-xs text-gray-500">${cabang.total_po} PO</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-500">Subtotal</p>
+                                <p class="font-medium text-gray-700">Rp ${(cabang.total_nilai / 1000000).toFixed(1)} Jt</p>
+                            </div>
+                        </div>
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">No PO</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">Tanggal</th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-600">Status</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-600">Nilai PO</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                // Loop through Orders for this Cabang
+                cabang.orders.forEach(order => {
+                    const nilaiFormatted = (parseFloat(order.total_nilai) / 1000000).toFixed(1);
+                    const statusBadge = order.order_status === 'selesai' ? 'bg-green-100 text-green-800' : 
+                                       order.order_status === 'diproses' ? 'bg-blue-100 text-blue-800' : 
+                                       'bg-yellow-100 text-yellow-800';
+                    
+                    html += `
+                        <tr class="border-t border-gray-100 hover:bg-gray-50">
+                            <td class="px-3 py-2 text-gray-800">${order.po_number}</td>
+                            <td class="px-3 py-2 text-gray-600">${order.tanggal_order}</td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full ${statusBadge}">
+                                    ${order.order_status.charAt(0).toUpperCase() + order.order_status.slice(1)}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 text-right font-medium text-gray-800">Rp ${nilaiFormatted} Jt</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-4 rounded-lg mt-4">
+            <div class="flex justify-between items-center">
+                <div class="text-white">
+                    <span class="font-bold text-lg">GRAND TOTAL</span>
+                    <p class="text-sm opacity-90">${totalPOOverall} Total PO</p>
+                </div>
+                <span class="text-white font-bold text-2xl">Rp ${(totalOverall / 1000000).toFixed(1)} Jt</span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('orderWinnerDetailsContent').innerHTML = html;
+}
+
+function exportOrderWinnerPDF() {
+    const periode = '{{ $periode }}';
+    const startDate = '{{ $startDate }}';
+    const endDate = '{{ $endDate }}';
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("laporan.po.orderWinnerPDF") }}';
+    form.target = '_blank';
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    form.innerHTML = `
+        <input type="hidden" name="_token" value="${csrfToken}">
+        <input type="hidden" name="periode" value="${periode}">
+        <input type="hidden" name="start_date" value="${startDate}">
+        <input type="hidden" name="end_date" value="${endDate}">
+    `;
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
     const outstandingModal = document.getElementById('outstandingModal');
+    const statusModal = document.getElementById('statusModal');
     const clientModal = document.getElementById('clientModal');
+    const orderWinnerModal = document.getElementById('orderWinnerModal');
+    const poTrendModal = document.getElementById('poTrendModal');
+    const poPriorityModal = document.getElementById('poPriorityModal');
 
     if (event.target === outstandingModal) {
         closeOutstandingModal();
     }
+    if (event.target === statusModal) {
+        closeStatusModal();
+    }
     if (event.target === clientModal) {
         closeClientModal();
+    }
+    if (event.target === orderWinnerModal) {
+        closeOrderWinnerModal();
+    }
+    if (event.target === poTrendModal) {
+        closePOTrendModal();
+    }
+    if (event.target === poPriorityModal) {
+        closePOPriorityModal();
     }
 });
 </script>
@@ -818,6 +1202,150 @@ document.addEventListener('click', function(event) {
     </div>
 </div>
 
+{{-- PO By Status Modal --}}
+<div id="statusModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-xl bg-white">
+        {{-- Header --}}
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail PO Berdasarkan Status</h3>
+                <p class="text-sm text-gray-500 mt-1">Distribusi status purchase order</p>
+            </div>
+            <button onclick="closeStatusModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            @foreach($poByStatus as $status)
+                @php
+                    $statusConfig = match($status->status) {
+                        'draft' => ['color' => 'gray', 'icon' => 'fa-file-alt', 'label' => 'Draft'],
+                        'dikonfirmasi' => ['color' => 'yellow', 'icon' => 'fa-check-circle', 'label' => 'Dikonfirmasi'],
+                        'diproses' => ['color' => 'blue', 'icon' => 'fa-cog', 'label' => 'Diproses'],
+                        'selesai' => ['color' => 'green', 'icon' => 'fa-check-double', 'label' => 'Selesai'],
+                        'dibatalkan' => ['color' => 'red', 'icon' => 'fa-times-circle', 'label' => 'Dibatalkan'],
+                        default => ['color' => 'gray', 'icon' => 'fa-file', 'label' => ucfirst($status->status)]
+                    };
+                @endphp
+                <div class="bg-{{ $statusConfig['color'] }}-50 rounded-lg p-4 border border-{{ $statusConfig['color'] }}-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-{{ $statusConfig['color'] }}-100 rounded-lg flex items-center justify-center">
+                            <i class="fas {{ $statusConfig['icon'] }} text-{{ $statusConfig['color'] }}-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-{{ $statusConfig['color'] }}-600 font-medium">{{ $statusConfig['label'] }}</p>
+                            <p class="text-lg font-bold text-{{ $statusConfig['color'] }}-700">{{ number_format($status->total, 0, ',', '.') }} PO</p>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.status.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Detail PO Per Status --}}
+        <div class="space-y-6 max-h-[500px] overflow-y-auto">
+            @foreach($poByStatus as $status)
+                @php
+                    $statusConfig = match($status->status) {
+                        'draft' => ['color' => 'gray', 'icon' => 'fa-file-alt', 'label' => 'Draft'],
+                        'dikonfirmasi' => ['color' => 'yellow', 'icon' => 'fa-check-circle', 'label' => 'Dikonfirmasi'],
+                        'diproses' => ['color' => 'blue', 'icon' => 'fa-cog', 'label' => 'Diproses'],
+                        'selesai' => ['color' => 'green', 'icon' => 'fa-check-double', 'label' => 'Selesai'],
+                        'dibatalkan' => ['color' => 'red', 'icon' => 'fa-times-circle', 'label' => 'Dibatalkan'],
+                        default => ['color' => 'gray', 'icon' => 'fa-file', 'label' => ucfirst($status->status)]
+                    };
+                    $poDetails = $poDetailsByStatus[$status->status] ?? [];
+                    $totalPOStatus = $poByStatus->sum('total');
+                    $percentage = $totalPOStatus > 0 ? ($status->total / $totalPOStatus) * 100 : 0;
+                @endphp
+                
+                <div class="border border-{{ $statusConfig['color'] }}-200 rounded-lg overflow-hidden">
+                    {{-- Status Header --}}
+                    <div class="bg-{{ $statusConfig['color'] }}-50 px-4 py-3 border-b border-{{ $statusConfig['color'] }}-200">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-{{ $statusConfig['color'] }}-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas {{ $statusConfig['icon'] }} text-{{ $statusConfig['color'] }}-600"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-{{ $statusConfig['color'] }}-900">{{ $statusConfig['label'] }}</h4>
+                                    <p class="text-xs text-{{ $statusConfig['color'] }}-600">
+                                        {{ number_format($status->total, 0, ',', '.') }} PO 
+                                        ({{ number_format($percentage, 1, ',', '.') }}%)
+                                        • Total: Rp {{ number_format($status->nilai, 0, ',', '.') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {{-- PO List --}}
+                    @if(count($poDetails) > 0)
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">No PO</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Klien</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($poDetails as $po)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-2 text-sm text-gray-900 font-medium">{{ $po['po_number'] }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-900">{{ $po['klien_nama'] }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-600">{{ $po['tanggal_order'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="px-4 py-6 text-center text-gray-500">
+                            <i class="fas fa-inbox text-3xl mb-2"></i>
+                            <p class="text-sm">Tidak ada PO dengan status ini</p>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Analysis --}}
+        <div class="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                <i class="fas fa-chart-line"></i>
+                Ringkasan
+            </h4>
+            <ul class="text-sm text-blue-800 space-y-1">
+                <li>• Total PO: {{ number_format($totalPOStatus, 0, ',', '.') }} purchase order</li>
+                @foreach($poByStatus as $status)
+                    <li>• {{ ucfirst($status->status) }}: {{ number_format($status->total, 0, ',', '.') }} PO ({{ number_format($totalPOStatus > 0 ? ($status->total / $totalPOStatus) * 100 : 0, 1, ',', '.') }}%)</li>
+                @endforeach
+            </ul>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeStatusModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
 {{-- PO By Client Modal --}}
 <div id="clientModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-5xl shadow-lg rounded-xl bg-white">
@@ -940,6 +1468,362 @@ document.addEventListener('click', function(event) {
         {{-- Footer --}}
         <div class="mt-6 flex justify-end">
             <button onclick="closeClientModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- Order Winner Details Modal --}}
+<div id="orderWinnerModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail Order Winners</h3>
+                <p class="text-sm text-gray-500 mt-1">Rincian PO yang dimenangkan per marketing</p>
+            </div>
+            <button onclick="closeOrderWinnerModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="mb-4 flex justify-end">
+            <button onclick="exportOrderWinnerPDF()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i>
+                Download PDF
+            </button>
+        </div>
+
+        <div id="orderWinnerDetailsContent" class="overflow-x-auto max-h-96 overflow-y-auto">
+            <!-- Content will be loaded dynamically -->
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button onclick="closeOrderWinnerModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- PO Trend Details Modal --}}
+<div id="poTrendModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail Trend PO 12 Bulan Terakhir</h3>
+                <p class="text-sm text-gray-500 mt-1">Rincian jumlah dan nilai PO per bulan</p>
+            </div>
+            <button onclick="closePOTrendModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-calendar-alt text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-blue-600 font-medium">Periode</p>
+                        <p class="text-lg font-bold text-blue-700">12 Bulan</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-file-alt text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-green-600 font-medium">Total PO</p>
+                        <p class="text-lg font-bold text-green-700">
+                            {{ number_format(array_sum(array_column($poTrendByMonth, 'total_po')), 0, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-purple-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-purple-600 font-medium">Total Nilai</p>
+                        <p class="text-lg font-bold text-purple-700">
+                            @php
+                                $totalNilaiTrend = array_sum(array_column($poTrendByMonth, 'total_nilai'));
+                            @endphp
+                            Rp {{ number_format($totalNilaiTrend, 0, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.trend.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bulan</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah PO</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Nilai</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rata-rata per PO</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @php $no = 1; @endphp
+                    @foreach($poTrendByMonth as $trend)
+                        @php
+                            $avgPerPO = $trend['total_po'] > 0 ? $trend['total_nilai'] / $trend['total_po'] : 0;
+                        @endphp
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ $trend['month'] }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center font-semibold">
+                                {{ number_format($trend['total_po'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
+                                Rp {{ number_format($trend['total_nilai'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                                Rp {{ number_format($avgPerPO, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-gray-50 sticky bottom-0">
+                    <tr class="font-bold">
+                        <td colspan="2" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-center">
+                            {{ number_format(array_sum(array_column($poTrendByMonth, 'total_po')), 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            Rp {{ number_format($totalNilaiTrend, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            @php
+                                $totalPOTrend = array_sum(array_column($poTrendByMonth, 'total_po'));
+                                $avgOverall = $totalPOTrend > 0 ? $totalNilaiTrend / $totalPOTrend : 0;
+                            @endphp
+                            Rp {{ number_format($avgOverall, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {{-- Chart Preview --}}
+        <div class="mt-6 bg-gray-50 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-gray-700 mb-3">Visualisasi Trend</h4>
+            <div style="height: 200px;">
+                <canvas id="chartPOTrendModal"></canvas>
+            </div>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closePOTrendModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- PO Priority Details Modal --}}
+<div id="poPriorityModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-xl bg-white">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Detail PO Berdasarkan Prioritas</h3>
+                <p class="text-sm text-gray-500 mt-1">Distribusi PO berdasarkan tingkat prioritas</p>
+            </div>
+            <button onclick="closePOPriorityModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        {{-- Summary Info --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-red-50 rounded-lg p-4 border border-red-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-exclamation-circle text-red-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-red-600 font-medium">Prioritas Tinggi</p>
+                        <p class="text-lg font-bold text-red-700">
+                            {{ $poByPriority->where('priority', 'tinggi')->first()->total ?? 0 }} PO
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-minus-circle text-orange-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-orange-600 font-medium">Prioritas Sedang</p>
+                        <p class="text-lg font-bold text-orange-700">
+                            {{ $poByPriority->where('priority', 'sedang')->first()->total ?? 0 }} PO
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-300">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-info-circle text-gray-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600 font-medium">Prioritas Rendah</p>
+                        <p class="text-lg font-bold text-gray-700">
+                            {{ $poByPriority->where('priority', 'rendah')->first()->total ?? 0 }} PO
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Export Button --}}
+        <div class="mb-4 flex justify-end">
+            <form action="{{ route('laporan.po.priority.pdf') }}" method="POST" target="_blank">
+                @csrf
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+                </button>
+            </form>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prioritas</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah PO</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Nilai</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rata-rata per PO</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Persentase</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @php 
+                        $no = 1; 
+                        $totalNilaiPriority = $poByPriority->sum('nilai');
+                    @endphp
+                    @foreach($poByPriority as $priority)
+                        @php
+                            $avgPerPO = $priority->total > 0 ? $priority->nilai / $priority->total : 0;
+                            $percentage = $totalNilaiPriority > 0 ? ($priority->nilai / $totalNilaiPriority) * 100 : 0;
+                            
+                            // Set badge color based on priority
+                            $badgeColor = match($priority->priority) {
+                                'tinggi' => 'bg-red-100 text-red-800',
+                                'sedang' => 'bg-orange-100 text-orange-800',
+                                'rendah' => 'bg-gray-100 text-gray-800',
+                                default => 'bg-blue-100 text-blue-800'
+                            };
+                        @endphp
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full {{ $badgeColor }}">
+                                    {{ ucfirst($priority->priority) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center font-semibold">
+                                {{ number_format($priority->total, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
+                                Rp {{ number_format($priority->nilai, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                                Rp {{ number_format($avgPerPO, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">
+                                {{ number_format($percentage, 1, ',', '.') }}%
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-gray-50 sticky bottom-0">
+                    <tr class="font-bold">
+                        <td colspan="2" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-center">
+                            {{ number_format($poByPriority->sum('total'), 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            Rp {{ number_format($totalNilaiPriority, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                            @php
+                                $totalPO = $poByPriority->sum('total');
+                                $avgOverall = $totalPO > 0 ? $totalNilaiPriority / $totalPO : 0;
+                            @endphp
+                            Rp {{ number_format($avgOverall, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-center">100.0%</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {{-- Chart Preview --}}
+        <div class="mt-6 bg-gray-50 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-gray-700 mb-3">Visualisasi Distribusi</h4>
+            <div style="height: 200px;">
+                <canvas id="chartPOPriorityModal"></canvas>
+            </div>
+        </div>
+
+        {{-- Analysis --}}
+        <div class="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                <i class="fas fa-chart-line"></i>
+                Analisis
+            </h4>
+            <ul class="text-sm text-blue-800 space-y-1">
+                @php
+                    $tinggiData = $poByPriority->where('priority', 'tinggi')->first();
+                    $sedangData = $poByPriority->where('priority', 'sedang')->first();
+                    $rendahData = $poByPriority->where('priority', 'rendah')->first();
+                @endphp
+                @if($tinggiData)
+                <li>• Prioritas Tinggi: {{ $tinggiData->total }} PO dengan total nilai Rp {{ number_format($tinggiData->nilai, 0, ',', '.') }}</li>
+                @endif
+                @if($sedangData)
+                <li>• Prioritas Sedang: {{ $sedangData->total }} PO dengan total nilai Rp {{ number_format($sedangData->nilai, 0, ',', '.') }}</li>
+                @endif
+                @if($rendahData)
+                <li>• Prioritas Rendah: {{ $rendahData->total }} PO dengan total nilai Rp {{ number_format($rendahData->nilai, 0, ',', '.') }}</li>
+                @endif
+            </ul>
+        </div>
+
+        {{-- Footer --}}
+        <div class="mt-6 flex justify-end">
+            <button onclick="closePOPriorityModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Tutup
             </button>
         </div>

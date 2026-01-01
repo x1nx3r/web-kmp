@@ -173,34 +173,111 @@ class DashboardController extends Controller
         $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])->count();
         
         // ========== PENGIRIMAN MINGGU INI ==========
-        // Get all pengiriman berhasil this week with forecast data
-        $pengirimanBerhasilMingguIni = Pengiriman::with('forecast:id,total_qty_forecast')
-            ->whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
+        // Menggunakan logic yang sama dengan omset (pembagian bulan menjadi 4 minggu)
+        // Hitung range tanggal untuk minggu ini berdasarkan pembagian bulan
+        if ($currentWeekOfMonth == 1) {
+            $weekStartPengiriman = $startOfMonth->copy();
+        } else {
+            $weekStartPengiriman = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+        }
+        
+        if ($currentWeekOfMonth == 4) {
+            $weekEndPengiriman = $startOfMonth->copy()->endOfMonth();
+        } else {
+            $weekEndPengiriman = $weekStartPengiriman->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+        }
+        
+        // Get all pengiriman with status menunggu_fisik, menunggu_verifikasi, dan berhasil
+        $pengirimanMingguIni = Pengiriman::with(['forecast:id,total_qty_forecast', 'order.klien', 'purchasing'])
+            ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
             ->get();
         
-        // Count pengiriman bongkar sebagian (<=70%)
+        // Prepare arrays untuk menyimpan detail pengiriman berdasarkan kategori
+        $pengirimanNormalList = [];
+        $pengirimanBongkarSebagianList = [];
+        
+        // Count pengiriman normal (>70%) dan bongkar sebagian (<=70%)
+        $pengirimanNormalMingguIni = 0;
         $pengirimanBongkarSebagianMingguIni = 0;
-        foreach ($pengirimanBerhasilMingguIni as $pengiriman) {
+        
+        foreach ($pengirimanMingguIni as $pengiriman) {
             if ($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast > 0) {
                 $percentage = ($pengiriman->total_qty_kirim / $pengiriman->forecast->total_qty_forecast) * 100;
-                if ($percentage > 0 && $percentage <= 70) {
+                
+                if ($percentage > 70) {
+                    // Pengiriman Normal (>70%)
+                    $pengirimanNormalMingguIni++;
+                    $pengirimanNormalList[] = [
+                        'id' => $pengiriman->id,
+                        'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                        'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                        'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                        'cabang' => $pengiriman->order->klien->cabang ?? null,
+                        'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                        'total_qty_forecast' => $pengiriman->forecast->total_qty_forecast,
+                        'percentage' => round($percentage, 2),
+                        'status' => $pengiriman->status,
+                        'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                    ];
+                } elseif ($percentage > 0 && $percentage <= 70) {
+                    // Bongkar Sebagian (>0% dan <=70%)
                     $pengirimanBongkarSebagianMingguIni++;
+                    $pengirimanBongkarSebagianList[] = [
+                        'id' => $pengiriman->id,
+                        'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                        'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                        'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                        'cabang' => $pengiriman->order->klien->cabang ?? null,
+                        'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                        'total_qty_forecast' => $pengiriman->forecast->total_qty_forecast,
+                        'percentage' => round($percentage, 2),
+                        'status' => $pengiriman->status,
+                        'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                    ];
                 }
+            } else {
+                // Jika tidak ada forecast, anggap sebagai pengiriman normal
+                $pengirimanNormalMingguIni++;
+                $pengirimanNormalList[] = [
+                    'id' => $pengiriman->id,
+                    'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                    'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                    'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                    'cabang' => $pengiriman->order->klien->cabang ?? null,
+                    'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                    'total_qty_forecast' => 0,
+                    'percentage' => 0,
+                    'status' => $pengiriman->status,
+                    'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                ];
             }
         }
         
-        // Count pengiriman berhasil selain bongkar sebagian
-        $pengirimanBerhasilNormalMingguIni = $pengirimanBerhasilMingguIni->count() - $pengirimanBongkarSebagianMingguIni;
-        
         $totalQtyPengirimanMingguIni = Pengiriman::leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
-            ->where('pengiriman.status', 'berhasil')
+            ->whereBetween('pengiriman.tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->sum(DB::raw('COALESCE(invoice_penagihan.qty_after_refraksi, pengiriman.total_qty_kirim)'));
         
         // ========== PENGIRIMAN GAGAL MINGGU INI ==========
-        $pengirimanGagalMingguIni = Pengiriman::whereBetween('tanggal_kirim', [$startOfWeek, $endOfWeek])
+        $pengirimanGagalList = Pengiriman::with(['order.klien', 'purchasing'])
+            ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
             ->where('status', 'gagal')
-            ->count();
+            ->get()
+            ->map(function($pengiriman) {
+                return [
+                    'id' => $pengiriman->id,
+                    'po_number' => $pengiriman->order->po_number ?? 'N/A',
+                    'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                    'klien' => $pengiriman->order->klien->nama ?? 'N/A',
+                    'cabang' => $pengiriman->order->klien->cabang ?? null,
+                    'total_qty_kirim' => $pengiriman->total_qty_kirim,
+                    'catatan' => $pengiriman->catatan ?? '-',
+                    'status' => $pengiriman->status,
+                    'purchasing' => $pengiriman->purchasing->nama ?? 'N/A',
+                ];
+            })
+            ->toArray();
         
         // ========== ORDER BULAN INI ==========
         $orderBulanIni = Order::whereYear('tanggal_order', Carbon::now()->year)
@@ -212,29 +289,99 @@ class DashboardController extends Controller
             ->sum('total_amount');
         
         // ========== TREND OMSET 4 MINGGU TERAKHIR ==========
+        // Menggunakan logic pembagian bulan menjadi 4 minggu (seperti di OmsetController)
         $omsetTrend = [];
-        for ($i = 3; $i >= 0; $i--) {
-            $weekStart = Carbon::now()->subWeeks($i)->startOfWeek();
-            $weekEnd = Carbon::now()->subWeeks($i)->endOfWeek();
+        
+        // Get current month start
+        $currentMonthStart = Carbon::now()->startOfMonth();
+        
+        // Hitung minggu saat ini dalam bulan (1-4)
+        $currentWeekOfMonth = 1;
+        $tempDate = $currentMonthStart->copy();
+        while ($tempDate->addDays(7)->lte(Carbon::now()->startOfWeek())) {
+            $currentWeekOfMonth++;
+        }
+        $currentWeekOfMonth = min($currentWeekOfMonth, 4);
+        
+        // Loop untuk 4 minggu terakhir (minggu 1-4 dalam bulan ini)
+        for ($weekNum = 1; $weekNum <= 4; $weekNum++) {
+            // Hitung range tanggal untuk minggu ini berdasarkan pembagian bulan
+            if ($weekNum == 1) {
+                $weekStart = $currentMonthStart->copy();
+            } else {
+                $weekStart = $currentMonthStart->copy()->addDays(($weekNum - 1) * 7);
+            }
             
+            if ($weekNum == 4) {
+                $weekEnd = $currentMonthStart->copy()->endOfMonth();
+            } else {
+                $weekEnd = $weekStart->copy()->addDays(6)->min($currentMonthStart->copy()->endOfMonth());
+            }
+            
+            // Hitung omset sistem untuk minggu ini
             $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                 ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
-                ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd])
+                ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
                 ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
             
-            // Get omset manual for the month of this week
-            $omsetManualWeek = OmsetManual::where('tahun', $weekStart->year)
-                ->where('bulan', $weekStart->month)
+            // Get omset manual for this month (dibagi 4)
+            $omsetManualBulanIni = OmsetManual::where('tahun', Carbon::now()->year)
+                ->where('bulan', Carbon::now()->month)
                 ->value('omset_manual') ?? 0;
-            $omsetManualWeek = $omsetManualWeek / 4; // Divide by 4 weeks
+            $omsetManualWeek = $omsetManualBulanIni / 4;
             
             $omset = $omsetSistem + $omsetManualWeek;
             
+            // Hitung target adjusted untuk minggu ini (dengan carry forward dari minggu sebelumnya)
+            $sisaTargetMingguanSebelumnya = 0;
+            
+            // Loop dari minggu 1 sampai minggu sebelum minggu ini untuk hitung sisa target
+            for ($w = 1; $w < $weekNum; $w++) {
+                // Range minggu sebelumnya
+                if ($w == 1) {
+                    $prevWeekStart = $currentMonthStart->copy();
+                } else {
+                    $prevWeekStart = $currentMonthStart->copy()->addDays(($w - 1) * 7);
+                }
+                
+                if ($w == 4) {
+                    $prevWeekEnd = $currentMonthStart->copy()->endOfMonth();
+                } else {
+                    $prevWeekEnd = $prevWeekStart->copy()->addDays(6)->min($currentMonthStart->copy()->endOfMonth());
+                }
+                
+                // Omset sistem minggu sebelumnya
+                $prevOmsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereBetween('pengiriman.tanggal_kirim', [$prevWeekStart->startOfDay(), $prevWeekEnd->endOfDay()])
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                
+                $prevOmsetManual = $omsetManualBulanIni / 4;
+                $prevOmsetTotal = $prevOmsetSistem + $prevOmsetManual;
+                
+                // Target minggu sebelumnya (base + sisa sebelumnya)
+                $prevTarget = ($targetBulananAdjusted / 4) + $sisaTargetMingguanSebelumnya;
+                
+                // Hitung selisih
+                $selisih = $prevOmsetTotal - $prevTarget;
+                
+                // Update sisa target
+                if ($selisih < 0) {
+                    $sisaTargetMingguanSebelumnya = $prevTarget - $prevOmsetTotal;
+                } else {
+                    $sisaTargetMingguanSebelumnya = 0;
+                }
+            }
+            
+            // Target adjusted untuk minggu ini
+            $targetWeekAdjusted = ($targetBulananAdjusted / 4) + $sisaTargetMingguanSebelumnya;
+            
             $omsetTrend[] = [
-                'week' => 'Minggu ' . ($i == 0 ? 'Ini' : $i),
+                'week' => 'Minggu ' . $weekNum,
                 'label' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M'),
                 'omset' => $omset,
-                'target' => $targetMingguan
+                'target' => $targetWeekAdjusted,
+                'is_current' => $weekNum == $currentWeekOfMonth
             ];
         }
         
@@ -276,10 +423,12 @@ class DashboardController extends Controller
             'totalOutstanding',
             'totalQtyOutstanding',
             'poBerjalan',
-            'pengirimanBerhasilNormalMingguIni',
+            'pengirimanNormalMingguIni',
             'pengirimanBongkarSebagianMingguIni',
             'totalQtyPengirimanMingguIni',
-            'pengirimanGagalMingguIni',
+            'pengirimanGagalList',
+            'pengirimanNormalList',
+            'pengirimanBongkarSebagianList',
             'orderBulanIni',
             'nilaiOrderBulanIni',
             'omsetTrend',

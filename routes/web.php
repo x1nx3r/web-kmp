@@ -37,6 +37,11 @@ Route::middleware(["auth"])->group(function () {
             Route::post('/purchase-order/export', [LaporanPOController::class, 'export'])->name('po.export');
             Route::post('/purchase-order/outstanding/pdf', [LaporanPOController::class, 'exportOutstandingPdf'])->name('po.outstanding.pdf');
             Route::post('/purchase-order/client/pdf', [LaporanPOController::class, 'exportClientPdf'])->name('po.client.pdf');
+            Route::get('/purchase-order/order-winner/details', [LaporanPOController::class, 'orderWinnerDetails'])->name('po.orderWinnerDetails');
+            Route::post('/purchase-order/order-winner/pdf', [LaporanPOController::class, 'exportOrderWinnerPdf'])->name('po.orderWinnerPDF');
+            Route::post('/purchase-order/trend/pdf', [LaporanPOController::class, 'exportTrendPdf'])->name('po.trend.pdf');
+            Route::post('/purchase-order/priority/pdf', [LaporanPOController::class, 'exportPriorityPdf'])->name('po.priority.pdf');
+            Route::post('/purchase-order/status/pdf', [LaporanPOController::class, 'exportStatusPdf'])->name('po.status.pdf');
 
             Route::get('/omset', [LaporanOmsetController::class, 'index'])->name('omset');
             Route::post('/omset/export', [LaporanOmsetController::class, 'export'])->name('omset.export');
@@ -51,6 +56,8 @@ Route::middleware(["auth"])->group(function () {
 
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
             Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
+            Route::get('/pengiriman/pie-chart-details', [LaporanPengirimanController::class, 'getPieChartDetails'])->name('pengiriman.pieChartDetails');
+            Route::get('/pengiriman/pie-chart-pdf', [LaporanPengirimanController::class, 'exportPieChartPDF'])->name('pengiriman.pieChartPDF');
 
             Route::get('/pembayaran', [LaporanPembayaranController::class, 'index'])->name('pembayaran');
             Route::post('/pembayaran/export', [LaporanPembayaranController::class, 'export'])->name('pembayaran.export');

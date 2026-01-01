@@ -454,6 +454,56 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update tab counts
     updateTabCounts();
+    
+    // Check if there's a detail parameter to auto-open modal
+    const urlParams = new URLSearchParams(window.location.search);
+    const detailId = urlParams.get('detail');
+    const activeTab = urlParams.get('tab') || 'pengiriman-masuk';
+    
+    if (detailId) {
+        // Wait for the page to fully load, then open the appropriate modal
+        setTimeout(function() {
+            console.log('Auto-opening modal for ID:', detailId, 'in tab:', activeTab);
+            
+            // Determine which modal function to call based on active tab
+            switch(activeTab) {
+                case 'pengiriman-berhasil':
+                    if (typeof openDetailModalBerhasil === 'function') {
+                        openDetailModalBerhasil(detailId);
+                    }
+                    break;
+                case 'menunggu-verifikasi':
+                    if (typeof openAksiVerifikasiModal === 'function') {
+                        openAksiVerifikasiModal(detailId);
+                    }
+                    break;
+                case 'menunggu-fisik':
+                    if (typeof openVerifikasiFisikModal === 'function') {
+                        openVerifikasiFisikModal(detailId);
+                    }
+                    break;
+                case 'pengiriman-gagal':
+                    if (typeof openDetailModalGagal === 'function') {
+                        openDetailModalGagal(detailId);
+                    }
+                    break;
+                default:
+                    // Fallback: try to find and click detail button
+                    const detailButton = document.querySelector(`[onclick*="openDetailModal"][onclick*="${detailId}"]`);
+                    if (detailButton) {
+                        detailButton.click();
+                    } else {
+                        // Scroll to row and highlight
+                        const row = document.querySelector(`[data-id="${detailId}"]`);
+                        if (row) {
+                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            row.classList.add('bg-yellow-100');
+                            setTimeout(() => row.classList.remove('bg-yellow-100'), 2000);
+                        }
+                    }
+            }
+        }, 800); // Increased delay to ensure all scripts are loaded
+    }
 });
 
 // Handle browser back/forward buttons

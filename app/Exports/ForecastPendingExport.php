@@ -79,7 +79,7 @@ class ForecastPendingExport implements
             'Bahan Baku PO',
             'Nama Pabrik',
             'QTY Forecasting',
-            'Harga Beli',
+            'Harga Jual',
             'Total Harga Forecasting',
             'PIC Supplier'
         ];
@@ -115,7 +115,12 @@ class ForecastPendingExport implements
                     $supplier = optional($bahanBaku)->supplier;
                     $picSupplier = optional($supplier)->picPurchasing;
                     
-                    $totalHargaDetail = (float)($detail->total_harga_forecast ?? 0);
+                    // Ambil harga jual dari order detail
+                    $orderDetail = $detail->orderDetail;
+                    $hargaJual = $orderDetail ? (float)$orderDetail->harga_jual : 0;
+                    
+                    // Hitung total harga menggunakan qty forecast dan harga jual dari PO
+                    $totalHargaDetail = (float)($detail->qty_forecast ?? 0) * $hargaJual;
                     $grandTotal += $totalHargaDetail;
 
                     $data[] = [
@@ -126,7 +131,7 @@ class ForecastPendingExport implements
                         optional($bahanBaku)->nama ?? 'N/A',
                         optional(optional($forecast->order)->klien)->nama ?? 'N/A',
                         (float)($detail->qty_forecast ?? 0),
-                        (float)($detail->harga_satuan_forecast ?? 0),
+                        $hargaJual,
                         $totalHargaDetail,
                         optional($picSupplier)->nama ?? 'N/A'
                     ];
@@ -303,7 +308,8 @@ class ForecastPendingExport implements
         $query = Forecast::with([
             'order.klien',
             'purchasing',
-            'forecastDetails.bahanBakuSupplier.supplier.picPurchasing'
+            'forecastDetails.bahanBakuSupplier.supplier.picPurchasing',
+            'forecastDetails.orderDetail'
         ])
         ->where('status', 'pending');
 

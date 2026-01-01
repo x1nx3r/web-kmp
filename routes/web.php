@@ -56,6 +56,8 @@ Route::middleware(["auth"])->group(function () {
 
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
             Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');
+            Route::get('/pengiriman/pie-chart-details', [LaporanPengirimanController::class, 'getPieChartDetails'])->name('pengiriman.pieChartDetails');
+            Route::get('/pengiriman/pie-chart-pdf', [LaporanPengirimanController::class, 'exportPieChartPDF'])->name('pengiriman.pieChartPDF');
 
             Route::get('/pembayaran', [LaporanPembayaranController::class, 'index'])->name('pembayaran');
             Route::post('/pembayaran/export', [LaporanPembayaranController::class, 'export'])->name('pembayaran.export');

@@ -397,26 +397,15 @@
                             {{-- Action Buttons --}}
                             <div class="bg-white rounded-lg border border-gray-200 p-6">
                                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Aksi</h3>
-                                <div class="space-y-3">
-                                    <button wire:click="approve" wire:loading.attr="disabled"
-                                            class="w-full px-4 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
-                                        <span wire:loading.remove wire:target="approve">
-                                            <i class="fas fa-check mr-2"></i> Approve
-                                        </span>
-                                        <span wire:loading wire:target="approve">
-                                            <i class="fas fa-spinner fa-spin mr-2"></i> Processing...
-                                        </span>
-                                    </button>
-                                    <button wire:click="reject" wire:loading.attr="disabled"
-                                            class="w-full px-4 py-3 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
-                                        <span wire:loading.remove wire:target="reject">
-                                            <i class="fas fa-times mr-2"></i> Reject
-                                        </span>
-                                        <span wire:loading wire:target="reject">
-                                            <i class="fas fa-spinner fa-spin mr-2"></i> Processing...
-                                        </span>
-                                    </button>
-                                </div>
+                                <button wire:click="approve" wire:loading.attr="disabled"
+                                        class="w-full px-4 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
+                                    <span wire:loading.remove wire:target="approve">
+                                        <i class="fas fa-check mr-2"></i> Approve
+                                    </span>
+                                    <span wire:loading wire:target="approve">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i> Processing...
+                                    </span>
+                                </button>
                             </div>
                         @endif
 

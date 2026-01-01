@@ -704,12 +704,13 @@
                     <div class="sticky top-6 space-y-6">
                         {{-- Ringkasan Pembayaran Akhir --}}
                         @php
+                            $totalAwal = $pengiriman->total_harga_kirim ?? 0;
                             $piutangPotongan = $approval->piutang_amount ?? 0;
                             $refraksiPotongan = $approval->refraksi_amount ?? 0;
-                            $totalPembayaran = max(0, ($approval->amount_after_refraksi ?? 0) - $piutangPotongan);
+                            $totalPembayaran = max(0, $totalAwal - $refraksiPotongan - $piutangPotongan);
                         @endphp
 
-                        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200" wire:key="ringkasan-{{ $approval->id }}">
                             <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
                                 <h2 class="text-base font-semibold text-gray-900 flex items-center">
                                     <i class="fas fa-wallet text-gray-600 mr-2"></i>
@@ -719,7 +720,7 @@
                             <div class="p-5 space-y-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Total Awal Pengiriman</span>
-                                    <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}</span>
+                                    <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalAwal, 0, ',', '.') }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Potongan Refraksi</span>
@@ -884,7 +885,7 @@
                                             </div>
                                         @endif
 
-                                        <div class="mt-2 flex items-start">
+                                        <div class="mt-2 flex items-start mb-2">
                                             <i class="fas fa-info-circle text-blue-500 text-xs mt-0.5 mr-1"></i>
                                             <p class="text-xs text-blue-700">
                                                 Bukti pembayaran wajib diupload untuk menyelesaikan approval. Anda dapat mengupload multiple files dengan total maksimal 20 MB.
@@ -938,46 +939,25 @@
 
                                 {{-- Action Buttons --}}
                                 @if($canManage && $approval->status === 'pending')
-                                    <div class="space-y-3">
-                                        <button
-                                            wire:click="approve"
-                                            wire:confirm="Apakah Anda yakin ingin menyetujui approval ini?"
-                                            wire:loading.attr="disabled"
-                                            wire:target="buktiPembayaran"
-                                            class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <span wire:loading.remove wire:target="buktiPembayaran">
-                                                <i class="fas fa-check-circle mr-2"></i>
-                                                Approve
-                                            </span>
-                                            <span wire:loading wire:target="buktiPembayaran" class="flex items-center">
-                                                <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Mengunggah...
-                                            </span>
-                                        </button>
-                                        <button
-                                            wire:click="reject"
-                                            wire:confirm="Apakah Anda yakin ingin menolak approval ini?"
-                                            wire:loading.attr="disabled"
-                                            wire:target="buktiPembayaran"
-                                            class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <span wire:loading.remove wire:target="buktiPembayaran">
-                                                <i class="fas fa-times-circle mr-2"></i>
-                                                Reject
-                                            </span>
-                                            <span wire:loading wire:target="buktiPembayaran" class="flex items-center">
-                                                <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Mengunggah...
-                                            </span>
-                                        </button>
-                                    </div>
+                                    <button
+                                        wire:click="approve"
+                                        wire:confirm="Apakah Anda yakin ingin menyetujui approval ini?"
+                                        wire:loading.attr="disabled"
+                                        wire:target="buktiPembayaran"
+                                        class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span wire:loading.remove wire:target="buktiPembayaran">
+                                            <i class="fas fa-check-circle mr-2"></i>
+                                            Approve
+                                        </span>
+                                        <span wire:loading wire:target="buktiPembayaran" class="flex items-center">
+                                            <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Mengunggah...
+                                        </span>
+                                    </button>
                                 @elseif(!$canManage && $approval->status === 'pending')
                                     <div class="p-4 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
                                         <i class="fas fa-info-circle mr-2"></i>

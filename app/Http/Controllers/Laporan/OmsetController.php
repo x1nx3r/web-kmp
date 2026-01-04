@@ -271,16 +271,22 @@ class OmsetController extends Controller
             // Total omset bulan ini = omset sistem + omset manual
             $omsetBulan = $omsetSistem + $omsetManual;
             
-            // Target bulan ini = Target bulanan asli + Sisa target akumulasi dari bulan-bulan sebelumnya
+            // Target FLAT untuk kolom "Target" dan "Progress" (Target Tahunan / 12)
+            $targetBulananFlat = $targetBulanan;
+            
+            // Progress berdasarkan target FLAT (bukan adjusted)
+            $progressBulanIni = $targetBulananFlat > 0 ? ($omsetBulan / $targetBulananFlat) * 100 : 0;
+            
+            // Target ADJUSTED untuk kolom "Selisih" (dengan carry forward)
             // Januari: 100M + 0 = 100M
             // Februari: 100M + 50M (sisa Jan yang belum tercapai) = 150M
             // Maret: 100M + 150M (total sisa Jan+Feb) = 250M
             $targetBulananAdjusted = $targetBulanan + $sisaTargetAkumulasi;
             
-            // Selisih bulan ini = Realisasi bulan ini - Target bulan ini (adjusted)
+            // Selisih bulan ini = Realisasi bulan ini - Target bulan ini (ADJUSTED dengan carry forward)
             $selisihBulanIni = $omsetBulan - $targetBulananAdjusted;
             
-            // Update akumulasi SISA TARGET untuk bulan berikutnya
+            // Update akumulasi SISA TARGET untuk bulan berikutnya (untuk selisih)
             // Jika target tidak tercapai penuh, sisanya bertambah
             if ($selisihBulanIni < 0) {
                 // Target tidak tercapai, sisa = target adjusted yang belum tercapai
@@ -290,20 +296,17 @@ class OmsetController extends Controller
                 $sisaTargetAkumulasi = 0;
             }
             
-            // Progress berdasarkan target bulan ini (adjusted)
-            $progressBulanIni = $targetBulananAdjusted > 0 ? ($omsetBulan / $targetBulananAdjusted) * 100 : 0;
+            // Target mingguan BASE FLAT (untuk progress mingguan) = target bulanan FLAT / 4
+            $targetMingguanBaseFlat = $targetBulananFlat / 4;
             
-            // Target mingguan BASE = target bulanan adjusted / 4 minggu
-            $targetMingguanBase = $targetBulananAdjusted / 4;
-            
-            // Calculate weekly breakdown for this month - DENGAN CARRY FORWARD MINGGUAN
+            // Calculate weekly breakdown for this month
             // Untuk omset manual, dibagi rata 4 minggu
             $omsetManualPerMinggu = $omsetManual / 4;
             $mingguanDetail = [];
             $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
             $endDate = $startDate->copy()->endOfMonth();
             
-            // Sisa target akumulasi untuk minggu-minggu dalam bulan ini
+            // Sisa target akumulasi untuk minggu-minggu dalam bulan ini (untuk selisih mingguan)
             $sisaTargetMingguanAkumulasi = 0;
             
             // Bagi bulan menjadi tepat 4 minggu (7 hari per minggu = 28 hari)
@@ -336,14 +339,19 @@ class OmsetController extends Controller
                 // Total omset minggu = omset sistem + (omset manual / 4)
                 $omsetMinggu = $omsetSistemMinggu + $omsetManualPerMinggu;
                 
-                // Target minggu ini = Target mingguan base + Sisa target dari minggu-minggu sebelumnya
+                // Target FLAT untuk progress (Target Bulanan Flat / 4)
+                $targetMingguIniFlat = $targetMingguanBaseFlat;
+                
+                // Progress berdasarkan target FLAT (bukan adjusted)
+                $progressMingguIni = $targetMingguIniFlat > 0 ? ($omsetMinggu / $targetMingguIniFlat) * 100 : 0;
+                
+                // Target ADJUSTED untuk selisih (dengan carry forward)
                 // Minggu 1: 25M + 0 = 25M
                 // Minggu 2: 25M + sisa minggu 1 = 25M + 20M = 45M (jika minggu 1 hanya capai 5M)
                 // Minggu 3: 25M + total sisa minggu 1+2 = 25M + 65M = 90M (jika minggu 2 hanya capai 0M)
-                // dst
-                $targetMingguIniAdjusted = $targetMingguanBase + $sisaTargetMingguanAkumulasi;
+                $targetMingguIniAdjusted = $targetMingguanBaseFlat + $sisaTargetMingguanAkumulasi;
                 
-                // Selisih minggu ini
+                // Selisih minggu ini (menggunakan target ADJUSTED)
                 $selisihMingguIni = $omsetMinggu - $targetMingguIniAdjusted;
                 
                 // Update akumulasi sisa target mingguan untuk minggu berikutnya
@@ -355,13 +363,10 @@ class OmsetController extends Controller
                     $sisaTargetMingguanAkumulasi = 0;
                 }
                 
-                // Progress berdasarkan target minggu ini (adjusted)
-                $progressMingguIni = $targetMingguIniAdjusted > 0 ? ($omsetMinggu / $targetMingguIniAdjusted) * 100 : 0;
-                
                 $mingguanDetail[$minggu] = [
                     'omset' => $omsetMinggu,
-                    'progress' => $progressMingguIni,
-                    'target' => $targetMingguIniAdjusted,
+                    'progress' => $progressMingguIni, // Progress dari target FLAT
+                    'target' => $targetMingguIniFlat, // Target FLAT untuk ditampilkan
                     'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
                 ];
             }
@@ -371,9 +376,9 @@ class OmsetController extends Controller
                 'omset_bulan_ini' => $omsetBulan, // Omset bulan ini saja
                 'omset_sistem' => $omsetSistem,
                 'omset_manual' => $omsetManual,
-                'target' => $targetBulananAdjusted, // Target adjusted dengan carry forward
-                'progress' => $progressBulanIni,
-                'selisih' => $selisihBulanIni,
+                'target' => $targetBulananFlat, // Target FLAT (untuk kolom Target dan Progress)
+                'progress' => $progressBulanIni, // Progress dari target FLAT
+                'selisih' => $selisihBulanIni, // Selisih dengan target ADJUSTED (carry forward)
                 'mingguan' => $mingguanDetail
             ];
         }
@@ -430,6 +435,272 @@ class OmsetController extends Controller
             ]);
         }
         
+        // Handle AJAX request for Omset per Klien (Bar Chart)
+        if ($request->ajax() && $request->get('ajax') === 'omset_per_klien') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $search = $request->get('search', '');
+            
+            // Get top 5 klien berdasarkan total omset tahun ini (with optional search filter)
+            $topKlienQuery = DB::table('invoice_penagihan')
+                ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                ->select('kliens.id as klien_id', 'kliens.nama',
+                    DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                ->whereNull('pengiriman.deleted_at')
+                ->whereNull('kliens.deleted_at');
+            
+            // Apply search filter if provided
+            if (!empty($search)) {
+                $topKlienQuery->where(function($q) use ($search) {
+                    $q->where('kliens.nama', 'like', '%' . $search . '%')
+                      ->orWhere('kliens.cabang', 'like', '%' . $search . '%');
+                });
+            }
+            
+            $topKlien = $topKlienQuery
+                ->groupBy('kliens.id', 'kliens.nama')
+                ->orderBy('total', 'desc')
+                ->limit(5)
+                ->get();
+            
+            $klienNames = [];
+            $datasets = [];
+            
+            // Warna untuk setiap bulan
+            $monthColors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
+                '#06B6D4', '#F97316', '#14B8A6', '#F43F5E', '#8B5CF6', '#6366F1'
+            ];
+            
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            
+            // Prepare datasets per month
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $monthData = [];
+                
+                foreach ($topKlien as $klien) {
+                    // Get omset untuk klien ini di bulan ini
+                    $omsetBulan = DB::table('invoice_penagihan')
+                        ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                        ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+                        ->where('orders.klien_id', $klien->klien_id)
+                        ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                        ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                        ->whereMonth('pengiriman.tanggal_kirim', $bulan)
+                        ->whereNull('pengiriman.deleted_at')
+                        ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    
+                    $monthData[] = floatval($omsetBulan);
+                }
+                
+                $datasets[] = [
+                    'label' => $monthNames[$bulan - 1],
+                    'data' => $monthData,
+                    'backgroundColor' => $monthColors[$bulan - 1],
+                    'borderColor' => $monthColors[$bulan - 1],
+                    'borderWidth' => 1
+                ];
+            }
+            
+            // Get klien names
+            foreach ($topKlien as $klien) {
+                $klienNames[] = $klien->nama;
+            }
+            
+            return response()->json([
+                'klien_names' => $klienNames,
+                'datasets' => $datasets
+            ]);
+        }
+        
+        // Handle AJAX request for Omset per Supplier (Bar Chart)
+        if ($request->ajax() && $request->get('ajax') === 'omset_per_supplier') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $search = $request->get('search', '');
+            
+            // Get top 5 supplier berdasarkan total omset tahun ini (with optional search filter)
+            $topSupplierQuery = DB::table('invoice_penagihan')
+                ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
+                ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+                ->select('suppliers.id as supplier_id', 'suppliers.nama',
+                    DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                ->whereNull('pengiriman.deleted_at')
+                ->whereNull('suppliers.deleted_at');
+            
+            // Apply search filter if provided
+            if (!empty($search)) {
+                $topSupplierQuery->where(function($q) use ($search) {
+                    $q->where('suppliers.nama', 'like', '%' . $search . '%')
+                      ->orWhere('suppliers.alamat', 'like', '%' . $search . '%');
+                });
+            }
+            
+            $topSupplier = $topSupplierQuery
+                ->groupBy('suppliers.id', 'suppliers.nama')
+                ->orderBy('total', 'desc')
+                ->limit(5)
+                ->get();
+            
+            $supplierNames = [];
+            $datasets = [];
+            
+            // Warna untuk setiap bulan
+            $monthColors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
+                '#06B6D4', '#F97316', '#14B8A6', '#F43F5E', '#8B5CF6', '#6366F1'
+            ];
+            
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            
+            // Prepare datasets per month
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $monthData = [];
+                
+                foreach ($topSupplier as $supplier) {
+                    // Get omset untuk supplier ini di bulan ini
+                    $omsetBulan = DB::table('invoice_penagihan')
+                        ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                        ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                        ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
+                        ->where('bahan_baku_supplier.supplier_id', $supplier->supplier_id)
+                        ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                        ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                        ->whereMonth('pengiriman.tanggal_kirim', $bulan)
+                        ->whereNull('pengiriman.deleted_at')
+                        ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    
+                    $monthData[] = floatval($omsetBulan);
+                }
+                
+                $datasets[] = [
+                    'label' => $monthNames[$bulan - 1],
+                    'data' => $monthData,
+                    'backgroundColor' => $monthColors[$bulan - 1],
+                    'borderColor' => $monthColors[$bulan - 1],
+                    'borderWidth' => 1
+                ];
+            }
+            
+            // Get supplier names
+            foreach ($topSupplier as $supplier) {
+                $supplierNames[] = $supplier->nama;
+            }
+            
+            return response()->json([
+                'supplier_names' => $supplierNames,
+                'datasets' => $datasets
+            ]);
+        }
+        
+        // Handle AJAX request for Omset per Bahan Baku (Bar Chart)
+        if ($request->ajax() && $request->get('ajax') === 'omset_per_bahan_baku') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $search = $request->get('search', '');
+            
+            // Query total omset per bahan baku - menggunakan subquery untuk menghindari double counting
+            $topBahanBakuQuery = DB::table('bahan_baku_klien')
+                ->select(
+                    'bahan_baku_klien.id as bahan_baku_id',
+                    'bahan_baku_klien.nama',
+                    DB::raw('COALESCE(SUM(DISTINCT invoice_data.amount_after_refraksi), 0) as total')
+                )
+                ->leftJoin(
+                    DB::raw('(
+                        SELECT DISTINCT 
+                            invoice_penagihan.id as invoice_id,
+                            invoice_penagihan.amount_after_refraksi,
+                            order_details.bahan_baku_klien_id
+                        FROM invoice_penagihan
+                        JOIN pengiriman ON invoice_penagihan.pengiriman_id = pengiriman.id
+                        JOIN pengiriman_details ON pengiriman.id = pengiriman_details.pengiriman_id
+                        JOIN order_details ON pengiriman_details.purchase_order_bahan_baku_id = order_details.id
+                        WHERE pengiriman.status IN ("menunggu_verifikasi", "berhasil")
+                            AND YEAR(pengiriman.tanggal_kirim) = ' . $tahun . '
+                            AND pengiriman.deleted_at IS NULL
+                    ) as invoice_data'),
+                    'bahan_baku_klien.id',
+                    '=',
+                    'invoice_data.bahan_baku_klien_id'
+                )
+                ->whereNull('bahan_baku_klien.deleted_at');
+            
+            // Apply search filter if provided
+            if (!empty($search)) {
+                $topBahanBakuQuery->where(function($q) use ($search) {
+                    $q->where('bahan_baku_klien.nama', 'like', '%' . $search . '%')
+                      ->orWhere('bahan_baku_klien.spesifikasi', 'like', '%' . $search . '%');
+                });
+            }
+            
+            $topBahanBaku = $topBahanBakuQuery
+                ->groupBy('bahan_baku_klien.id', 'bahan_baku_klien.nama')
+                ->having('total', '>', 0)
+                ->orderBy('total', 'desc')
+                ->get();
+            
+            $bahanBakuNames = [];
+            $datasets = [];
+            
+            // Warna untuk setiap bulan
+            $monthColors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
+                '#06B6D4', '#F97316', '#14B8A6', '#F43F5E', '#8B5CF6', '#6366F1'
+            ];
+            
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            
+            // Prepare datasets per month
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $monthData = [];
+                
+                foreach ($topBahanBaku as $bahanBaku) {
+                    // Get omset untuk bahan baku ini di bulan ini - menggunakan DISTINCT untuk menghindari double counting
+                    $omsetBulan = DB::table(DB::raw('(
+                        SELECT DISTINCT 
+                            invoice_penagihan.id as invoice_id,
+                            invoice_penagihan.amount_after_refraksi
+                        FROM invoice_penagihan
+                        JOIN pengiriman ON invoice_penagihan.pengiriman_id = pengiriman.id
+                        JOIN pengiriman_details ON pengiriman.id = pengiriman_details.pengiriman_id
+                        JOIN order_details ON pengiriman_details.purchase_order_bahan_baku_id = order_details.id
+                        WHERE order_details.bahan_baku_klien_id = ' . $bahanBaku->bahan_baku_id . '
+                            AND pengiriman.status IN ("menunggu_verifikasi", "berhasil")
+                            AND YEAR(pengiriman.tanggal_kirim) = ' . $tahun . '
+                            AND MONTH(pengiriman.tanggal_kirim) = ' . $bulan . '
+                            AND pengiriman.deleted_at IS NULL
+                    ) as distinct_invoices'))
+                    ->sum('amount_after_refraksi') ?? 0;
+                    
+                    $monthData[] = floatval($omsetBulan);
+                }
+                
+                $datasets[] = [
+                    'label' => $monthNames[$bulan - 1],
+                    'data' => $monthData,
+                    'backgroundColor' => $monthColors[$bulan - 1],
+                    'borderColor' => $monthColors[$bulan - 1],
+                    'borderWidth' => 1
+                ];
+            }
+            
+            // Get bahan baku names
+            foreach ($topBahanBaku as $bahanBaku) {
+                $bahanBakuNames[] = $bahanBaku->nama;
+            }
+            
+            return response()->json([
+                'bahan_baku_names' => $bahanBakuNames,
+                'datasets' => $datasets
+            ]);
+        }
+        
         // Handle AJAX request for Top Klien
         if ($request->ajax() && $request->get('ajax') === 'top_klien') {
             // Using amount_after_refraksi from invoice_penagihan
@@ -475,18 +746,16 @@ class OmsetController extends Controller
         
         // Handle AJAX request for Top Supplier
         if ($request->ajax() && $request->get('ajax') === 'top_supplier') {
-            // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
-            $topSupplierQuery = DB::table('pengiriman')
+            // Using HARGA JUAL from invoice_penagihan (same as other omset calculations)
+            $topSupplierQuery = DB::table('invoice_penagihan')
+                ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                 ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
                 ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
                 ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                    DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
+                    DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
                 ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereNull('pengiriman.deleted_at')
-                ->whereNull('pengiriman_details.deleted_at')
-                ->whereNull('bahan_baku_supplier.deleted_at')
                 ->whereNull('suppliers.deleted_at')
                 ->groupBy('suppliers.id', 'suppliers.nama', 'suppliers.alamat');
             
@@ -517,44 +786,6 @@ class OmsetController extends Controller
             })->values();
             
             return response()->json($data);
-        }
-        
-        // Handle AJAX request for Proyek Per Bulan
-        if ($request->ajax() && $request->get('ajax') === 'proyek_per_bulan') {
-            $tahun = $request->get('tahun', Carbon::now()->year);
-            
-            $proyekPerBulan = [];
-            for ($bulan = 1; $bulan <= 12; $bulan++) {
-                // Count unique orders based on tanggal_order
-                $count = Order::whereYear('tanggal_order', $tahun)
-                    ->whereMonth('tanggal_order', $bulan)
-                    ->count();
-                $proyekPerBulan[] = $count;
-            }
-            
-            return response()->json([
-                'data' => $proyekPerBulan,
-                'tahun' => $tahun
-            ]);
-        }
-        
-        // Handle AJAX request for Nilai Order Per Bulan
-        if ($request->ajax() && $request->get('ajax') === 'nilai_order_per_bulan') {
-            $tahun = $request->get('tahun', Carbon::now()->year);
-            
-            $nilaiOrderPerBulan = [];
-            for ($bulan = 1; $bulan <= 12; $bulan++) {
-                // Sum nilai order based on tanggal_order (use total_amount from orders)
-                $total = Order::whereYear('tanggal_order', $tahun)
-                    ->whereMonth('tanggal_order', $bulan)
-                    ->sum('total_amount');
-                $nilaiOrderPerBulan[] = floatval($total ?? 0);
-            }
-            
-            return response()->json([
-                'data' => $nilaiOrderPerBulan,
-                'tahun' => $tahun
-            ]);
         }
         
         // Handle AJAX request for Marketing
@@ -703,40 +934,6 @@ class OmsetController extends Controller
             return $item['total'] > 0;
         })->values();
         
-        // Get available years from orders
-        $availableYears = Order::selectRaw('YEAR(tanggal_order) as year')
-            ->distinct()
-            ->orderBy('year', 'desc')
-            ->pluck('year')
-            ->toArray();
-        
-        // Default to current year if no data
-        if (empty($availableYears)) {
-            $availableYears = [Carbon::now()->year];
-        }
-        
-        // Get selected year for proyek per bulan (default: current year)
-        $selectedYear = $request->get('tahun_proyek', Carbon::now()->year);
-        $selectedYearNilai = $request->get('tahun_nilai', Carbon::now()->year);
-        
-        // Get proyek per bulan data - based on tanggal_order
-        $proyekPerBulan = [];
-        for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $count = Order::whereYear('tanggal_order', $selectedYear)
-                ->whereMonth('tanggal_order', $bulan)
-                ->count();
-            $proyekPerBulan[] = $count;
-        }
-        
-        // Get nilai order per bulan data - based on tanggal_order
-        $nilaiOrderPerBulan = [];
-        for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $total = Order::whereYear('tanggal_order', $selectedYearNilai)
-                ->whereMonth('tanggal_order', $bulan)
-                ->sum('total_amount');
-            $nilaiOrderPerBulan[] = floatval($total ?? 0);
-        }
-        
         // Get Top Klien data - using amount_after_refraksi
         $topKlienQuery = DB::table('invoice_penagihan')
             ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
@@ -766,18 +963,16 @@ class OmsetController extends Controller
             ->get();
         
         // Get Top Supplier data (NON-AJAX)
-        // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
-        $topSupplierQuery = DB::table('pengiriman')
+        // Using HARGA JUAL from invoice_penagihan (same as other omset calculations)
+        $topSupplierQuery = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
             ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-            ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
             ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
             ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereNull('pengiriman.deleted_at')
-            ->whereNull('pengiriman_details.deleted_at')
-            ->whereNull('bahan_baku_supplier.deleted_at')
             ->whereNull('suppliers.deleted_at')
             ->groupBy('suppliers.id', 'suppliers.nama', 'suppliers.alamat');
         
@@ -823,11 +1018,6 @@ class OmsetController extends Controller
             'periodeProcurement',
             'periodeKlien',
             'periodeSupplier',
-            'availableYears',
-            'selectedYear',
-            'selectedYearNilai',
-            'proyekPerBulan',
-            'nilaiOrderPerBulan',
             'topKlien',
             'topSupplier'
         ));

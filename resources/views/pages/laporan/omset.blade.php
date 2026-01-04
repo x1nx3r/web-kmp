@@ -204,237 +204,14 @@
     </div>
 </div>
 
+{{-- Include Klien Chart Section --}}
+@include('pages.laporan.partials.klien_chart')
 
+{{-- Include Supplier Chart Section --}}
+@include('pages.laporan.partials.supplier_chart')
 
-{{-- Proyek Per Bulan Chart --}}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    {{-- Card 1: Proyek Per Bulan --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                    Proyek Per Bulan
-                </h3>
-                <p class="text-sm text-gray-500">Distribusi bulanan per tahun</p>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button type="button" 
-                        onclick="changeTahunProyek(-1)"
-                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-                    <span class="text-sm font-medium text-gray-700">Tahun: </span>
-                    <span id="currentYearProyek" class="text-lg font-bold text-green-600">{{ $selectedYear }}</span>
-                </div>
-                <button type="button" 
-                        onclick="changeTahunProyek(1)"
-                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
-        </div>
-        
-        <div style="height: 350px;">
-            <canvas id="chartProyekPerBulan"></canvas>
-        </div>
-    </div>
-
-    {{-- Card 2: Nilai Order Per Bulan --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-chart-line text-blue-600 mr-2"></i>
-                    Nilai Order Per Bulan
-                </h3>
-                <p class="text-sm text-gray-500">Total nilai order bulanan per tahun</p>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button type="button" 
-                        onclick="changeTahunNilai(-1)"
-                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                    <span class="text-sm font-medium text-gray-700">Tahun: </span>
-                    <span id="currentYearNilai" class="text-lg font-bold text-blue-600">{{ $selectedYearNilai }}</span>
-                </div>
-                <button type="button" 
-                        onclick="changeTahunNilai(1)"
-                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
-        </div>
-        
-        <div style="height: 350px;">
-            <canvas id="chartNilaiOrderPerBulan"></canvas>
-        </div>
-    </div>
-</div>
-
-{{-- Top Klien & Top Supplier Section --}}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    {{-- Card 1: Top Klien --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-trophy text-yellow-500 mr-2"></i>
-                    Daftar Klien (Berdasarkan Omset)
-                    <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full" 
-                          title="Ranking berdasarkan Omset Sistem (transaksi terverifikasi)">
-                        <i class="fas fa-info-circle mr-1"></i>Omset Sistem
-                    </span>
-                </h3>
-            </div>
-            <div class="w-48">
-                <select name="periode_klien" 
-                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                        onchange="toggleCustomDateKlien(this.value)">
-                    <option value="all" {{ $periodeKlien == 'all' ? 'selected' : '' }}>Semua Data</option>
-                    <option value="tahun_ini" {{ $periodeKlien == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
-                    <option value="bulan_ini" {{ $periodeKlien == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
-                    <option value="custom" {{ $periodeKlien == 'custom' ? 'selected' : '' }}>Custom</option>
-                </select>
-                
-                {{-- Custom Date Range for Klien --}}
-                <div id="customDateKlien" class="mt-2 space-y-2" style="display: {{ $periodeKlien == 'custom' ? 'block' : 'none' }}">
-                    <input type="date" 
-                           name="start_date_klien" 
-                           value="{{ request('start_date_klien') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                           placeholder="Tanggal Mulai">
-                    <input type="date" 
-                           name="end_date_klien" 
-                           value="{{ request('end_date_klien') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                           placeholder="Tanggal Akhir">
-                    <button type="button" 
-                            onclick="submitKlienCustom()"
-                            class="w-full px-3 py-2 text-sm bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors">
-                        <i class="fas fa-filter mr-1"></i> Filter
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="topKlienContainer" class="overflow-y-auto" style="max-height: 400px;">
-            @if($topKlien->count() > 0)
-                <div class="space-y-3">
-                    @foreach($topKlien as $index => $item)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div class="flex items-center space-x-3 flex-1">
-                                <div class="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                    <span class="text-sm font-bold text-yellow-600">#{{ $index + 1 }}</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold text-gray-900 truncate">
-                                        {{ $item->nama ?? 'Unknown' }}
-                                    </p>
-                                    <p class="text-xs text-gray-500">
-                                        {{ $item->cabang ?? '-' }}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="text-right flex-shrink-0 ml-4">
-                                <p class="text-sm font-bold text-yellow-600">
-                                    Rp {{ number_format($item->total / 1000000, 2, ',', '.') }} Jt
-                                </p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="text-center text-gray-400 py-8">
-                    <i class="fas fa-inbox text-4xl mb-2"></i>
-                    <p>Tidak ada data klien</p>
-                </div>
-            @endif
-        </div>
-    </div>
-
-    {{-- Card 2: Top Supplier --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-award text-orange-500 mr-2"></i>
-                    Daftar Supplier (Berdasarkan Omset)
-                    <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full" 
-                          title="Ranking berdasarkan Omset Sistem (transaksi terverifikasi)">
-                        <i class="fas fa-info-circle mr-1"></i>Omset Sistem
-                    </span>
-                </h3>
-            </div>
-            <div class="w-48">
-                <select name="periode_supplier" 
-                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                        onchange="toggleCustomDateSupplier(this.value)">
-                    <option value="all" {{ $periodeSupplier == 'all' ? 'selected' : '' }}>Semua Data</option>
-                    <option value="tahun_ini" {{ $periodeSupplier == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
-                    <option value="bulan_ini" {{ $periodeSupplier == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
-                    <option value="custom" {{ $periodeSupplier == 'custom' ? 'selected' : '' }}>Custom</option>
-                </select>
-                
-                {{-- Custom Date Range for Supplier --}}
-                <div id="customDateSupplier" class="mt-2 space-y-2" style="display: {{ $periodeSupplier == 'custom' ? 'block' : 'none' }}">
-                    <input type="date" 
-                           name="start_date_supplier" 
-                           value="{{ request('start_date_supplier') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                           placeholder="Tanggal Mulai">
-                    <input type="date" 
-                           name="end_date_supplier" 
-                           value="{{ request('end_date_supplier') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                           placeholder="Tanggal Akhir">
-                    <button type="button"
-                            onclick="submitSupplierCustom()"
-                            class="w-full px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors">
-                        <i class="fas fa-filter mr-1"></i> Filter
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="topSupplierContainer" class="overflow-y-auto" style="max-height: 400px;">
-            @if($topSupplier->count() > 0)
-                <div class="space-y-3">
-                    @foreach($topSupplier as $index => $item)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div class="flex items-center space-x-3 flex-1">
-                                <div class="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                                    <span class="text-sm font-bold text-orange-600">#{{ $index + 1 }}</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold text-gray-900 truncate">
-                                        {{ $item->nama ?? 'Unknown' }}
-                                    </p>
-                                    <p class="text-xs text-gray-500 truncate">
-                                        {{ $item->alamat ?? '-' }}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="text-right flex-shrink-0 ml-4">
-                                <p class="text-sm font-bold text-orange-600">
-                                    Rp {{ number_format($item->total / 1000000, 2, ',', '.') }} Jt
-                                </p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="text-center text-gray-400 py-8">
-                    <i class="fas fa-inbox text-4xl mb-2"></i>
-                    <p>Tidak ada data supplier</p>
-                </div>
-            @endif
-        </div>
-    </div>
-</div>
+{{-- Include Bahan Baku Chart Section --}}
+@include('pages.laporan.partials.bahan_baku_chart')
 
 {{-- Chart.js Script --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -443,13 +220,15 @@
 // Chart instances
 let chartOmsetMarketing = null;
 let chartOmsetProcurement = null;
-let chartProyekPerBulan = null;
-let chartNilaiOrderPerBulan = null;
+let chartOmsetPerKlien = null;
 
-// Current year for proyek per bulan
-let currentYearProyek = {{ $selectedYear }};
-let currentYearNilai = {{ $selectedYearNilai }};
-const availableYears = @json($availableYears);
+// Current year for omset per klien
+let currentYearKlien = {{ date('Y') }};
+const availableYearsKlien = @json(range(2020, date('Y')));
+
+// Search filter state
+let klienSearchTimeout = null;
+let currentKlienSearch = '';
 
 // Chart colors
 const chartColors = [
@@ -475,6 +254,153 @@ function toggleCustomDateMarketing(value) {
     }
 }
 
+// Handle keyup event for klien search (debounced)
+function handleKlienSearchKeyup(event) {
+    const searchValue = event.target.value.trim();
+    
+    // Show/hide clear button
+    const clearBtn = document.getElementById('clearSearchKlien');
+    if (searchValue) {
+        clearBtn.classList.remove('hidden');
+    } else {
+        clearBtn.classList.add('hidden');
+    }
+    
+    // Debounce the search
+    clearTimeout(klienSearchTimeout);
+    klienSearchTimeout = setTimeout(() => {
+        currentKlienSearch = searchValue;
+        loadOmsetPerKlienChart(currentYearKlien, searchValue);
+    }, 500); // Wait 500ms after user stops typing
+}
+
+// Clear klien search
+function clearKlienSearch() {
+    document.getElementById('searchKlien').value = '';
+    document.getElementById('clearSearchKlien').classList.add('hidden');
+    currentKlienSearch = '';
+    loadOmsetPerKlienChart(currentYearKlien, '');
+}
+
+// Change year for omset per klien chart
+function changeYearKlienChart(direction) {
+    const currentIndex = availableYearsKlien.indexOf(currentYearKlien);
+    let newIndex = currentIndex + direction;
+    
+    // Boundary check
+    if (newIndex < 0 || newIndex >= availableYearsKlien.length) {
+        return;
+    }
+    
+    currentYearKlien = availableYearsKlien[newIndex];
+    document.getElementById('currentYearKlien').textContent = currentYearKlien;
+    
+    loadOmsetPerKlienChart(currentYearKlien, currentKlienSearch);
+}
+
+// Load Omset per Klien Chart via AJAX
+function loadOmsetPerKlienChart(tahun, search = '') {
+    let url = `{{ route('laporan.omset') }}?ajax=omset_per_klien&tahun=${tahun}`;
+    if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+    }
+    
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        updateOmsetPerKlienChart(result);
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Update Omset per Klien Chart
+function updateOmsetPerKlienChart(data) {
+    if (chartOmsetPerKlien) {
+        chartOmsetPerKlien.data.labels = data.klien_names;
+        chartOmsetPerKlien.data.datasets = data.datasets;
+        chartOmsetPerKlien.update();
+    } else {
+        const ctx = document.getElementById('chartOmsetPerKlien').getContext('2d');
+        chartOmsetPerKlien = createGroupedBarChart(ctx, data.klien_names, data.datasets);
+    }
+}
+
+// Create Grouped Bar Chart for Omset per Klien
+function createGroupedBarChart(ctx, labels, datasets) {
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 15,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                            return label;
+                        }
+                    }
+                },
+                datalabels: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 10
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'Rp ' + (value / 1000000).toFixed(0) + 'Jt';
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+}
+
 // Toggle custom date for procurement
 function toggleCustomDateProcurement(value) {
     const customDiv = document.getElementById('customDateProcurement');
@@ -496,18 +422,6 @@ function toggleCustomDateKlien(value) {
         customDiv.style.display = 'none';
         // Load data via AJAX without refresh
         loadTopKlien(value, null, null);
-    }
-}
-
-// Toggle custom date for supplier
-function toggleCustomDateSupplier(value) {
-    const customDiv = document.getElementById('customDateSupplier');
-    if (value === 'custom') {
-        customDiv.style.display = 'block';
-    } else {
-        customDiv.style.display = 'none';
-        // Load data via AJAX without refresh
-        loadTopSupplier(value, null, null);
     }
 }
 
@@ -537,34 +451,6 @@ function submitProcurementCustom() {
     }
     
     loadProcurementChart(periode, startDate, endDate);
-}
-
-// Submit custom filter for klien
-function submitKlienCustom() {
-    const periode = document.querySelector('[name="periode_klien"]').value;
-    const startDate = document.querySelector('[name="start_date_klien"]').value;
-    const endDate = document.querySelector('[name="end_date_klien"]').value;
-    
-    if (!startDate || !endDate) {
-        alert('Mohon isi tanggal mulai dan tanggal akhir');
-        return;
-    }
-    
-    loadTopKlien(periode, startDate, endDate);
-}
-
-// Submit custom filter for supplier
-function submitSupplierCustom() {
-    const periode = document.querySelector('[name="periode_supplier"]').value;
-    const startDate = document.querySelector('[name="start_date_supplier"]').value;
-    const endDate = document.querySelector('[name="end_date_supplier"]').value;
-    
-    if (!startDate || !endDate) {
-        alert('Mohon isi tanggal mulai dan tanggal akhir');
-        return;
-    }
-    
-    loadTopSupplier(periode, startDate, endDate);
 }
 
 // Load Marketing Chart via AJAX
@@ -608,50 +494,6 @@ function loadProcurementChart(periode, startDate, endDate) {
     .then(data => {
         console.log('Procurement data received:', data);
         updateProcurementChart(data);
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-// Load Top Klien via AJAX
-function loadTopKlien(periode, startDate, endDate) {
-    const params = new URLSearchParams({
-        periode_klien: periode,
-        ajax: 'top_klien'
-    });
-    
-    if (startDate) params.append('start_date_klien', startDate);
-    if (endDate) params.append('end_date_klien', endDate);
-    
-    fetch(`{{ route('laporan.omset') }}?${params.toString()}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        updateTopKlien(data);
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-// Load Top Supplier via AJAX
-function loadTopSupplier(periode, startDate, endDate) {
-    const params = new URLSearchParams({
-        periode_supplier: periode,
-        ajax: 'top_supplier'
-    });
-    
-    if (startDate) params.append('start_date_supplier', startDate);
-    if (endDate) params.append('end_date_supplier', endDate);
-    
-    fetch(`{{ route('laporan.omset') }}?${params.toString()}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        updateTopSupplier(data);
     })
     .catch(error => console.error('Error:', error));
 }
@@ -721,96 +563,6 @@ function updateProcurementChart(data) {
     chartOmsetProcurement = createPieChart(ctx, labels, values);
 }
 
-// Update Top Klien
-function updateTopKlien(data) {
-    const container = document.getElementById('topKlienContainer');
-    
-    if (data.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-400 py-8">
-                <i class="fas fa-inbox text-4xl mb-2"></i>
-                <p>Tidak ada data klien</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '<div class="space-y-3">';
-    data.forEach((item, index) => {
-        const nominal = item.total / 1000000;
-        html += `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div class="flex items-center space-x-3 flex-1">
-                    <div class="shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <span class="text-sm font-bold text-yellow-600">#${index + 1}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900 truncate">
-                            ${item.nama}
-                        </p>
-                        <p class="text-xs text-gray-500">
-                            ${item.cabang || '-'}
-                        </p>
-                    </div>
-                </div>
-                <div class="text-right shrink-0 ml-4">
-                    <p class="text-sm font-bold text-yellow-600">
-                        Rp ${nominal.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Jt
-                    </p>
-                </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-    
-    container.innerHTML = html;
-}
-
-// Update Top Supplier
-function updateTopSupplier(data) {
-    const container = document.getElementById('topSupplierContainer');
-    
-    if (data.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-400 py-8">
-                <i class="fas fa-inbox text-4xl mb-2"></i>
-                <p>Tidak ada data supplier</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '<div class="space-y-3">';
-    data.forEach((item, index) => {
-        const nominal = item.total / 1000000;
-        html += `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div class="flex items-center space-x-3 flex-1">
-                    <div class="shrink-0 w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                        <span class="text-sm font-bold text-orange-600">#${index + 1}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900 truncate">
-                            ${item.nama}
-                        </p>
-                        <p class="text-xs text-gray-500 truncate">
-                            ${item.cabang || '-'}
-                        </p>
-                    </div>
-                </div>
-                <div class="text-right shrink-0 ml-4">
-                    <p class="text-sm font-bold text-orange-600">
-                        Rp ${nominal.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Jt
-                    </p>
-                </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-    
-    container.innerHTML = html;
-}
-
 // Create Pie Chart with percentage labels
 function createPieChart(ctx, labels, values) {
     return new Chart(ctx, {
@@ -868,257 +620,6 @@ function createPieChart(ctx, labels, values) {
     });
 }
 
-// Change year for proyek per bulan
-function changeTahunProyek(direction) {
-    const currentIndex = availableYears.indexOf(currentYearProyek);
-    let newIndex = currentIndex - direction; // -1 for next year (higher), +1 for prev year (lower)
-    
-    // Boundary check
-    if (newIndex < 0 || newIndex >= availableYears.length) {
-        return;
-    }
-    
-    currentYearProyek = availableYears[newIndex];
-    document.getElementById('currentYearProyek').textContent = currentYearProyek;
-    
-    loadProyekPerBulanChart(currentYearProyek);
-}
-
-// Change year for nilai order per bulan
-function changeTahunNilai(direction) {
-    const currentIndex = availableYears.indexOf(currentYearNilai);
-    let newIndex = currentIndex - direction;
-    
-    // Boundary check
-    if (newIndex < 0 || newIndex >= availableYears.length) {
-        return;
-    }
-    
-    currentYearNilai = availableYears[newIndex];
-    document.getElementById('currentYearNilai').textContent = currentYearNilai;
-    
-    loadNilaiOrderPerBulanChart(currentYearNilai);
-}
-
-// Load Proyek Per Bulan Chart via AJAX
-function loadProyekPerBulanChart(tahun) {
-    fetch(`{{ route('laporan.omset') }}?ajax=proyek_per_bulan&tahun=${tahun}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(result => {
-        updateProyekPerBulanChart(result.data);
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-// Load Nilai Order Per Bulan Chart via AJAX
-function loadNilaiOrderPerBulanChart(tahun) {
-    fetch(`{{ route('laporan.omset') }}?ajax=nilai_order_per_bulan&tahun=${tahun}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(result => {
-        updateNilaiOrderPerBulanChart(result.data);
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-// Update Proyek Per Bulan Chart
-function updateProyekPerBulanChart(data) {
-    if (chartProyekPerBulan) {
-        chartProyekPerBulan.data.datasets[0].data = data;
-        chartProyekPerBulan.update();
-    } else {
-        const ctx = document.getElementById('chartProyekPerBulan').getContext('2d');
-        chartProyekPerBulan = createBarChart(ctx, data);
-    }
-}
-
-// Update Nilai Order Per Bulan Chart
-function updateNilaiOrderPerBulanChart(data) {
-    if (chartNilaiOrderPerBulan) {
-        chartNilaiOrderPerBulan.data.datasets[0].data = data;
-        chartNilaiOrderPerBulan.update();
-    } else {
-        const ctx = document.getElementById('chartNilaiOrderPerBulan').getContext('2d');
-        chartNilaiOrderPerBulan = createLineChart(ctx, data);
-    }
-}
-
-// Create Bar Chart for Proyek Per Bulan
-function createBarChart(ctx, data) {
-    return new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Jumlah Proyek',
-                data: data,
-                backgroundColor: '#10B981',
-                borderColor: '#10B981',
-                borderWidth: 0,
-                borderRadius: 4,
-                barPercentage: 0.7
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: '#1F2937',
-                    padding: 10,
-                    cornerRadius: 6,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            return 'Jumlah: ' + context.parsed.y + ' proyek';
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 5,
-                        color: '#6B7280',
-                        font: {
-                            size: 11
-                        }
-                    },
-                    grid: {
-                        color: '#E5E7EB',
-                        drawBorder: false
-                    },
-                    border: {
-                        display: false
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#6B7280',
-                        font: {
-                            size: 11
-                        }
-                    },
-                    grid: {
-                        display: true,
-                        color: '#F3F4F6',
-                        drawBorder: false
-                    },
-                    border: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Create Line Chart for Nilai Order Per Bulan
-function createLineChart(ctx, data) {
-    return new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Nilai Order',
-                data: data,
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderColor: '#3B82F6',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#3B82F6',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: '#1F2937',
-                    padding: 12,
-                    cornerRadius: 6,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.parsed.y;
-                            if (value >= 1000000000) {
-                                return 'Nilai: Rp ' + (value / 1000000000).toFixed(2) + ' Miliar';
-                            } else if (value >= 1000000) {
-                                return 'Nilai: Rp ' + (value / 1000000).toFixed(2) + ' Juta';
-                            } else {
-                                return 'Nilai: Rp ' + value.toLocaleString('id-ID');
-                            }
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: '#6B7280',
-                        font: {
-                            size: 11
-                        },
-                        callback: function(value) {
-                            if (value >= 1000000000) {
-                                return (value / 1000000000).toFixed(1) + 'M';
-                            } else if (value >= 1000000) {
-                                return (value / 1000000).toFixed(0) + 'Jt';
-                            }
-                            return value;
-                        }
-                    },
-                    grid: {
-                        color: '#E5E7EB',
-                        drawBorder: false
-                    },
-                    border: {
-                        display: false
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#6B7280',
-                        font: {
-                            size: 11
-                        }
-                    },
-                    grid: {
-                        display: true,
-                        color: '#F3F4F6',
-                        drawBorder: false
-                    },
-                    border: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-}
-
 // Initialize charts on page load
 @if($omsetMarketing->count() > 0)
 document.addEventListener('DOMContentLoaded', function() {
@@ -1156,18 +657,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 @endif
 
-// Initialize Proyek Per Bulan Chart
+// Initialize Omset per Klien Chart
 document.addEventListener('DOMContentLoaded', function() {
-    const ctxProyek = document.getElementById('chartProyekPerBulan').getContext('2d');
-    const dataProyek = @json($proyekPerBulan);
-    chartProyekPerBulan = createBarChart(ctxProyek, dataProyek);
-});
-
-// Initialize Nilai Order Per Bulan Chart
-document.addEventListener('DOMContentLoaded', function() {
-    const ctxNilai = document.getElementById('chartNilaiOrderPerBulan').getContext('2d');
-    const dataNilai = @json($nilaiOrderPerBulan);
-    chartNilaiOrderPerBulan = createLineChart(ctxNilai, dataNilai);
+    loadOmsetPerKlienChart(currentYearKlien);
 });
 
 // Marketing Modal Functions

@@ -240,96 +240,6 @@
         </div>
     </div>
 
-
-
-    {{-- Charts Section --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {{-- Trend Omset 4 Minggu --}}
-        <div class="bg-white rounded-lg shadow-md p-5">
-            <div class="mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Trend Omset 4 Minggu</h3>
-                <p class="text-sm text-gray-500">vs target mingguan</p>
-            </div>
-            <div style="height: 250px;">
-                <canvas id="chartOmsetTrend"></canvas>
-            </div>
-        </div>
-
-        {{-- PO by Status --}}
-        <div class="bg-white rounded-lg shadow-md p-5">
-            <div class="mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Status Purchase Order</h3>
-                <p class="text-sm text-gray-500">Distribusi PO saat ini</p>
-            </div>
-            <div class="flex justify-center items-center" style="height: 250px;">
-                @if($poByStatus->count() > 0)
-                    <canvas id="chartPOStatus"></canvas>
-                @else
-                    <div class="text-center text-gray-400">
-                        <i class="fas fa-inbox text-3xl mb-2"></i>
-                        <p class="text-sm">Tidak ada data PO</p>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    {{-- Top 5 Klien Bulan Ini --}}
-    <div class="bg-white rounded-lg shadow-md p-5">
-        <div class="mb-4">
-            <h3 class="text-base font-semibold text-gray-900">Top 5 Klien Bulan Ini</h3>
-            <p class="text-sm text-gray-500">Berdasarkan nilai order</p>
-        </div>
-        
-        @if($topKlien->count() > 0)
-            <div class="overflow-x-auto -mx-5">
-                <table class="w-full">
-                    <thead>
-                        <tr class="bg-gray-50">
-                            <th class="text-left py-3 px-5 text-xs font-medium text-gray-500 uppercase">#</th>
-                            <th class="text-left py-3 px-5 text-xs font-medium text-gray-500 uppercase">Klien</th>
-                            <th class="text-center py-3 px-5 text-xs font-medium text-gray-500 uppercase">PO</th>
-                            <th class="text-right py-3 px-5 text-xs font-medium text-gray-500 uppercase">Nilai</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($topKlien as $index => $klien)
-                        <tr class="border-t border-gray-100">
-                            <td class="py-4 px-5">
-                                @if($index == 0)
-                                    <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-yellow-50 text-yellow-500 font-bold text-lg">
-                                        <i class="fas fa-trophy"></i>
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 text-gray-600 font-semibold">
-                                        {{ $index + 1 }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="py-4 px-5 font-medium text-gray-900">{{ $klien->klien_nama }}</td>
-                            <td class="py-4 px-5 text-center text-gray-600">{{ number_format($klien->total_po) }}</td>
-                            <td class="py-4 px-5 text-right font-semibold text-gray-900">
-                                @if($klien->total_nilai >= 1000000000)
-                                    Rp {{ number_format($klien->total_nilai / 1000000000, 2, ',', '.') }} Miliar
-                                @elseif($klien->total_nilai >= 1000000)
-                                    Rp {{ number_format($klien->total_nilai / 1000000, 2, ',', '.') }} Juta
-                                @else
-                                    Rp {{ number_format($klien->total_nilai, 0, ',', '.') }}
-                                @endif
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @else
-            <div class="text-center py-8 text-gray-400">
-                <i class="fas fa-inbox text-4xl mb-2"></i>
-                <p class="text-sm">Belum ada data order bulan ini</p>
-            </div>
-        @endif
-    </div>
-
     {{-- Target Progress Bars --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         {{-- Progress Minggu --}}
@@ -430,131 +340,21 @@
 
 {{-- Chart.js Scripts --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-<script>
-// Trend Omset Chart
-document.addEventListener('DOMContentLoaded', function() {
-    const ctxTrend = document.getElementById('chartOmsetTrend').getContext('2d');
-    new Chart(ctxTrend, {
-        type: 'bar',
-        data: {
-            labels: @json(array_column($omsetTrend, 'label')),
-            datasets: [{
-                label: 'Omset',
-                data: @json(array_column($omsetTrend, 'omset')),
-                backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                borderColor: 'rgb(59, 130, 246)',
-                borderWidth: 2,
-                borderRadius: 6
-            }, {
-                label: 'Target',
-                data: @json(array_column($omsetTrend, 'target')),
-                backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                borderColor: 'rgb(239, 68, 68)',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                type: 'line',
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.parsed.y || 0;
-                            let formattedValue = '';
-                            if (value >= 1000000000) {
-                                formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
-                            } else if (value >= 1000000) {
-                                formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
-                            } else {
-                                formattedValue = 'Rp ' + value.toLocaleString('id-ID');
-                            }
-                            return context.dataset.label + ': ' + formattedValue;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            if (value >= 1000000000) {
-                                return 'Rp ' + (value / 1000000000).toFixed(1) + 'M';
-                            } else if (value >= 1000000) {
-                                return 'Rp ' + (value / 1000000).toFixed(1) + 'Jt';
-                            } else {
-                                return 'Rp ' + value.toLocaleString('id-ID');
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
 
-    // PO Status Chart
-    @if($poByStatus->count() > 0)
-    const ctxStatus = document.getElementById('chartPOStatus').getContext('2d');
-    const isMobile = window.innerWidth < 768;
-    
-    new Chart(ctxStatus, {
-        type: 'doughnut',
-        data: {
-            labels: [@foreach($poByStatus as $item) '{{ ucfirst($item->status) }}', @endforeach],
-            datasets: [{
-                data: [@foreach($poByStatus as $item) {{ $item->total }}, @endforeach],
-                backgroundColor: [
-                    'rgb(59, 130, 246)',   // blue
-                    'rgb(16, 185, 129)',   // green
-                    'rgb(245, 158, 11)',   // yellow
-                    'rgb(239, 68, 68)',    // red
-                    'rgb(139, 92, 246)',   // purple
-                ],
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: isMobile ? 'bottom' : 'right',
-                    labels: {
-                        padding: isMobile ? 10 : 15,
-                        font: { size: isMobile ? 10 : 12 },
-                        boxWidth: isMobile ? 12 : 15,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed + ' PO';
-                        }
-                    }
-                }
-            }
-        }
-    });
-    @endif
-});
-</script>
+{{-- Omset Charts Section --}}
+<div class="space-y-6">
+    {{-- Include Klien Chart Section --}}
+    @include('pages.laporan.partials.klien_chart_dashboard')
+
+    {{-- Include Supplier Chart Section --}}
+    @include('pages.laporan.partials.supplier_chart_dashboard')
+
+    {{-- Include Bahan Baku Chart Section --}}
+    @include('pages.laporan.partials.bahan_baku_chart_dashboard')
+</div>
 
 {{-- Modal Script --}}
 <script>

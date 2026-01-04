@@ -340,8 +340,21 @@
 
 {{-- Chart.js Scripts --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+{{-- Omset Charts Section --}}
+<div class="space-y-6">
+    {{-- Include Klien Chart Section --}}
+    @include('pages.laporan.partials.klien_chart_dashboard')
+
+    {{-- Include Supplier Chart Section --}}
+    @include('pages.laporan.partials.supplier_chart_dashboard')
+
+    {{-- Include Bahan Baku Chart Section --}}
+    @include('pages.laporan.partials.bahan_baku_chart_dashboard')
+</div>
 
 {{-- Modal Script --}}
 <script>

@@ -31,6 +31,9 @@ Route::post("/logout", [AuthController::class, "logout"])
 Route::middleware(["auth"])->group(function () {
     // Dashboard - accessible by all authenticated users
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/omset-per-klien', [DashboardController::class, 'getOmsetPerKlien'])->name('dashboard.omsetPerKlien');
+    Route::get('/dashboard/omset-per-supplier', [DashboardController::class, 'getOmsetPerSupplier'])->name('dashboard.omsetPerSupplier');
+    Route::get('/dashboard/omset-per-bahan-baku', [DashboardController::class, 'getOmsetPerBahanBaku'])->name('dashboard.omsetPerBahanBaku');
 
     Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');

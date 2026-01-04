@@ -516,6 +516,89 @@ class OmsetController extends Controller
             ]);
         }
         
+        // Handle AJAX request for Omset per Supplier (Bar Chart)
+        if ($request->ajax() && $request->get('ajax') === 'omset_per_supplier') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $search = $request->get('search', '');
+            
+            // Get top 5 supplier berdasarkan total omset tahun ini (with optional search filter)
+            $topSupplierQuery = DB::table('invoice_penagihan')
+                ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
+                ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+                ->select('suppliers.id as supplier_id', 'suppliers.nama',
+                    DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                ->whereNull('pengiriman.deleted_at')
+                ->whereNull('suppliers.deleted_at');
+            
+            // Apply search filter if provided
+            if (!empty($search)) {
+                $topSupplierQuery->where(function($q) use ($search) {
+                    $q->where('suppliers.nama', 'like', '%' . $search . '%')
+                      ->orWhere('suppliers.alamat', 'like', '%' . $search . '%');
+                });
+            }
+            
+            $topSupplier = $topSupplierQuery
+                ->groupBy('suppliers.id', 'suppliers.nama')
+                ->orderBy('total', 'desc')
+                ->limit(5)
+                ->get();
+            
+            $supplierNames = [];
+            $datasets = [];
+            
+            // Warna untuk setiap bulan
+            $monthColors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
+                '#06B6D4', '#F97316', '#14B8A6', '#F43F5E', '#8B5CF6', '#6366F1'
+            ];
+            
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            
+            // Prepare datasets per month
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $monthData = [];
+                
+                foreach ($topSupplier as $supplier) {
+                    // Get omset untuk supplier ini di bulan ini
+                    $omsetBulan = DB::table('invoice_penagihan')
+                        ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                        ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                        ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
+                        ->where('bahan_baku_supplier.supplier_id', $supplier->supplier_id)
+                        ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                        ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                        ->whereMonth('pengiriman.tanggal_kirim', $bulan)
+                        ->whereNull('pengiriman.deleted_at')
+                        ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    
+                    $monthData[] = floatval($omsetBulan);
+                }
+                
+                $datasets[] = [
+                    'label' => $monthNames[$bulan - 1],
+                    'data' => $monthData,
+                    'backgroundColor' => $monthColors[$bulan - 1],
+                    'borderColor' => $monthColors[$bulan - 1],
+                    'borderWidth' => 1
+                ];
+            }
+            
+            // Get supplier names
+            foreach ($topSupplier as $supplier) {
+                $supplierNames[] = $supplier->nama;
+            }
+            
+            return response()->json([
+                'supplier_names' => $supplierNames,
+                'datasets' => $datasets
+            ]);
+        }
+        
         // Handle AJAX request for Top Klien
         if ($request->ajax() && $request->get('ajax') === 'top_klien') {
             // Using amount_after_refraksi from invoice_penagihan

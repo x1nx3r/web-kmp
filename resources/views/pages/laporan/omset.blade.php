@@ -204,86 +204,62 @@
     </div>
 </div>
 
-{{-- Top Klien & Top Supplier Section --}}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    {{-- Card 1: Top Klien --}}
+{{-- Omset per Klien (Bar Chart) Section --}}
+<div class="mb-6">
+    {{-- Card: Omset per Klien --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-trophy text-yellow-500 mr-2"></i>
-                    Daftar Klien (Berdasarkan Omset)
+                    <i class="fas fa-chart-bar text-blue-500 mr-2"></i>
+                    Omset per Klien
                     <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full" 
-                          title="Ranking berdasarkan Omset Sistem (transaksi terverifikasi)">
-                        <i class="fas fa-info-circle mr-1"></i>Omset Sistem
+                          title="Omset Sistem (transaksi terverifikasi) per bulan">
+                        <i class="fas fa-info-circle mr-1"></i>Per Bulan
                     </span>
                 </h3>
+                <p class="text-sm text-gray-500 mt-1">Distribusi omset bulanan per klien</p>
             </div>
-            <div class="w-48">
-                <select name="periode_klien" 
-                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                        onchange="toggleCustomDateKlien(this.value)">
-                    <option value="all" {{ $periodeKlien == 'all' ? 'selected' : '' }}>Semua Data</option>
-                    <option value="tahun_ini" {{ $periodeKlien == 'tahun_ini' ? 'selected' : '' }}>Tahun Ini</option>
-                    <option value="bulan_ini" {{ $periodeKlien == 'bulan_ini' ? 'selected' : '' }}>Bulan Ini</option>
-                    <option value="custom" {{ $periodeKlien == 'custom' ? 'selected' : '' }}>Custom</option>
-                </select>
+            <div class="flex items-center gap-3">
+                {{-- Search Filter --}}
+                <div class="relative">
+                    <input type="text" 
+                           id="searchKlien" 
+                           placeholder="Cari klien..." 
+                           class="w-64 pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           onkeyup="handleKlienSearchKeyup(event)">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <button onclick="clearKlienSearch()" 
+                            id="clearSearchKlien"
+                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
                 
-                {{-- Custom Date Range for Klien --}}
-                <div id="customDateKlien" class="mt-2 space-y-2" style="display: {{ $periodeKlien == 'custom' ? 'block' : 'none' }}">
-                    <input type="date" 
-                           name="start_date_klien" 
-                           value="{{ request('start_date_klien') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                           placeholder="Tanggal Mulai">
-                    <input type="date" 
-                           name="end_date_klien" 
-                           value="{{ request('end_date_klien') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                           placeholder="Tanggal Akhir">
-                    <button type="button" 
-                            onclick="submitKlienCustom()"
-                            class="w-full px-3 py-2 text-sm bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors">
-                        <i class="fas fa-filter mr-1"></i> Filter
+                {{-- Year Navigation --}}
+                <div class="flex items-center gap-2">
+                    <button onclick="changeYearKlienChart(-1)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-chevron-left text-gray-600"></i>
+                    </button>
+                    <div class="px-4 py-2 bg-blue-50 rounded-lg">
+                        <span class="text-sm font-semibold text-blue-700">Tahun: </span>
+                        <span id="currentYearKlien" class="text-lg font-bold text-blue-600">{{ date('Y') }}</span>
+                    </div>
+                    <button onclick="changeYearKlienChart(1)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-chevron-right text-gray-600"></i>
                     </button>
                 </div>
             </div>
         </div>
         
-        <div id="topKlienContainer" class="overflow-y-auto" style="max-height: 400px;">
-            @if($topKlien->count() > 0)
-                <div class="space-y-3">
-                    @foreach($topKlien as $index => $item)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div class="flex items-center space-x-3 flex-1">
-                                <div class="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                    <span class="text-sm font-bold text-yellow-600">#{{ $index + 1 }}</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold text-gray-900 truncate">
-                                        {{ $item->nama ?? 'Unknown' }}
-                                    </p>
-                                    <p class="text-xs text-gray-500">
-                                        {{ $item->cabang ?? '-' }}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="text-right flex-shrink-0 ml-4">
-                                <p class="text-sm font-bold text-yellow-600">
-                                    Rp {{ number_format($item->total / 1000000, 2, ',', '.') }} Jt
-                                </p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="text-center text-gray-400 py-8">
-                    <i class="fas fa-inbox text-4xl mb-2"></i>
-                    <p>Tidak ada data klien</p>
-                </div>
-            @endif
+        <div style="height: 500px;">
+            <canvas id="chartOmsetPerKlien"></canvas>
         </div>
     </div>
+</div>
+
+{{-- Top Supplier Section --}}
+<div class="grid grid-cols-1 gap-4 mb-6">
 
     {{-- Card 2: Top Supplier --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -372,6 +348,15 @@
 // Chart instances
 let chartOmsetMarketing = null;
 let chartOmsetProcurement = null;
+let chartOmsetPerKlien = null;
+
+// Current year for omset per klien
+let currentYearKlien = {{ date('Y') }};
+const availableYearsKlien = @json(range(2020, date('Y')));
+
+// Search filter state
+let klienSearchTimeout = null;
+let currentKlienSearch = '';
 
 // Chart colors
 const chartColors = [
@@ -395,6 +380,153 @@ function toggleCustomDateMarketing(value) {
         // Load data via AJAX without refresh
         loadMarketingChart(value, null, null);
     }
+}
+
+// Handle keyup event for klien search (debounced)
+function handleKlienSearchKeyup(event) {
+    const searchValue = event.target.value.trim();
+    
+    // Show/hide clear button
+    const clearBtn = document.getElementById('clearSearchKlien');
+    if (searchValue) {
+        clearBtn.classList.remove('hidden');
+    } else {
+        clearBtn.classList.add('hidden');
+    }
+    
+    // Debounce the search
+    clearTimeout(klienSearchTimeout);
+    klienSearchTimeout = setTimeout(() => {
+        currentKlienSearch = searchValue;
+        loadOmsetPerKlienChart(currentYearKlien, searchValue);
+    }, 500); // Wait 500ms after user stops typing
+}
+
+// Clear klien search
+function clearKlienSearch() {
+    document.getElementById('searchKlien').value = '';
+    document.getElementById('clearSearchKlien').classList.add('hidden');
+    currentKlienSearch = '';
+    loadOmsetPerKlienChart(currentYearKlien, '');
+}
+
+// Change year for omset per klien chart
+function changeYearKlienChart(direction) {
+    const currentIndex = availableYearsKlien.indexOf(currentYearKlien);
+    let newIndex = currentIndex + direction;
+    
+    // Boundary check
+    if (newIndex < 0 || newIndex >= availableYearsKlien.length) {
+        return;
+    }
+    
+    currentYearKlien = availableYearsKlien[newIndex];
+    document.getElementById('currentYearKlien').textContent = currentYearKlien;
+    
+    loadOmsetPerKlienChart(currentYearKlien, currentKlienSearch);
+}
+
+// Load Omset per Klien Chart via AJAX
+function loadOmsetPerKlienChart(tahun, search = '') {
+    let url = `{{ route('laporan.omset') }}?ajax=omset_per_klien&tahun=${tahun}`;
+    if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+    }
+    
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        updateOmsetPerKlienChart(result);
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Update Omset per Klien Chart
+function updateOmsetPerKlienChart(data) {
+    if (chartOmsetPerKlien) {
+        chartOmsetPerKlien.data.labels = data.klien_names;
+        chartOmsetPerKlien.data.datasets = data.datasets;
+        chartOmsetPerKlien.update();
+    } else {
+        const ctx = document.getElementById('chartOmsetPerKlien').getContext('2d');
+        chartOmsetPerKlien = createGroupedBarChart(ctx, data.klien_names, data.datasets);
+    }
+}
+
+// Create Grouped Bar Chart for Omset per Klien
+function createGroupedBarChart(ctx, labels, datasets) {
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 15,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                            return label;
+                        }
+                    }
+                },
+                datalabels: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 10
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'Rp ' + (value / 1000000).toFixed(0) + 'Jt';
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
 }
 
 // Toggle custom date for procurement
@@ -461,20 +593,6 @@ function submitProcurementCustom() {
     loadProcurementChart(periode, startDate, endDate);
 }
 
-// Submit custom filter for klien
-function submitKlienCustom() {
-    const periode = document.querySelector('[name="periode_klien"]').value;
-    const startDate = document.querySelector('[name="start_date_klien"]').value;
-    const endDate = document.querySelector('[name="end_date_klien"]').value;
-    
-    if (!startDate || !endDate) {
-        alert('Mohon isi tanggal mulai dan tanggal akhir');
-        return;
-    }
-    
-    loadTopKlien(periode, startDate, endDate);
-}
-
 // Submit custom filter for supplier
 function submitSupplierCustom() {
     const periode = document.querySelector('[name="periode_supplier"]').value;
@@ -530,28 +648,6 @@ function loadProcurementChart(periode, startDate, endDate) {
     .then(data => {
         console.log('Procurement data received:', data);
         updateProcurementChart(data);
-    })
-    .catch(error => console.error('Error:', error));
-}
-
-// Load Top Klien via AJAX
-function loadTopKlien(periode, startDate, endDate) {
-    const params = new URLSearchParams({
-        periode_klien: periode,
-        ajax: 'top_klien'
-    });
-    
-    if (startDate) params.append('start_date_klien', startDate);
-    if (endDate) params.append('end_date_klien', endDate);
-    
-    fetch(`{{ route('laporan.omset') }}?${params.toString()}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        updateTopKlien(data);
     })
     .catch(error => console.error('Error:', error));
 }
@@ -641,51 +737,6 @@ function updateProcurementChart(data) {
     
     const ctx = document.getElementById('chartOmsetProcurement').getContext('2d');
     chartOmsetProcurement = createPieChart(ctx, labels, values);
-}
-
-// Update Top Klien
-function updateTopKlien(data) {
-    const container = document.getElementById('topKlienContainer');
-    
-    if (data.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-400 py-8">
-                <i class="fas fa-inbox text-4xl mb-2"></i>
-                <p>Tidak ada data klien</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '<div class="space-y-3">';
-    data.forEach((item, index) => {
-        const nominal = item.total / 1000000;
-        html += `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div class="flex items-center space-x-3 flex-1">
-                    <div class="shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <span class="text-sm font-bold text-yellow-600">#${index + 1}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900 truncate">
-                            ${item.nama}
-                        </p>
-                        <p class="text-xs text-gray-500">
-                            ${item.cabang || '-'}
-                        </p>
-                    </div>
-                </div>
-                <div class="text-right shrink-0 ml-4">
-                    <p class="text-sm font-bold text-yellow-600">
-                        Rp ${nominal.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Jt
-                    </p>
-                </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-    
-    container.innerHTML = html;
 }
 
 // Update Top Supplier
@@ -826,6 +877,11 @@ document.addEventListener('DOMContentLoaded', function() {
     chartOmsetProcurement = createPieChart(ctxProcurement, labelsProcurement, valuesProcurement);
 });
 @endif
+
+// Initialize Omset per Klien Chart
+document.addEventListener('DOMContentLoaded', function() {
+    loadOmsetPerKlienChart(currentYearKlien);
+});
 
 // Marketing Modal Functions
 function openMarketingModal() {

@@ -435,6 +435,87 @@ class OmsetController extends Controller
             ]);
         }
         
+        // Handle AJAX request for Omset per Klien (Bar Chart)
+        if ($request->ajax() && $request->get('ajax') === 'omset_per_klien') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $search = $request->get('search', '');
+            
+            // Get top 5 klien berdasarkan total omset tahun ini (with optional search filter)
+            $topKlienQuery = DB::table('invoice_penagihan')
+                ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                ->select('kliens.id as klien_id', 'kliens.nama',
+                    DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                ->whereNull('pengiriman.deleted_at')
+                ->whereNull('kliens.deleted_at');
+            
+            // Apply search filter if provided
+            if (!empty($search)) {
+                $topKlienQuery->where(function($q) use ($search) {
+                    $q->where('kliens.nama', 'like', '%' . $search . '%')
+                      ->orWhere('kliens.cabang', 'like', '%' . $search . '%');
+                });
+            }
+            
+            $topKlien = $topKlienQuery
+                ->groupBy('kliens.id', 'kliens.nama')
+                ->orderBy('total', 'desc')
+                ->limit(5)
+                ->get();
+            
+            $klienNames = [];
+            $datasets = [];
+            
+            // Warna untuk setiap bulan
+            $monthColors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
+                '#06B6D4', '#F97316', '#14B8A6', '#F43F5E', '#8B5CF6', '#6366F1'
+            ];
+            
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            
+            // Prepare datasets per month
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $monthData = [];
+                
+                foreach ($topKlien as $klien) {
+                    // Get omset untuk klien ini di bulan ini
+                    $omsetBulan = DB::table('invoice_penagihan')
+                        ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                        ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+                        ->where('orders.klien_id', $klien->klien_id)
+                        ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                        ->whereYear('pengiriman.tanggal_kirim', $tahun)
+                        ->whereMonth('pengiriman.tanggal_kirim', $bulan)
+                        ->whereNull('pengiriman.deleted_at')
+                        ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    
+                    $monthData[] = floatval($omsetBulan);
+                }
+                
+                $datasets[] = [
+                    'label' => $monthNames[$bulan - 1],
+                    'data' => $monthData,
+                    'backgroundColor' => $monthColors[$bulan - 1],
+                    'borderColor' => $monthColors[$bulan - 1],
+                    'borderWidth' => 1
+                ];
+            }
+            
+            // Get klien names
+            foreach ($topKlien as $klien) {
+                $klienNames[] = $klien->nama;
+            }
+            
+            return response()->json([
+                'klien_names' => $klienNames,
+                'datasets' => $datasets
+            ]);
+        }
+        
         // Handle AJAX request for Top Klien
         if ($request->ajax() && $request->get('ajax') === 'top_klien') {
             // Using amount_after_refraksi from invoice_penagihan

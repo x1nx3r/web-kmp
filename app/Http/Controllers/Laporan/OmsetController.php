@@ -599,6 +599,108 @@ class OmsetController extends Controller
             ]);
         }
         
+        // Handle AJAX request for Omset per Bahan Baku (Bar Chart)
+        if ($request->ajax() && $request->get('ajax') === 'omset_per_bahan_baku') {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $search = $request->get('search', '');
+            
+            // Query total omset per bahan baku - menggunakan subquery untuk menghindari double counting
+            $topBahanBakuQuery = DB::table('bahan_baku_klien')
+                ->select(
+                    'bahan_baku_klien.id as bahan_baku_id',
+                    'bahan_baku_klien.nama',
+                    DB::raw('COALESCE(SUM(DISTINCT invoice_data.amount_after_refraksi), 0) as total')
+                )
+                ->leftJoin(
+                    DB::raw('(
+                        SELECT DISTINCT 
+                            invoice_penagihan.id as invoice_id,
+                            invoice_penagihan.amount_after_refraksi,
+                            order_details.bahan_baku_klien_id
+                        FROM invoice_penagihan
+                        JOIN pengiriman ON invoice_penagihan.pengiriman_id = pengiriman.id
+                        JOIN pengiriman_details ON pengiriman.id = pengiriman_details.pengiriman_id
+                        JOIN order_details ON pengiriman_details.purchase_order_bahan_baku_id = order_details.id
+                        WHERE pengiriman.status IN ("menunggu_verifikasi", "berhasil")
+                            AND YEAR(pengiriman.tanggal_kirim) = ' . $tahun . '
+                            AND pengiriman.deleted_at IS NULL
+                    ) as invoice_data'),
+                    'bahan_baku_klien.id',
+                    '=',
+                    'invoice_data.bahan_baku_klien_id'
+                )
+                ->whereNull('bahan_baku_klien.deleted_at');
+            
+            // Apply search filter if provided
+            if (!empty($search)) {
+                $topBahanBakuQuery->where(function($q) use ($search) {
+                    $q->where('bahan_baku_klien.nama', 'like', '%' . $search . '%')
+                      ->orWhere('bahan_baku_klien.spesifikasi', 'like', '%' . $search . '%');
+                });
+            }
+            
+            $topBahanBaku = $topBahanBakuQuery
+                ->groupBy('bahan_baku_klien.id', 'bahan_baku_klien.nama')
+                ->having('total', '>', 0)
+                ->orderBy('total', 'desc')
+                ->get();
+            
+            $bahanBakuNames = [];
+            $datasets = [];
+            
+            // Warna untuk setiap bulan
+            $monthColors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
+                '#06B6D4', '#F97316', '#14B8A6', '#F43F5E', '#8B5CF6', '#6366F1'
+            ];
+            
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            
+            // Prepare datasets per month
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $monthData = [];
+                
+                foreach ($topBahanBaku as $bahanBaku) {
+                    // Get omset untuk bahan baku ini di bulan ini - menggunakan DISTINCT untuk menghindari double counting
+                    $omsetBulan = DB::table(DB::raw('(
+                        SELECT DISTINCT 
+                            invoice_penagihan.id as invoice_id,
+                            invoice_penagihan.amount_after_refraksi
+                        FROM invoice_penagihan
+                        JOIN pengiriman ON invoice_penagihan.pengiriman_id = pengiriman.id
+                        JOIN pengiriman_details ON pengiriman.id = pengiriman_details.pengiriman_id
+                        JOIN order_details ON pengiriman_details.purchase_order_bahan_baku_id = order_details.id
+                        WHERE order_details.bahan_baku_klien_id = ' . $bahanBaku->bahan_baku_id . '
+                            AND pengiriman.status IN ("menunggu_verifikasi", "berhasil")
+                            AND YEAR(pengiriman.tanggal_kirim) = ' . $tahun . '
+                            AND MONTH(pengiriman.tanggal_kirim) = ' . $bulan . '
+                            AND pengiriman.deleted_at IS NULL
+                    ) as distinct_invoices'))
+                    ->sum('amount_after_refraksi') ?? 0;
+                    
+                    $monthData[] = floatval($omsetBulan);
+                }
+                
+                $datasets[] = [
+                    'label' => $monthNames[$bulan - 1],
+                    'data' => $monthData,
+                    'backgroundColor' => $monthColors[$bulan - 1],
+                    'borderColor' => $monthColors[$bulan - 1],
+                    'borderWidth' => 1
+                ];
+            }
+            
+            // Get bahan baku names
+            foreach ($topBahanBaku as $bahanBaku) {
+                $bahanBakuNames[] = $bahanBaku->nama;
+            }
+            
+            return response()->json([
+                'bahan_baku_names' => $bahanBakuNames,
+                'datasets' => $datasets
+            ]);
+        }
+        
         // Handle AJAX request for Top Klien
         if ($request->ajax() && $request->get('ajax') === 'top_klien') {
             // Using amount_after_refraksi from invoice_penagihan

@@ -261,6 +261,9 @@
 {{-- Include Supplier Chart Section --}}
 @include('pages.laporan.partials.supplier_chart')
 
+{{-- Include Bahan Baku Chart Section --}}
+@include('pages.laporan.partials.bahan_baku_chart')
+
 {{-- Chart.js Script --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>

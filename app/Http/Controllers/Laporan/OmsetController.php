@@ -110,12 +110,42 @@ class OmsetController extends Controller
         $targetBulanan = $targetOmset->target_bulanan ?? 0;
         $targetMingguan = $targetOmset->target_mingguan ?? 0;
         
-        // Calculate Omset Minggu Ini (current week) - GUNAKAN tanggal_kirim dari pengiriman
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
+        // Calculate Omset Minggu Ini (current week) - MENGIKUTI LOGIKA REKAP BULANAN
+        // Tentukan minggu ke berapa sekarang dalam bulan ini (1-4, berdasarkan tanggal 1-7, 8-14, 15-21, 22-akhir)
+        $today = Carbon::now();
+        $dayOfMonth = $today->day;
+        $currentWeekOfMonth = 1;
+        
+        if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
+            $currentWeekOfMonth = 1;
+        } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
+            $currentWeekOfMonth = 2;
+        } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
+            $currentWeekOfMonth = 3;
+        } else {
+            $currentWeekOfMonth = 4;
+        }
+        
+        // Hitung range tanggal untuk minggu ini (sesuai logik rekap bulanan)
+        $startOfMonth = Carbon::now()->startOfMonth();
+        
+        if ($currentWeekOfMonth == 1) {
+            $startOfWeek = $startOfMonth->copy();
+        } else {
+            $startOfWeek = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+        }
+        
+        if ($currentWeekOfMonth == 4) {
+            // Minggu ke-4 sampai akhir bulan
+            $endOfWeek = $startOfMonth->copy()->endOfMonth();
+        } else {
+            $endOfWeek = $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+        }
+        
+        // Hitung omset sistem minggu ini
         $omsetSistemMingguIni = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
-            ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek, $endOfWeek])
+            ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
             ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
         
         // Omset manual untuk minggu ini (dibagi 4 dari omset manual bulan ini)
@@ -143,12 +173,16 @@ class OmsetController extends Controller
                     ->value('omset_manual') ?? 0;
                 
                 $omsetTotalBulanLalu = $omsetSistemBulanLalu + $omsetManualBulanLalu;
+                
+                // Target bulan lalu juga adjusted (dengan carry forward sebelumnya)
                 $targetBulanLalu = $targetBulanan + $sisaTargetSebelumnya;
                 $selisihBulanLalu = $omsetTotalBulanLalu - $targetBulanLalu;
                 
                 if ($selisihBulanLalu < 0) {
+                    // Target tidak tercapai, akumulasi sisa target
                     $sisaTargetSebelumnya = $targetBulanLalu - $omsetTotalBulanLalu;
                 } else {
+                    // Target tercapai, reset sisa ke 0
                     $sisaTargetSebelumnya = 0;
                 }
             }
@@ -164,19 +198,9 @@ class OmsetController extends Controller
         $sisaTargetMingguanSebelumnya = 0;
         
         if ($selectedYearTarget == Carbon::now()->year) {
-            // Hitung minggu ke berapa sekarang dalam bulan ini (1-4)
-            $startOfMonth = Carbon::now()->startOfMonth();
-            $currentWeekOfMonth = 1;
-            $tempDate = $startOfMonth->copy();
-            
-            while ($tempDate->addDays(7)->lte(Carbon::now()->startOfWeek())) {
-                $currentWeekOfMonth++;
-            }
-            $currentWeekOfMonth = min($currentWeekOfMonth, 4); // Max 4 minggu
-            
             // Loop dari minggu 1 sampai minggu sebelum minggu ini
             for ($w = 1; $w < $currentWeekOfMonth; $w++) {
-                // Hitung range tanggal untuk minggu ini
+                // Hitung range tanggal untuk minggu w (sesuai logika rekap bulanan)
                 if ($w == 1) {
                     $weekStart = $startOfMonth->copy();
                 } else {
@@ -189,7 +213,7 @@ class OmsetController extends Controller
                     $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
                 }
                 
-                // Hitung omset sistem untuk minggu ini
+                // Hitung omset sistem untuk minggu w
                 $omsetSistemWeek = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                     ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                     ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
@@ -201,7 +225,7 @@ class OmsetController extends Controller
                 // Total omset minggu
                 $omsetTotalWeek = $omsetSistemWeek + $omsetManualWeek;
                 
-                // Target untuk minggu ini (dengan carry forward)
+                // Target untuk minggu w (dengan carry forward)
                 $targetWeek = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
                 
                 // Selisih
@@ -209,8 +233,10 @@ class OmsetController extends Controller
                 
                 // Update sisa target untuk minggu berikutnya
                 if ($selisihWeek < 0) {
+                    // Target tidak tercapai, akumulasi sisa
                     $sisaTargetMingguanSebelumnya = $targetWeek - $omsetTotalWeek;
                 } else {
+                    // Target tercapai, reset sisa ke 0
                     $sisaTargetMingguanSebelumnya = 0;
                 }
             }

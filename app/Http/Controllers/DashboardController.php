@@ -309,108 +309,6 @@ class DashboardController extends Controller
             ->whereMonth('tanggal_order', Carbon::now()->month)
             ->sum('total_amount');
         
-        // ========== TREND OMSET 4 MINGGU TERAKHIR ==========
-        // Menggunakan logic pembagian bulan menjadi 4 minggu (seperti di OmsetController)
-        $omsetTrend = [];
-        
-        // Loop untuk 4 minggu dalam bulan ini (minggu 1-4)
-        for ($weekNum = 1; $weekNum <= 4; $weekNum++) {
-            // Hitung range tanggal untuk minggu ini berdasarkan pembagian bulan (1-7, 8-14, 15-21, 22-akhir)
-            if ($weekNum == 1) {
-                $weekStart = $startOfMonth->copy();
-            } else {
-                $weekStart = $startOfMonth->copy()->addDays(($weekNum - 1) * 7);
-            }
-            
-            if ($weekNum == 4) {
-                $weekEnd = $startOfMonth->copy()->endOfMonth();
-            } else {
-                $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
-            }
-            
-            // Hitung omset sistem untuk minggu ini
-            $omsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
-                ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
-                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
-            
-            // Get omset manual for this month (dibagi 4)
-            $omsetManualWeek = $omsetManualBulanIni / 4;
-            
-            $omset = $omsetSistem + $omsetManualWeek;
-            
-            // Hitung target adjusted untuk minggu ini (dengan carry forward dari minggu sebelumnya)
-            $sisaTargetMingguanSebelumnya = 0;
-            
-            // Loop dari minggu 1 sampai minggu sebelum minggu ini untuk hitung sisa target
-            for ($w = 1; $w < $weekNum; $w++) {
-                // Range minggu sebelumnya
-                if ($w == 1) {
-                    $prevWeekStart = $startOfMonth->copy();
-                } else {
-                    $prevWeekStart = $startOfMonth->copy()->addDays(($w - 1) * 7);
-                }
-                
-                if ($w == 4) {
-                    $prevWeekEnd = $startOfMonth->copy()->endOfMonth();
-                } else {
-                    $prevWeekEnd = $prevWeekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
-                }
-                
-                // Omset sistem minggu sebelumnya
-                $prevOmsetSistem = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
-                    ->whereBetween('pengiriman.tanggal_kirim', [$prevWeekStart->startOfDay(), $prevWeekEnd->endOfDay()])
-                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
-                
-                $prevOmsetManual = $omsetManualBulanIni / 4;
-                $prevOmsetTotal = $prevOmsetSistem + $prevOmsetManual;
-                
-                // Target minggu sebelumnya (base + sisa sebelumnya)
-                $prevTarget = ($targetBulananAdjusted / 4) + $sisaTargetMingguanSebelumnya;
-                
-                // Hitung selisih
-                $selisih = $prevOmsetTotal - $prevTarget;
-                
-                // Update sisa target
-                if ($selisih < 0) {
-                    $sisaTargetMingguanSebelumnya = $prevTarget - $prevOmsetTotal;
-                } else {
-                    $sisaTargetMingguanSebelumnya = 0;
-                }
-            }
-            
-            // Target adjusted untuk minggu ini
-            $targetWeekAdjusted = ($targetBulananAdjusted / 4) + $sisaTargetMingguanSebelumnya;
-            
-            $omsetTrend[] = [
-                'week' => 'Minggu ' . $weekNum,
-                'label' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M'),
-                'omset' => $omset,
-                'target' => $targetWeekAdjusted,
-                'is_current' => $weekNum == $currentWeekOfMonth
-            ];
-        }
-        
-        // ========== PO BY STATUS ==========
-        $poByStatus = Order::select('status', DB::raw('COUNT(*) as total'))
-            ->groupBy('status')
-            ->get();
-        
-        // ========== TOP 5 KLIEN (by order value this month) ==========
-        $topKlien = Order::select(
-                'kliens.nama as klien_nama',
-                DB::raw('COUNT(orders.id) as total_po'),
-                DB::raw('SUM(orders.total_amount) as total_nilai')
-            )
-            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-            ->whereYear('orders.tanggal_order', Carbon::now()->year)
-            ->whereMonth('orders.tanggal_order', Carbon::now()->month)
-            ->groupBy('kliens.id', 'kliens.nama')
-            ->orderBy('total_nilai', 'desc')
-            ->limit(5)
-            ->get();
-        
         return view('pages.dashboard', compact(
             'targetMingguan',
             'targetBulanan',
@@ -437,10 +335,7 @@ class DashboardController extends Controller
             'pengirimanNormalList',
             'pengirimanBongkarSebagianList',
             'orderBulanIni',
-            'nilaiOrderBulanIni',
-            'omsetTrend',
-            'poByStatus',
-            'topKlien'
+            'nilaiOrderBulanIni'
         ));
     }
 }

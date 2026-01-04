@@ -271,16 +271,22 @@ class OmsetController extends Controller
             // Total omset bulan ini = omset sistem + omset manual
             $omsetBulan = $omsetSistem + $omsetManual;
             
-            // Target bulan ini = Target bulanan asli + Sisa target akumulasi dari bulan-bulan sebelumnya
+            // Target FLAT untuk kolom "Target" dan "Progress" (Target Tahunan / 12)
+            $targetBulananFlat = $targetBulanan;
+            
+            // Progress berdasarkan target FLAT (bukan adjusted)
+            $progressBulanIni = $targetBulananFlat > 0 ? ($omsetBulan / $targetBulananFlat) * 100 : 0;
+            
+            // Target ADJUSTED untuk kolom "Selisih" (dengan carry forward)
             // Januari: 100M + 0 = 100M
             // Februari: 100M + 50M (sisa Jan yang belum tercapai) = 150M
             // Maret: 100M + 150M (total sisa Jan+Feb) = 250M
             $targetBulananAdjusted = $targetBulanan + $sisaTargetAkumulasi;
             
-            // Selisih bulan ini = Realisasi bulan ini - Target bulan ini (adjusted)
+            // Selisih bulan ini = Realisasi bulan ini - Target bulan ini (ADJUSTED dengan carry forward)
             $selisihBulanIni = $omsetBulan - $targetBulananAdjusted;
             
-            // Update akumulasi SISA TARGET untuk bulan berikutnya
+            // Update akumulasi SISA TARGET untuk bulan berikutnya (untuk selisih)
             // Jika target tidak tercapai penuh, sisanya bertambah
             if ($selisihBulanIni < 0) {
                 // Target tidak tercapai, sisa = target adjusted yang belum tercapai
@@ -290,20 +296,17 @@ class OmsetController extends Controller
                 $sisaTargetAkumulasi = 0;
             }
             
-            // Progress berdasarkan target bulan ini (adjusted)
-            $progressBulanIni = $targetBulananAdjusted > 0 ? ($omsetBulan / $targetBulananAdjusted) * 100 : 0;
+            // Target mingguan BASE FLAT (untuk progress mingguan) = target bulanan FLAT / 4
+            $targetMingguanBaseFlat = $targetBulananFlat / 4;
             
-            // Target mingguan BASE = target bulanan adjusted / 4 minggu
-            $targetMingguanBase = $targetBulananAdjusted / 4;
-            
-            // Calculate weekly breakdown for this month - DENGAN CARRY FORWARD MINGGUAN
+            // Calculate weekly breakdown for this month
             // Untuk omset manual, dibagi rata 4 minggu
             $omsetManualPerMinggu = $omsetManual / 4;
             $mingguanDetail = [];
             $startDate = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
             $endDate = $startDate->copy()->endOfMonth();
             
-            // Sisa target akumulasi untuk minggu-minggu dalam bulan ini
+            // Sisa target akumulasi untuk minggu-minggu dalam bulan ini (untuk selisih mingguan)
             $sisaTargetMingguanAkumulasi = 0;
             
             // Bagi bulan menjadi tepat 4 minggu (7 hari per minggu = 28 hari)
@@ -336,14 +339,19 @@ class OmsetController extends Controller
                 // Total omset minggu = omset sistem + (omset manual / 4)
                 $omsetMinggu = $omsetSistemMinggu + $omsetManualPerMinggu;
                 
-                // Target minggu ini = Target mingguan base + Sisa target dari minggu-minggu sebelumnya
+                // Target FLAT untuk progress (Target Bulanan Flat / 4)
+                $targetMingguIniFlat = $targetMingguanBaseFlat;
+                
+                // Progress berdasarkan target FLAT (bukan adjusted)
+                $progressMingguIni = $targetMingguIniFlat > 0 ? ($omsetMinggu / $targetMingguIniFlat) * 100 : 0;
+                
+                // Target ADJUSTED untuk selisih (dengan carry forward)
                 // Minggu 1: 25M + 0 = 25M
                 // Minggu 2: 25M + sisa minggu 1 = 25M + 20M = 45M (jika minggu 1 hanya capai 5M)
                 // Minggu 3: 25M + total sisa minggu 1+2 = 25M + 65M = 90M (jika minggu 2 hanya capai 0M)
-                // dst
-                $targetMingguIniAdjusted = $targetMingguanBase + $sisaTargetMingguanAkumulasi;
+                $targetMingguIniAdjusted = $targetMingguanBaseFlat + $sisaTargetMingguanAkumulasi;
                 
-                // Selisih minggu ini
+                // Selisih minggu ini (menggunakan target ADJUSTED)
                 $selisihMingguIni = $omsetMinggu - $targetMingguIniAdjusted;
                 
                 // Update akumulasi sisa target mingguan untuk minggu berikutnya
@@ -355,13 +363,10 @@ class OmsetController extends Controller
                     $sisaTargetMingguanAkumulasi = 0;
                 }
                 
-                // Progress berdasarkan target minggu ini (adjusted)
-                $progressMingguIni = $targetMingguIniAdjusted > 0 ? ($omsetMinggu / $targetMingguIniAdjusted) * 100 : 0;
-                
                 $mingguanDetail[$minggu] = [
                     'omset' => $omsetMinggu,
-                    'progress' => $progressMingguIni,
-                    'target' => $targetMingguIniAdjusted,
+                    'progress' => $progressMingguIni, // Progress dari target FLAT
+                    'target' => $targetMingguIniFlat, // Target FLAT untuk ditampilkan
                     'tanggal' => $weekStart->format('d M') . ' - ' . $weekEnd->format('d M')
                 ];
             }
@@ -371,9 +376,9 @@ class OmsetController extends Controller
                 'omset_bulan_ini' => $omsetBulan, // Omset bulan ini saja
                 'omset_sistem' => $omsetSistem,
                 'omset_manual' => $omsetManual,
-                'target' => $targetBulananAdjusted, // Target adjusted dengan carry forward
-                'progress' => $progressBulanIni,
-                'selisih' => $selisihBulanIni,
+                'target' => $targetBulananFlat, // Target FLAT (untuk kolom Target dan Progress)
+                'progress' => $progressBulanIni, // Progress dari target FLAT
+                'selisih' => $selisihBulanIni, // Selisih dengan target ADJUSTED (carry forward)
                 'mingguan' => $mingguanDetail
             ];
         }
@@ -517,44 +522,6 @@ class OmsetController extends Controller
             })->values();
             
             return response()->json($data);
-        }
-        
-        // Handle AJAX request for Proyek Per Bulan
-        if ($request->ajax() && $request->get('ajax') === 'proyek_per_bulan') {
-            $tahun = $request->get('tahun', Carbon::now()->year);
-            
-            $proyekPerBulan = [];
-            for ($bulan = 1; $bulan <= 12; $bulan++) {
-                // Count unique orders based on tanggal_order
-                $count = Order::whereYear('tanggal_order', $tahun)
-                    ->whereMonth('tanggal_order', $bulan)
-                    ->count();
-                $proyekPerBulan[] = $count;
-            }
-            
-            return response()->json([
-                'data' => $proyekPerBulan,
-                'tahun' => $tahun
-            ]);
-        }
-        
-        // Handle AJAX request for Nilai Order Per Bulan
-        if ($request->ajax() && $request->get('ajax') === 'nilai_order_per_bulan') {
-            $tahun = $request->get('tahun', Carbon::now()->year);
-            
-            $nilaiOrderPerBulan = [];
-            for ($bulan = 1; $bulan <= 12; $bulan++) {
-                // Sum nilai order based on tanggal_order (use total_amount from orders)
-                $total = Order::whereYear('tanggal_order', $tahun)
-                    ->whereMonth('tanggal_order', $bulan)
-                    ->sum('total_amount');
-                $nilaiOrderPerBulan[] = floatval($total ?? 0);
-            }
-            
-            return response()->json([
-                'data' => $nilaiOrderPerBulan,
-                'tahun' => $tahun
-            ]);
         }
         
         // Handle AJAX request for Marketing
@@ -703,40 +670,6 @@ class OmsetController extends Controller
             return $item['total'] > 0;
         })->values();
         
-        // Get available years from orders
-        $availableYears = Order::selectRaw('YEAR(tanggal_order) as year')
-            ->distinct()
-            ->orderBy('year', 'desc')
-            ->pluck('year')
-            ->toArray();
-        
-        // Default to current year if no data
-        if (empty($availableYears)) {
-            $availableYears = [Carbon::now()->year];
-        }
-        
-        // Get selected year for proyek per bulan (default: current year)
-        $selectedYear = $request->get('tahun_proyek', Carbon::now()->year);
-        $selectedYearNilai = $request->get('tahun_nilai', Carbon::now()->year);
-        
-        // Get proyek per bulan data - based on tanggal_order
-        $proyekPerBulan = [];
-        for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $count = Order::whereYear('tanggal_order', $selectedYear)
-                ->whereMonth('tanggal_order', $bulan)
-                ->count();
-            $proyekPerBulan[] = $count;
-        }
-        
-        // Get nilai order per bulan data - based on tanggal_order
-        $nilaiOrderPerBulan = [];
-        for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $total = Order::whereYear('tanggal_order', $selectedYearNilai)
-                ->whereMonth('tanggal_order', $bulan)
-                ->sum('total_amount');
-            $nilaiOrderPerBulan[] = floatval($total ?? 0);
-        }
-        
         // Get Top Klien data - using amount_after_refraksi
         $topKlienQuery = DB::table('invoice_penagihan')
             ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
@@ -823,11 +756,6 @@ class OmsetController extends Controller
             'periodeProcurement',
             'periodeKlien',
             'periodeSupplier',
-            'availableYears',
-            'selectedYear',
-            'selectedYearNilai',
-            'proyekPerBulan',
-            'nilaiOrderPerBulan',
             'topKlien',
             'topSupplier'
         ));

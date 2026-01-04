@@ -40,7 +40,114 @@
 
     {{-- Progress Cards Grid --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        {{-- Weekly Progress --}}
+        {{-- Weekly Progress - ALWAYS CURRENT WEEK --}}
+        @php
+            $currentYear = (int)date('Y');
+            $currentMonth = (int)date('n');
+            $today = \Carbon\Carbon::now();
+            $dayOfMonth = $today->day;
+            $currentWeekOfMonth = 1;
+            
+            if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
+                $currentWeekOfMonth = 1;
+            } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
+                $currentWeekOfMonth = 2;
+            } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
+                $currentWeekOfMonth = 3;
+            } else {
+                $currentWeekOfMonth = 4;
+            }
+            
+            // Get target for CURRENT year
+            $targetOmsetCurrentWeek = \App\Models\TargetOmset::getTargetForYear($currentYear);
+            $targetBulananCurrentWeek = $targetOmsetCurrentWeek->target_bulanan ?? 0;
+            
+            // Hitung range tanggal untuk minggu ini
+            $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+            
+            if ($currentWeekOfMonth == 1) {
+                $startOfWeek = $startOfMonth->copy();
+            } else {
+                $startOfWeek = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+            }
+            
+            if ($currentWeekOfMonth == 4) {
+                $endOfWeek = $startOfMonth->copy()->endOfMonth();
+            } else {
+                $endOfWeek = $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+            }
+            
+            // Hitung omset sistem minggu ini (ALWAYS CURRENT YEAR)
+            $omsetSistemMingguIniCard = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
+                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+            
+            // Omset manual minggu ini (ALWAYS CURRENT YEAR)
+            $omsetManualBulanIniWeek = \App\Models\OmsetManual::where('tahun', $currentYear)
+                ->where('bulan', $currentMonth)
+                ->value('omset_manual') ?? 0;
+            $omsetManualMingguIniCard = $omsetManualBulanIniWeek / 4;
+            
+            // Total omset minggu ini
+            $omsetMingguIniCard = $omsetSistemMingguIniCard + $omsetManualMingguIniCard;
+            
+            // Calculate adjusted target with carry forward untuk minggu ini
+            $sisaTargetSebelumnyaWeek = 0;
+            for ($b = 1; $b < $currentMonth; $b++) {
+                $omsetSistemBulanLalu = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereYear('pengiriman.tanggal_kirim', $currentYear)
+                    ->whereMonth('pengiriman.tanggal_kirim', $b)
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    
+                $omsetManualBulanLalu = \App\Models\OmsetManual::where('tahun', $currentYear)
+                    ->where('bulan', $b)
+                    ->value('omset_manual') ?? 0;
+                    
+                $omsetBulanLalu = $omsetSistemBulanLalu + $omsetManualBulanLalu;
+                $selisihBulanLalu = $omsetBulanLalu - $targetBulananCurrentWeek;
+                
+                if ($selisihBulanLalu < 0) {
+                    $sisaTargetSebelumnyaWeek += abs($selisihBulanLalu);
+                }
+            }
+            
+            $targetBulananAdjustedWeek = $targetBulananCurrentWeek + $sisaTargetSebelumnyaWeek;
+            $targetMingguanBaseWeek = $targetBulananAdjustedWeek / 4;
+            
+            // Calculate carry forward dari minggu-minggu sebelumnya di bulan ini
+            $sisaTargetMingguanSebelumnya = 0;
+            for ($w = 1; $w < $currentWeekOfMonth; $w++) {
+                if ($w == 1) {
+                    $startWeek = $startOfMonth->copy();
+                } else {
+                    $startWeek = $startOfMonth->copy()->addDays(($w - 1) * 7);
+                }
+                
+                if ($w == 4) {
+                    $endWeek = $startOfMonth->copy()->endOfMonth();
+                } else {
+                    $endWeek = $startWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+                }
+                
+                $omsetSistemWeek = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereBetween('pengiriman.tanggal_kirim', [$startWeek->startOfDay(), $endWeek->endOfDay()])
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    
+                $omsetManualWeek = $omsetManualBulanIniWeek / 4;
+                $omsetWeek = $omsetSistemWeek + $omsetManualWeek;
+                $selisihWeek = $omsetWeek - $targetMingguanBaseWeek;
+                
+                if ($selisihWeek < 0) {
+                    $sisaTargetMingguanSebelumnya += abs($selisihWeek);
+                }
+            }
+            
+            $targetMingguanAdjustedCard = $targetMingguanBaseWeek + $sisaTargetMingguanSebelumnya;
+            $progressMingguCard = $targetMingguanAdjustedCard > 0 ? ($omsetMingguIniCard / $targetMingguanAdjustedCard) * 100 : 0;
+        @endphp
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <div>
@@ -48,7 +155,7 @@
                         Minggu Ini
                         <span class="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Week {{ date('W') }}</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetMingguanAdjusted ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetMingguanAdjustedCard, 0, ',', '.') }}</p>
                 </div>
                 <div class="w-16 h-16">
                     <canvas id="chartProgressMinggu"></canvas>
@@ -57,28 +164,60 @@
             <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Pencapaian:</span>
-                    <span class="font-bold text-green-600">Rp {{ number_format($omsetMingguIni ?? 0, 0, ',', '.') }}</span>
+                    <span class="font-bold text-green-600">Rp {{ number_format($omsetMingguIniCard, 0, ',', '.') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Progress:</span>
-                    <span class="font-bold {{ ($progressMinggu ?? 0) >= 100 ? 'text-green-600' : (($progressMinggu ?? 0) >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
-                        {{ number_format($progressMinggu ?? 0, 1) }}%
+                    <span class="font-bold {{ $progressMingguCard >= 100 ? 'text-green-600' : ($progressMingguCard >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
+                        {{ number_format($progressMingguCard, 1) }}%
                     </span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
                     <div class="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500" 
-                         style="width: {{ min(100, $progressMinggu ?? 0) }}%"></div>
+                         style="width: {{ min(100, $progressMingguCard) }}%"></div>
                 </div>
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, ($targetMingguanAdjusted ?? 0) - ($omsetMingguIni ?? 0)), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, $targetMingguanAdjustedCard - $omsetMingguIniCard), 0, ',', '.') }}
                     </span>
                 </div>
             </div>
         </div>
 
-        {{-- Monthly Progress --}}
+        {{-- Monthly Progress - ALWAYS CURRENT MONTH --}}
+        @php
+            $currentMonth = (int)date('n');
+            $currentYear = (int)date('Y');
+            
+            // Get target for CURRENT year only (not affected by selected year)
+            $targetOmsetCurrent = \App\Models\TargetOmset::getTargetForYear($currentYear);
+            $targetBulananCurrent = $targetOmsetCurrent->target_bulanan ?? 0;
+            
+            // Calculate adjusted target with carry forward for current month
+            $sisaTargetSebelumnyaCurrent = 0;
+            for ($b = 1; $b < $currentMonth; $b++) {
+                $omsetSistemBulanSebelum = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereYear('pengiriman.tanggal_kirim', $currentYear)
+                    ->whereMonth('pengiriman.tanggal_kirim', $b)
+                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    
+                $omsetManualBulanSebelum = \App\Models\OmsetManual::where('tahun', $currentYear)
+                    ->where('bulan', $b)
+                    ->value('omset_manual') ?? 0;
+                    
+                $omsetBulanSebelum = $omsetSistemBulanSebelum + $omsetManualBulanSebelum;
+                $selisihBulanSebelum = $omsetBulanSebelum - $targetBulananCurrent;
+                
+                if ($selisihBulanSebelum < 0) {
+                    $sisaTargetSebelumnyaCurrent += abs($selisihBulanSebelum);
+                }
+            }
+            
+            $targetBulanIniAdjusted = $targetBulananCurrent + $sisaTargetSebelumnyaCurrent;
+            $progressBulanCard = $targetBulanIniAdjusted > 0 ? ($omsetBulanIniSummary / $targetBulanIniAdjusted) * 100 : 0;
+        @endphp
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <div>
@@ -86,7 +225,7 @@
                         Bulan Ini
                         <span class="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">{{ date('M') }}</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetBulananAdjusted ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetBulanIniAdjusted, 0, ',', '.') }}</p>
                 </div>
                 <div class="w-16 h-16">
                     <canvas id="chartProgressBulan"></canvas>
@@ -95,36 +234,40 @@
             <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Pencapaian:</span>
-                    <span class="font-bold text-green-600">Rp {{ number_format($omsetBulanIni ?? 0, 0, ',', '.') }}</span>
+                    <span class="font-bold text-green-600">Rp {{ number_format($omsetBulanIniSummary, 0, ',', '.') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Progress:</span>
-                    <span class="font-bold {{ ($progressBulan ?? 0) >= 100 ? 'text-green-600' : (($progressBulan ?? 0) >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
-                        {{ number_format($progressBulan ?? 0, 1) }}%
+                    <span class="font-bold {{ $progressBulanCard >= 100 ? 'text-green-600' : ($progressBulanCard >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
+                        {{ number_format($progressBulanCard, 1) }}%
                     </span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
                     <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500" 
-                         style="width: {{ min(100, $progressBulan ?? 0) }}%"></div>
+                         style="width: {{ min(100, $progressBulanCard) }}%"></div>
                 </div>
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, ($targetBulananAdjusted ?? 0) - ($omsetBulanIni ?? 0)), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, $targetBulanIniAdjusted - $omsetBulanIniSummary), 0, ',', '.') }}
                     </span>
                 </div>
             </div>
         </div>
 
-        {{-- Yearly Progress --}}
+        {{-- Yearly Progress - ALWAYS CURRENT YEAR --}}
+        @php
+            $targetTahunanCurrent = $targetOmsetCurrent->target_tahunan ?? 0;
+            $progressTahunCard = $targetTahunanCurrent > 0 ? ($omsetTahunIniSummary / $targetTahunanCurrent) * 100 : 0;
+        @endphp
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h4 class="text-lg font-semibold text-gray-900 flex items-center">
                         Tahun Ini
-                        <span id="yearBadge" class="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{{ $selectedYearTarget }}</span>
+                        <span class="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{{ $currentYear }}</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1">Target: Rp <span id="targetTahunanDisplay">{{ number_format($targetTahunan ?? 0, 0, ',', '.') }}</span></p>
+                    <p class="text-xs text-gray-500 mt-1">Target: Rp {{ number_format($targetTahunanCurrent, 0, ',', '.') }}</p>
                 </div>
                 <div class="w-16 h-16">
                     <canvas id="chartProgressTahun"></canvas>
@@ -133,22 +276,22 @@
             <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Pencapaian:</span>
-                    <span class="font-bold text-green-600">Rp {{ number_format($omsetTahunIni ?? 0, 0, ',', '.') }}</span>
+                    <span class="font-bold text-green-600">Rp {{ number_format($omsetTahunIniSummary, 0, ',', '.') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Progress:</span>
-                    <span class="font-bold {{ ($progressTahun ?? 0) >= 100 ? 'text-green-600' : (($progressTahun ?? 0) >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
-                        {{ number_format($progressTahun ?? 0, 1) }}%
+                    <span class="font-bold {{ $progressTahunCard >= 100 ? 'text-green-600' : ($progressTahunCard >= 75 ? 'text-blue-600' : 'text-orange-600') }}">
+                        {{ number_format($progressTahunCard, 1) }}%
                     </span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
                     <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-500" 
-                         style="width: {{ min(100, $progressTahun ?? 0) }}%"></div>
+                         style="width: {{ min(100, $progressTahunCard) }}%"></div>
                 </div>
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, ($targetTahunan ?? 0) - ($omsetTahunIni ?? 0)), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, $targetTahunanCurrent - $omsetTahunIniSummary), 0, ',', '.') }}
                     </span>
                 </div>
             </div>
@@ -174,10 +317,16 @@
                 <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bulan</th>
-                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Target</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            <div>Target</div>
+                        </th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Realisasi</th>
-                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Progress</th>
-                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Selisih</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            <div>Progress</div>
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            <div>Selisih</div>
+                        </th>
                         <th class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
                         @if(auth()->user()->role === 'direktur')
                         <th class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Aksi</th>
@@ -189,6 +338,7 @@
                         $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                         $rekapBulanan = $rekapBulanan ?? [];
                         $currentMonth = (int)date('n');
+                        $currentYear = (int)date('Y');
                     @endphp
                     @foreach($months as $index => $month)
                         @php
@@ -245,9 +395,15 @@
                                 <span class="font-bold {{ $statusClass }}">{{ number_format($progress, 1) }}%</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                                <span class="font-semibold {{ $selisih >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $selisih >= 0 ? '+' : '' }}Rp {{ number_format(abs($selisih), 0, ',', '.') }}
-                                </span>
+                                @if($selectedYearTarget < $currentYear || ($selectedYearTarget == $currentYear && $bulanNum <= $currentMonth))
+                                    {{-- Tampilkan selisih untuk: 1) Tahun yang sudah lewat (semua bulan), 2) Tahun sekarang (bulan yang sudah lewat dan bulan current) --}}
+                                    <span class="font-semibold {{ $selisih >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ $selisih >= 0 ? '+' : '' }}Rp {{ number_format(abs($selisih), 0, ',', '.') }}
+                                    </span>
+                                @else
+                                    {{-- Bulan yang belum terjadi tidak tampilkan selisih --}}
+                                    <span class="text-xs text-gray-400">-</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if($progress >= 100)
@@ -819,7 +975,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 datasets: [{
-                    data: [{{ $progressMinggu ?? 0 }}, {{ 100 - ($progressMinggu ?? 0) }}],
+                    data: [{{ $progressMingguCard ?? 0 }}, {{ 100 - ($progressMingguCard ?? 0) }}],
                     backgroundColor: ['#3B82F6', '#E5E7EB'],
                     borderWidth: 0
                 }]
@@ -840,7 +996,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 datasets: [{
-                    data: [{{ $progressBulan ?? 0 }}, {{ 100 - ($progressBulan ?? 0) }}],
+                    data: [{{ $progressBulanCard ?? 0 }}, {{ 100 - ($progressBulanCard ?? 0) }}],
                     backgroundColor: ['#8B5CF6', '#E5E7EB'],
                     borderWidth: 0
                 }]
@@ -861,7 +1017,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 datasets: [{
-                    data: [{{ $progressTahun ?? 0 }}, {{ 100 - ($progressTahun ?? 0) }}],
+                    data: [{{ $progressTahunCard ?? 0 }}, {{ 100 - ($progressTahunCard ?? 0) }}],
                     backgroundColor: ['#6366F1', '#E5E7EB'],
                     borderWidth: 0
                 }]

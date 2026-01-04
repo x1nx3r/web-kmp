@@ -480,18 +480,16 @@ class OmsetController extends Controller
         
         // Handle AJAX request for Top Supplier
         if ($request->ajax() && $request->get('ajax') === 'top_supplier') {
-            // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
-            $topSupplierQuery = DB::table('pengiriman')
+            // Using HARGA JUAL from invoice_penagihan (same as other omset calculations)
+            $topSupplierQuery = DB::table('invoice_penagihan')
+                ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                 ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
                 ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
                 ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                    DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
+                    DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
                 ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereNull('pengiriman.deleted_at')
-                ->whereNull('pengiriman_details.deleted_at')
-                ->whereNull('bahan_baku_supplier.deleted_at')
                 ->whereNull('suppliers.deleted_at')
                 ->groupBy('suppliers.id', 'suppliers.nama', 'suppliers.alamat');
             
@@ -699,18 +697,16 @@ class OmsetController extends Controller
             ->get();
         
         // Get Top Supplier data (NON-AJAX)
-        // Using amount_after_refraksi from approval_pembayaran, fallback to total_harga from pengiriman_details
-        $topSupplierQuery = DB::table('pengiriman')
+        // Using HARGA JUAL from invoice_penagihan (same as other omset calculations)
+        $topSupplierQuery = DB::table('invoice_penagihan')
+            ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
             ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-            ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
             ->select('suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 
-                DB::raw('SUM(COALESCE(approval_pembayaran.amount_after_refraksi, pengiriman_details.total_harga)) as total'))
+                DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
             ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
             ->whereNull('pengiriman.deleted_at')
-            ->whereNull('pengiriman_details.deleted_at')
-            ->whereNull('bahan_baku_supplier.deleted_at')
             ->whereNull('suppliers.deleted_at')
             ->groupBy('suppliers.id', 'suppliers.nama', 'suppliers.alamat');
         

@@ -257,7 +257,7 @@
                 <div class="value">{{ $summary['bongkar'] }}</div>
             </td>
             <td class="summary-card gagal">
-                <div class="label">Batal/Gagal</div>
+                <div class="label">Ditolak</div>
                 <div class="value">{{ $summary['gagal'] }}</div>
             </td>
             <td class="summary-card total">

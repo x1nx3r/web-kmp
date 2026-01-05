@@ -261,8 +261,8 @@ class PengirimanController extends Controller
             ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
             ->first();
         
-        // Untuk tonase & harga: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
-        $tonaseHargaData = Pengiriman::whereBetween($dateField, [$weekStart, $weekEnd])
+        // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
+        $tonaseData = Pengiriman::whereBetween($dateField, [$weekStart, $weekEnd])
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
@@ -272,21 +272,13 @@ class PengirimanController extends Controller
                         THEN invoice_penagihan.qty_after_refraksi 
                         ELSE pengiriman.total_qty_kirim 
                     END
-                ), 0) as total_tonase,
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.amount_after_refraksi 
-                        ELSE pengiriman.total_harga_kirim 
-                    END
-                ), 0) as total_harga
+                ), 0) as total_tonase
             ')
             ->first();
             
         return [
             'total_pengiriman' => $countData->total_pengiriman ?? 0,
-            'total_tonase' => $tonaseHargaData->total_tonase ?? 0,
-            'total_harga' => $tonaseHargaData->total_harga ?? 0,
+            'total_tonase' => $tonaseData->total_tonase ?? 0,
             'week_start' => $weekStart->format('d M'),
             'week_end' => $weekEnd->format('d M Y')
         ];
@@ -306,8 +298,8 @@ class PengirimanController extends Controller
             ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
             ->first();
         
-        // Untuk tonase & harga: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
-        $tonaseHargaData = Pengiriman::whereYear($dateField, $year)
+        // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
+        $tonaseData = Pengiriman::whereYear($dateField, $year)
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
@@ -317,21 +309,13 @@ class PengirimanController extends Controller
                         THEN invoice_penagihan.qty_after_refraksi 
                         ELSE pengiriman.total_qty_kirim 
                     END
-                ), 0) as total_tonase,
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.amount_after_refraksi 
-                        ELSE pengiriman.total_harga_kirim 
-                    END
-                ), 0) as total_harga
+                ), 0) as total_tonase
             ')
             ->first();
             
         return [
             'total_pengiriman' => $countData->total_pengiriman ?? 0,
-            'total_tonase' => $tonaseHargaData->total_tonase ?? 0,
-            'total_harga' => $tonaseHargaData->total_harga ?? 0,
+            'total_tonase' => $tonaseData->total_tonase ?? 0,
             'year' => $year
         ];
     }
@@ -343,8 +327,8 @@ class PengirimanController extends Controller
             ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
             ->first();
         
-        // Untuk tonase & harga: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
-        $tonaseHargaData = Pengiriman::whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
+        $tonaseData = Pengiriman::whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
                 COALESCE(SUM(
@@ -353,52 +337,16 @@ class PengirimanController extends Controller
                         THEN invoice_penagihan.qty_after_refraksi 
                         ELSE pengiriman.total_qty_kirim 
                     END
-                ), 0) as total_tonase,
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.amount_after_refraksi 
-                        ELSE pengiriman.total_harga_kirim 
-                    END
-                ), 0) as total_harga
+                ), 0) as total_tonase
             ')
             ->first();
             
         return [
             'total_pengiriman' => $countData->total_pengiriman ?? 0,
-            'total_tonase' => $tonaseHargaData->total_tonase ?? 0,
-            'total_harga' => $tonaseHargaData->total_harga ?? 0
+            'total_tonase' => $tonaseData->total_tonase ?? 0
         ];
     }
     
-    private function getYearlyHargaStats($year)
-    {
-        $dateField = 'pengiriman.tanggal_kirim';
-        $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
-        if (!$testQuery) {
-            $dateField = 'pengiriman.created_at';
-        }
-        
-        // Untuk harga: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal)
-        $yearlyData = Pengiriman::whereYear($dateField, $year)
-            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->selectRaw('
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.amount_after_refraksi 
-                        ELSE pengiriman.total_harga_kirim 
-                    END
-                ), 0) as total_harga_tahun
-            ')
-            ->first();
-            
-        return [
-            'total_harga_tahun' => $yearlyData->total_harga_tahun ?? 0,
-            'year' => $year
-        ];
-    }
     
     private function getYearlyChartData($year)
     {
@@ -570,7 +518,7 @@ class PengirimanController extends Controller
                 
                 if ($pengiriman->status === 'gagal') {
                     $kategori = 'gagal';
-                    $statusLabel = 'Batal';
+                    $statusLabel = 'Ditolak';
                 } else if (in_array($pengiriman->status, ['berhasil', 'menunggu_fisik', 'menunggu_verifikasi'])) {
                     if ($pengiriman->total_qty_forecast) {
                         $totalQtyForecast = (float) $pengiriman->total_qty_forecast;
@@ -697,7 +645,7 @@ class PengirimanController extends Controller
                 
                 if ($pengiriman->status === 'gagal') {
                     $kategori = 'gagal';
-                    $statusLabel = 'Batal';
+                    $statusLabel = 'Ditolak';
                     $gagalCount++;
                 } else if (in_array($pengiriman->status, ['berhasil', 'menunggu_fisik', 'menunggu_verifikasi'])) {
                     if ($pengiriman->total_qty_forecast) {

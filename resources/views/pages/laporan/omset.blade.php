@@ -329,10 +329,10 @@ function updateOmsetPerKlienChart(data) {
     }
 }
 
-// Create Grouped Bar Chart for Omset per Klien
+// Create Line Chart for Omset per Klien
 function createGroupedBarChart(ctx, labels, datasets) {
     return new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: labels,
             datasets: datasets
@@ -352,7 +352,9 @@ function createGroupedBarChart(ctx, labels, datasets) {
                         padding: 15,
                         font: {
                             size: 11
-                        }
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
                 },
                 tooltip: {
@@ -374,7 +376,8 @@ function createGroupedBarChart(ctx, labels, datasets) {
             scales: {
                 x: {
                     grid: {
-                        display: false
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
                         font: {
@@ -394,6 +397,18 @@ function createGroupedBarChart(ctx, labels, datasets) {
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)'
                     }
+                }
+            },
+            elements: {
+                line: {
+                    tension: 0.4,
+                    borderWidth: 2
+                },
+                point: {
+                    radius: 4,
+                    hitRadius: 10,
+                    hoverRadius: 6,
+                    hoverBorderWidth: 2
                 }
             }
         },

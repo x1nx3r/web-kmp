@@ -1,13 +1,13 @@
-{{-- Omset per Bahan Baku (Bar Chart) Section --}}
+{{-- Omset per Bahan Baku (Line Chart) Section --}}
 <div class="mb-6">
     {{-- Card: Omset per Bahan Baku --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 gap-4">
             <div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 flex items-center flex-wrap">
-                    <i class="fas fa-chart-bar text-purple-500 mr-2"></i>
-                    <span class="mr-2">Omset Bahan Baku Klien</span>
-                    <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full" 
+                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-chart-line text-purple-500 mr-2"></i>
+                    Omset Bahan Baku Klien
+                    <span class="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full" 
                           title="Omset Sistem (transaksi terverifikasi) per bulan">
                         <i class="fas fa-info-circle mr-1"></i>Per Bulan
                     </span>
@@ -139,10 +139,10 @@ function updateOmsetPerBahanBakuChart(data) {
     }
 }
 
-// Create Grouped Bar Chart for Omset per Bahan Baku
+// Create Line Chart for Omset per Bahan Baku
 function createGroupedBarChartBahanBaku(ctx, labels, datasets) {
     return new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: labels,
             datasets: datasets
@@ -162,7 +162,9 @@ function createGroupedBarChartBahanBaku(ctx, labels, datasets) {
                         padding: 15,
                         font: {
                             size: 11
-                        }
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
                 },
                 tooltip: {
@@ -184,7 +186,8 @@ function createGroupedBarChartBahanBaku(ctx, labels, datasets) {
             scales: {
                 x: {
                     grid: {
-                        display: false
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
                         font: {
@@ -204,6 +207,18 @@ function createGroupedBarChartBahanBaku(ctx, labels, datasets) {
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)'
                     }
+                }
+            },
+            elements: {
+                line: {
+                    tension: 0.4,
+                    borderWidth: 2
+                },
+                point: {
+                    radius: 4,
+                    hitRadius: 10,
+                    hoverRadius: 6,
+                    hoverBorderWidth: 2
                 }
             }
         },

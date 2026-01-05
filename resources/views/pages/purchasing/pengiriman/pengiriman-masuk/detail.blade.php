@@ -195,31 +195,96 @@
                                readonly>
                         <input type="hidden" name="total_harga_kirim" id="total_harga_kirim">
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Bukti Foto Bongkar (JPG/PNG/PDF - Max 10MB)</label>
-                        <input type="file" 
-                               name="bukti_foto_bongkar" 
-                               id="bukti_foto_bongkar"
-                               accept="image/*,application/pdf"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
-                               {{ !$canEdit ? 'disabled' : '' }}>
-                        @if($pengiriman->bukti_foto_bongkar)
-                            <div class="mt-2 space-y-1">
-                                <a href="{{ asset('storage/pengiriman/bukti/' . $pengiriman->bukti_foto_bongkar) }}" 
-                                   target="_blank"
-                                   class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
-                                    <i class="fas fa-eye mr-1"></i>
-                                    Lihat foto saat ini
-                                </a>
-                                @if($pengiriman->bukti_foto_bongkar_uploaded_at)
-                                    <p class="text-xs text-gray-500">
-                                        <i class="fas fa-clock mr-1"></i>
-                                        {{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }}
-                                        <span class="text-gray-400">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d/m/Y H:i') }})</span>
-                                    </p>
-                                @endif
+                </div>
+                
+                {{-- Bukti Foto Bongkar - Full Width Section with Better Layout --}}
+                <div class="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div class="mb-3">
+                        <label class="block text-sm font-semibold text-orange-800 mb-1 flex items-center">
+                            <i class="fas fa-camera mr-2"></i>
+                            Bukti Foto Bongkar
+                        </label>
+                        <p class="text-xs text-orange-600">Upload foto bukti bongkar barang (JPG/PNG/PDF - Max 10MB per file)</p>
+                    </div>
+                    
+                    {{-- Container for multiple file inputs --}}
+                    <div id="bukti-foto-container" class="space-y-2 mb-3">
+                        {{-- First file input --}}
+                        <div class="bukti-foto-item flex items-center space-x-2">
+                            <input type="file" 
+                                   name="bukti_foto_bongkar[]" 
+                                   class="bukti-foto-input flex-1 px-3 py-2 text-sm border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                                   accept="image/*,application/pdf"
+                                   {{ !$canEdit ? 'disabled' : '' }}>
+                            <button type="button" 
+                                    onclick="removeBuktiFotoInput(this)"
+                                    class="hidden px-3 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors flex-shrink-0 {{ !$canEdit ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                    {{ !$canEdit ? 'disabled' : '' }}>
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {{-- Add more button --}}
+                    @if($canEdit)
+                    <div class="mb-3">
+                        <button type="button" 
+                                onclick="addBuktiFotoInput()"
+                                class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2 shadow-sm">
+                            <i class="fas fa-plus"></i>
+                            <span>Tambah File Lagi</span>
+                        </button>
+                    </div>
+                    @endif
+                    
+                    {{-- Display existing photos --}}
+                    @php
+                        $existingPhotos = $pengiriman->bukti_foto_bongkar_array ?? [];
+                    @endphp
+                    @if(!empty($existingPhotos))
+                        <div class="mt-4 p-3 bg-white border border-orange-200 rounded-lg">
+                            <p class="text-sm font-semibold text-orange-700 mb-3 flex items-center">
+                                <i class="fas fa-images mr-2"></i>
+                                Foto yang Sudah Diupload ({{ count($existingPhotos) }} file)
+                            </p>
+                            <div class="space-y-2">
+                                @foreach($existingPhotos as $index => $photo)
+                                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                                        <a href="{{ asset('storage/pengiriman/bukti/' . $photo) }}" 
+                                           target="_blank"
+                                           class="text-sm text-blue-600 hover:text-blue-800 flex items-center flex-1 min-w-0">
+                                            <i class="fas fa-file-image mr-2 text-lg flex-shrink-0"></i>
+                                            <span class="truncate font-medium">{{ $photo }}</span>
+                                        </a>
+                                        @if($canEdit)
+                                        <button type="button"
+                                                onclick="deleteExistingPhoto('{{ $pengiriman->id }}', '{{ $photo }}', this)"
+                                                class="ml-3 px-3 py-1.5 bg-red-100 text-red-600 text-sm rounded-lg hover:bg-red-200 transition-colors flex items-center space-x-1 flex-shrink-0"
+                                                title="Hapus foto ini">
+                                            <i class="fas fa-trash-alt"></i>
+                                            <span class="hidden sm:inline">Hapus</span>
+                                        </button>
+                                        @endif
+                                    </div>
+                                @endforeach
                             </div>
-                        @endif
+                            @if($pengiriman->bukti_foto_bongkar_uploaded_at)
+                                <div class="mt-3 pt-3 border-t border-orange-200">
+                                    <p class="text-xs text-orange-600 flex items-center">
+                                        <i class="fas fa-clock mr-2"></i>
+                                        Upload terakhir: <span class="font-semibold ml-1">{{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }}</span>
+                                        <span class="text-orange-400 ml-1">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d/m/Y H:i') }})</span>
+                                    </p>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                    
+                    <div class="mt-3 p-2 bg-orange-100 rounded-lg">
+                        <p class="text-xs text-orange-700 flex items-start">
+                            <i class="fas fa-info-circle mr-2 mt-0.5 flex-shrink-0"></i>
+                            <span>Anda dapat mengupload beberapa file sekaligus. Klik tombol <strong>"Tambah File Lagi"</strong> untuk menambah form upload baru.</span>
+                        </p>
                     </div>
                 </div>
                 

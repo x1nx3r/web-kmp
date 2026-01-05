@@ -555,6 +555,12 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "batalPengiriman",
         ])->name("purchasing.pengiriman.batal");
+        
+        // Delete individual bukti foto
+        Route::post("pengiriman/{pengiriman}/delete-bukti-foto", [
+            PengirimanController::class,
+            "deleteBuktiFoto",
+        ])->name("purchasing.pengiriman.delete-bukti-foto");
 
         Route::resource("pengiriman", PengirimanController::class)->names([
             "index" => "purchasing.pengiriman.index",

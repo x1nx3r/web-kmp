@@ -233,7 +233,7 @@
                 <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
                     <i class="fas fa-times-circle text-red-500 text-xl"></i>
                 </div>
-                <h3 class="text-sm text-gray-500">Pengiriman Gagal</h3>
+                <h3 class="text-sm text-gray-500">Pengiriman Ditolak</h3>
             </div>
             <p class="text-2xl font-bold text-red-600 mb-1">{{ count($pengirimanGagalList) }}</p>
             <p class="text-sm text-gray-500">Minggu Ini</p>
@@ -418,7 +418,7 @@ function showPengirimanModal(type) {
             headerExtra.textContent = 'Persentase';
             break;
         case 'gagal':
-            title = 'Pengiriman Gagal';
+            title = 'Pengiriman Ditolak';
             data = pengirimanData.gagal;
             headerExtra.textContent = 'Keterangan';
             break;

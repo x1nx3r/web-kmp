@@ -91,51 +91,6 @@
     </div>
 </div>
 
-<!-- Revenue Statistics Cards - Baris 3 (3 cards) -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
-    <!-- Harga Jual Minggu Ini -->
-    <div class="bg-white rounded-xl shadow-lg border border-emerald-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
-        <div class="flex items-center">
-            <div class="p-2 sm:p-3 rounded-xl bg-emerald-500 text-white shadow-lg">
-                <i class="fas fa-money-bill-wave text-lg sm:text-2xl"></i>
-            </div>
-            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-emerald-700 truncate">Harga Jual Minggu Ini</p>
-                <p class="text-xl sm:text-2xl font-bold text-emerald-900">Rp {{ number_format($weeklyStats['total_harga'], 0, ',', '.') }}</p>
-                <p class="text-xs text-emerald-600 truncate">{{ $weeklyStats['week_start'] }} - {{ $weeklyStats['week_end'] }}</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Harga Jual Tahun Ini -->
-    <div class="bg-white rounded-xl shadow-lg border border-teal-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
-        <div class="flex items-center">
-            <div class="p-2 sm:p-3 rounded-xl bg-teal-500 text-white shadow-lg">
-                <i class="fas fa-chart-line text-lg sm:text-2xl"></i>
-            </div>
-            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-teal-700 truncate">Harga Jual Tahun Ini</p>
-                <p class="text-xl sm:text-2xl font-bold text-teal-900">Rp {{ number_format($yearlyStats['total_harga'], 0, ',', '.') }}</p>
-                <p class="text-xs text-teal-600">Tahun {{ $yearlyStats['year'] }}</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Harga Jual Total -->
-    <div class="bg-white rounded-xl shadow-lg border border-pink-200 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform">
-        <div class="flex items-center">
-            <div class="p-2 sm:p-3 rounded-xl bg-pink-500 text-white shadow-lg">
-                <i class="fas fa-dollar-sign text-lg sm:text-2xl"></i>
-            </div>
-            <div class="ml-3 sm:ml-4 flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-pink-700 truncate">Harga Jual Total</p>
-                <p class="text-xl sm:text-2xl font-bold text-pink-900">Rp {{ number_format($totalStats['total_harga'], 0, ',', '.') }}</p>
-                <p class="text-xs text-pink-600">Keseluruhan</p>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Combined Chart Section -->
 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-6">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-4 space-y-4 lg:space-y-0">
@@ -187,7 +142,7 @@
             </div>
             <div>
                 <h3 class="text-lg font-semibold text-gray-900">Distribusi Status Pengiriman</h3>
-                <p class="text-xs sm:text-sm text-gray-600">Normal (>70%), Bongkar Sebagian (≤70%), dan Batal</p>
+                <p class="text-xs sm:text-sm text-gray-600">Normal (>70%), Bongkar Sebagian (≤70%), dan Ditolak</p>
             </div>
         </div>
         <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -263,7 +218,7 @@
                     <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                         <div class="flex items-center space-x-3">
                             <div class="w-4 h-4 rounded-full" style="background-color: #EF4444;"></div>
-                            <span class="text-sm font-medium text-gray-700">Pengiriman Batal</span>
+                            <span class="text-sm font-medium text-gray-700">Pengiriman Ditolak</span>
                         </div>
                         <div class="text-right">
                             <div class="text-lg font-bold text-red-600">{{ $pieChartData['gagal'] }}</div>
@@ -353,7 +308,7 @@
                     <div class="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-lg p-4">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-medium text-red-700">Batal/Gagal</p>
+                                <p class="text-xs font-medium text-red-700">Ditolak</p>
                                 <p id="modalGagalCount" class="text-2xl font-bold text-red-900">0</p>
                             </div>
                             <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
@@ -890,7 +845,7 @@ function initStatusPieChart() {
     statusPieChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: ['Pengiriman Normal', 'Bongkar Sebagian', 'Pengiriman Batal'],
+            labels: ['Pengiriman Normal', 'Bongkar Sebagian', 'Pengiriman Ditolak'],
             datasets: [{
                 data: [pieChartData.normal, pieChartData.bongkar, pieChartData.gagal],
                 backgroundColor: [

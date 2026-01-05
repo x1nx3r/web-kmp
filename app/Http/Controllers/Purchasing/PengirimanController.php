@@ -855,8 +855,9 @@ class PengirimanController extends Controller
                     "hari_kirim" => "required|string",
                     "total_qty_kirim" => "required|numeric|min:0",
                     "total_harga_kirim" => "required|numeric|min:0",
-                    "bukti_foto_bongkar" =>
-                        "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240",
+                    "bukti_foto_bongkar" => "nullable|array",
+                    "bukti_foto_bongkar.*" =>
+                        "file|mimes:jpeg,png,jpg,pdf|max:10240",
                     "foto_tanda_terima" =>
                         "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240",
                     "catatan" => "nullable|string",
@@ -876,6 +877,8 @@ class PengirimanController extends Controller
                     "total_qty_kirim.required" => "Total qty kirim harus diisi",
                     "total_harga_kirim.required" =>
                         "Total harga kirim harus diisi",
+                    "bukti_foto_bongkar.*.mimes" => "Format file harus jpeg, png, jpg, atau pdf",
+                    "bukti_foto_bongkar.*.max" => "Ukuran file maksimal 10MB",
                     "details.required" => "Detail barang harus diisi",
                     "details.min" => "Minimal satu detail barang harus diisi",
                     "details.*.bahan_baku_supplier_id.required" =>
@@ -901,41 +904,54 @@ class PengirimanController extends Controller
                 $noPengiriman = $pengiriman->no_pengiriman;
             }
 
-            // Handle bukti foto bongkar upload with old file deletion
-            $buktiFileName = $pengiriman->bukti_foto_bongkar;
+            // Handle multiple bukti foto bongkar uploads
+            $existingPhotos = $pengiriman->bukti_foto_bongkar_array ?? [];
+            $buktiFileNames = $existingPhotos; // Start with existing photos
             $buktiFotoUploadedAt = $pengiriman->bukti_foto_bongkar_uploaded_at;
 
             if ($request->hasFile("bukti_foto_bongkar")) {
-                // Delete old photo if exists
-                if (
-                    $pengiriman->bukti_foto_bongkar &&
-                    Storage::disk("public")->exists(
-                        "pengiriman/bukti/" . $pengiriman->bukti_foto_bongkar,
-                    )
-                ) {
-                    Storage::disk("public")->delete(
-                        "pengiriman/bukti/" . $pengiriman->bukti_foto_bongkar,
-                    );
+                $uploadedFiles = $request->file("bukti_foto_bongkar");
+                
+                // Handle both single file and array of files
+                if (!is_array($uploadedFiles)) {
+                    $uploadedFiles = [$uploadedFiles];
                 }
 
-                // Upload new file
-                $file = $request->file("bukti_foto_bongkar");
-                if ($file && $file->isValid()) {
-                    $buktiFileName =
-                        "bukti_" .
-                        $pengiriman->id .
-                        "_" .
-                        time() .
-                        "." .
-                        $file->getClientOriginalExtension();
-                    $file->storeAs(
-                        "pengiriman/bukti",
-                        $buktiFileName,
-                        "public",
-                    );
-                    $buktiFotoUploadedAt = now(); // Set timestamp saat upload
+                foreach ($uploadedFiles as $file) {
+                    if ($file && $file->isValid()) {
+                        // Generate unique filename
+                        $buktiFileName =
+                            "bukti_" .
+                            $pengiriman->id .
+                            "_" .
+                            time() .
+                            "_" .
+                            uniqid() .
+                            "." .
+                            $file->getClientOriginalExtension();
+                        
+                        // Store file
+                        $file->storeAs(
+                            "pengiriman/bukti",
+                            $buktiFileName,
+                            "public",
+                        );
+                        
+                        // Add to array
+                        $buktiFileNames[] = $buktiFileName;
+                        
+                        Log::info("Uploaded bukti foto: {$buktiFileName}");
+                    }
+                }
+                
+                // Update timestamp only if new files were uploaded
+                if (count($buktiFileNames) > count($existingPhotos)) {
+                    $buktiFotoUploadedAt = now();
                 }
             }
+            
+            // Convert array to JSON for storage (handled by model mutator)
+            $buktiFileName = !empty($buktiFileNames) ? $buktiFileNames : null;
 
             // Note: Foto tanda terima now uploaded separately via menunggu-verifikasi view
             // Keep existing foto_tanda_terima data if it exists
@@ -2133,7 +2149,7 @@ class PengirimanController extends Controller
                 $pengiriman->catatan = $revisiCatatan;
             }
             
-            // IMPORTANT: Restore qty to order_detail when pengiriman is revised back to pending
+            // IMPORTANT: Restore qty to order_detail when pengiriman is revisd back to pending
             // This will only restore if qty was previously reduced
             $this->restoreOrderDetailQty($pengiriman);
             
@@ -2256,6 +2272,67 @@ class PengirimanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghapus pengiriman: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete individual bukti foto bongkar
+     */
+    public function deleteBuktiFoto(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'filename' => 'required|string'
+            ]);
+
+            $pengiriman = Pengiriman::findOrFail($id);
+            $filename = $request->input('filename');
+
+            // Get current photos array
+            $photos = $pengiriman->bukti_foto_bongkar_array ?? [];
+
+            // Check if photo exists in array
+            if (!in_array($filename, $photos)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Foto tidak ditemukan dalam daftar'
+                ], 404);
+            }
+
+            // Delete file from storage
+            $filePath = "pengiriman/bukti/" . $filename;
+            if (Storage::disk("public")->exists($filePath)) {
+                Storage::disk("public")->delete($filePath);
+                Log::info("Deleted bukti foto file: {$filePath}");
+            }
+
+            // Remove from array
+            $photos = array_values(array_filter($photos, function($photo) use ($filename) {
+                return $photo !== $filename;
+            }));
+
+            // Update pengiriman with new array
+            $pengiriman->bukti_foto_bongkar = !empty($photos) ? $photos : null;
+            
+            // Keep the uploaded_at timestamp if there are still photos
+            if (empty($photos)) {
+                $pengiriman->bukti_foto_bongkar_uploaded_at = null;
+            }
+            
+            $pengiriman->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto berhasil dihapus',
+                'remaining_photos' => count($photos)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting bukti foto: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus foto: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -382,11 +382,9 @@ async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseO
     document.getElementById('purchase_order_id').value = purchaseOrderId;
     document.getElementById('order_detail_id').value = orderDetailId;
     
-    // Set default perkiraan tanggal kirim ke 7 hari dari sekarang
+    // Set default perkiraan tanggal kirim ke hari ini
     const today = new Date();
-    const deliveryDate = new Date(today);
-    deliveryDate.setDate(today.getDate() + 7);  
-    document.getElementById('perkiraan_tanggal_kirim').value = deliveryDate.toISOString().split('T')[0];
+    document.getElementById('perkiraan_tanggal_kirim').value = today.toISOString().split('T')[0];
     
     // Calculate delivery days
     calculateDeliveryDays();

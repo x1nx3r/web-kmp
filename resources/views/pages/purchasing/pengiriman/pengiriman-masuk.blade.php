@@ -430,11 +430,9 @@ function updateCatatanCounter() {
         
         // Change color based on usage
         if (currentLength > maxLength * 0.8) {
-            counter.classList.add('text-red-500');
             counter.classList.remove('text-gray-500');
         } else {
             counter.classList.add('text-gray-500');
-            counter.classList.remove('text-red-500');
         }
     }
 }
@@ -457,6 +455,180 @@ function resetToOriginal() {
     }
 }
 // ===== END GLOBAL FUNCTIONS FOR CATATAN =====
+
+// ===== GLOBAL FUNCTIONS FOR MULTIPLE BUKTI FOTO BONGKAR =====
+/**
+ * Add new file input for bukti foto bongkar
+ */
+function addBuktiFotoInput() {
+    const container = document.getElementById('bukti-foto-container');
+    if (!container) {
+        console.error('Container bukti-foto-container not found');
+        return;
+    }
+    
+    // Create new file input element
+    const newItem = document.createElement('div');
+    newItem.className = 'bukti-foto-item flex items-center space-x-2';
+    newItem.innerHTML = `
+        <input type="file" 
+               name="bukti_foto_bongkar[]" 
+               class="bukti-foto-input flex-1 px-3 py-2 text-sm border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
+               accept="image/*,application/pdf">
+        <button type="button" 
+                onclick="removeBuktiFotoInput(this)"
+                class="px-3 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors shrink-0">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // Add to container
+    container.appendChild(newItem);
+    
+    // Update remove button visibility
+    updateRemoveButtonVisibility();
+}
+
+/**
+ * Remove file input for bukti foto bongkar
+ */
+function removeBuktiFotoInput(button) {
+    const item = button.closest('.bukti-foto-item');
+    if (!item) {
+        console.error('Parent item not found');
+        return;
+    }
+    
+    // Check if this is the last input
+    const container = document.getElementById('bukti-foto-container');
+    const items = container.querySelectorAll('.bukti-foto-item');
+    
+    if (items.length <= 1) {
+        // Don't remove if this is the last one, just clear the value
+        const input = item.querySelector('input[type="file"]');
+        if (input) {
+            input.value = '';
+        }
+        return;
+    }
+    
+    // Remove the item
+    item.remove();
+    
+    // Update remove button visibility
+    updateRemoveButtonVisibility();
+}
+
+/**
+ * Update visibility of remove buttons based on number of inputs
+ */
+function updateRemoveButtonVisibility() {
+    const container = document.getElementById('bukti-foto-container');
+    if (!container) return;
+    
+    const items = container.querySelectorAll('.bukti-foto-item');
+    const removeButtons = container.querySelectorAll('.bukti-foto-item button');
+    
+    // Show remove button only if there are more than 1 input
+    if (items.length > 1) {
+        removeButtons.forEach(btn => btn.classList.remove('hidden'));
+    } else {
+        removeButtons.forEach(btn => btn.classList.add('hidden'));
+    }
+}
+
+/**
+ * Delete existing photo from server
+ */
+function deleteExistingPhoto(pengirimanId, photoFilename, button) {
+    // Confirm deletion
+    if (!confirm(`Apakah Anda yakin ingin menghapus foto "${photoFilename}"?`)) {
+        return;
+    }
+    
+    // Show loading state
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    // Send delete request
+    fetch(`/procurement/pengiriman/${pengirimanId}/delete-bukti-foto`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            filename: photoFilename
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: data.message || 'Foto berhasil dihapus',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            } else {
+                alert(data.message || 'Foto berhasil dihapus');
+            }
+            
+            // Remove the photo item from DOM
+            const photoItem = button.closest('.flex.items-center.justify-between');
+            if (photoItem) {
+                photoItem.remove();
+            }
+            
+            // Reload the modal to refresh the list
+            setTimeout(() => {
+                if (typeof window.currentPengirimanId !== 'undefined') {
+                    const pengirimanId = window.currentPengirimanId;
+                    const noKirim = window.currentNoKirim || '';
+                    const status = window.currentStatus || 'pending';
+                    closeAksiModal();
+                    setTimeout(() => openAksiModal(pengirimanId, noKirim, status), 300);
+                }
+            }, 1500);
+        } else {
+            // Show error message
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: data.message || 'Gagal menghapus foto',
+                });
+            } else {
+                alert(data.message || 'Gagal menghapus foto');
+            }
+            
+            // Restore button
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting photo:', error);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Terjadi kesalahan saat menghapus foto',
+            });
+        } else {
+            alert('Terjadi kesalahan saat menghapus foto');
+        }
+        
+        // Restore button
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    });
+}
+// ===== END GLOBAL FUNCTIONS FOR MULTIPLE BUKTI FOTO BONGKAR =====
 
 // Handle Enter key press in search input
 function handleSearchKeyPressMasuk(event) {

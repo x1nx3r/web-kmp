@@ -604,11 +604,11 @@ class OmsetController extends Controller
             $tahun = $request->get('tahun', Carbon::now()->year);
             $search = $request->get('search', '');
             
-            // Query total omset per bahan baku - menggunakan subquery untuk menghindari double counting
+            // Query total omset per bahan baku - GROUP BY nama (bukan id) untuk menggabungkan yang namanya sama
             $topBahanBakuQuery = DB::table('bahan_baku_klien')
                 ->select(
-                    'bahan_baku_klien.id as bahan_baku_id',
                     'bahan_baku_klien.nama',
+                    DB::raw('GROUP_CONCAT(DISTINCT bahan_baku_klien.id) as bahan_baku_ids'),
                     DB::raw('COALESCE(SUM(DISTINCT invoice_data.amount_after_refraksi), 0) as total')
                 )
                 ->leftJoin(
@@ -640,7 +640,7 @@ class OmsetController extends Controller
             }
             
             $topBahanBaku = $topBahanBakuQuery
-                ->groupBy('bahan_baku_klien.id', 'bahan_baku_klien.nama')
+                ->groupBy('bahan_baku_klien.nama')  // Group by nama saja
                 ->having('total', '>', 0)
                 ->orderBy('total', 'desc')
                 ->get();
@@ -661,7 +661,10 @@ class OmsetController extends Controller
                 $monthData = [];
                 
                 foreach ($topBahanBaku as $bahanBaku) {
-                    // Get omset untuk bahan baku ini di bulan ini - menggunakan DISTINCT untuk menghindari double counting
+                    // Get all IDs yang memiliki nama yang sama
+                    $bahanBakuIds = explode(',', $bahanBaku->bahan_baku_ids);
+                    
+                    // Get omset untuk semua bahan baku dengan nama yang sama di bulan ini
                     $omsetBulan = DB::table(DB::raw('(
                         SELECT DISTINCT 
                             invoice_penagihan.id as invoice_id,
@@ -670,7 +673,7 @@ class OmsetController extends Controller
                         JOIN pengiriman ON invoice_penagihan.pengiriman_id = pengiriman.id
                         JOIN pengiriman_details ON pengiriman.id = pengiriman_details.pengiriman_id
                         JOIN order_details ON pengiriman_details.purchase_order_bahan_baku_id = order_details.id
-                        WHERE order_details.bahan_baku_klien_id = ' . $bahanBaku->bahan_baku_id . '
+                        WHERE order_details.bahan_baku_klien_id IN (' . implode(',', $bahanBakuIds) . ')
                             AND pengiriman.status IN ("menunggu_verifikasi", "berhasil")
                             AND YEAR(pengiriman.tanggal_kirim) = ' . $tahun . '
                             AND MONTH(pengiriman.tanggal_kirim) = ' . $bulan . '

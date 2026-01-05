@@ -1,26 +1,26 @@
 {{-- Omset per Bahan Baku (Bar Chart) Section --}}
 <div class="mb-6">
     {{-- Card: Omset per Bahan Baku --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-4">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 gap-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 flex items-center flex-wrap">
                     <i class="fas fa-chart-bar text-purple-500 mr-2"></i>
-                    Omset Bahan Baku Klien
-                    <span class="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full" 
+                    <span class="mr-2">Omset Bahan Baku Klien</span>
+                    <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full" 
                           title="Omset Sistem (transaksi terverifikasi) per bulan">
                         <i class="fas fa-info-circle mr-1"></i>Per Bulan
                     </span>
                 </h3>
-                <p class="text-sm text-gray-500 mt-1">Distribusi omset bulanan per bahan baku</p>
+                <p class="text-xs sm:text-sm text-gray-500 mt-1">Distribusi omset bulanan per bahan baku</p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 {{-- Search Filter --}}
-                <div class="relative">
+                <div class="relative w-full sm:w-64">
                     <input type="text" 
                            id="searchBahanBaku" 
                            placeholder="Cari bahan baku..." 
-                           class="w-64 pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                           class="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                            onkeyup="handleBahanBakuSearchKeyup(event)">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     <button onclick="clearBahanBakuSearch()" 
@@ -31,13 +31,13 @@
                 </div>
                 
                 {{-- Year Navigation --}}
-                <div class="flex items-center gap-2">
+                <div class="flex items-center justify-center gap-2">
                     <button onclick="changeYearBahanBakuChart(-1)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                         <i class="fas fa-chevron-left text-gray-600"></i>
                     </button>
-                    <div class="px-4 py-2 bg-purple-50 rounded-lg">
-                        <span class="text-sm font-semibold text-purple-700">Tahun: </span>
-                        <span id="currentYearBahanBaku" class="text-lg font-bold text-purple-600">{{ date('Y') }}</span>
+                    <div class="px-3 sm:px-4 py-2 bg-purple-50 rounded-lg">
+                        <span class="text-xs sm:text-sm font-semibold text-purple-700">Tahun: </span>
+                        <span id="currentYearBahanBaku" class="text-base sm:text-lg font-bold text-purple-600">{{ date('Y') }}</span>
                     </div>
                     <button onclick="changeYearBahanBakuChart(1)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                         <i class="fas fa-chevron-right text-gray-600"></i>
@@ -46,7 +46,7 @@
             </div>
         </div>
         
-        <div style="height: 500px;">
+        <div class="h-64 sm:h-80 md:h-96 lg:h-[500px]">
             <canvas id="chartOmsetPerBahanBaku"></canvas>
         </div>
     </div>

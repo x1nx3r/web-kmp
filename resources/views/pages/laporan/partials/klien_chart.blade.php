@@ -1,11 +1,11 @@
-{{-- Omset per Klien (Bar Chart) Section --}}
+{{-- Omset per Klien (Line Chart) Section --}}
 <div class="mb-6">
     {{-- Card: Omset per Klien --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-chart-bar text-blue-500 mr-2"></i>
+                    <i class="fas fa-chart-line text-blue-500 mr-2"></i>
                     Omset Klien
                     <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full" 
                           title="Omset Sistem (transaksi terverifikasi) per bulan">

@@ -445,7 +445,7 @@ class OmsetController extends Controller
                 ->join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
                 ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
                 ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-                ->select('kliens.id as klien_id', 'kliens.nama',
+                ->select('kliens.id as klien_id', 'kliens.nama', 'kliens.cabang',
                     DB::raw('SUM(invoice_penagihan.amount_after_refraksi) as total'))
                 ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
                 ->whereYear('pengiriman.tanggal_kirim', $tahun)
@@ -461,7 +461,7 @@ class OmsetController extends Controller
             }
             
             $topKlien = $topKlienQuery
-                ->groupBy('kliens.id', 'kliens.nama')
+                ->groupBy('kliens.id', 'kliens.nama', 'kliens.cabang')
                 ->orderBy('total', 'desc')
                 ->limit(5)
                 ->get();
@@ -505,9 +505,13 @@ class OmsetController extends Controller
                 ];
             }
             
-            // Get klien names
+            // Get klien names with cabang
             foreach ($topKlien as $klien) {
-                $klienNames[] = $klien->nama;
+                $namaLengkap = $klien->nama;
+                if (!empty($klien->cabang)) {
+                    $namaLengkap .= ' - ' . $klien->cabang . '';
+                }
+                $klienNames[] = $namaLengkap;
             }
             
             return response()->json([

@@ -1,11 +1,11 @@
-{{-- Omset per Supplier (Bar Chart) Section --}}
+{{-- Omset per Supplier (Line Chart) Section --}}
 <div class="mb-6">
     {{-- Card: Omset per Supplier --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-chart-bar text-orange-500 mr-2"></i>
+                    <i class="fas fa-chart-line text-orange-500 mr-2"></i>
                     Omset Supplier 
                     <span class="ml-2 px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full" 
                           title="Omset Sistem (transaksi terverifikasi) per bulan">
@@ -139,10 +139,10 @@ function updateOmsetPerSupplierChart(data) {
     }
 }
 
-// Create Grouped Bar Chart for Omset per Supplier
+// Create Line Chart for Omset per Supplier
 function createGroupedBarChartSupplier(ctx, labels, datasets) {
     return new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: labels,
             datasets: datasets
@@ -162,7 +162,9 @@ function createGroupedBarChartSupplier(ctx, labels, datasets) {
                         padding: 15,
                         font: {
                             size: 11
-                        }
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
                 },
                 tooltip: {
@@ -184,7 +186,8 @@ function createGroupedBarChartSupplier(ctx, labels, datasets) {
             scales: {
                 x: {
                     grid: {
-                        display: false
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
                         font: {
@@ -204,6 +207,18 @@ function createGroupedBarChartSupplier(ctx, labels, datasets) {
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)'
                     }
+                }
+            },
+            elements: {
+                line: {
+                    tension: 0.4,
+                    borderWidth: 2
+                },
+                point: {
+                    radius: 4,
+                    hitRadius: 10,
+                    hoverRadius: 6,
+                    hoverBorderWidth: 2
                 }
             }
         },

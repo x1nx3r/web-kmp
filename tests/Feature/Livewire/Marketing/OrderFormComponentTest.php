@@ -77,6 +77,7 @@ class OrderFormComponentTest extends TestCase
 
         $this->assertEquals($klien->id, $order->klien_id);
         $this->assertEquals('PO-TEST-001', $order->po_number);
+        // 5 days <= 30 => tinggi (urgent!)
         $this->assertEquals('tinggi', $order->priority);
         $this->assertCount(1, $order->orderDetails);
 
@@ -134,7 +135,7 @@ class OrderFormComponentTest extends TestCase
                 'klien_id' => $klien->id,
                 'created_by' => $user->id,
                 'status' => 'draft',
-                'priority' => 'normal',
+                'priority' => 'sedang', // Will be recalculated based on deadline
                 'po_number' => 'PO-ORIGINAL-001',
                 'po_start_date' => Carbon::now()->format('Y-m-d'),
                 'po_end_date' => Carbon::now()->addDays(10)->format('Y-m-d'),
@@ -192,7 +193,8 @@ class OrderFormComponentTest extends TestCase
         $order->refresh();
 
         $this->assertEquals('PO-UPDATED-001', $order->po_number);
-        $this->assertEquals('mendesak', $order->priority);
+        // 2 days <= 30 => tinggi (urgent!)
+        $this->assertEquals('tinggi', $order->priority);
         $this->assertEquals('Catatan setelah pembaruan.', $order->catatan);
         $this->assertCount(1, $order->orderDetails);
 

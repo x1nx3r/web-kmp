@@ -26,16 +26,16 @@ class EscalateOrderPriorities extends Command
     protected $description = "Automatically escalate order priorities based on PO end date proximity";
 
     /**
-     * Priority thresholds are no longer relied on here; the command uses a literal mapping:
-     * - tinggi: remaining days > 60
+     * Priority thresholds using inverted logic (deadline urgency):
+     * - tinggi: remaining days <= 30 (urgent, deadline soon!)
      * - sedang: remaining days > 30 and <= 60
-     * - rendah: remaining days <= 30
+     * - rendah: remaining days > 60 (plenty of time)
      *
      * Keep a minimal constant map for clarity / future use.
      */
     protected const PRIORITY_THRESHOLDS = [
-        "tinggi" => 60,
-        "sedang" => 30,
+        "tinggi" => 30,
+        "sedang" => 60,
         "rendah" => PHP_INT_MAX,
     ];
 
@@ -124,13 +124,13 @@ class EscalateOrderPriorities extends Command
     {
         $days = $this->getDaysRemaining($poEndDate);
 
-        // Literal mapping (more time remaining => higher priority):
-        // - tinggi: remaining days > 60
+        // Inverted priority mapping (deadline urgency):
+        // - tinggi: remaining days <= 30 (urgent, deadline soon!)
         // - sedang: remaining days > 30 and <= 60
-        // - rendah: remaining days <= 30
-        if ($days > 60) {
+        // - rendah: remaining days > 60 (plenty of time)
+        if ($days <= 30) {
             return "tinggi";
-        } elseif ($days > 30) {
+        } elseif ($days <= 60) {
             return "sedang";
         }
 

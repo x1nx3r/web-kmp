@@ -298,41 +298,42 @@ const chartColors = [
     '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1'
 ];
 
-// PO By Client Chart (Pie with percentage)
+// PO By Client Chart (Bar with percentage)
 @if($poByClient->count() > 0)
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartPOByClient').getContext('2d');
     const isMobile = window.innerWidth < 768;
+    const percentages = @json($poByClient->pluck('percentage')->toArray());
 
     new Chart(ctx, {
-        type: 'pie',
+        type: 'bar',
         data: {
             labels: [@foreach($poByClient as $item) '{{ $item->klien_nama }}', @endforeach],
             datasets: [{
+                label: 'Nilai PO',
                 data: [@foreach($poByClient as $item) {{ $item->total_nilai }}, @endforeach],
                 backgroundColor: chartColors,
-                borderWidth: 2,
-                borderColor: '#ffffff'
+                borderWidth: 1,
+                borderColor: chartColors.map(c => c.replace('0.8', '1')),
+                borderRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
+            indexAxis: isMobile ? 'y' : 'x',
             plugins: {
                 legend: {
-                    position: isMobile ? 'bottom' : 'right',
-                    labels: {
-                        padding: isMobile ? 10 : 20,
-                        font: { size: isMobile ? 10 : 12 },
-                        boxWidth: isMobile ? 10 : 15
-                    }
+                    display: false
                 },
                 tooltip: {
                     callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
                         label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed || 0;
-                            const percentage = @json($poByClient->pluck('percentage')->toArray())[context.dataIndex];
+                            const value = context.parsed.y !== undefined ? context.parsed.y : context.parsed.x;
+                            const percentage = percentages[context.dataIndex];
                             let formattedValue = '';
                             if (value >= 1000000000) {
                                 formattedValue = 'Rp ' + (value/1000000000).toFixed(1) + ' Miliar';
@@ -341,21 +342,45 @@ document.addEventListener('DOMContentLoaded', function() {
                             } else {
                                 formattedValue = 'Rp ' + value.toLocaleString('id-ID');
                             }
-                            return label + ': ' + formattedValue + ' (' + percentage.toFixed(1) + '%)';
+                            return 'Nilai: ' + formattedValue + ' (' + percentage.toFixed(1) + '%)';
                         }
                     }
                 },
                 datalabels: {
-                    color: '#fff',
-                    font: { weight: 'bold', size: isMobile ? 10 : 14 },
-                    formatter: (value, context) => {
-                        const percentage = @json($poByClient->pluck('percentage')->toArray())[context.dataIndex];
-                        return percentage > 5 ? percentage.toFixed(1) + '%' : '';
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    display: !isMobile,
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: { size: 10 }
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            if (value >= 1000000000) {
+                                return 'Rp ' + (value/1000000000).toFixed(0) + 'M';
+                            } else if (value >= 1000000) {
+                                return 'Rp ' + (value/1000000).toFixed(0) + 'Jt';
+                            }
+                            return 'Rp ' + value.toLocaleString('id-ID');
+                        },
+                        font: { size: 10 }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
                     }
                 }
             }
-        },
-        plugins: [ChartDataLabels]
+        }
     });
 });
 @endif
@@ -510,7 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 @endif
 
-// Outstanding Chart (Pie by PO Number)
+// Outstanding Chart (Bar by PO Number)
 @if($outstandingChartData->count() > 0)
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('chartOutstanding').getContext('2d');
@@ -520,32 +545,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const namaMaterialData = @json($outstandingChartData->pluck('nama_material')->toArray());
 
     new Chart(ctx, {
-        type: 'pie',
+        type: 'bar',
         data: {
             labels: [@foreach($outstandingChartData as $item) '{{ $item->display_name }}', @endforeach],
             datasets: [{
+                label: 'Nilai Outstanding',
                 data: [@foreach($outstandingChartData as $item) {{ $item->total_nilai }}, @endforeach],
                 backgroundColor: chartColors,
-                borderWidth: 2,
-                borderColor: '#ffffff'
+                borderWidth: 1,
+                borderColor: chartColors.map(c => c.replace('0.8', '1')),
+                borderRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
+            indexAxis: isMobile ? 'y' : 'x',
             plugins: {
                 legend: {
-                    position: isMobile ? 'bottom' : 'right',
-                    labels: {
-                        padding: isMobile ? 8 : 15,
-                        font: { size: isMobile ? 9 : 11 },
-                        boxWidth: isMobile ? 10 : 12
-                    }
+                    display: false
                 },
                 tooltip: {
                     callbacks: {
+                        title: function(context) {
+                            return 'PO: ' + context[0].label;
+                        },
                         label: function(context) {
-                            const value = context.parsed || 0;
+                            const value = context.parsed.y !== undefined ? context.parsed.y : context.parsed.x;
                             const percentage = (value / {{ $totalOutstandingChart }} * 100).toFixed(1);
                             let formattedValue = '';
                             if (value >= 1000000000) {
@@ -560,7 +586,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             const namaMaterial = namaMaterialData[context.dataIndex];
 
                             return [
-                                'PO: ' + context.label,
                                 'Klien: ' + klien,
                                 'Status: ' + orderStatus.charAt(0).toUpperCase() + orderStatus.slice(1),
                                 'Nilai: ' + formattedValue + ' (' + percentage + '%)',
@@ -570,17 +595,40 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 },
                 datalabels: {
-                    color: '#fff',
-                    font: { weight: 'bold', size: isMobile ? 9 : 12 },
-                    formatter: (value, context) => {
-                        const percentage = (value / {{ $totalOutstandingChart }} * 100);
-                        // Only show label if percentage is > 5%
-                        return percentage > 5 ? percentage.toFixed(1) + '%' : '';
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    display: !isMobile,
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: { size: 10 }
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            if (value >= 1000000000) {
+                                return 'Rp ' + (value/1000000000).toFixed(0) + 'M';
+                            } else if (value >= 1000000) {
+                                return 'Rp ' + (value/1000000).toFixed(0) + 'Jt';
+                            }
+                            return 'Rp ' + value.toLocaleString('id-ID');
+                        },
+                        font: { size: 10 }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
                     }
                 }
             }
-        },
-        plugins: [ChartDataLabels]
+        }
     });
 });
 @endif

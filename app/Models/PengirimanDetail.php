@@ -10,6 +10,8 @@ class PengirimanDetail extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'pengiriman_details';
+
     protected $fillable = [
         'pengiriman_id',
         'purchase_order_bahan_baku_id',

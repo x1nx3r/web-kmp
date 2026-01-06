@@ -309,6 +309,178 @@ class DashboardController extends Controller
             ->whereMonth('tanggal_order', Carbon::now()->month)
             ->sum('total_amount');
         
+        // ========== MARGIN MINGGU INI ==========
+        // Query pengiriman untuk minggu ini dengan relasi yang dibutuhkan
+        $pengirimanMarginMingguIni = Pengiriman::with([
+            'purchasing:id,nama',
+            'order.klien:id,nama,cabang',
+            'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
+            'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
+            'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
+            'approvalPembayaran',
+            'invoicePenagihan'
+        ])
+        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
+        ->get();
+        
+        // Process margin data untuk minggu ini
+        $marginDataMingguIni = [];
+        $totalMarginMingguIni = 0;
+        $totalHargaBeliMingguIni = 0;
+        $totalHargaJualMingguIni = 0;
+        
+        foreach ($pengirimanMarginMingguIni as $p) {
+            // Skip jika tidak ada approval pembayaran atau invoice penagihan
+            if (!$p->approvalPembayaran && !$p->invoicePenagihan) {
+                continue;
+            }
+
+            foreach ($p->pengirimanDetails as $detail) {
+                // Hitung harga beli per kg (dari approval pembayaran)
+                $hargaBeliPerKg = 0;
+                $totalHargaBeliItem = 0;
+                
+                if ($p->approvalPembayaran) {
+                    $qtyAfterRefraksi = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    
+                    if ($qtyAfterRefraksi > 0) {
+                        $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
+                    }
+                    
+                    $totalHargaBeliItem = $hargaBeliPerKg * $detail->qty_kirim;
+                } else {
+                    $hargaBeliPerKg = $detail->harga_satuan ?? 0;
+                    $totalHargaBeliItem = $detail->total_harga ?? 0;
+                }
+
+                // Hitung harga jual per kg (dari invoice penagihan atau order detail)
+                $hargaJualPerKg = 0;
+                $totalHargaJualItem = 0;
+                
+                if ($p->invoicePenagihan) {
+                    $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
+                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    
+                    if ($qtyJual > 0) {
+                        $hargaJualPerKg = $amountJual / $qtyJual;
+                    }
+                    
+                    $totalHargaJualItem = $hargaJualPerKg * $detail->qty_kirim;
+                } elseif ($detail->orderDetail && $detail->orderDetail->harga_jual > 0) {
+                    $hargaJualPerKg = $detail->orderDetail->harga_jual;
+                    $totalHargaJualItem = $detail->qty_kirim * $hargaJualPerKg;
+                }
+
+                // Hitung margin
+                $margin = $totalHargaJualItem - $totalHargaBeliItem;
+                $marginPercentage = $totalHargaBeliItem > 0 ? ($margin / $totalHargaBeliItem) * 100 : 0;
+
+                // Get klien info
+                $klien = $p->order->klien ?? null;
+                $namaKlien = $klien ? $klien->nama . ($klien->cabang ? " - {$klien->cabang}" : '') : '-';
+
+                // Get supplier and bahan baku info
+                $supplier = $detail->bahanBakuSupplier->supplier ?? null;
+                $bahanBaku = $detail->orderDetail->bahanBakuKlien ?? null;
+                $bahanBakuSupplier = $detail->bahanBakuSupplier ?? null;
+
+                $marginDataMingguIni[] = [
+                    'pengiriman_id' => $p->id,
+                    'status' => $p->status,
+                    'pic_purchasing' => $p->purchasing->nama ?? '-',
+                    'klien' => $namaKlien,
+                    'supplier' => $supplier->nama ?? '-',
+                    'bahan_baku' => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
+                    'margin' => $margin,
+                    'margin_percentage' => $marginPercentage,
+                ];
+
+                $totalMarginMingguIni += $margin;
+                $totalHargaBeliMingguIni += $totalHargaBeliItem;
+                $totalHargaJualMingguIni += $totalHargaJualItem;
+            }
+        }
+
+        // Sort by margin percentage descending dan ambil top 5
+        usort($marginDataMingguIni, function($a, $b) {
+            return $b['margin_percentage'] <=> $a['margin_percentage'];
+        });
+        $topMarginMingguIni = array_slice($marginDataMingguIni, 0, 5);
+        
+        // Hitung gross margin percentage minggu ini
+        $grossMarginMingguIni = $totalHargaBeliMingguIni > 0 ? ($totalMarginMingguIni / $totalHargaBeliMingguIni) * 100 : 0;
+
+        // ========== GROSS MARGIN BULAN INI ==========
+        // Query pengiriman untuk bulan ini
+        $pengirimanMarginBulanIni = Pengiriman::with([
+            'pengirimanDetails.bahanBakuSupplier',
+            'pengirimanDetails.orderDetail',
+            'approvalPembayaran',
+            'invoicePenagihan'
+        ])
+        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        ->whereYear('tanggal_kirim', Carbon::now()->year)
+        ->whereMonth('tanggal_kirim', Carbon::now()->month)
+        ->get();
+        
+        // Process margin data untuk bulan ini
+        $totalMarginBulanIni = 0;
+        $totalHargaBeliBulanIni = 0;
+        $countMarginBulanIni = 0;
+        
+        foreach ($pengirimanMarginBulanIni as $p) {
+            if (!$p->approvalPembayaran && !$p->invoicePenagihan) {
+                continue;
+            }
+
+            foreach ($p->pengirimanDetails as $detail) {
+                $hargaBeliPerKg = 0;
+                $totalHargaBeliItem = 0;
+                
+                if ($p->approvalPembayaran) {
+                    $qtyAfterRefraksi = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    
+                    if ($qtyAfterRefraksi > 0) {
+                        $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
+                    }
+                    
+                    $totalHargaBeliItem = $hargaBeliPerKg * $detail->qty_kirim;
+                } else {
+                    $hargaBeliPerKg = $detail->harga_satuan ?? 0;
+                    $totalHargaBeliItem = $detail->total_harga ?? 0;
+                }
+
+                $hargaJualPerKg = 0;
+                $totalHargaJualItem = 0;
+                
+                if ($p->invoicePenagihan) {
+                    $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
+                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    
+                    if ($qtyJual > 0) {
+                        $hargaJualPerKg = $amountJual / $qtyJual;
+                    }
+                    
+                    $totalHargaJualItem = $hargaJualPerKg * $detail->qty_kirim;
+                } elseif ($detail->orderDetail && $detail->orderDetail->harga_jual > 0) {
+                    $hargaJualPerKg = $detail->orderDetail->harga_jual;
+                    $totalHargaJualItem = $detail->qty_kirim * $hargaJualPerKg;
+                }
+
+                $margin = $totalHargaJualItem - $totalHargaBeliItem;
+
+                $totalMarginBulanIni += $margin;
+                $totalHargaBeliBulanIni += $totalHargaBeliItem;
+                $countMarginBulanIni++;
+            }
+        }
+
+        // Hitung gross margin bulan ini
+        $grossMarginBulanIni = $totalHargaBeliBulanIni > 0 ? ($totalMarginBulanIni / $totalHargaBeliBulanIni) * 100 : 0;
+        
         return view('pages.dashboard', compact(
             'targetMingguan',
             'targetBulanan',
@@ -335,7 +507,11 @@ class DashboardController extends Controller
             'pengirimanBongkarSebagianList',
             'pengirimanGagalList',
             'orderBulanIni',
-            'nilaiOrderBulanIni'
+            'nilaiOrderBulanIni',
+            'topMarginMingguIni',
+            'grossMarginMingguIni',
+            'totalMarginMingguIni',
+            'grossMarginBulanIni'
         ));
     }
     

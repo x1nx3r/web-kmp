@@ -15,6 +15,7 @@ use App\Http\Controllers\Laporan\OmsetController as LaporanOmsetController;
 use App\Http\Controllers\Laporan\PengirimanController as LaporanPengirimanController;
 use App\Http\Controllers\Laporan\PenagihanController as LaporanPenagihanController;
 use App\Http\Controllers\Laporan\PembayaranController as LaporanPembayaranController;
+use App\Http\Controllers\Laporan\MarginController;
 
 // Authentication routes
 Route::middleware("guest")->group(function () {
@@ -67,6 +68,10 @@ Route::middleware(["auth"])->group(function () {
 
             Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
             Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
+            
+            // Laporan Margin
+            Route::get('/margin', [MarginController::class, 'index'])->name('margin');
+            Route::post('/margin/export', [MarginController::class, 'export'])->name('margin.export');
     });
     Route::get("/dashboard", [DashboardController::class, "index"])->name(
         "dashboard",

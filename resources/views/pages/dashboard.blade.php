@@ -346,6 +346,119 @@
 
 {{-- Omset Charts Section --}}
 <div class="space-y-6">
+    {{-- Margin Analysis Minggu Ini --}}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-chart-line text-green-500"></i>
+                    Top 5 Margin Minggu Ini
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">5 Pengiriman dengan margin tertinggi minggu ini</p>
+            </div>
+            <a href="{{ route('laporan.margin') }}" 
+               class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2">
+                <i class="fas fa-eye"></i>
+                Lihat Detail
+            </a>
+        </div>
+
+        {{-- Summary Cards Margin Minggu Ini --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {{-- Total Margin Minggu Ini --}}
+            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total Nilai Margin Minggu Ini</p>
+                        <p class="text-2xl font-bold {{ $totalMarginMingguIni >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                            Rp {{ number_format($totalMarginMingguIni, 0, ',', '.') }}
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Gross Margin % Minggu Ini --}}
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Prosentase Margin Minggu Ini</p>
+                        <p class="text-2xl font-bold {{ $grossMarginMingguIni >= 0 ? 'text-blue-600' : 'text-red-600' }}">
+                            {{ number_format($grossMarginMingguIni, 2) }}%
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-percentage text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if(count($topMarginMingguIni) > 0)
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIC Purchasing</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pabrik</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bahan Baku</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">%</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @foreach($topMarginMingguIni as $index => $item)
+                            <tr class="hover:bg-gray-100 transition-colors cursor-pointer" 
+                                onclick="window.location.href='{{ route('purchasing.pengiriman.index') }}?tab={{ $item['status'] === 'berhasil' ? 'pengiriman-berhasil' : ($item['status'] === 'menunggu_verifikasi' ? 'menunggu-verifikasi' : 'menunggu-fisik') }}&detail={{ $item['pengiriman_id'] }}'">
+                                <td class="px-4 py-3 text-gray-700">{{ $index + 1 }}</td>
+                                <td class="px-4 py-3 text-gray-900 font-medium">{{ $item['pic_purchasing'] }}</td>
+                                <td class="px-4 py-3 text-gray-700">{{ $item['klien'] }}</td>
+                                <td class="px-4 py-3 text-gray-700">{{ $item['supplier'] }}</td>
+                                <td class="px-4 py-3 text-gray-700">{{ $item['bahan_baku'] }}</td>
+                                <td class="px-4 py-3 text-right font-semibold {{ $item['margin'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    Rp {{ number_format($item['margin'], 0, ',', '.') }}
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                        {{ $item['margin_percentage'] >= 20 ? 'bg-green-100 text-green-800' : 
+                                           ($item['margin_percentage'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                        {{ number_format($item['margin_percentage'], 1) }}%
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <div class="text-center py-8 text-gray-400">
+                <i class="fas fa-inbox text-4xl mb-2"></i>
+                <p>Belum ada data margin untuk minggu ini</p>
+            </div>
+        @endif
+
+        {{-- Gross Margin Bulan Ini --}}
+        <div class="mt-6 pt-6 border-t border-gray-200">
+            <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Prosentase Gross Profit Bulan {{ \Carbon\Carbon::now()->format('F Y') }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-3xl font-bold {{ $grossMarginBulanIni >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                            {{ number_format($grossMarginBulanIni, 2) }}%
+                        </p>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Include Klien Chart Section --}}
     @include('pages.laporan.partials.klien_chart_dashboard')
 

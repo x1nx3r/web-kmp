@@ -75,51 +75,58 @@
         {{-- Month/Year Navigation --}}
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div class="flex items-center space-x-2">
-                    <select id="selectedMonth" wire:model.live="selectedMonth" onchange="(function(){const p=new URLSearchParams(window.location.search);p.set('selectedMonth',this.value);const yEl=document.getElementById('selectedYear');if(yEl) p.set('selectedYear', yEl.value);window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');}).call(this)" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                        <option value="1">Januari</option>
-                        <option value="2">Februari</option>
-                        <option value="3">Maret</option>
-                        <option value="4">April</option>
-                        <option value="5">Mei</option>
-                        <option value="6">Juni</option>
-                        <option value="7">Juli</option>
-                        <option value="8">Agustus</option>
-                        <option value="9">September</option>
-                        <option value="10">Oktober</option>
-                        <option value="11">November</option>
-                        <option value="12">Desember</option>
-                    </select>
-                    <select id="selectedYear" wire:model.live="selectedYear" onchange="(function(){const p=new URLSearchParams(window.location.search);p.set('selectedYear',this.value);const mEl=document.getElementById('selectedMonth');if(mEl) p.set('selectedMonth', mEl.value);window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');}).call(this)" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                        @foreach($availableYears as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="flex items-center space-x-2 flex-wrap gap-2">
-                    @if($showAllOrders)
-                        <button wire:click="goToCurrentMonth" class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                            <i class="fas fa-calendar-day mr-1"></i>
-                            Kembali Ke Bulan Ini
-                        </button>
+                @if($showAllOrders)
+                    {{-- When viewing ALL POs (default) --}}
+                    <div class="flex items-center space-x-3">
+                        <div class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg font-medium text-sm">
+                            <i class="fas fa-list mr-2"></i>
+                            Semua PO
+                        </div>
                         <span class="text-sm text-gray-500">
                             <i class="fas fa-info-circle mr-1"></i>
-                            Menampilkan <strong>semua PO</strong>
+                            Menampilkan <strong>semua PO</strong> dari semua periode
                         </span>
-                    @else
-                        @if($selectedMonth != now()->month || $selectedYear != now()->year)
-                            <button onclick="(function(){const d=new Date();const m=d.getMonth()+1;const y=d.getFullYear();const p=new URLSearchParams(window.location.search);p.set('selectedMonth',m);p.set('selectedYear',y);p.delete('showAllOrders');window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');})();" class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                                <i class="fas fa-calendar-day mr-1"></i>
-                                Kembali Ke Bulan Ini
-                            </button>
-                        @endif
-
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button wire:click="goToCurrentMonth" class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            Filter per Bulan
+                        </button>
+                    </div>
+                @else
+                    {{-- When filtering by specific month/year --}}
+                    <div class="flex items-center space-x-2">
+                        <select id="selectedMonth" wire:model.live="selectedMonth" onchange="(function(){const p=new URLSearchParams(window.location.search);p.set('selectedMonth',this.value);const yEl=document.getElementById('selectedYear');if(yEl) p.set('selectedYear', yEl.value);p.set('showAllOrders','false');window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');}).call(this)" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            <option value="1">Januari</option>
+                            <option value="2">Februari</option>
+                            <option value="3">Maret</option>
+                            <option value="4">April</option>
+                            <option value="5">Mei</option>
+                            <option value="6">Juni</option>
+                            <option value="7">Juli</option>
+                            <option value="8">Agustus</option>
+                            <option value="9">September</option>
+                            <option value="10">Oktober</option>
+                            <option value="11">November</option>
+                            <option value="12">Desember</option>
+                        </select>
+                        <select id="selectedYear" wire:model.live="selectedYear" onchange="(function(){const p=new URLSearchParams(window.location.search);p.set('selectedYear',this.value);const mEl=document.getElementById('selectedMonth');if(mEl) p.set('selectedMonth', mEl.value);p.set('showAllOrders','false');window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');}).call(this)" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            @foreach($availableYears as $year)
+                                <option value="{{ $year }}">{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex items-center space-x-2 flex-wrap gap-2">
+                        <button onclick="(function(){const p=new URLSearchParams(window.location.search);p.set('showAllOrders','true');window.location.href=window.location.pathname + (p.toString() ? ('?' + p.toString()) : '');})();" class="px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                            <i class="fas fa-list mr-1"></i>
+                            Tampilkan Semua PO
+                        </button>
                         <span class="text-sm text-gray-500">
                             <i class="fas fa-info-circle mr-1"></i>
                             Menampilkan order untuk <strong>{{ $currentMonthName }} {{ $selectedYear }}</strong>
                         </span>
-                    @endif
-                </div>
+                    </div>
+                @endif
             </div>
         </div>
 

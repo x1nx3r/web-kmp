@@ -113,10 +113,7 @@
                                 Kembali Ke Bulan Ini
                             </button>
                         @endif
-                        <button wire:click="showAllPO" class="px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
-                            <i class="fas fa-list mr-1"></i>
-                            Tampilkan Semua PO
-                        </button>
+
                         <span class="text-sm text-gray-500">
                             <i class="fas fa-info-circle mr-1"></i>
                             Menampilkan order untuk <strong>{{ $currentMonthName }} {{ $selectedYear }}</strong>

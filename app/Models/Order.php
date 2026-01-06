@@ -440,15 +440,15 @@ class Order extends Model
         $baseDate = $baseDate ?? now();
         $daysUntilDue = $baseDate->diffInDays($this->po_end_date, false);
 
-        // Literal mapping requested:
-        // - tinggi when remaining days > 60
+        // Inverted priority mapping (deadline urgency):
+        // - tinggi when remaining days <= 30 (urgent, deadline soon!)
         // - sedang when remaining days > 30 and <= 60
-        // - rendah when remaining days <= 30
-        if ($daysUntilDue > 60) {
+        // - rendah when remaining days > 60 (plenty of time)
+        if ($daysUntilDue <= 30) {
             return "tinggi";
         }
 
-        if ($daysUntilDue > 30) {
+        if ($daysUntilDue <= 60) {
             return "sedang";
         }
 

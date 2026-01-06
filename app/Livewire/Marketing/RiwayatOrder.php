@@ -27,6 +27,7 @@ class RiwayatOrder extends Component
     // Month/Year Filter
     public $selectedMonth;
     public $selectedYear;
+    public $showAllOrders = false;
 
     // UI State
     public $showDeleteModal = false;
@@ -47,6 +48,7 @@ class RiwayatOrder extends Component
         "sortBy" => ["except" => "priority_desc"],
         "selectedMonth" => ["except" => ""],
         "selectedYear" => ["except" => ""],
+        "showAllOrders" => ["except" => false],
     ];
 
     public function mount()
@@ -123,6 +125,19 @@ class RiwayatOrder extends Component
     {
         $this->selectedMonth = now()->month;
         $this->selectedYear = now()->year;
+        $this->showAllOrders = false;
+        $this->resetPage();
+    }
+
+    public function toggleShowAllOrders()
+    {
+        $this->showAllOrders = !$this->showAllOrders;
+        $this->resetPage();
+    }
+
+    public function showAllPO()
+    {
+        $this->showAllOrders = true;
         $this->resetPage();
     }
 
@@ -397,7 +412,7 @@ class RiwayatOrder extends Component
                     });
                 });
             })
-            ->when($this->selectedMonth && $this->selectedYear, function (
+            ->when(!$this->showAllOrders && $this->selectedMonth && $this->selectedYear, function (
                 Builder $query,
             ) {
                 $query

@@ -79,7 +79,7 @@ class CatatanPiutangPabrik extends Component
 
         // Filter by klien
         if ($this->klienFilter !== 'all') {
-            $query->whereHas('pengiriman', function($q) {
+            $query->whereHas('pengiriman.order', function($q) {
                 $q->where('klien_id', $this->klienFilter);
             });
         }

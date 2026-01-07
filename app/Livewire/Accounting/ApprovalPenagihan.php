@@ -19,7 +19,8 @@ class ApprovalPenagihan extends Component
     use WithPagination;
 
     public $search = '';
-    public $statusFilter = 'all';
+    public $customerFilter = 'all';
+    public $supplierFilter = 'all';
     public $activeTab = 'pending'; // pending or approved
     public $selectedData = null;
     public $showDetailModal = false;
@@ -39,7 +40,8 @@ class ApprovalPenagihan extends Component
 
     protected $queryString = [
         'search' => ['except' => ''],
-        'statusFilter' => ['except' => 'all'],
+        'customerFilter' => ['except' => 'all'],
+        'supplierFilter' => ['except' => 'all'],
         'activeTab' => ['except' => 'pending'],
     ];
 
@@ -77,6 +79,7 @@ class ApprovalPenagihan extends Component
         $query = ApprovalPenagihanModel::with([
             'invoice',
             'pengiriman.purchaseOrder.klien',
+            'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
             'pengiriman.forecast',
             'pengiriman.purchasing',
             'staff',
@@ -102,15 +105,44 @@ class ApprovalPenagihan extends Component
             });
         }
 
-        if ($this->statusFilter !== 'all') {
-            $query->where('status', $this->statusFilter);
+        // Filter by customer
+        if ($this->customerFilter !== 'all') {
+            $query->whereHas('invoice', function ($q) {
+                $q->where('customer_name', $this->customerFilter);
+            });
+        }
+
+        // Filter by supplier
+        if ($this->supplierFilter !== 'all') {
+            $query->whereHas('pengiriman.pengirimanDetails.bahanBakuSupplier.supplier', function ($q) {
+                $q->where('nama', $this->supplierFilter);
+            });
         }
 
         $approvals = $query->latest()->paginate(10, ['*'], 'page_approval');
 
+        // Get unique customers and suppliers for filters
+        $allApprovals = ApprovalPenagihanModel::with([
+            'invoice',
+            'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier'
+        ])
+        ->where('status', $this->activeTab === 'pending' ? 'pending' : 'completed')
+        ->get();
+
+        $customers = $allApprovals->pluck('invoice.customer_name')->unique()->filter()->sort()->values();
+
+        $suppliers = $allApprovals->pluck('pengiriman.pengirimanDetails.*.bahanBakuSupplier.supplier.nama')
+            ->flatten()
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
         return view('livewire.accounting.approval-penagihan', [
             'pengirimansWithoutInvoice' => $pengirimansWithoutInvoice,
             'approvals' => $approvals,
+            'customers' => $customers,
+            'suppliers' => $suppliers,
         ]);
     }
 

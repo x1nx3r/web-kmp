@@ -1,6 +1,6 @@
 <div class="relative">
     {{-- Global Loading Overlay --}}
-    <div wire:loading wire:target="search,statusFilter" class="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center" style="display: none;">
+    <div wire:loading wire:target="search,customerFilter,supplierFilter" class="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center" style="display: none;">
         <div class="bg-white rounded-lg shadow-lg p-6 flex items-center space-x-3">
             <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <span class="text-gray-700 font-medium">Memuat data...</span>
@@ -161,7 +161,7 @@
         </div>
 
         <div class="p-6">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {{-- Search Input --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -176,22 +176,37 @@
                     />
                 </div>
 
-                {{-- Status Filter --}}
+                {{-- Customer Filter --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-tag mr-1 text-gray-400"></i>
-                        Status Approval
+                        <i class="fas fa-user mr-1 text-gray-400"></i>
+                        Customer
                     </label>
                     <select
-                        wire:model.live="statusFilter"
+                        wire:model.live="customerFilter"
                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                        <option value="all">Semua Status</option>
-                        @if($activeTab === 'pending')
-                            <option value="pending">Pending</option>
-                        @else
-                            <option value="completed">Completed</option>
-                        @endif
+                        <option value="all">Semua Customer</option>
+                        @foreach($customers as $customer)
+                            <option value="{{ $customer }}">{{ $customer }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Supplier Filter --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-truck mr-1 text-gray-400"></i>
+                        Supplier
+                    </label>
+                    <select
+                        wire:model.live="supplierFilter"
+                        class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="all">Semua Supplier</option>
+                        @foreach($suppliers as $supplier)
+                            <option value="{{ $supplier }}">{{ $supplier }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
@@ -225,8 +240,9 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengiriman</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        {{-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th> --}}
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
@@ -245,10 +261,23 @@
                                 <div class="text-sm font-medium text-gray-900">{{ $approval->invoice->customer_name }}</div>
                                 <div class="text-xs text-gray-500 truncate max-w-xs">{{ Str::limit($approval->invoice->customer_address, 40) }}</div>
                             </td>
+                            <td class="px-6 py-4">
+                                @php
+                                    $suppliers = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama')->filter()->unique();
+                                @endphp
+                                @if($suppliers->count() > 0)
+                                    <div class="text-sm font-medium text-gray-900">{{ $suppliers->first() }}</div>
+                                    @if($suppliers->count() > 1)
+                                        <div class="text-xs text-gray-500">+{{ $suppliers->count() - 1 }} lainnya</div>
+                                    @endif
+                                @else
+                                    <div class="text-sm text-gray-400 italic">-</div>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 0, ',', '.') }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            {{-- <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
                                     <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                         <i class="fas fa-clock mr-1"></i> Menunggu Approval
@@ -262,7 +291,7 @@
                                         <i class="fas fa-circle mr-1"></i> {{ ucfirst($approval->status) }}
                                     </span>
                                 @endif
-                            </td>
+                            </td> --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if($activeTab === 'pending')
                                     <a href="{{ route('accounting.approval-penagihan.detail', $approval->id) }}"
@@ -281,7 +310,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="7" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
                                     <p class="text-gray-500 text-sm">Belum ada invoice yang dibuat</p>

@@ -403,11 +403,11 @@ class DashboardController extends Controller
             }
         }
 
-        // Sort by margin percentage descending dan ambil top 5
+        // Sort by margin percentage descending
         usort($marginDataMingguIni, function($a, $b) {
             return $b['margin_percentage'] <=> $a['margin_percentage'];
         });
-        $topMarginMingguIni = array_slice($marginDataMingguIni, 0, 5);
+        $topMarginMingguIni = $marginDataMingguIni; // Tampilkan semua data
         
         // Hitung gross margin percentage minggu ini
         $grossMarginMingguIni = $totalHargaBeliMingguIni > 0 ? ($totalMarginMingguIni / $totalHargaBeliMingguIni) * 100 : 0;

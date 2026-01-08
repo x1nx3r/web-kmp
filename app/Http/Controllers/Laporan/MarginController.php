@@ -31,7 +31,7 @@ class MarginController extends Controller
         $picPurchasingList = User::whereIn('id', function($query) {
                 $query->select('purchasing_id')
                     ->from('pengiriman')
-                    ->whereIn('status', ['menunggu_verifikasi', 'berhasil'])
+                    ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
                     ->whereNull('deleted_at')
                     ->distinct();
             })
@@ -45,7 +45,7 @@ class MarginController extends Controller
                     ->whereIn('id', function($subQuery) {
                         $subQuery->select('purchase_order_id')
                             ->from('pengiriman')
-                            ->whereIn('status', ['menunggu_verifikasi', 'berhasil'])
+                            ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
                             ->whereNull('deleted_at');
                     });
             })
@@ -62,7 +62,7 @@ class MarginController extends Controller
                             ->whereIn('pengiriman_id', function($innerQuery) {
                                 $innerQuery->select('id')
                                     ->from('pengiriman')
-                                    ->whereIn('status', ['menunggu_verifikasi', 'berhasil'])
+                                    ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
                                     ->whereNull('deleted_at');
                             });
                     })
@@ -81,7 +81,7 @@ class MarginController extends Controller
                             ->whereIn('pengiriman_id', function($innerQuery) {
                                 $innerQuery->select('id')
                                     ->from('pengiriman')
-                                    ->whereIn('status', ['menunggu_verifikasi', 'berhasil'])
+                                    ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
                                     ->whereNull('deleted_at');
                             });
                     })
@@ -102,7 +102,7 @@ class MarginController extends Controller
             'approvalPembayaran',
             'invoicePenagihan'
         ])
-        ->whereIn('status', ['menunggu_verifikasi', 'berhasil'])
+        ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
         ->whereBetween('tanggal_kirim', [$startDate, $endDate]);
 
         // Apply filters

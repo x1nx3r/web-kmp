@@ -352,9 +352,9 @@
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <i class="fas fa-chart-line text-green-500"></i>
-                    Top 5 Margin Minggu Ini
+                    Margin Minggu Ini
                 </h2>
-                <p class="text-sm text-gray-500 mt-1">5 Pengiriman dengan margin tertinggi minggu ini</p>
+                <p class="text-sm text-gray-500 mt-1">Seluruh pengiriman dengan margin minggu ini ({{ count($topMarginMingguIni) }} pengiriman)</p>
             </div>
             <a href="{{ route('laporan.margin') }}" 
                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2">

@@ -78,10 +78,23 @@
             }
             
             // Hitung omset sistem minggu ini (ALWAYS CURRENT YEAR)
-            $omsetSistemMingguIniCard = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+            $omsetSistemMingguIniCard = \Illuminate\Support\Facades\DB::table('pengiriman')
+                ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                 ->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
-                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                ->whereNull('pengiriman.deleted_at')
+                ->select(
+                    'pengiriman.id',
+                    \Illuminate\Support\Facades\DB::raw('COALESCE(
+                        MAX(invoice_penagihan.amount_after_refraksi),
+                        SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                    ) as omset_pengiriman')
+                )
+                ->groupBy('pengiriman.id')
+                ->get()
+                ->sum('omset_pengiriman');
             
             // Omset manual minggu ini (ALWAYS CURRENT YEAR)
             $omsetManualBulanIniWeek = \App\Models\OmsetManual::where('tahun', $currentYear)
@@ -95,11 +108,24 @@
             // Calculate adjusted target with carry forward untuk minggu ini
             $sisaTargetSebelumnyaWeek = 0;
             for ($b = 1; $b < $currentMonth; $b++) {
-                $omsetSistemBulanLalu = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                $omsetSistemBulanLalu = \Illuminate\Support\Facades\DB::table('pengiriman')
+                    ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                    ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                    ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                     ->whereYear('pengiriman.tanggal_kirim', $currentYear)
                     ->whereMonth('pengiriman.tanggal_kirim', $b)
-                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    ->whereNull('pengiriman.deleted_at')
+                    ->select(
+                        'pengiriman.id',
+                        \Illuminate\Support\Facades\DB::raw('COALESCE(
+                            MAX(invoice_penagihan.amount_after_refraksi),
+                            SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                        ) as omset_pengiriman')
+                    )
+                    ->groupBy('pengiriman.id')
+                    ->get()
+                    ->sum('omset_pengiriman');
                     
                 $omsetManualBulanLalu = \App\Models\OmsetManual::where('tahun', $currentYear)
                     ->where('bulan', $b)
@@ -131,10 +157,23 @@
                     $endWeek = $startWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
                 }
                 
-                $omsetSistemWeek = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                $omsetSistemWeek = \Illuminate\Support\Facades\DB::table('pengiriman')
+                    ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                    ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                    ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                     ->whereBetween('pengiriman.tanggal_kirim', [$startWeek->startOfDay(), $endWeek->endOfDay()])
-                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    ->whereNull('pengiriman.deleted_at')
+                    ->select(
+                        'pengiriman.id',
+                        \Illuminate\Support\Facades\DB::raw('COALESCE(
+                            MAX(invoice_penagihan.amount_after_refraksi),
+                            SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                        ) as omset_pengiriman')
+                    )
+                    ->groupBy('pengiriman.id')
+                    ->get()
+                    ->sum('omset_pengiriman');
                     
                 $omsetManualWeek = $omsetManualBulanIniWeek / 4;
                 $omsetWeek = $omsetSistemWeek + $omsetManualWeek;

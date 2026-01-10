@@ -519,7 +519,7 @@ class RiwayatOrder extends Component
     private function getStatusCounts()
     {
         $baseQuery = Order::query()->when(
-            $this->selectedMonth && $this->selectedYear,
+            !$this->showAllOrders && $this->selectedMonth && $this->selectedYear,
             function (Builder $query) {
                 $query
                     ->whereMonth("tanggal_order", $this->selectedMonth)

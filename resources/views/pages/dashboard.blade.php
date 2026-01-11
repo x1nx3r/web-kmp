@@ -15,13 +15,19 @@
                 @php
                     // Calculate week number within the month (1-4) - same as laporan
                     $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+                    $today = \Carbon\Carbon::now();
+                    $dayOfMonth = $today->day;
                     $currentWeekOfMonth = 1;
-                    $tempDate = $startOfMonth->copy();
                     
-                    while ($tempDate->addDays(7)->lte(\Carbon\Carbon::now()->startOfWeek())) {
-                        $currentWeekOfMonth++;
+                    if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
+                        $currentWeekOfMonth = 1;
+                    } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
+                        $currentWeekOfMonth = 2;
+                    } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
+                        $currentWeekOfMonth = 3;
+                    } else {
+                        $currentWeekOfMonth = 4;
                     }
-                    $currentWeekOfMonth = min($currentWeekOfMonth, 4);
                     
                     // Calculate date range for this week based on month divisions
                     if ($currentWeekOfMonth == 1) {

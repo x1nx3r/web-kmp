@@ -1762,12 +1762,109 @@ document.addEventListener('click', function(event) {
             </form>
         </div>
 
-        {{-- Table --}}
-        <div class="overflow-x-auto max-h-96 overflow-y-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50 sticky top-0">
+        {{-- Detail PO Per Priority --}}
+        <div class="space-y-6 max-h-[500px] overflow-y-auto">
+            @php 
+                $totalNilaiPriority = $poByPriority->sum('nilai');
+            @endphp
+            @foreach($poByPriority as $priority)
+                @php
+                    $avgPerPO = $priority->total > 0 ? $priority->nilai / $priority->total : 0;
+                    $percentage = $totalNilaiPriority > 0 ? ($priority->nilai / $totalNilaiPriority) * 100 : 0;
+                    
+                    // Set color based on priority
+                    $headerColor = match($priority->priority) {
+                        'tinggi' => 'from-red-600 to-red-700',
+                        'sedang' => 'from-orange-500 to-orange-600',
+                        'rendah' => 'from-gray-500 to-gray-600',
+                        default => 'from-blue-600 to-blue-700'
+                    };
+                    
+                    $badgeColor = match($priority->priority) {
+                        'tinggi' => 'bg-red-100 text-red-800',
+                        'sedang' => 'bg-orange-100 text-orange-800',
+                        'rendah' => 'bg-gray-100 text-gray-800',
+                        default => 'bg-blue-100 text-blue-800'
+                    };
+                @endphp
+                
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    {{-- Priority Header --}}
+                    <div class="bg-gradient-to-r {{ $headerColor }} text-white p-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="font-bold text-lg flex items-center gap-2">
+                                    <i class="fas fa-flag"></i>
+                                    Prioritas {{ ucfirst($priority->priority) }}
+                                </h4>
+                                <p class="text-sm opacity-90">{{ number_format($priority->total, 0, ',', '.') }} PO</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm opacity-90">Total Nilai</p>
+                                <p class="font-bold text-xl">Rp {{ number_format($priority->nilai / 1000000, 1, ',', '.') }} Jt</p>
+                                <p class="text-xs opacity-75">{{ number_format($percentage, 1, ',', '.') }}% dari total</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {{-- PO Details Table --}}
+                    @if(isset($poDetailsByPriority[$priority->priority]) && count($poDetailsByPriority[$priority->priority]) > 0)
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">No. PO</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Klien</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cabang</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Nilai</th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach($poDetailsByPriority[$priority->priority] as $index => $po)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900">{{ $index + 1 }}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs font-medium text-blue-600">
+                                        {{ $po['po_number'] }}
+                                    </td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">{{ $po['klien_nama'] }}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-600">{{ $po['cabang'] }}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-700">{{ $po['tanggal_order'] }}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-center">
+                                        {{ number_format($po['total_qty'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs font-semibold text-gray-900 text-right">
+                                        Rp {{ number_format($po['total_amount'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-center">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full
+                                            {{ $po['status'] == 'dikonfirmasi' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                            {{ ucfirst($po['status']) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @else
+                    <div class="p-4 text-center text-gray-500">
+                        <i class="fas fa-inbox text-2xl mb-2"></i>
+                        <p class="text-sm">Tidak ada PO untuk prioritas ini</p>
+                    </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+        
+        {{-- Summary Table --}}
+        <div class="mt-6 overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prioritas</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah PO</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Nilai</th>
@@ -1776,16 +1873,11 @@ document.addEventListener('click', function(event) {
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    @php 
-                        $no = 1; 
-                        $totalNilaiPriority = $poByPriority->sum('nilai');
-                    @endphp
                     @foreach($poByPriority as $priority)
                         @php
                             $avgPerPO = $priority->total > 0 ? $priority->nilai / $priority->total : 0;
                             $percentage = $totalNilaiPriority > 0 ? ($priority->nilai / $totalNilaiPriority) * 100 : 0;
                             
-                            // Set badge color based on priority
                             $badgeColor = match($priority->priority) {
                                 'tinggi' => 'bg-red-100 text-red-800',
                                 'sedang' => 'bg-orange-100 text-orange-800',
@@ -1794,7 +1886,6 @@ document.addEventListener('click', function(event) {
                             };
                         @endphp
                         <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm">
                                 <span class="px-3 py-1 text-xs font-semibold rounded-full {{ $badgeColor }}">
                                     {{ ucfirst($priority->priority) }}
@@ -1815,9 +1906,9 @@ document.addEventListener('click', function(event) {
                         </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="bg-gray-50 sticky bottom-0">
+                <tfoot class="bg-gray-50">
                     <tr class="font-bold">
-                        <td colspan="2" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-center">
                             {{ number_format($poByPriority->sum('total'), 0, ',', '.') }}
                         </td>

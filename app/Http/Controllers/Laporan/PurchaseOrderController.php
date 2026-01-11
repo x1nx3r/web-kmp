@@ -92,6 +92,30 @@ class PurchaseOrderController extends Controller
             ->groupBy('priority')
             ->get();
         
+        // Get PO details for each priority
+        $poDetailsByPriority = [];
+        foreach ($poByPriority as $priorityData) {
+            $poDetails = Order::with('klien')
+                ->where('priority', $priorityData->priority)
+                ->whereIn('status', ['dikonfirmasi', 'diproses'])
+                ->orderBy('po_number')
+                ->get()
+                ->map(function($order) {
+                    return [
+                        'po_number' => $order->po_number ?: $order->no_order,
+                        'klien_nama' => $order->klien->nama ?? '-',
+                        'cabang' => $order->klien->cabang ?? '-',
+                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'total_amount' => $order->total_amount,
+                        'total_qty' => $order->total_qty,
+                        'status' => $order->status
+                    ];
+                })
+                ->toArray();
+            
+            $poDetailsByPriority[$priorityData->priority] = $poDetails;
+        }
+        
         // ========== PO BY CLIENT (dikonfirmasi, diproses, selesai) - WITH FILTER ==========
         $poByClient = Order::select(
                 'kliens.id as klien_id',
@@ -205,6 +229,7 @@ class PurchaseOrderController extends Controller
             'poByStatus',
             'poDetailsByStatus',
             'poByPriority',
+            'poDetailsByPriority',
             'poByClient',
             'poTrendByMonth',
             'monthLabels',
@@ -653,6 +678,30 @@ class PurchaseOrderController extends Controller
             ->groupBy('priority')
             ->get();
         
+        // Get PO details for each priority
+        $poDetailsByPriority = [];
+        foreach ($poByPriority as $priorityData) {
+            $poDetails = Order::with('klien')
+                ->where('priority', $priorityData->priority)
+                ->whereIn('status', ['dikonfirmasi', 'diproses'])
+                ->orderBy('po_number')
+                ->get()
+                ->map(function($order) {
+                    return [
+                        'po_number' => $order->po_number ?: $order->no_order,
+                        'klien_nama' => $order->klien->nama ?? '-',
+                        'cabang' => $order->klien->cabang ?? '-',
+                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'total_amount' => $order->total_amount,
+                        'total_qty' => $order->total_qty,
+                        'status' => $order->status
+                    ];
+                })
+                ->toArray();
+            
+            $poDetailsByPriority[$priorityData->priority] = $poDetails;
+        }
+        
         // Calculate totals
         $totalPO = $poByPriority->sum('total');
         $totalNilai = $poByPriority->sum('nilai');
@@ -661,6 +710,7 @@ class PurchaseOrderController extends Controller
         // Load PDF view
         $pdf = Pdf::loadView('pages.laporan.pdf.po-priority', [
             'poByPriority' => $poByPriority,
+            'poDetailsByPriority' => $poDetailsByPriority,
             'totalPO' => $totalPO,
             'totalNilai' => $totalNilai,
             'avgPerPO' => $avgPerPO,
@@ -668,7 +718,7 @@ class PurchaseOrderController extends Controller
         ]);
         
         // Set paper size and orientation
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper('A4', 'landscape');
         
         // Generate filename with timestamp
         $filename = 'PO_Berdasarkan_Prioritas_' . now()->format('Ymd_His') . '.pdf';

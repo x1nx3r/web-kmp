@@ -134,6 +134,14 @@
             background: #F3F4F6;
             color: #374151;
         }
+        .badge-dikonfirmasi {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+        .badge-diproses {
+            background: #FEF3C7;
+            color: #92400E;
+        }
         .grand-total {
             background: #DBEAFE;
             padding: 15px;
@@ -227,7 +235,7 @@
         </div>
     </div>
 
-    {{-- Table --}}
+    {{-- Table Summary --}}
     <table>
         <thead>
             <tr>
@@ -286,6 +294,102 @@
             </tr>
         </tfoot>
     </table>
+
+    {{-- Detail PO Per Priority --}}
+    <div style="margin-top: 25px;">
+        <h2 style="font-size: 14px; font-weight: bold; color: #1E40AF; margin-bottom: 15px; border-bottom: 2px solid #3B82F6; padding-bottom: 8px;">
+            DETAIL PURCHASE ORDER PER PRIORITAS
+        </h2>
+        
+        @foreach($poByPriority as $priority)
+            @php
+                $headerBg = match($priority->priority) {
+                    'tinggi' => '#FEE2E2',
+                    'sedang' => '#FEF3C7',
+                    'rendah' => '#F3F4F6',
+                    default => '#EFF6FF'
+                };
+                
+                $headerColor = match($priority->priority) {
+                    'tinggi' => '#991B1B',
+                    'sedang' => '#92400E',
+                    'rendah' => '#374151',
+                    default => '#1E40AF'
+                };
+            @endphp
+            
+            {{-- Priority Section Header --}}
+            <div style="background: {{ $headerBg }}; padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid {{ $headerColor }};">
+                <div style="display: table; width: 100%;">
+                    <div style="display: table-cell; vertical-align: middle;">
+                        <span style="font-size: 13px; font-weight: bold; color: {{ $headerColor }}; text-transform: uppercase;">
+                            📌 PRIORITAS {{ strtoupper($priority->priority) }}
+                        </span>
+                        <span style="font-size: 11px; color: {{ $headerColor }}; margin-left: 10px;">
+                            ({{ number_format($priority->total, 0, ',', '.') }} PO)
+                        </span>
+                    </div>
+                    <div style="display: table-cell; vertical-align: middle; text-align: right;">
+                        <span style="font-size: 12px; font-weight: bold; color: {{ $headerColor }};">
+                            Total: Rp {{ number_format($priority->nilai, 0, ',', '.') }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            {{-- PO Details Table --}}
+            @if(isset($poDetailsByPriority[$priority->priority]) && count($poDetailsByPriority[$priority->priority]) > 0)
+            <table style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th style="width: 4%">No</th>
+                        <th style="width: 14%">No. PO</th>
+                        <th style="width: 22%">Klien</th>
+                        <th style="width: 14%">Cabang</th>
+                        <th style="width: 10%">Tanggal</th>
+                        <th style="width: 8%" class="text-center">Qty</th>
+                        <th style="width: 18%" class="text-right">Nilai</th>
+                        <th style="width: 10%" class="text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($poDetailsByPriority[$priority->priority] as $index => $po)
+                    <tr>
+                        <td class="text-center">{{ $index + 1 }}</td>
+                        <td class="font-bold" style="color: #2563EB;">{{ $po['po_number'] }}</td>
+                        <td>{{ $po['klien_nama'] }}</td>
+                        <td>{{ $po['cabang'] }}</td>
+                        <td class="text-center">{{ $po['tanggal_order'] }}</td>
+                        <td class="text-center">{{ number_format($po['total_qty'], 0, ',', '.') }}</td>
+                        <td class="text-right font-bold">Rp {{ number_format($po['total_amount'], 0, ',', '.') }}</td>
+                        <td class="text-center">
+                            <span class="badge {{ $po['status'] == 'dikonfirmasi' ? 'badge-tinggi' : 'badge-sedang' }}" style="font-size: 8px;">
+                                {{ ucfirst($po['status']) }}
+                            </span>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold">Subtotal {{ ucfirst($priority->priority) }}:</td>
+                        <td class="text-center font-bold">
+                            {{ number_format(collect($poDetailsByPriority[$priority->priority])->sum('total_qty'), 0, ',', '.') }}
+                        </td>
+                        <td class="text-right font-bold">
+                            Rp {{ number_format(collect($poDetailsByPriority[$priority->priority])->sum('total_amount'), 0, ',', '.') }}
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+            @else
+            <div style="background: #F9FAFB; padding: 15px; text-align: center; color: #6B7280; font-size: 10px; margin-bottom: 20px; border-radius: 4px;">
+                Tidak ada PO untuk prioritas ini
+            </div>
+            @endif
+        @endforeach
+    </div>
 
     {{-- Analysis Summary --}}
     <div class="analysis-box">

@@ -438,9 +438,9 @@ class DashboardController extends Controller
                     $totalHargaJualItem = $detail->qty_kirim * $hargaJualPerKg;
                 }
 
-                // Hitung margin
+                // Hitung margin - Profit Margin: (margin / harga jual) * 100
                 $margin = $totalHargaJualItem - $totalHargaBeliItem;
-                $marginPercentage = $totalHargaBeliItem > 0 ? ($margin / $totalHargaBeliItem) * 100 : 0;
+                $marginPercentage = $totalHargaJualItem > 0 ? ($margin / $totalHargaJualItem) * 100 : 0;
 
                 // Get klien info
                 $klien = $p->order->klien ?? null;
@@ -474,8 +474,8 @@ class DashboardController extends Controller
         });
         $topMarginMingguIni = $marginDataMingguIni; // Tampilkan semua data
         
-        // Hitung gross margin percentage minggu ini
-        $grossMarginMingguIni = $totalHargaBeliMingguIni > 0 ? ($totalMarginMingguIni / $totalHargaBeliMingguIni) * 100 : 0;
+        // Hitung gross margin percentage minggu ini - Profit Margin: (margin / harga jual) * 100
+        $grossMarginMingguIni = $totalHargaJualMingguIni > 0 ? ($totalMarginMingguIni / $totalHargaJualMingguIni) * 100 : 0;
 
         // ========== GROSS MARGIN BULAN INI ==========
         // Query pengiriman untuk bulan ini
@@ -493,6 +493,7 @@ class DashboardController extends Controller
         // Process margin data untuk bulan ini
         $totalMarginBulanIni = 0;
         $totalHargaBeliBulanIni = 0;
+        $totalHargaJualBulanIni = 0;
         $countMarginBulanIni = 0;
         
         foreach ($pengirimanMarginBulanIni as $p) {
@@ -539,12 +540,13 @@ class DashboardController extends Controller
 
                 $totalMarginBulanIni += $margin;
                 $totalHargaBeliBulanIni += $totalHargaBeliItem;
+                $totalHargaJualBulanIni += $totalHargaJualItem;
                 $countMarginBulanIni++;
             }
         }
 
-        // Hitung gross margin bulan ini
-        $grossMarginBulanIni = $totalHargaBeliBulanIni > 0 ? ($totalMarginBulanIni / $totalHargaBeliBulanIni) * 100 : 0;
+        // Hitung gross margin bulan ini - Profit Margin: (margin / harga jual) * 100
+        $grossMarginBulanIni = $totalHargaJualBulanIni > 0 ? ($totalMarginBulanIni / $totalHargaJualBulanIni) * 100 : 0;
         
         return view('pages.dashboard', compact(
             'targetMingguan',

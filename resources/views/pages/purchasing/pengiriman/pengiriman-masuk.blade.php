@@ -1005,9 +1005,9 @@ function updateTotals() {
         totalHargaJual += (qty * hargaJual);
     });
     
-    // Calculate total margin
+    // Calculate total margin - Profit Margin: (margin / harga jual) * 100
     const totalMargin = totalHargaJual - totalHargaBeli;
-    const marginPercentage = totalHargaBeli > 0 ? ((totalMargin / totalHargaBeli) * 100) : 0;
+    const marginPercentage = totalHargaJual > 0 ? ((totalMargin / totalHargaJual) * 100) : 0;
     
     // Update tampilan summary
     const totalQtyEl = document.getElementById('totalQtyKirim');

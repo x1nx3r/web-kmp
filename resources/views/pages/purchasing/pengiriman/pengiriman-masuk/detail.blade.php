@@ -339,9 +339,9 @@
                                     // Get harga jual (PO price to client)
                                     $hargaJual = $detail->orderDetail->harga_jual ?? 0;
                                     
-                                    // Calculate margin
+                                    // Calculate margin - Profit Margin: (margin / harga jual) * 100
                                     $marginPerUnit = $hargaJual - $hargaBeli;
-                                    $marginPercentage = $hargaBeli > 0 ? (($marginPerUnit / $hargaBeli) * 100) : 0;
+                                    $marginPercentage = $hargaJual > 0 ? (($marginPerUnit / $hargaJual) * 100) : 0;
                                     
                                     // Total calculations
                                     $totalHargaBeli = ($detail->qty_kirim ?? 0) * $hargaBeli;

@@ -184,9 +184,9 @@ class MarginController extends Controller
                     $sumberHargaJual = 'Purchase Order';
                 }
 
-                // Hitung margin
+                // Hitung margin - Profit Margin: (margin / harga jual) * 100
                 $margin = $totalHargaJualItem - $totalHargaBeliItem;
-                $marginPercentage = $totalHargaBeliItem > 0 ? ($margin / $totalHargaBeliItem) * 100 : 0;
+                $marginPercentage = $totalHargaJualItem > 0 ? ($margin / $totalHargaJualItem) * 100 : 0;
 
                 // Get klien info
                 $klien = $p->order->klien ?? null;
@@ -230,8 +230,8 @@ class MarginController extends Controller
             return $b['margin_percentage'] <=> $a['margin_percentage'];
         });
 
-        // Calculate gross margin percentage
-        $grossMarginPercentage = $totalHargaBeli > 0 ? ($totalMargin / $totalHargaBeli) * 100 : 0;
+        // Calculate gross margin percentage - Profit Margin: (margin / harga jual) * 100
+        $grossMarginPercentage = $totalHargaJual > 0 ? ($totalMargin / $totalHargaJual) * 100 : 0;
 
         // Calculate statistics
         $profitCount = count(array_filter($marginData, fn($item) => $item['margin'] >= 0));

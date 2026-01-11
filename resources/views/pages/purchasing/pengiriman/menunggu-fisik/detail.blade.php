@@ -468,7 +468,8 @@
                     @if($pengiriman->approvalPembayaran && ($hargaJualPerKg > 0))
                         @php
                             $margin = $totalHargaJual - $totalHargaBeli;
-                            $marginPercentage = $totalHargaBeli > 0 ? ($margin / $totalHargaBeli) * 100 : 0;
+                            // Profit Margin: (margin / harga jual) * 100
+                            $marginPercentage = $totalHargaJual > 0 ? ($margin / $totalHargaJual) * 100 : 0;
                             $isPositive = $margin >= 0;
                         @endphp
                         

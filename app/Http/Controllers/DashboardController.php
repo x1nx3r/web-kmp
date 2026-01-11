@@ -11,6 +11,7 @@ use App\Models\OmsetManual;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DashboardController extends Controller
 {
@@ -915,5 +916,230 @@ class DashboardController extends Controller
             'bahan_baku_names' => $bahanBakuNames,
             'datasets' => $datasets
         ]);
+    }
+    
+    /**
+     * Download PDF Margin Minggu Ini
+     */
+    public function downloadMarginMingguIniPdf()
+    {
+        // Hitung range tanggal untuk minggu ini (sama seperti di index)
+        $today = Carbon::now();
+        $dayOfMonth = $today->day;
+        $currentWeekOfMonth = 1;
+        
+        if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
+            $currentWeekOfMonth = 1;
+        } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
+            $currentWeekOfMonth = 2;
+        } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
+            $currentWeekOfMonth = 3;
+        } else {
+            $currentWeekOfMonth = 4;
+        }
+        
+        // Hitung range tanggal untuk minggu ini
+        $startOfMonth = Carbon::now()->startOfMonth();
+        
+        if ($currentWeekOfMonth == 1) {
+            $startOfWeek = $startOfMonth->copy();
+        } else {
+            $startOfWeek = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+        }
+        
+        if ($currentWeekOfMonth == 4) {
+            $endOfWeek = $startOfMonth->copy()->endOfMonth();
+        } else {
+            $endOfWeek = $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+        }
+
+        // Query pengiriman untuk margin minggu ini
+        $pengirimanMargin = Pengiriman::with([
+            'pengirimanDetails.bahanBakuSupplier.supplier',
+            'pengirimanDetails.bahanBakuSupplier',
+            'pengirimanDetails.orderDetail.bahanBakuKlien',
+            'order.klien',
+            'purchasing',
+            'approvalPembayaran',
+            'invoicePenagihan'
+        ])
+        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        ->whereBetween('tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
+        ->get();
+
+        // Process margin data
+        $marginDataMingguIni = [];
+        $totalMarginMingguIni = 0;
+        $totalHargaBeliMingguIni = 0;
+        $totalHargaJualMingguIni = 0;
+
+        foreach ($pengirimanMargin as $p) {
+            if (!$p->approvalPembayaran && !$p->invoicePenagihan) {
+                continue;
+            }
+
+            foreach ($p->pengirimanDetails as $detail) {
+                $hargaBeliPerKg = 0;
+                $totalHargaBeliItem = 0;
+                
+                if ($p->approvalPembayaran) {
+                    $qtyAfterRefraksi = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    
+                    if ($qtyAfterRefraksi > 0) {
+                        $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
+                    }
+                    
+                    $totalHargaBeliItem = $hargaBeliPerKg * $detail->qty_kirim;
+                } else {
+                    $hargaBeliPerKg = $detail->harga_satuan ?? 0;
+                    $totalHargaBeliItem = $detail->total_harga ?? 0;
+                }
+
+                $hargaJualPerKg = 0;
+                $totalHargaJualItem = 0;
+                
+                if ($p->invoicePenagihan) {
+                    $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
+                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    
+                    if ($qtyJual > 0) {
+                        $hargaJualPerKg = $amountJual / $qtyJual;
+                    }
+                    
+                    $totalHargaJualItem = $hargaJualPerKg * $detail->qty_kirim;
+                } elseif ($detail->orderDetail && $detail->orderDetail->harga_jual > 0) {
+                    $hargaJualPerKg = $detail->orderDetail->harga_jual;
+                    $totalHargaJualItem = $detail->qty_kirim * $hargaJualPerKg;
+                }
+
+                $margin = $totalHargaJualItem - $totalHargaBeliItem;
+                $marginPercentage = $totalHargaJualItem > 0 ? ($margin / $totalHargaJualItem) * 100 : 0;
+
+                $bahanBaku = $detail->orderDetail?->bahanBakuKlien;
+                $bahanBakuSupplier = $detail->bahanBakuSupplier;
+
+                $marginDataMingguIni[] = [
+                    'pengiriman_id' => $p->id,
+                    'tanggal_kirim' => $p->tanggal_kirim,
+                    'status' => $p->status,
+                    'pic_purchasing' => $p->purchasing->nama ?? '-',
+                    'klien' => $p->order->klien->nama ?? '-',
+                    'supplier' => $bahanBakuSupplier->supplier->nama ?? '-',
+                    'bahan_baku' => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
+                    'qty_kirim' => $detail->qty_kirim,
+                    'harga_beli_per_kg' => $hargaBeliPerKg,
+                    'total_harga_beli' => $totalHargaBeliItem,
+                    'harga_jual_per_kg' => $hargaJualPerKg,
+                    'total_harga_jual' => $totalHargaJualItem,
+                    'margin' => $margin,
+                    'margin_percentage' => $marginPercentage,
+                ];
+
+                $totalMarginMingguIni += $margin;
+                $totalHargaBeliMingguIni += $totalHargaBeliItem;
+                $totalHargaJualMingguIni += $totalHargaJualItem;
+            }
+        }
+
+        // Sort by margin percentage descending
+        usort($marginDataMingguIni, function($a, $b) {
+            return $b['margin_percentage'] <=> $a['margin_percentage'];
+        });
+
+        // Hitung gross margin percentage minggu ini
+        $grossMarginMingguIni = $totalHargaJualMingguIni > 0 ? ($totalMarginMingguIni / $totalHargaJualMingguIni) * 100 : 0;
+
+        // ========== GROSS MARGIN BULAN INI ==========
+        // Query pengiriman untuk bulan ini
+        $pengirimanMarginBulanIni = Pengiriman::with([
+            'pengirimanDetails.bahanBakuSupplier',
+            'pengirimanDetails.orderDetail',
+            'approvalPembayaran',
+            'invoicePenagihan'
+        ])
+        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        ->whereYear('tanggal_kirim', Carbon::now()->year)
+        ->whereMonth('tanggal_kirim', Carbon::now()->month)
+        ->get();
+        
+        // Process margin data untuk bulan ini
+        $totalMarginBulanIni = 0;
+        $totalHargaBeliBulanIni = 0;
+        $totalHargaJualBulanIni = 0;
+        
+        foreach ($pengirimanMarginBulanIni as $p) {
+            if (!$p->approvalPembayaran && !$p->invoicePenagihan) {
+                continue;
+            }
+
+            foreach ($p->pengirimanDetails as $detail) {
+                $hargaBeliPerKg = 0;
+                $totalHargaBeliItem = 0;
+                
+                if ($p->approvalPembayaran) {
+                    $qtyAfterRefraksi = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    
+                    if ($qtyAfterRefraksi > 0) {
+                        $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
+                    }
+                    
+                    $totalHargaBeliItem = $hargaBeliPerKg * $detail->qty_kirim;
+                } else {
+                    $hargaBeliPerKg = $detail->harga_satuan ?? 0;
+                    $totalHargaBeliItem = $detail->total_harga ?? 0;
+                }
+
+                $hargaJualPerKg = 0;
+                $totalHargaJualItem = 0;
+                
+                if ($p->invoicePenagihan) {
+                    $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
+                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    
+                    if ($qtyJual > 0) {
+                        $hargaJualPerKg = $amountJual / $qtyJual;
+                    }
+                    
+                    $totalHargaJualItem = $hargaJualPerKg * $detail->qty_kirim;
+                } elseif ($detail->orderDetail && $detail->orderDetail->harga_jual > 0) {
+                    $hargaJualPerKg = $detail->orderDetail->harga_jual;
+                    $totalHargaJualItem = $detail->qty_kirim * $hargaJualPerKg;
+                }
+
+                $margin = $totalHargaJualItem - $totalHargaBeliItem;
+
+                $totalMarginBulanIni += $margin;
+                $totalHargaBeliBulanIni += $totalHargaBeliItem;
+                $totalHargaJualBulanIni += $totalHargaJualItem;
+            }
+        }
+
+        // Hitung gross margin bulan ini - Profit Margin: (margin / harga jual) * 100
+        $grossMarginBulanIni = $totalHargaJualBulanIni > 0 ? ($totalMarginBulanIni / $totalHargaJualBulanIni) * 100 : 0;
+
+        // Data untuk PDF
+        $data = [
+            'marginData' => $marginDataMingguIni,
+            'totalMargin' => $totalMarginMingguIni,
+            'totalHargaBeli' => $totalHargaBeliMingguIni,
+            'totalHargaJual' => $totalHargaJualMingguIni,
+            'grossMargin' => $grossMarginMingguIni,
+            'grossMarginBulanIni' => $grossMarginBulanIni,
+            'totalMarginBulanIni' => $totalMarginBulanIni,
+            'currentMonth' => Carbon::now()->format('F Y'),
+            'startDate' => $startOfWeek->format('d/m/Y'),
+            'endDate' => $endOfWeek->format('d/m/Y'),
+            'currentWeek' => $currentWeekOfMonth,
+            'generatedAt' => Carbon::now()->format('d/m/Y H:i:s'),
+        ];
+
+        $pdf = Pdf::loadView('pages.dashboard.pdf.margin-minggu-ini', $data);
+        $pdf->setPaper('a4', 'landscape');
+        
+        $filename = 'Margin_Minggu_' . $currentWeekOfMonth . '_' . Carbon::now()->format('M_Y') . '.pdf';
+        
+        return $pdf->download($filename);
     }
 }

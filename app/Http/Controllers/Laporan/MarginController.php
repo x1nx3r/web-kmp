@@ -11,6 +11,7 @@ use App\Models\Klien;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class MarginController extends Controller
 {
@@ -265,7 +266,186 @@ class MarginController extends Controller
 
     public function export(Request $request)
     {
-        // TODO: Implement PDF/Excel export
-        return response()->json(['message' => 'Export functionality will be implemented']);
+        // Get filter parameters (same as index method)
+        $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+        $picPurchasing = $request->get('pic_purchasing');
+        $klienId = $request->get('klien');
+        $supplierId = $request->get('supplier');
+        $bahanBakuId = $request->get('bahan_baku');
+
+        // Build query untuk pengiriman dengan relasi yang dibutuhkan
+        $query = Pengiriman::with([
+            'purchasing:id,nama',
+            'order.klien:id,nama,cabang',
+            'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
+            'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
+            'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
+            'approvalPembayaran',
+            'invoicePenagihan'
+        ])
+        ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
+        ->whereBetween('tanggal_kirim', [$startDate, $endDate]);
+
+        // Apply filters
+        if ($picPurchasing) {
+            $query->where('purchasing_id', $picPurchasing);
+            $picName = User::find($picPurchasing)->nama ?? '';
+        }
+
+        if ($klienId) {
+            $query->whereHas('order', function($q) use ($klienId) {
+                $q->where('klien_id', $klienId);
+            });
+            $klienName = Klien::find($klienId)->nama ?? '';
+        }
+
+        if ($supplierId) {
+            $query->whereHas('pengirimanDetails.bahanBakuSupplier', function($q) use ($supplierId) {
+                $q->where('supplier_id', $supplierId);
+            });
+            $supplierName = Supplier::find($supplierId)->nama ?? '';
+        }
+
+        if ($bahanBakuId) {
+            $query->whereHas('pengirimanDetails.orderDetail', function($q) use ($bahanBakuId) {
+                $q->where('bahan_baku_klien_id', $bahanBakuId);
+            });
+            $bahanBakuName = BahanBakuKlien::find($bahanBakuId)->nama ?? '';
+        }
+
+        $pengirimanList = $query->orderBy('tanggal_kirim', 'desc')->get();
+
+        // Process data untuk PDF
+        $marginData = [];
+        $totalQty = 0;
+        $totalHargaBeli = 0;
+        $totalHargaJual = 0;
+        $totalMargin = 0;
+
+        foreach ($pengirimanList as $p) {
+            if (!$p->approvalPembayaran && !$p->invoicePenagihan) {
+                continue;
+            }
+
+            foreach ($p->pengirimanDetails as $detail) {
+                $hargaBeliPerKg = 0;
+                $totalHargaBeliItem = 0;
+                
+                if ($p->approvalPembayaran) {
+                    $qtyAfterRefraksi = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    
+                    if ($qtyAfterRefraksi > 0) {
+                        $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
+                    }
+                    
+                    $totalHargaBeliItem = $hargaBeliPerKg * $detail->qty_kirim;
+                } else {
+                    $hargaBeliPerKg = $detail->harga_satuan ?? 0;
+                    $totalHargaBeliItem = $detail->total_harga ?? 0;
+                }
+
+                $hargaJualPerKg = 0;
+                $totalHargaJualItem = 0;
+                
+                if ($p->invoicePenagihan) {
+                    $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
+                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    
+                    if ($qtyJual > 0) {
+                        $hargaJualPerKg = $amountJual / $qtyJual;
+                    }
+                    
+                    $totalHargaJualItem = $hargaJualPerKg * $detail->qty_kirim;
+                } elseif ($detail->orderDetail && $detail->orderDetail->harga_jual > 0) {
+                    $hargaJualPerKg = $detail->orderDetail->harga_jual;
+                    $totalHargaJualItem = $detail->qty_kirim * $hargaJualPerKg;
+                }
+
+                $margin = $totalHargaJualItem - $totalHargaBeliItem;
+                $marginPercentage = $totalHargaJualItem > 0 ? ($margin / $totalHargaJualItem) * 100 : 0;
+
+                $klien = $p->order->klien ?? null;
+                $namaKlien = $klien ? $klien->nama . ($klien->cabang ? " ({$klien->cabang})" : '') : '-';
+
+                $supplier = $detail->bahanBakuSupplier->supplier ?? null;
+                $bahanBaku = $detail->orderDetail->bahanBakuKlien ?? null;
+                $bahanBakuSupplier = $detail->bahanBakuSupplier ?? null;
+
+                $marginData[] = [
+                    'tanggal_kirim' => Carbon::parse($p->tanggal_kirim)->format('d/m/Y'),
+                    'no_pengiriman' => $p->no_pengiriman ?? '-',
+                    'pic_purchasing' => $p->purchasing->nama ?? '-',
+                    'klien' => $namaKlien,
+                    'supplier' => $supplier->nama ?? '-',
+                    'bahan_baku' => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
+                    'qty' => $detail->qty_kirim,
+                    'harga_beli_per_kg' => $hargaBeliPerKg,
+                    'harga_beli_total' => $totalHargaBeliItem,
+                    'harga_jual_per_kg' => $hargaJualPerKg,
+                    'harga_jual_total' => $totalHargaJualItem,
+                    'margin' => $margin,
+                    'margin_percentage' => $marginPercentage,
+                ];
+
+                $totalQty += $detail->qty_kirim;
+                $totalHargaBeli += $totalHargaBeliItem;
+                $totalHargaJual += $totalHargaJualItem;
+                $totalMargin += $margin;
+            }
+        }
+
+        // Sort by margin percentage descending
+        usort($marginData, function($a, $b) {
+            return $b['margin_percentage'] <=> $a['margin_percentage'];
+        });
+
+        // Calculate gross margin percentage
+        $grossMarginPercentage = $totalHargaJual > 0 ? ($totalMargin / $totalHargaJual) * 100 : 0;
+
+        // Calculate profit/loss count
+        $profitCount = count(array_filter($marginData, function($item) {
+            return $item['margin'] >= 0;
+        }));
+        $lossCount = count($marginData) - $profitCount;
+
+        // Build filter description
+        $filterDesc = [];
+        if ($picPurchasing && isset($picName)) {
+            $filterDesc[] = 'PIC: ' . $picName;
+        }
+        if ($klienId && isset($klienName)) {
+            $filterDesc[] = 'Klien: ' . $klienName;
+        }
+        if ($supplierId && isset($supplierName)) {
+            $filterDesc[] = 'Supplier: ' . $supplierName;
+        }
+        if ($bahanBakuId && isset($bahanBakuName)) {
+            $filterDesc[] = 'Bahan Baku: ' . $bahanBakuName;
+        }
+
+        // Data untuk PDF
+        $data = [
+            'marginData' => $marginData,
+            'totalQty' => $totalQty,
+            'totalHargaBeli' => $totalHargaBeli,
+            'totalHargaJual' => $totalHargaJual,
+            'totalMargin' => $totalMargin,
+            'grossMarginPercentage' => $grossMarginPercentage,
+            'profitCount' => $profitCount,
+            'lossCount' => $lossCount,
+            'startDate' => Carbon::parse($startDate)->format('d/m/Y'),
+            'endDate' => Carbon::parse($endDate)->format('d/m/Y'),
+            'filterDesc' => implode(' • ', $filterDesc),
+            'generatedAt' => Carbon::now()->format('d/m/Y H:i:s'),
+        ];
+
+        $pdf = Pdf::loadView('pages.laporan.pdf.margin', $data);
+        $pdf->setPaper('a4', 'landscape');
+        
+        $filename = 'Laporan_Margin_' . Carbon::parse($startDate)->format('d-m-Y') . '_sd_' . Carbon::parse($endDate)->format('d-m-Y') . '.pdf';
+        
+        return $pdf->download($filename);
     }
 }

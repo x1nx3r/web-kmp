@@ -35,6 +35,7 @@ Route::middleware(["auth"])->group(function () {
     Route::get('/dashboard/omset-per-klien', [DashboardController::class, 'getOmsetPerKlien'])->name('dashboard.omsetPerKlien');
     Route::get('/dashboard/omset-per-supplier', [DashboardController::class, 'getOmsetPerSupplier'])->name('dashboard.omsetPerSupplier');
     Route::get('/dashboard/omset-per-bahan-baku', [DashboardController::class, 'getOmsetPerBahanBaku'])->name('dashboard.omsetPerBahanBaku');
+    Route::get('/dashboard/margin-minggu-ini/pdf', [DashboardController::class, 'downloadMarginMingguIniPdf'])->name('dashboard.margin-minggu-ini.pdf');
 
     Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/purchase-order', [LaporanPOController::class, 'index'])->name('po');
@@ -71,6 +72,7 @@ Route::middleware(["auth"])->group(function () {
             
             // Laporan Margin
             Route::get('/margin', [MarginController::class, 'index'])->name('margin');
+            Route::get('/margin/pdf', [MarginController::class, 'export'])->name('margin.pdf');
             Route::post('/margin/export', [MarginController::class, 'export'])->name('margin.export');
     });
     Route::get("/dashboard", [DashboardController::class, "index"])->name(

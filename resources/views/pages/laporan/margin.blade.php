@@ -194,6 +194,12 @@
         </div>
 
         <div class="flex justify-end gap-3 mt-4">
+            <button type="button" 
+                    onclick="downloadPDF()"
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm">
+                <i class="fas fa-file-pdf mr-2"></i>
+                Download PDF
+            </button>
             <button type="submit" 
                     class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium text-sm">
                 <i class="fas fa-search mr-2"></i>
@@ -375,6 +381,22 @@ function resetFilters() {
     window.location.href = '{{ route("laporan.margin") }}';
 }
 
+// Download PDF with current filters
+function downloadPDF() {
+    const form = document.getElementById('filterForm');
+    const formData = new FormData(form);
+    
+    // Build query string from form data
+    const params = new URLSearchParams();
+    for (const [key, value] of formData.entries()) {
+        if (value) {
+            params.append(key, value);
+        }
+    }
+    
+    // Redirect to PDF download route with filters
+    window.location.href = '{{ route("laporan.margin.pdf") }}?' + params.toString();
+}
 
 </script>
 

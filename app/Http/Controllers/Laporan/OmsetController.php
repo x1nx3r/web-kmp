@@ -644,7 +644,7 @@ class OmsetController extends Controller
                     'cabang' => $first->cabang,
                     'total' => $items->sum('omset_pengiriman')
                 ];
-            })->sortByDesc('total')->take(5)->values();
+            })->sortByDesc('total')->values();
             
             $klienNames = [];
             $datasets = [];
@@ -752,7 +752,7 @@ class OmsetController extends Controller
                     'nama' => $first->nama,
                     'total' => $items->sum('omset_pengiriman')
                 ];
-            })->sortByDesc('total')->take(5)->values();
+            })->sortByDesc('total')->values();
             
             $supplierNames = [];
             $datasets = [];

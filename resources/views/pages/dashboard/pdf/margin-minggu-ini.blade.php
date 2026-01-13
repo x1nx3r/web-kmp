@@ -160,25 +160,25 @@
         <div class="summary-item">
             <div class="summary-label">Total Margin</div>
             <div class="summary-value {{ $totalMargin >= 0 ? 'positive' : 'negative' }}">
-                Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                Rp {{ number_format($totalMargin, 2, ',', '.') }}
             </div>
         </div>
         <div class="summary-item">
             <div class="summary-label">Total Harga Beli</div>
             <div class="summary-value">
-                Rp {{ number_format($totalHargaBeli, 0, ',', '.') }}
+                Rp {{ number_format($totalHargaBeli, 2, ',', '.') }}
             </div>
         </div>
         <div class="summary-item">
             <div class="summary-label">Total Harga Jual</div>
             <div class="summary-value">
-                Rp {{ number_format($totalHargaJual, 0, ',', '.') }}
+                Rp {{ number_format($totalHargaJual, 2, ',', '.') }}
             </div>
         </div>
         <div class="summary-item">
             <div class="summary-label">Gross Margin %</div>
             <div class="summary-value {{ $grossMargin >= 0 ? 'positive' : 'negative' }}">
-                {{ number_format($grossMargin, 2) }}%
+                {{ number_format($grossMargin, 2, ',', '.') }}%
             </div>
         </div>
         <div class="summary-item">
@@ -216,21 +216,21 @@
                         <td>{{ $item['klien'] }}</td>
                         <td>{{ $item['supplier'] }}</td>
                         <td>{{ $item['bahan_baku'] }}</td>
-                        <td class="text-right">{{ number_format($item['qty_kirim'], 2) }}</td>
-                        <td class="text-right">{{ number_format($item['harga_beli_per_kg'], 0, ',', '.') }}</td>
-                        <td class="text-right">{{ number_format($item['harga_jual_per_kg'], 0, ',', '.') }}</td>
+                        <td class="text-right">{{ number_format($item['qty_kirim'], 2, ',', '.') }}</td>
+                        <td class="text-right">{{ number_format($item['harga_beli_per_kg'], 2, ',', '.') }}</td>
+                        <td class="text-right">{{ number_format($item['harga_jual_per_kg'], 2, ',', '.') }}</td>
                         <td class="text-right">
                             <span class="{{ $item['margin'] >= 0 ? 'text-green' : 'text-red' }}">
-                                Rp {{ number_format($item['margin'], 0, ',', '.') }}
+                                Rp {{ number_format($item['margin'], 2, ',', '.') }}
                             </span>
                         </td>
                         <td class="text-right">
                             @if($item['margin_percentage'] >= 20)
-                                <span class="badge badge-success">{{ number_format($item['margin_percentage'], 1) }}%</span>
+                                <span class="badge badge-success">{{ number_format($item['margin_percentage'], 2, ',', '.') }}%</span>
                             @elseif($item['margin_percentage'] >= 10)
-                                <span class="badge badge-warning">{{ number_format($item['margin_percentage'], 1) }}%</span>
+                                <span class="badge badge-warning">{{ number_format($item['margin_percentage'], 2, ',', '.') }}%</span>
                             @else
-                                <span class="badge badge-danger">{{ number_format($item['margin_percentage'], 1) }}%</span>
+                                <span class="badge badge-danger">{{ number_format($item['margin_percentage'], 2, ',', '.') }}%</span>
                             @endif
                         </td>
                     </tr>
@@ -239,16 +239,16 @@
             <tfoot>
                 <tr style="background: #F3F4F6; font-weight: bold;">
                     <td colspan="6" style="text-align: right; padding-right: 10px;">TOTAL:</td>
-                    <td class="text-right">{{ number_format(array_sum(array_column($marginData, 'qty_kirim')), 2) }}</td>
+                    <td class="text-right">{{ number_format(array_sum(array_column($marginData, 'qty_kirim')), 2, ',', '.') }}</td>
                     <td colspan="2"></td>
                     <td class="text-right">
                         <span class="{{ $totalMargin >= 0 ? 'text-green' : 'text-red' }}">
-                            Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                            Rp {{ number_format($totalMargin, 2, ',', '.') }}
                         </span>
                     </td>
                     <td class="text-right">
                         <span class="{{ $grossMargin >= 0 ? 'text-green' : 'text-red' }}">
-                            {{ number_format($grossMargin, 2) }}%
+                            {{ number_format($grossMargin, 2, ',', '.') }}%
                         </span>
                     </td>
                 </tr>
@@ -268,11 +268,11 @@
             </h3>
             <div style="display: inline-block; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 10px;">
                 <div style="font-size: 32px; font-weight: bold; color: {{ $grossMarginBulanIni >= 0 ? '#047857' : '#DC2626' }}; margin-bottom: 5px;">
-                    {{ $grossMarginBulanIni >= 0 ? '+' : '' }}{{ number_format($grossMarginBulanIni, 2) }}%
+                    {{ $grossMarginBulanIni >= 0 ? '+' : '' }}{{ number_format($grossMarginBulanIni, 2, ',', '.') }}%
                 </div>
                 <div style="font-size: 11px; color: #6B7280; margin-bottom: 5px;">
                     Total Margin: <span style="font-weight: bold; color: {{ $totalMarginBulanIni >= 0 ? '#047857' : '#DC2626' }}">
-                        {{ $totalMarginBulanIni >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMarginBulanIni), 0, ',', '.') }}
+                        {{ $totalMarginBulanIni >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMarginBulanIni), 2, ',', '.') }}
                     </span>
                 </div>
                 

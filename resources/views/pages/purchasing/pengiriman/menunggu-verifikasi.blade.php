@@ -169,7 +169,7 @@
                                     }
                                 @endphp
                                 @if($totalHarga > 0)
-                                    <p class="text-sm font-semibold text-yellow-600">Rp {{ number_format($totalHarga, 0, ',', '.') }}</p>
+                                    <p class="text-sm font-semibold text-yellow-600">Rp {{ number_format($totalHarga, 2, ',', '.') }}</p>
                                 @endif
                             </div>
                         </div>
@@ -215,7 +215,7 @@
                                                 @endif
                                                 @if(isset($pengiriman->partialInfo) && $pengiriman->partialInfo['isPartial'])
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300" 
-                                                          title="Pengiriman sebagian: {{ $pengiriman->partialInfo['percentage'] }}% dari forecast ({{ number_format($pengiriman->partialInfo['totalQtyKirim'], 0, ',', '.') }} kg dari {{ number_format($pengiriman->partialInfo['totalQtyForecast'], 0, ',', '.') }} kg)">
+                                                          title="Pengiriman sebagian: {{ $pengiriman->partialInfo['percentage'] }}% dari forecast ({{ number_format($pengiriman->partialInfo['totalQtyKirim'], 2, ',', '.') }} kg dari {{ number_format($pengiriman->partialInfo['totalQtyForecast'], 2, ',', '.') }} kg)">
                                                         <i class="fas fa-exclamation-triangle mr-1"></i>
                                                         Kirim Sebagian ({{ $pengiriman->partialInfo['percentage'] }}%)
                                                     </span>
@@ -254,7 +254,7 @@
                                                     <span class="flex flex-col gap-0.5">
                                                         <span class="flex items-center gap-1">
                                                             <i class="fas fa-weight text-yellow-600"></i>
-                                                            <span class="font-medium">{{ number_format($qtyToShow, 0, ',', '.') }} kg</span>
+                                                            <span class="font-medium">{{ number_format($qtyToShow, 2, ',', '.') }} kg</span>
                                                         </span>
                                                         @if($hasRefraksiQty && $refraksiQtyAmount > 0)
                                                             <span class="text-red-600 text-[10px] ml-4">
@@ -280,12 +280,12 @@
                                                     <span class="flex flex-col gap-0.5">
                                                         <span class="flex items-center gap-1 font-medium text-green-700">
                                                             <i class="fas fa-money-bill-wave"></i>
-                                                            <span>Rp {{ number_format($amountToShow, 0, ',', '.') }}</span>
+                                                            <span>Rp {{ number_format($amountToShow, 2, ',', '.') }}</span>
                                                         </span>
                                                         @if($hasRefraksiAmount && $pengiriman->approvalPembayaran->refraksi_amount > 0)
                                                             <span class="text-red-600 text-[10px] ml-4">
                                                                 <i class="fas fa-arrow-down"></i>
-                                                                Refraksi: Rp {{ number_format($pengiriman->approvalPembayaran->refraksi_amount, 0, ',', '.') }}
+                                                                Refraksi: Rp {{ number_format($pengiriman->approvalPembayaran->refraksi_amount, 2, ',', '.') }}
                                                             </span>
                                                         @endif
                                                     </span>

@@ -174,7 +174,7 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-blue-600">
-                            Rp {{ number_format($item->total, 0, ',', '.') }}
+                            Rp {{ number_format($item->total, 2, ',', '.') }}
                         </td>
                     </tr>
                     @empty
@@ -280,7 +280,7 @@
                             {{ $item->supplier ? Str::limit($item->supplier->alamat, 50) : '-' }}
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-orange-600">
-                            Rp {{ number_format($item->total, 0, ',', '.') }}
+                            Rp {{ number_format($item->total, 2, ',', '.') }}
                         </td>
                     </tr>
                     @empty
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const value = context.raw;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
                             const percentage = ((value / total) * 100).toFixed(1);
-                            return `${context.label}: Rp ${value.toLocaleString('id-ID')} (${percentage}%)`;
+                            return `${context.label}: Rp ${value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${percentage}%)`;
                         }
                     }
                 }
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return 'Rp ' + context.raw.toLocaleString('id-ID');
+                            return 'Rp ' + context.raw.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                         }
                     }
                 }
@@ -539,7 +539,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${item.alamat ? `<div class="text-xs text-gray-500">${item.alamat.substring(0, 40)}</div>` : ''}
                 </td>
                 <td class="px-4 py-3 text-right font-semibold text-blue-600">
-                    Rp ${item.total.toLocaleString('id-ID')}
+                    Rp ${item.total.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </td>
             </tr>
         `).join('');
@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td class="px-4 py-3 font-medium text-gray-800">${item.nama}</td>
                 <td class="px-4 py-3 text-gray-600">${item.alamat ? item.alamat.substring(0, 50) : '-'}</td>
                 <td class="px-4 py-3 text-right font-semibold text-orange-600">
-                    Rp ${item.total.toLocaleString('id-ID')}
+                    Rp ${item.total.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </td>
             </tr>
         `).join('');

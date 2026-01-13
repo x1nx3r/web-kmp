@@ -174,7 +174,10 @@ function createGroupedBarChartSupplierDashboard(ctx, labels, datasets) {
                             if (label) {
                                 label += ': ';
                             }
-                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
                             return label;
                         }
                     }
@@ -201,7 +204,7 @@ function createGroupedBarChartSupplierDashboard(ctx, labels, datasets) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return 'Rp ' + (value / 1000000).toFixed(0) + 'Jt';
+                            return 'Rp ' + (value / 1000000).toFixed(2) + 'Jt';
                         }
                     },
                     grid: {

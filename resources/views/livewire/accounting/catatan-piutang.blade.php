@@ -83,7 +83,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-blue-100 text-sm font-medium">Total Piutang</p>
-                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalPiutang, 0, ',', '.') }}</h3>
+                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalPiutang, 2, ',', '.') }}</h3>
                 </div>
                 <div class="bg-blue-400 bg-opacity-30 rounded-full p-3">
                     <i class="fas fa-coins text-2xl"></i>
@@ -95,7 +95,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-green-100 text-sm font-medium">Sudah Dibayar</p>
-                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalDibayar, 0, ',', '.') }}</h3>
+                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalDibayar, 2, ',', '.') }}</h3>
                 </div>
                 <div class="bg-green-400 bg-opacity-30 rounded-full p-3">
                     <i class="fas fa-check-circle text-2xl"></i>
@@ -107,7 +107,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-orange-100 text-sm font-medium">Sisa Piutang</p>
-                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalSisa, 0, ',', '.') }}</h3>
+                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalSisa, 2, ',', '.') }}</h3>
                 </div>
                 <div class="bg-orange-400 bg-opacity-30 rounded-full p-3">
                     <i class="fas fa-hourglass-half text-2xl"></i>
@@ -316,13 +316,13 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($piutang->jumlah_piutang, 0, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($piutang->jumlah_piutang, 2, ',', '.') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-green-600 font-medium">Rp {{ number_format($piutang->jumlah_dibayar, 0, ',', '.') }}</div>
+                                <div class="text-sm text-green-600 font-medium">Rp {{ number_format($piutang->jumlah_dibayar, 2, ',', '.') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-orange-600 font-medium">Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}</div>
+                                <div class="text-sm text-orange-600 font-medium">Rp {{ number_format($piutang->sisa_piutang, 2, ',', '.') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($piutang->status === 'lunas')

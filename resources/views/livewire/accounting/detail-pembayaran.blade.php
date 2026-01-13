@@ -83,7 +83,7 @@
                         </div>
                         <div class="md:col-span-2">
                             <label class="text-sm font-medium text-gray-500">Total Harga (Original)</label>
-                            <p class="mt-1 text-xl text-gray-900 font-bold">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                            <p class="mt-1 text-xl text-gray-900 font-bold">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
                         </div>
                     </div>
 
@@ -109,11 +109,11 @@
                                             </div>
                                             <div>
                                                 <label class="text-xs font-medium text-gray-500">Harga Satuan</label>
-                                                <p class="mt-1 text-sm text-gray-900">Rp {{ number_format($detail->harga_satuan, 0, ',', '.') }}/kg</p>
+                                                <p class="mt-1 text-sm text-gray-900">Rp {{ number_format($detail->harga_satuan, 2, ',', '.') }}/kg</p>
                                             </div>
                                             <div class="md:col-span-2">
                                                 <label class="text-xs font-medium text-gray-500">Total Harga</label>
-                                                <p class="mt-1 text-base text-gray-900 font-bold">Rp {{ number_format($detail->total_harga, 0, ',', '.') }}</p>
+                                                <p class="mt-1 text-base text-gray-900 font-bold">Rp {{ number_format($detail->total_harga, 2, ',', '.') }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -141,7 +141,7 @@
                                 <p class="text-sm font-medium text-gray-700">Total Harga Pengiriman</p>
                                 <p class="text-xs text-gray-500 mt-1">Harga awal dari pengiriman ({{ number_format($pengiriman->total_qty_kirim, 2, ',', '.') }} kg)</p>
                             </div>
-                            <p class="text-lg font-bold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                            <p class="text-lg font-bold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
                         </div>
 
                         {{-- Refraksi Penagihan (Customer) --}}
@@ -156,16 +156,16 @@
                                         @if($invoicePenagihan->refraksi_type === 'qty')
                                             {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}% dari qty
                                         @elseif($invoicePenagihan->refraksi_type === 'rupiah')
-                                            Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                            Rp {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}/kg
                                         @elseif($invoicePenagihan->refraksi_type === 'lainnya')
-                                            Lainnya: Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}
+                                            Lainnya: Rp {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}
                                         @endif
                                         @if($invoicePenagihan->refraksi_type !== 'lainnya')
                                             | Qty: {{ number_format($invoicePenagihan->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($invoicePenagihan->qty_after_refraksi, 2, ',', '.') }} kg
                                         @endif
                                     </p>
                                 </div>
-                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
+                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 2, ',', '.') }}</p>
                             </div>
 
                             {{-- Subtotal setelah refraksi penagihan --}}
@@ -174,7 +174,7 @@
                                     <p class="text-sm font-semibold text-gray-700">Subtotal (Setelah Refraksi Penagihan)</p>
                                     <p class="text-xs text-gray-500 mt-1">Nilai yang akan ditagihkan ke customer</p>
                                 </div>
-                                <p class="text-lg font-bold text-indigo-700">Rp {{ number_format($invoicePenagihan->amount_after_refraksi ?? $pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                                <p class="text-lg font-bold text-indigo-700">Rp {{ number_format($invoicePenagihan->amount_after_refraksi ?? $pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
                             </div>
                         @endif
 
@@ -190,16 +190,16 @@
                                         @if($approval->refraksi_type === 'qty')
                                             {{ number_format($approval->refraksi_value, 2, ',', '.') }}% dari qty
                                         @elseif($approval->refraksi_type === 'rupiah')
-                                            Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                            Rp {{ number_format($approval->refraksi_value, 2, ',', '.') }}/kg
                                         @elseif($approval->refraksi_type === 'lainnya')
-                                            Lainnya: Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}
+                                            Lainnya: Rp {{ number_format($approval->refraksi_value, 2, ',', '.') }}
                                         @endif
                                         @if($approval->refraksi_type !== 'lainnya')
                                             | Qty: {{ number_format($approval->qty_before_refraksi, 2, ',', '.') }} kg → {{ number_format($approval->qty_after_refraksi, 2, ',', '.') }} kg
                                         @endif
                                     </p>
                                 </div>
-                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($approval->refraksi_amount, 0, ',', '.') }}</p>
+                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($approval->refraksi_amount, 2, ',', '.') }}</p>
                             </div>
                         @endif
 
@@ -217,7 +217,7 @@
                                         </p>
                                     @endif
                                 </div>
-                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($approval->piutang_amount, 0, ',', '.') }}</p>
+                                <p class="text-lg font-bold text-red-600">- Rp {{ number_format($approval->piutang_amount, 2, ',', '.') }}</p>
                             </div>
                         @endif
 
@@ -235,7 +235,7 @@
                                 // Karena refraksi pembayaran dan piutang dihitung dari harga pengiriman
                                 $totalPembayaran = $pengiriman->total_harga_kirim - ($approval->refraksi_amount ?? 0) - ($approval->piutang_amount ?? 0);
                             @endphp
-                            <p class="text-2xl font-bold text-green-700">Rp {{ number_format($totalPembayaran, 0, ',', '.') }}</p>
+                            <p class="text-2xl font-bold text-green-700">Rp {{ number_format($totalPembayaran, 2, ',', '.') }}</p>
                         </div>
                     </div>
                 </div>
@@ -273,11 +273,11 @@
                                     @if($invoicePenagihan->refraksi_type === 'qty')
                                         {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}%
                                     @elseif($invoicePenagihan->refraksi_type === 'rupiah')
-                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}/kg
                                     @elseif($invoicePenagihan->refraksi_type === 'lainnya')
-                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }} (Total)
+                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }} (Total)
                                     @else
-                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}
+                                        Rp {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}
                                     @endif
                                 </p>
                             </div>
@@ -294,13 +294,13 @@
                             <div>
                                 <label class="text-sm font-medium text-purple-700">Potongan Refraksi</label>
                                 <p class="mt-1 text-xl text-red-600 font-bold">
-                                    - Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}
+                                    - Rp {{ number_format($invoicePenagihan->refraksi_amount, 2, ',', '.') }}
                                 </p>
                             </div>
                             <div>
                                 <label class="text-sm font-medium text-purple-700">Total Invoice Penagihan</label>
                                 <p class="mt-1 text-xl text-green-600 font-bold">
-                                    Rp {{ number_format($invoicePenagihan->amount_after_refraksi ?? $pengiriman->total_harga_kirim, 0, ',', '.') }}
+                                    Rp {{ number_format($invoicePenagihan->amount_after_refraksi ?? $pengiriman->total_harga_kirim, 2, ',', '.') }}
                                 </p>
                             </div>
                         </div>
@@ -353,11 +353,11 @@
                                             @if($approval->refraksi_type === 'qty')
                                                 {{ number_format($approval->refraksi_value, 2, ',', '.') }}%
                                             @elseif($approval->refraksi_type === 'rupiah')
-                                                Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                                Rp {{ number_format($approval->refraksi_value, 2, ',', '.') }}/kg
                                             @elseif($approval->refraksi_type === 'lainnya')
-                                                Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }} (Total)
+                                                Rp {{ number_format($approval->refraksi_value, 2, ',', '.') }} (Total)
                                             @else
-                                                Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}
+                                                Rp {{ number_format($approval->refraksi_value, 2, ',', '.') }}
                                             @endif
                                         </p>
                                     </div>
@@ -374,7 +374,7 @@
                                     <div>
                                         <label class="text-sm font-medium text-green-700">Potongan Refraksi</label>
                                         <p class="mt-1 text-xl text-red-600 font-bold">
-                                            - Rp {{ number_format($approval->refraksi_amount, 0, ',', '.') }}
+                                            - Rp {{ number_format($approval->refraksi_amount, 2, ',', '.') }}
                                         </p>
                                     </div>
                                 </div>
@@ -411,21 +411,21 @@
                                             <div>
                                                 <label class="text-xs font-medium text-blue-700">Sisa Piutang Sebelum Potong</label>
                                                 <p class="mt-1 text-sm text-gray-900 font-semibold">
-                                                    Rp {{ number_format($approval->catatanPiutang->sisa_piutang + $approval->piutang_amount, 0, ',', '.') }}
+                                                    Rp {{ number_format($approval->catatanPiutang->sisa_piutang + $approval->piutang_amount, 2, ',', '.') }}
                                                 </p>
                                             </div>
                                         @endif
                                         <div>
                                             <label class="text-xs font-medium text-blue-700">Jumlah Dipotong</label>
                                             <p class="mt-1 text-lg text-red-600 font-bold">
-                                                - Rp {{ number_format($approval->piutang_amount, 0, ',', '.') }}
+                                                - Rp {{ number_format($approval->piutang_amount, 2, ',', '.') }}
                                             </p>
                                         </div>
                                         @if($approval->catatanPiutang)
                                             <div>
                                                 <label class="text-xs font-medium text-blue-700">Sisa Piutang Setelah Potong</label>
                                                 <p class="mt-1 text-lg text-orange-600 font-bold">
-                                                    Rp {{ number_format($approval->catatanPiutang->sisa_piutang, 0, ',', '.') }}
+                                                    Rp {{ number_format($approval->catatanPiutang->sisa_piutang, 2, ',', '.') }}
                                                 </p>
                                             </div>
                                         @endif
@@ -459,10 +459,10 @@
                                     </div>
                                     <div class="text-right">
                                         <p class="text-2xl text-green-600 font-extrabold">
-                                            Rp {{ number_format(($approval->amount_after_refraksi ?? $pengiriman->total_harga_kirim) - ($approval->piutang_amount ?? 0), 0, ',', '.') }}
+                                            Rp {{ number_format(($approval->amount_after_refraksi ?? $pengiriman->total_harga_kirim) - ($approval->piutang_amount ?? 0), 2, ',', '.') }}
                                         </p>
                                         <p class="text-xs text-gray-600 mt-1">
-                                            <span class="line-through">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</span>
+                                            <span class="line-through">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</span>
                                         </p>
                                     </div>
                                 </div>

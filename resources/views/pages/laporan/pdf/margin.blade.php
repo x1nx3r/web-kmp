@@ -184,7 +184,7 @@
         <div class="summary-item">
             <div class="summary-label">Total Harga Beli</div>
             <div class="summary-value" style="color: #DC2626;">
-                Rp {{ number_format($totalHargaBeli, 0, ',', '.') }}
+                Rp {{ number_format($totalHargaBeli, 2, ',', '.') }}
             </div>
             <div style="font-size: 7px; color: #6B7280; margin-top: 2px;">
                 {{ number_format($totalQty, 2, ',', '.') }} kg
@@ -193,7 +193,7 @@
         <div class="summary-item">
             <div class="summary-label">Total Harga Jual</div>
             <div class="summary-value" style="color: #047857;">
-                Rp {{ number_format($totalHargaJual, 0, ',', '.') }}
+                Rp {{ number_format($totalHargaJual, 2, ',', '.') }}
             </div>
             <div style="font-size: 7px; color: #6B7280; margin-top: 2px;">
                 {{ number_format($totalQty, 2, ',', '.') }} kg
@@ -205,7 +205,7 @@
                 {{ $totalMargin >= 0 ? '+' : '' }}{{ number_format($grossMarginPercentage, 2) }}%
             </div>
             <div style="font-size: 7px; margin-top: 2px;" class="{{ $totalMargin >= 0 ? 'text-green' : 'text-red' }}">
-                {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 0, ',', '.') }}
+                {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 2, ',', '.') }}
             </div>
         </div>
     </div>
@@ -240,11 +240,11 @@
                         <td>{{ $item['supplier'] }}</td>
                         <td>{{ $item['bahan_baku'] }}</td>
                         <td class="text-right">{{ number_format($item['qty'], 2, ',', '.') }}</td>
-                        <td class="text-right" style="color: #DC2626;">{{ number_format($item['harga_beli_per_kg'], 0, ',', '.') }}</td>
-                        <td class="text-right" style="color: #047857;">{{ number_format($item['harga_jual_per_kg'], 0, ',', '.') }}</td>
+                        <td class="text-right" style="color: #DC2626;">{{ number_format($item['harga_beli_per_kg'], 2, ',', '.') }}</td>
+                        <td class="text-right" style="color: #047857;">{{ number_format($item['harga_jual_per_kg'], 2, ',', '.') }}</td>
                         <td class="text-right">
                             <span class="{{ $item['margin'] >= 0 ? 'text-blue' : 'text-red' }}">
-                                {{ $item['margin'] >= 0 ? '+' : '' }}{{ number_format($item['margin'], 0, ',', '.') }}
+                                {{ $item['margin'] >= 0 ? '+' : '' }}{{ number_format($item['margin'], 2, ',', '.') }}
                             </span>
                         </td>
                         <td class="text-right">
@@ -262,7 +262,7 @@
                     <td colspan="2"></td>
                     <td class="text-right">
                         <span class="{{ $totalMargin >= 0 ? 'text-blue' : 'text-red' }}">
-                            {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 0, ',', '.') }}
+                            {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 2, ',', '.') }}
                         </span>
                     </td>
                     <td class="text-right">

@@ -117,17 +117,17 @@
                                     <hr class="border-gray-200">
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Total Harga Supplier:</span>
-                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</span>
+                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Total Harga Jual:</span>
-                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</span>
+                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSelling, 2, ',', '.') }}</span>
                                     </div>
                                     <hr class="border-gray-200">
                                     <div class="flex justify-between">
                                         <span class="text-sm font-medium text-gray-700">Total Margin:</span>
                                         <span class="text-sm font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                            Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                                            Rp {{ number_format($totalMargin, 2, ',', '.') }}
                                         </span>
                                     </div>
                                     <div class="flex justify-between">
@@ -161,16 +161,16 @@
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Total Harga Beli</p>
-                                    <p class="font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                                    <p class="font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Total Harga Jual</p>
-                                    <p class="font-semibold text-gray-900">Rp {{ number_format($totalSelling, 0, ',', '.') }}</p>
+                                    <p class="font-semibold text-gray-900">Rp {{ number_format($totalSelling, 2, ',', '.') }}</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Margin</p>
                                     <p class="font-semibold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                        Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                                        Rp {{ number_format($totalMargin, 2, ',', '.') }}
                                         <span class="text-xs">({{ number_format($marginPercentage, 2, ',', '.') }}%)</span>
                                     </p>
                                 </div>
@@ -319,10 +319,10 @@
                                                     {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg
                                                 </td>
                                                 <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->harga_satuan, 0, ',', '.') }}
+                                                    Rp {{ number_format($detail->harga_satuan, 2, ',', '.') }}
                                                 </td>
                                                 <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->total_harga, 0, ',', '.') }}
+                                                    Rp {{ number_format($detail->total_harga, 2, ',', '.') }}
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -354,7 +354,7 @@
                                         </p>
                                     @elseif($invoice->refraksi_type === 'rupiah')
                                         <p class="text-sm text-gray-600">
-                                            <strong>Tipe:</strong> Rupiah (Rp {{ number_format($invoice->refraksi_value, 0, ',', '.') }}/kg)
+                                            <strong>Tipe:</strong> Rupiah (Rp {{ number_format($invoice->refraksi_value, 2, ',', '.') }}/kg)
                                         </p>
                                         <p class="text-sm text-gray-600">
                                             <strong>Qty:</strong> {{ number_format($invoice->qty_before_refraksi, 2, ',', '.') }} kg
@@ -364,11 +364,11 @@
                                             <strong>Tipe:</strong> Lainnya (Manual)
                                         </p>
                                         <p class="text-sm text-gray-600">
-                                            <strong>Nilai Potongan:</strong> Rp {{ number_format($invoice->refraksi_value, 0, ',', '.') }}
+                                            <strong>Nilai Potongan:</strong> Rp {{ number_format($invoice->refraksi_value, 2, ',', '.') }}
                                         </p>
                                     @endif
                                     <p class="text-sm text-red-600 font-semibold mt-2">
-                                        Potongan: Rp {{ number_format($invoice->refraksi_amount, 0, ',', '.') }}
+                                        Potongan: Rp {{ number_format($invoice->refraksi_amount, 2, ',', '.') }}
                                     </p>
                                 </div>
                             @endif
@@ -377,11 +377,11 @@
                             <div class="space-y-2 text-sm">
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Subtotal:</span>
-                                    <span class="font-semibold">Rp {{ number_format($invoice->subtotal, 0, ',', '.') }}</span>
+                                    <span class="font-semibold">Rp {{ number_format($invoice->subtotal, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="border-t pt-2 flex justify-between">
                                     <span class="font-bold text-gray-900">Total:</span>
-                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</span>
+                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format($invoice->total_amount, 2, ',', '.') }}</span>
                                 </div>
                             </div>
                         </div>

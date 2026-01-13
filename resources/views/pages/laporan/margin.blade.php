@@ -36,7 +36,7 @@
                         Rp {{ number_format($totalHargaBeli / 1000000, 2, ',', '.') }} Jt
                     @endif
                 </h3>
-                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 0, ',', '.') }} kg</p>
+                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 2, ',', '.') }} kg</p>
             </div>
         </div>
     </div>
@@ -56,7 +56,7 @@
                         Rp {{ number_format($totalHargaJual / 1000000, 2, ',', '.') }} Jt
                     @endif
                 </h3>
-                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 0, ',', '.') }} kg</p>
+                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 2, ',', '.') }} kg</p>
             </div>
         </div>
     </div>
@@ -73,7 +73,7 @@
                     {{ $totalMargin >= 0 ? '+' : '' }}{{ number_format($grossMarginPercentage, 2, ',', '.') }}%
                 </h3>
                 <p class="text-xs {{ $totalMargin >= 0 ? 'text-purple-600' : 'text-orange-600' }} mt-1 font-medium">
-                    {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 0, ',', '.') }}
+                    {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 2, ',', '.') }}
                 </p>
             </div>
         </div>
@@ -280,27 +280,27 @@
                             {{ number_format($item['qty'], 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
-                            Rp {{ number_format($item['harga_beli_per_kg'], 0, ',', '.') }}
+                            Rp {{ number_format($item['harga_beli_per_kg'], 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-red-700">
-                            Rp {{ number_format($item['harga_beli_total'], 0, ',', '.') }}
+                            Rp {{ number_format($item['harga_beli_total'], 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600">
                             @if($item['harga_jual_per_kg'] > 0)
-                                Rp {{ number_format($item['harga_jual_per_kg'], 0, ',', '.') }}
+                                Rp {{ number_format($item['harga_jual_per_kg'], 2, ',', '.') }}
                             @else
                                 <span class="text-gray-400 text-xs">Belum ada</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-green-700">
                             @if($item['harga_jual_total'] > 0)
-                                Rp {{ number_format($item['harga_jual_total'], 0, ',', '.') }}
+                                Rp {{ number_format($item['harga_jual_total'], 2, ',', '.') }}
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold {{ $item['margin'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
-                            {{ $item['margin'] >= 0 ? '+' : '' }}Rp {{ number_format($item['margin'], 0, ',', '.') }}
+                            {{ $item['margin'] >= 0 ? '+' : '' }}Rp {{ number_format($item['margin'], 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold {{ $item['margin'] >= 0 ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800' }}">
@@ -329,14 +329,14 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-700">
-                            Rp {{ number_format($totalHargaBeli, 0, ',', '.') }}
+                            Rp {{ number_format($totalHargaBeli, 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-700">
-                            Rp {{ number_format($totalHargaJual, 0, ',', '.') }}
+                            Rp {{ number_format($totalHargaJual, 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold {{ $totalMargin >= 0 ? 'text-blue-600' : 'text-red-600' }}">
-                            {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format($totalMargin, 0, ',', '.') }}
+                            {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format($totalMargin, 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold {{ $totalMargin >= 0 ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800' }}">

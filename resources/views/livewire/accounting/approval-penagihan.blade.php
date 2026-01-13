@@ -122,7 +122,7 @@
                                     <div class="text-xs text-gray-500">{{ $pengiriman->purchaseOrder->klien->cabang ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</div>
+                                    <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <button
@@ -275,7 +275,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 0, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 2, ',', '.') }}</div>
                             </td>
                             {{-- <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
@@ -355,7 +355,7 @@
                             </div>
                             <div class="col-span-2">
                                 <p class="text-gray-500">Total Harga:</p>
-                                <p class="font-semibold text-lg">Rp {{ number_format($selectedData->total_harga_kirim, 0, ',', '.') }}</p>
+                                <p class="font-semibold text-lg">Rp {{ number_format($selectedData->total_harga_kirim, 2, ',', '.') }}</p>
                             </div>
                         </div>
                     </div>
@@ -610,19 +610,19 @@
                                                 <span class="font-medium">Qty Setelah Refraksi:</span> {{ number_format($selectedData->invoice->qty_after_refraksi, 2, ',', '.') }} kg
                                             </p>
                                             <p class="text-red-600 font-semibold">
-                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 0, ',', '.') }}
+                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 2, ',', '.') }}
                                             </p>
                                         </div>
                                     @elseif($selectedData->invoice->refraksi_type === 'rupiah')
                                         <div class="text-xs space-y-1">
                                             <p class="text-gray-600">
-                                                <span class="font-medium">Tipe:</span> Refraksi Rupiah (Rp {{ number_format($selectedData->invoice->refraksi_value, 0, ',', '.') }}/kg)
+                                                <span class="font-medium">Tipe:</span> Refraksi Rupiah (Rp {{ number_format($selectedData->invoice->refraksi_value, 2, ',', '.') }}/kg)
                                             </p>
                                             <p class="text-gray-600">
                                                 <span class="font-medium">Qty:</span> {{ number_format($selectedData->invoice->qty_before_refraksi, 2, ',', '.') }} kg
                                             </p>
                                             <p class="text-red-600 font-semibold">
-                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 0, ',', '.') }}
+                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 2, ',', '.') }}
                                             </p>
                                         </div>
                                     @elseif($selectedData->invoice->refraksi_type === 'lainnya')
@@ -631,10 +631,10 @@
                                                 <span class="font-medium">Tipe:</span> Refraksi Lainnya (Manual)
                                             </p>
                                             <p class="text-gray-600">
-                                                <span class="font-medium">Nilai Potongan:</span> Rp {{ number_format($selectedData->invoice->refraksi_value, 0, ',', '.') }}
+                                                <span class="font-medium">Nilai Potongan:</span> Rp {{ number_format($selectedData->invoice->refraksi_value, 2, ',', '.') }}
                                             </p>
                                             <p class="text-red-600 font-semibold">
-                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 0, ',', '.') }}
+                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 2, ',', '.') }}
                                             </p>
                                         </div>
                                     @endif
@@ -643,15 +643,15 @@
 
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Subtotal:</span>
-                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->subtotal, 0, ',', '.') }}</span>
+                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->subtotal, 2, ',', '.') }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">PPN ({{ $selectedData->invoice->tax_percentage }}%):</span>
-                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->tax_amount, 0, ',', '.') }}</span>
+                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->tax_amount, 2, ',', '.') }}</span>
                             </div>
                             <div class="border-t pt-2 flex justify-between">
                                 <span class="font-semibold text-gray-900">Total:</span>
-                                <span class="font-bold text-lg text-green-600">Rp {{ number_format($selectedData->invoice->total_amount, 0, ',', '.') }}</span>
+                                <span class="font-bold text-lg text-green-600">Rp {{ number_format($selectedData->invoice->total_amount, 2, ',', '.') }}</span>
                             </div>
                         </div>
 

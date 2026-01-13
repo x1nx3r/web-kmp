@@ -14,11 +14,11 @@
                 <p class="text-sm text-gray-600 mb-2">Total Outstanding</p>
                 <h3 class="text-2xl font-bold text-red-600">
                     @if($totalOutstanding >= 1000000000)
-                        Rp {{ number_format($totalOutstanding / 1000000000, 1, ',', '.') }} Miliar
+                        Rp {{ number_format($totalOutstanding / 1000000000, 2, ',', '.') }} Miliar
                     @elseif($totalOutstanding >= 1000000)
-                        Rp {{ number_format($totalOutstanding / 1000000, 1, ',', '.') }} Juta
+                        Rp {{ number_format($totalOutstanding / 1000000, 2, ',', '.') }} Juta
                     @else
-                        Rp {{ number_format($totalOutstanding, 0, ',', '.') }}
+                        Rp {{ number_format($totalOutstanding, 2, ',', '.') }}
                     @endif
                 </h3>
                 <p class="text-xs text-gray-500 mt-1">PO Dikonfirmasi & Diproses</p>
@@ -68,11 +68,11 @@
                 <p class="text-sm text-gray-600 mb-2">Rata-rata Nilai per PO</p>
                 <h3 class="text-2xl font-bold text-purple-600">
                     @if($avgNilaiPerPO >= 1000000000)
-                        Rp {{ number_format($avgNilaiPerPO / 1000000000, 1, ',', '.') }} Miliar
+                        Rp {{ number_format($avgNilaiPerPO / 1000000000, 2, ',', '.') }} Miliar
                     @elseif($avgNilaiPerPO >= 1000000)
-                        Rp {{ number_format($avgNilaiPerPO / 1000000, 1, ',', '.') }} Juta
+                        Rp {{ number_format($avgNilaiPerPO / 1000000, 2, ',', '.') }} Juta
                     @else
-                        Rp {{ number_format($avgNilaiPerPO, 0, ',', '.') }}
+                        Rp {{ number_format($avgNilaiPerPO, 2, ',', '.') }}
                     @endif
                 </h3>
                 <p class="text-xs text-gray-500 mt-1">Average Value</p>
@@ -336,11 +336,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             const percentage = percentages[context.dataIndex];
                             let formattedValue = '';
                             if (value >= 1000000000) {
-                                formattedValue = 'Rp ' + (value/1000000000).toFixed(1) + ' Miliar';
+                                formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
                             } else if (value >= 1000000) {
-                                formattedValue = 'Rp ' + (value/1000000).toFixed(1) + ' Juta';
+                                formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
                             } else {
-                                formattedValue = 'Rp ' + value.toLocaleString('id-ID');
+                                formattedValue = 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                             }
                             return 'Nilai: ' + formattedValue + ' (' + percentage.toFixed(1) + '%)';
                         }
@@ -367,11 +367,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     ticks: {
                         callback: function(value) {
                             if (value >= 1000000000) {
-                                return 'Rp ' + (value/1000000000).toFixed(0) + 'M';
+                                return 'Rp ' + (value/1000000000).toFixed(2) + 'M';
                             } else if (value >= 1000000) {
-                                return 'Rp ' + (value/1000000).toFixed(0) + 'Jt';
+                                return 'Rp ' + (value/1000000).toFixed(2) + 'Jt';
                             }
-                            return 'Rp ' + value.toLocaleString('id-ID');
+                            return 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                         },
                         font: { size: 10 }
                     },
@@ -463,11 +463,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             const value = context.parsed.y || 0;
                             let formattedValue = '';
                             if (value >= 1000000000) {
-                                formattedValue = 'Rp ' + (value/1000000000).toFixed(1) + ' Miliar';
+                                formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
                             } else if (value >= 1000000) {
-                                formattedValue = 'Rp ' + (value/1000000).toFixed(1) + ' Juta';
+                                formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
                             } else {
-                                formattedValue = 'Rp ' + value.toLocaleString('id-ID');
+                                formattedValue = 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                             }
                             return formattedValue;
                         }
@@ -480,11 +480,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     ticks: {
                         callback: function(value) {
                             if (value >= 1000000000) {
-                                return 'Rp ' + (value / 1000000000).toFixed(0) + ' Miliar';
+                                return 'Rp ' + (value / 1000000000).toFixed(2) + ' Miliar';
                             } else if (value >= 1000000) {
-                                return 'Rp ' + (value / 1000000).toFixed(0) + ' Juta';
+                                return 'Rp ' + (value / 1000000).toFixed(2) + ' Juta';
                             } else {
-                                return 'Rp ' + value.toLocaleString('id-ID');
+                                return 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                             }
                         }
                     }
@@ -575,11 +575,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             const percentage = (value / {{ $totalOutstandingChart }} * 100).toFixed(1);
                             let formattedValue = '';
                             if (value >= 1000000000) {
-                                formattedValue = 'Rp ' + (value/1000000000).toFixed(1) + ' Miliar';
+                                formattedValue = 'Rp ' + (value/1000000000).toFixed(2) + ' Miliar';
                             } else if (value >= 1000000) {
-                                formattedValue = 'Rp ' + (value/1000000).toFixed(1) + ' Juta';
+                                formattedValue = 'Rp ' + (value/1000000).toFixed(2) + ' Juta';
                             } else {
-                                formattedValue = 'Rp ' + value.toLocaleString('id-ID');
+                                formattedValue = 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                             }
                             const klien = klienData[context.dataIndex];
                             const orderStatus = orderStatusData[context.dataIndex];
@@ -615,11 +615,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     ticks: {
                         callback: function(value) {
                             if (value >= 1000000000) {
-                                return 'Rp ' + (value/1000000000).toFixed(0) + 'M';
+                                return 'Rp ' + (value/1000000000).toFixed(2) + 'M';
                             } else if (value >= 1000000) {
-                                return 'Rp ' + (value/1000000).toFixed(0) + 'Jt';
+                                return 'Rp ' + (value/1000000).toFixed(2) + 'Jt';
                             }
-                            return 'Rp ' + value.toLocaleString('id-ID');
+                            return 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                         },
                         font: { size: 10 }
                     },
@@ -1114,7 +1114,7 @@ document.addEventListener('click', function(event) {
                     <div>
                         <p class="text-xs text-red-600 font-medium">Total Outstanding</p>
                         <p class="text-lg font-bold text-red-700">
-                            Rp {{ number_format($totalOutstanding, 0, ',', '.') }}
+                            Rp {{ number_format($totalOutstanding, 2, ',', '.') }}
                         </p>
                     </div>
                 </div>
@@ -1211,10 +1211,10 @@ document.addEventListener('click', function(event) {
                                 {{ number_format($detail->qty, 2, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                                {{ number_format($detail->harga_jual, 0, ',', '.') }}
+                                {{ number_format($detail->harga_jual, 2, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                {{ number_format($detail->total_harga, 0, ',', '.') }}
+                                {{ number_format($detail->total_harga, 2, ',', '.') }}
                             </td>
                         </tr>
                     @empty
@@ -1234,7 +1234,7 @@ document.addEventListener('click', function(event) {
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">-</td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                            {{ number_format($totalOutstanding, 0, ',', '.') }}
+                            {{ number_format($totalOutstanding, 2, ',', '.') }}
                         </td>
                     </tr>
                 </tfoot>
@@ -1332,7 +1332,7 @@ document.addEventListener('click', function(event) {
                                     <p class="text-xs text-{{ $statusConfig['color'] }}-600">
                                         {{ number_format($status->total, 0, ',', '.') }} PO 
                                         ({{ number_format($percentage, 1, ',', '.') }}%)
-                                        • Total: Rp {{ number_format($status->nilai, 0, ',', '.') }}
+                                        • Total: Rp {{ number_format($status->nilai, 2, ',', '.') }}
                                     </p>
                                 </div>
                             </div>
@@ -1440,7 +1440,7 @@ document.addEventListener('click', function(event) {
                     <div>
                         <p class="text-xs text-purple-600 font-medium">Total Nilai</p>
                         <p class="text-lg font-bold text-purple-700">
-                            Rp {{ number_format($poByClient->sum('total_nilai'), 0, ',', '.') }}
+                            Rp {{ number_format($poByClient->sum('total_nilai'), 2, ',', '.') }}
                         </p>
                     </div>
                 </div>
@@ -1487,7 +1487,7 @@ document.addEventListener('click', function(event) {
                                 {{ number_format($client->total_po, 0, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
-                                Rp {{ number_format($client->total_nilai, 0, ',', '.') }}
+                                Rp {{ number_format($client->total_nilai, 2, ',', '.') }}
                             </td>
                         </tr>
                     @empty
@@ -1506,7 +1506,7 @@ document.addEventListener('click', function(event) {
                             {{ number_format($poByClient->sum('total_po'), 0, ',', '.') }}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                            Rp {{ number_format($poByClient->sum('total_nilai'), 0, ',', '.') }}
+                            Rp {{ number_format($poByClient->sum('total_nilai'), 2, ',', '.') }}
                         </td>
                     </tr>
                 </tfoot>
@@ -1604,7 +1604,7 @@ document.addEventListener('click', function(event) {
                             @php
                                 $totalNilaiTrend = array_sum(array_column($poTrendByMonth, 'total_nilai'));
                             @endphp
-                            Rp {{ number_format($totalNilaiTrend, 0, ',', '.') }}
+                            Rp {{ number_format($totalNilaiTrend, 2, ',', '.') }}
                         </p>
                     </div>
                 </div>
@@ -1649,10 +1649,10 @@ document.addEventListener('click', function(event) {
                                 {{ number_format($trend['total_po'], 0, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
-                                Rp {{ number_format($trend['total_nilai'], 0, ',', '.') }}
+                                Rp {{ number_format($trend['total_nilai'], 2, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
-                                Rp {{ number_format($avgPerPO, 0, ',', '.') }}
+                                Rp {{ number_format($avgPerPO, 2, ',', '.') }}
                             </td>
                         </tr>
                     @endforeach
@@ -1664,14 +1664,14 @@ document.addEventListener('click', function(event) {
                             {{ number_format(array_sum(array_column($poTrendByMonth, 'total_po')), 0, ',', '.') }}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                            Rp {{ number_format($totalNilaiTrend, 0, ',', '.') }}
+                            Rp {{ number_format($totalNilaiTrend, 2, ',', '.') }}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">
                             @php
                                 $totalPOTrend = array_sum(array_column($poTrendByMonth, 'total_po'));
                                 $avgOverall = $totalPOTrend > 0 ? $totalNilaiTrend / $totalPOTrend : 0;
                             @endphp
-                            Rp {{ number_format($avgOverall, 0, ',', '.') }}
+                            Rp {{ number_format($avgOverall, 2, ',', '.') }}
                         </td>
                     </tr>
                 </tfoot>
@@ -1801,7 +1801,7 @@ document.addEventListener('click', function(event) {
                             </div>
                             <div class="text-right">
                                 <p class="text-sm opacity-90">Total Nilai</p>
-                                <p class="font-bold text-xl">Rp {{ number_format($priority->nilai / 1000000, 1, ',', '.') }} Jt</p>
+                                <p class="font-bold text-xl">Rp {{ number_format($priority->nilai / 1000000, 2, ',', '.') }} Jt</p>
                                 <p class="text-xs opacity-75">{{ number_format($percentage, 1, ',', '.') }}% dari total</p>
                             </div>
                         </div>
@@ -1834,10 +1834,10 @@ document.addEventListener('click', function(event) {
                                     <td class="px-3 py-2 text-xs text-gray-600">{{ $po['cabang'] }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-700">{{ $po['tanggal_order'] }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-center">
-                                        {{ number_format($po['total_qty'], 0, ',', '.') }}
+                                        {{ number_format($po['total_qty'], 2, ',', '.') }}
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs font-semibold text-gray-900 text-right">
-                                        Rp {{ number_format($po['total_amount'], 0, ',', '.') }}
+                                        Rp {{ number_format($po['total_amount'], 2, ',', '.') }}
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-center">
                                         <span class="px-2 py-1 text-xs font-medium rounded-full
@@ -1895,10 +1895,10 @@ document.addEventListener('click', function(event) {
                                 {{ number_format($priority->total, 0, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
-                                Rp {{ number_format($priority->nilai, 0, ',', '.') }}
+                                Rp {{ number_format($priority->nilai, 2, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
-                                Rp {{ number_format($avgPerPO, 0, ',', '.') }}
+                                Rp {{ number_format($avgPerPO, 2, ',', '.') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">
                                 {{ number_format($percentage, 1, ',', '.') }}%
@@ -1913,14 +1913,14 @@ document.addEventListener('click', function(event) {
                             {{ number_format($poByPriority->sum('total'), 0, ',', '.') }}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                            Rp {{ number_format($totalNilaiPriority, 0, ',', '.') }}
+                            Rp {{ number_format($totalNilaiPriority, 2, ',', '.') }}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">
                             @php
                                 $totalPO = $poByPriority->sum('total');
                                 $avgOverall = $totalPO > 0 ? $totalNilaiPriority / $totalPO : 0;
                             @endphp
-                            Rp {{ number_format($avgOverall, 0, ',', '.') }}
+                            Rp {{ number_format($avgOverall, 2, ',', '.') }}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900 text-center">100.0%</td>
                     </tr>
@@ -1949,13 +1949,13 @@ document.addEventListener('click', function(event) {
                     $rendahData = $poByPriority->where('priority', 'rendah')->first();
                 @endphp
                 @if($tinggiData)
-                <li>• Prioritas Tinggi: {{ $tinggiData->total }} PO dengan total nilai Rp {{ number_format($tinggiData->nilai, 0, ',', '.') }}</li>
+                <li>• Prioritas Tinggi: {{ $tinggiData->total }} PO dengan total nilai Rp {{ number_format($tinggiData->nilai, 2, ',', '.') }}</li>
                 @endif
                 @if($sedangData)
-                <li>• Prioritas Sedang: {{ $sedangData->total }} PO dengan total nilai Rp {{ number_format($sedangData->nilai, 0, ',', '.') }}</li>
+                <li>• Prioritas Sedang: {{ $sedangData->total }} PO dengan total nilai Rp {{ number_format($sedangData->nilai, 2, ',', '.') }}</li>
                 @endif
                 @if($rendahData)
-                <li>• Prioritas Rendah: {{ $rendahData->total }} PO dengan total nilai Rp {{ number_format($rendahData->nilai, 0, ',', '.') }}</li>
+                <li>• Prioritas Rendah: {{ $rendahData->total }} PO dengan total nilai Rp {{ number_format($rendahData->nilai, 2, ',', '.') }}</li>
                 @endif
             </ul>
         </div>

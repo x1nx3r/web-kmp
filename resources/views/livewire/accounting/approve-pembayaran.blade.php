@@ -113,7 +113,7 @@
                                 </div>
                                 <div>
                                     <label class="text-sm font-medium text-gray-500">Total Harga (Original)</label>
-                                    <p class="mt-1 text-lg text-gray-900 font-bold">Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}</p>
+                                    <p class="mt-1 text-lg text-gray-900 font-bold">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
                                 </div>
                             </div>
 
@@ -139,7 +139,7 @@
                                                     </div>
                                                     <div>
                                                         <span class="text-gray-500">Total:</span>
-                                                        <span class="font-bold text-gray-900">Rp {{ number_format($detail->total_harga, 0, ',', '.') }}</span>
+                                                        <span class="font-bold text-gray-900">Rp {{ number_format($detail->total_harga, 2, ',', '.') }}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -169,13 +169,13 @@
                                                 @if($invoicePenagihan->refraksi_type === 'qty')
                                                     <i class="fas fa-percentage text-purple-600 mr-1"></i>Qty ({{ number_format($invoicePenagihan->refraksi_value, 2) }}%)
                                                 @else
-                                                    <i class="fas fa-money-bill text-purple-600 mr-1"></i>Rp {{ number_format($invoicePenagihan->refraksi_value, 0, ',', '.') }}/kg
+                                                    <i class="fas fa-money-bill text-purple-600 mr-1"></i>Rp {{ number_format($invoicePenagihan->refraksi_value, 2, ',', '.') }}/kg
                                                 @endif
                                             </p>
                                         </div>
                                         <div>
                                             <label class="text-xs font-medium text-purple-700">Potongan</label>
-                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 0, ',', '.') }}</p>
+                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($invoicePenagihan->refraksi_amount, 2, ',', '.') }}</p>
                                         </div>
                                     </div>
                                 @else
@@ -422,7 +422,7 @@
                                     </div>
                                     <div class="text-right">
                                         <p class="text-lg font-bold {{ $totalPiutang > 0 ? 'text-orange-600' : 'text-gray-600' }}">
-                                            Rp {{ number_format($totalPiutang, 0, ',', '.') }}
+                                            Rp {{ number_format($totalPiutang, 2, ',', '.') }}
                                         </p>
                                         @if($totalPiutang > 0)
                                             <p class="text-xs text-orange-600 mt-0.5">
@@ -448,7 +448,7 @@
                                         </div>
                                         <div>
                                             <label class="text-xs font-medium text-blue-700">Jumlah Pemotongan</label>
-                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($approval->piutang_amount, 0, ',', '.') }}</p>
+                                            <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($approval->piutang_amount, 2, ',', '.') }}</p>
                                         </div>
                                         @if($approval->piutang_notes)
                                         <div class="col-span-2">
@@ -489,7 +489,7 @@
                                             <option value="">-- Tidak ada pemotongan piutang --</option>
                                             @foreach($piutangList as $index => $piutang)
                                                 <option value="{{ $piutang->id }}">
-                                                    {{ $index === 0 ? '⭐ ' : '' }}{{ \Carbon\Carbon::parse($piutang->tanggal_piutang)->format('d/m/Y') }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 0, ',', '.') }}{{ $index === 0 ? ' (Terlama)' : '' }}
+                                                    {{ $index === 0 ? '⭐ ' : '' }}{{ \Carbon\Carbon::parse($piutang->tanggal_piutang)->format('d/m/Y') }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 2, ',', '.') }}{{ $index === 0 ? ' (Terlama)' : '' }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -515,11 +515,11 @@
                                             <div class="grid grid-cols-2 gap-2 text-xs">
                                                 <div>
                                                     <span class="text-gray-600">Total Piutang:</span>
-                                                    <span class="font-semibold ml-2">Rp {{ number_format($selectedPiutang->jumlah_piutang ?? 0, 0, ',', '.') }}</span>
+                                                    <span class="font-semibold ml-2">Rp {{ number_format($selectedPiutang->jumlah_piutang ?? 0, 2, ',', '.') }}</span>
                                                 </div>
                                                 <div>
                                                     <span class="text-gray-600">Sisa Piutang:</span>
-                                                    <span class="font-semibold ml-2 text-orange-600">Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 0, ',', '.') }}</span>
+                                                    <span class="font-semibold ml-2 text-orange-600">Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 2, ',', '.') }}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -533,7 +533,7 @@
                                                 <input
                                                     type="text"
                                                     id="piutang_amount_display"
-                                                    value="{{ number_format($piutangForm['amount'] ?? 0, 0, ',', '.') }}"
+                                                    value="{{ number_format($piutangForm['amount'] ?? 0, 2, ',', '.') }}"
                                                     class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
                                                     placeholder="0"
                                                     oninput="formatCurrencyPiutang(this, 'piutang_amount_hidden')"
@@ -543,7 +543,7 @@
                                             <input type="hidden" wire:model.defer="piutangForm.amount" id="piutang_amount_hidden">
                                             <p class="text-xs text-gray-500 mt-1">
                                                 <i class="fas fa-info-circle mr-1"></i>
-                                                Maksimal: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 0, ',', '.') }}
+                                                Maksimal: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 2, ',', '.') }}
                                             </p>
                                         </div>
 
@@ -597,9 +597,9 @@
                                             @if($approval->refraksi_type === 'qty')
                                                 <i class="fas fa-percentage text-green-600 mr-1"></i>Qty ({{ number_format($approval->refraksi_value, 2) }}%)
                                             @elseif($approval->refraksi_type === 'rupiah')
-                                                <i class="fas fa-money-bill text-green-600 mr-1"></i>Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }}/kg
+                                                <i class="fas fa-money-bill text-green-600 mr-1"></i>Rp {{ number_format($approval->refraksi_value, 2, ',', '.') }}/kg
                                             @elseif($approval->refraksi_type === 'lainnya')
-                                                <i class="fas fa-calculator text-green-600 mr-1"></i>Lainnya (Rp {{ number_format($approval->refraksi_value, 0, ',', '.') }})
+                                                <i class="fas fa-calculator text-green-600 mr-1"></i>Lainnya (Rp {{ number_format($approval->refraksi_value, 2, ',', '.') }})
                                             @else
                                                 <i class="fas fa-calculator text-green-600 mr-1"></i>{{ ucfirst($approval->refraksi_type) }}
                                             @endif
@@ -607,11 +607,11 @@
                                     </div>
                                     <div>
                                         <label class="text-xs font-medium text-green-700">Potongan</label>
-                                        <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($approval->refraksi_amount, 0, ',', '.') }}</p>
+                                        <p class="mt-1 text-sm text-red-600 font-bold">- Rp {{ number_format($approval->refraksi_amount, 2, ',', '.') }}</p>
                                     </div>
                                     <div class="col-span-2">
                                         <label class="text-xs font-medium text-green-700">Total Pembayaran</label>
-                                        <p class="mt-1 text-lg text-green-600 font-bold">Rp {{ number_format($approval->amount_after_refraksi, 0, ',', '.') }}</p>
+                                        <p class="mt-1 text-lg text-green-600 font-bold">Rp {{ number_format($approval->amount_after_refraksi, 2, ',', '.') }}</p>
                                     </div>
                                 </div>
                             @else
@@ -660,7 +660,7 @@
                                             <input
                                                 type="text"
                                                 id="refraksi_value_display"
-                                                value="{{ number_format($refraksiForm['value'] ?? 0, $refraksiForm['type'] === 'qty' ? 2 : 0, ',', '.') }}"
+                                                value="{{ number_format($refraksiForm['value'] ?? 0, $refraksiForm['type'] === 'qty' ? 2 : 2, ',', '.') }}"
                                                 class="w-full {{ $refraksiForm['type'] === 'qty' ? 'pr-8' : 'pl-9' }} px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500"
                                                 placeholder="0"
                                                 oninput="formatCurrencyRefraksi(this, 'refraksi_value_hidden', '{{ $refraksiForm['type'] }}')"
@@ -720,20 +720,20 @@
                             <div class="p-5 space-y-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Total Awal Pengiriman</span>
-                                    <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalAwal, 0, ',', '.') }}</span>
+                                    <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalAwal, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Potongan Refraksi</span>
-                                    <span class="text-sm font-semibold text-red-600">- Rp {{ number_format($refraksiPotongan, 0, ',', '.') }}</span>
+                                    <span class="text-sm font-semibold text-red-600">- Rp {{ number_format($refraksiPotongan, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Potongan Piutang Supplier</span>
-                                    <span class="text-sm font-semibold text-red-600">- Rp {{ number_format($piutangPotongan, 0, ',', '.') }}</span>
+                                    <span class="text-sm font-semibold text-red-600">- Rp {{ number_format($piutangPotongan, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="border-t border-gray-200 pt-4">
                                     <div class="flex justify-between items-center">
                                         <span class="text-base font-bold text-gray-900">Total Dibayarkan</span>
-                                        <span class="text-xl font-extrabold text-green-600">Rp {{ number_format($totalPembayaran, 0, ',', '.') }}</span>
+                                        <span class="text-xl font-extrabold text-green-600">Rp {{ number_format($totalPembayaran, 2, ',', '.') }}</span>
                                     </div>
                                 </div>
                             </div>

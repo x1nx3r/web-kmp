@@ -54,11 +54,11 @@
                 <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Realisasi</p>
                 <h3 class="text-3xl font-bold text-gray-900 mb-2">
                     @if($omsetMingguIni >= 1000000000)
-                        Rp {{ number_format($omsetMingguIni / 1000000000, 1, ',', '.') }}M
+                        Rp {{ number_format($omsetMingguIni / 1000000000, 2, ',', '.') }}M
                     @elseif($omsetMingguIni >= 1000000)
-                        Rp {{ number_format($omsetMingguIni / 1000000, 1, ',', '.') }}Jt
+                        Rp {{ number_format($omsetMingguIni / 1000000, 2, ',', '.') }}Jt
                     @else
-                        Rp {{ number_format($omsetMingguIni, 0, ',', '.') }}
+                        Rp {{ number_format($omsetMingguIni, 2, ',', '.') }}
                     @endif
                 </h3>
                 
@@ -68,14 +68,14 @@
                         <span class="text-gray-600 flex items-center">(Sistem) 
                         </span>
                         <span class="font-semibold text-gray-700">
-                           Rp {{ number_format($omsetSistemMingguIni / 1000000, 1, ',', '.') }}Jt
+                           Rp {{ number_format($omsetSistemMingguIni / 1000000, 2, ',', '.') }}Jt
                         </span>
                     </div>
                     <div class="flex items-center justify-between text-xs">
                         <span class="text-gray-600 flex items-center">(Manual)
                         </span>
                         <span class="font-semibold text-gray-700">
-                            Rp {{ number_format($omsetManualMingguIni / 1000000, 1, ',', '.') }}Jt
+                            Rp {{ number_format($omsetManualMingguIni / 1000000, 2, ',', '.') }}Jt
                         </span>
                     </div>
                 </div>
@@ -102,11 +102,11 @@
                 <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Target Mingguan</p>
                 <h3 class="text-3xl font-bold text-gray-900 mb-3">
                     @if($targetMingguanAdjusted >= 1000000000)
-                        Rp {{ number_format($targetMingguanAdjusted / 1000000000, 1, ',', '.') }}M
+                        Rp {{ number_format($targetMingguanAdjusted / 1000000000, 2, ',', '.') }}M
                     @elseif($targetMingguanAdjusted >= 1000000)
-                        Rp {{ number_format($targetMingguanAdjusted / 1000000, 1, ',', '.') }}Jt
+                        Rp {{ number_format($targetMingguanAdjusted / 1000000, 2, ',', '.') }}Jt
                     @else
-                        Rp {{ number_format($targetMingguanAdjusted, 0, ',', '.') }}
+                        Rp {{ number_format($targetMingguanAdjusted, 2, ',', '.') }}
                     @endif
                 </h3>
                 <p class="text-sm text-gray-500">Per minggu</p>
@@ -115,15 +115,15 @@
             {{-- Progress --}}
             <div class="bg-gray-50 rounded-lg p-5">
                 <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Progress</p>
-                <h3 class="text-3xl font-bold text-gray-900 mb-3">{{ number_format($progressMinggu, 1) }}%</h3>
+                <h3 class="text-3xl font-bold text-gray-900 mb-3">{{ number_format($progressMinggu, 2, ',', '.') }}%</h3>
                 <div class="w-full bg-gray-300 rounded-full h-3 mb-3">
                     <div class="{{ $progressMinggu >= 100 ? 'bg-green-500' : 'bg-blue-500' }} h-full rounded-full" style="width: {{ min($progressMinggu, 100) }}%"></div>
                 </div>
                 <p class="text-sm text-gray-500">
                     @if($targetMingguanAdjusted > $omsetMingguIni)
-                        Kurang Rp {{ number_format(($targetMingguanAdjusted - $omsetMingguIni) / 1000000, 1, ',', '.') }}Jt
+                        Kurang Rp {{ number_format(($targetMingguanAdjusted - $omsetMingguIni) / 1000000, 2, ',', '.') }}Jt
                     @else
-                        Lebih Rp {{ number_format(($omsetMingguIni - $targetMingguanAdjusted) / 1000000, 1, ',', '.') }}Jt
+                        Lebih Rp {{ number_format(($omsetMingguIni - $targetMingguanAdjusted) / 1000000, 2, ',', '.') }}Jt
                     @endif
                 </p>
             </div>
@@ -142,14 +142,14 @@
             </div>
             <p class="text-2xl font-bold text-gray-900 mb-1">
                 @if($totalOutstanding >= 1000000000)
-                    Rp {{ number_format($totalOutstanding / 1000000000, 1, ',', '.') }}M
+                    Rp {{ number_format($totalOutstanding / 1000000000, 2, ',', '.') }}M
                 @elseif($totalOutstanding >= 1000000)
-                    Rp {{ number_format($totalOutstanding / 1000000, 1, ',', '.') }}Jt
+                    Rp {{ number_format($totalOutstanding / 1000000, 2, ',', '.') }}Jt
                 @else
-                    Rp {{ number_format($totalOutstanding, 0, ',', '.') }}
+                    Rp {{ number_format($totalOutstanding, 2, ',', '.') }}
                 @endif
             </p>
-            <p class="text-sm text-gray-500">{{ number_format($poBerjalan) }} PO Berjalan</p>
+            <p class="text-sm text-gray-500">{{ number_format($poBerjalan, 0, ',', '.') }} PO Berjalan</p>
         </div>
 
         {{-- Omset Bulan Ini --}}
@@ -162,26 +162,26 @@
             </div>
             <p class="text-2xl font-bold text-gray-900 mb-1">
                 @if($omsetBulanIni >= 1000000000)
-                    Rp {{ number_format($omsetBulanIni / 1000000000, 1, ',', '.') }}M
+                    Rp {{ number_format($omsetBulanIni / 1000000000, 2, ',', '.') }}M
                 @elseif($omsetBulanIni >= 1000000)
-                    Rp {{ number_format($omsetBulanIni / 1000000, 1, ',', '.') }}Jt
+                    Rp {{ number_format($omsetBulanIni / 1000000, 2, ',', '.') }}Jt
                 @else
-                    Rp {{ number_format($omsetBulanIni, 0, ',', '.') }}
+                    Rp {{ number_format($omsetBulanIni, 2, ',', '.') }}
                 @endif
             </p>
             
             {{-- Breakdown Sistem & Manual --}}
             <div class="flex items-center gap-2 mt-2 mb-1 text-xs text-gray-600">
                 <span class="inline-flex items-center gap-1" title="Omset dari sistem">
-                    (Sistem) {{ number_format($omsetSistemBulanIni / 1000000, 1, ',', '.') }}Jt
+                    (Sistem) {{ number_format($omsetSistemBulanIni / 1000000, 2, ',', '.') }}Jt
                 </span>
                 <span class="text-gray-300">|</span>
                 <span class="inline-flex items-center gap-1" title="Omset manual">
-                    (Manual) {{ number_format($omsetManualBulanIni / 1000000, 1, ',', '.') }}Jt
+                    (Manual) {{ number_format($omsetManualBulanIni / 1000000, 2, ',', '.') }}Jt
                 </span>
             </div>
             
-            <p class="text-sm text-gray-500">{{ number_format($progressBulan, 1) }}% dari target</p>
+            <p class="text-sm text-gray-500">{{ number_format($progressBulan, 2, ',', '.') }}% dari target</p>
         </div>
             {{-- Order Bulan Ini --}}
         <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
@@ -191,14 +191,14 @@
                 </div>
                 <h3 class="text-sm text-gray-500">Order Bulan Ini</h3>
             </div>
-            <p class="text-2xl font-bold text-gray-900 mb-1">{{ number_format($orderBulanIni) }}</p>
+            <p class="text-2xl font-bold text-gray-900 mb-1">{{ number_format($orderBulanIni, 0, ',', '.') }}</p>
             <p class="text-sm text-gray-500">
                 @if($nilaiOrderBulanIni >= 1000000000)
-                    Rp {{ number_format($nilaiOrderBulanIni / 1000000000, 1, ',', '.') }}M
+                    Rp {{ number_format($nilaiOrderBulanIni / 1000000000, 2, ',', '.') }}M
                 @elseif($nilaiOrderBulanIni >= 1000000)
-                    Rp {{ number_format($nilaiOrderBulanIni / 1000000, 1, ',', '.') }}Jt
+                    Rp {{ number_format($nilaiOrderBulanIni / 1000000, 2, ',', '.') }}Jt
                 @else
-                    Rp {{ number_format($nilaiOrderBulanIni, 0, ',', '.') }}
+                    Rp {{ number_format($nilaiOrderBulanIni, 2, ',', '.') }}
                 @endif
             </p>
     </div>
@@ -215,7 +215,7 @@
                 </div>
                 <h3 class="text-sm text-gray-500">Pengiriman Normal</h3>
             </div>
-            <p class="text-2xl font-bold text-green-600 mb-1">{{ number_format($pengirimanNormalMingguIni) }}</p>
+            <p class="text-2xl font-bold text-green-600 mb-1">{{ number_format($pengirimanNormalMingguIni, 0, ',', '.') }}</p>
             <p class="text-sm text-gray-500">Minggu Ini (>70%)</p>
         </div>
 
@@ -228,7 +228,7 @@
                 </div>
                 <h3 class="text-sm text-gray-500">Bongkar Sebagian</h3>
             </div>
-            <p class="text-2xl font-bold text-yellow-600 mb-1">{{ number_format($pengirimanBongkarSebagianMingguIni) }}</p>
+            <p class="text-2xl font-bold text-yellow-600 mb-1">{{ number_format($pengirimanBongkarSebagianMingguIni, 0, ',', '.') }}</p>
             <p class="text-sm text-gray-500">Minggu Ini (≤70%)</p>
         </div>
 
@@ -241,7 +241,7 @@
                 </div>
                 <h3 class="text-sm text-gray-500">Pengiriman Ditolak</h3>
             </div>
-            <p class="text-2xl font-bold text-red-600 mb-1">{{ count($pengirimanGagalList) }}</p>
+            <p class="text-2xl font-bold text-red-600 mb-1">{{ number_format(count($pengirimanGagalList), 0, ',', '.') }}</p>
             <p class="text-sm text-gray-500">Minggu Ini</p>
         </div>
     </div>
@@ -253,7 +253,7 @@
             <div class="flex items-center justify-between mb-3">
                 <h4 class="text-sm text-gray-600">Target Minggu Ini</h4>
                 <span class="text-sm font-bold {{ $progressMinggu >= 100 ? 'text-green-600' : 'text-gray-900' }}">
-                    {{ number_format($progressMinggu, 1) }}%
+                    {{ number_format($progressMinggu, 2, ',', '.') }}%
                 </span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
@@ -267,7 +267,7 @@
             <div class="flex items-center justify-between mb-3">
                 <h4 class="text-sm text-gray-600">Target Bulan Ini</h4>
                 <span class="text-sm font-bold {{ $progressBulan >= 100 ? 'text-green-600' : 'text-gray-900' }}">
-                    {{ number_format($progressBulan, 1) }}%
+                    {{ number_format($progressBulan, 2, ',', '.') }}%
                 </span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
@@ -281,7 +281,7 @@
             <div class="flex items-center justify-between mb-3">
                 <h4 class="text-sm text-gray-600">Target Tahun Ini</h4>
                 <span class="text-sm font-bold {{ $progressTahun >= 100 ? 'text-green-600' : 'text-gray-900' }}">
-                    {{ number_format($progressTahun, 1) }}%
+                    {{ number_format($progressTahun, 2, ',', '.') }}%
                 </span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
@@ -384,7 +384,7 @@
                     <div>
                         <p class="text-sm text-gray-600 mb-1">Total Nilai Margin Minggu Ini</p>
                         <p class="text-2xl font-bold {{ $totalMarginMingguIni >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            Rp {{ number_format($totalMarginMingguIni, 0, ',', '.') }}
+                            Rp {{ number_format($totalMarginMingguIni, 2, ',', '.') }}
                         </p>
                     </div>
                     <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -399,7 +399,7 @@
                     <div>
                         <p class="text-sm text-gray-600 mb-1">Prosentase Margin Minggu Ini</p>
                         <p class="text-2xl font-bold {{ $grossMarginMingguIni >= 0 ? 'text-blue-600' : 'text-red-600' }}">
-                            {{ number_format($grossMarginMingguIni, 2) }}%
+                            {{ number_format($grossMarginMingguIni, 2, ',', '.') }}%
                         </p>
                     </div>
                     <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -433,13 +433,13 @@
                                 <td class="px-4 py-3 text-gray-700">{{ $item['supplier'] }}</td>
                                 <td class="px-4 py-3 text-gray-700">{{ $item['bahan_baku'] }}</td>
                                 <td class="px-4 py-3 text-right font-semibold {{ $item['margin'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    Rp {{ number_format($item['margin'], 0, ',', '.') }}
+                                    Rp {{ number_format($item['margin'], 2, ',', '.') }}
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                                         {{ $item['margin_percentage'] >= 20 ? 'bg-green-100 text-green-800' : 
                                            ($item['margin_percentage'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ number_format($item['margin_percentage'], 1) }}%
+                                        {{ number_format($item['margin_percentage'], 2, ',', '.') }}%
                                     </span>
                                 </td>
                             </tr>
@@ -463,7 +463,7 @@
                     </div>
                     <div class="text-right">
                         <p class="text-3xl font-bold {{ $grossMarginBulanIni >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            {{ number_format($grossMarginBulanIni, 2) }}%
+                            {{ number_format($grossMarginBulanIni, 2, ',', '.') }}%
                         </p>
                         
                     </div>
@@ -605,7 +605,9 @@ function showPengirimanModal(type) {
             } else {
                 const percentage = item.percentage || 0;
                 const percentageColor = percentage > 70 ? 'text-green-600' : 'text-yellow-600';
-                extraContent = `<span class="font-semibold ${percentageColor}">${percentage}%</span><br><small class="text-gray-500">${item.total_qty_kirim} / ${item.total_qty_forecast}</small>`;
+                const qtyKirimFormatted = Number(item.total_qty_kirim).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const qtyForecastFormatted = Number(item.total_qty_forecast).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                extraContent = `<span class="font-semibold ${percentageColor}">${percentage}%</span><br><small class="text-gray-500">${qtyKirimFormatted} / ${qtyForecastFormatted}</small>`;
             }
             
             row.innerHTML = `
@@ -617,7 +619,7 @@ function showPengirimanModal(type) {
                 <td class="px-4 py-3 text-gray-600">${tanggal}</td>
                 <td class="px-4 py-3 text-gray-900">${item.klien}${item.cabang ? ' (' + item.cabang + ')' : ''}</td>
                 <td class="px-4 py-3 text-gray-600">${item.purchasing}</td>
-                <td class="px-4 py-3 text-right text-gray-900">${Number(item.total_qty_kirim).toLocaleString('id-ID')}</td>
+                <td class="px-4 py-3 text-right text-gray-900">${Number(item.total_qty_kirim).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 <td class="px-4 py-3 text-right">${extraContent}</td>
                 <td class="px-4 py-3 text-center">${statusBadge}</td>
             `;
@@ -711,7 +713,7 @@ function downloadPDF() {
         });
         
         const klien = item.klien + (item.cabang ? ' (' + item.cabang + ')' : '');
-        const qtyKirim = Number(item.total_qty_kirim).toLocaleString('id-ID');
+        const qtyKirim = Number(item.total_qty_kirim).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
         let status = '';
         switch(item.status) {
@@ -743,7 +745,7 @@ function downloadPDF() {
             ];
         } else {
             const percentage = item.percentage || 0;
-            const qtyInfo = qtyKirim + ' / ' + Number(item.total_qty_forecast).toLocaleString('id-ID');
+            const qtyInfo = qtyKirim + ' / ' + Number(item.total_qty_forecast).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             return [
                 item.po_number || '-',
                 tanggal,

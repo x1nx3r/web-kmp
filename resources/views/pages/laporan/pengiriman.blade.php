@@ -25,7 +25,7 @@
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
                 <p class="text-xs sm:text-sm font-medium text-green-700 truncate">Tonase Minggu Ini</p>
-                <p class="text-xl sm:text-2xl font-bold text-green-900">{{ number_format($weeklyStats['total_tonase']) }} Kg</p>
+                <p class="text-xl sm:text-2xl font-bold text-green-900">{{ number_format($weeklyStats['total_tonase'], 2, ',', '.') }} Kg</p>
                 <p class="text-xs text-green-600 truncate">{{ $weeklyStats['week_start'] }} - {{ $weeklyStats['week_end'] }}</p>
             </div>
         </div>
@@ -53,7 +53,7 @@
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
                 <p class="text-xs sm:text-sm font-medium text-orange-700 truncate">Tonase Tahun Ini</p>
-                <p class="text-xl sm:text-2xl font-bold text-orange-900">{{ number_format($yearlyStats['total_tonase']) }} Kg</p>
+                <p class="text-xl sm:text-2xl font-bold text-orange-900">{{ number_format($yearlyStats['total_tonase'], 2, ',', '.') }} Kg</p>
                 <p class="text-xs text-orange-600">Tahun {{ $yearlyStats['year'] }}</p>
             </div>
         </div>
@@ -84,7 +84,7 @@
             </div>
             <div class="ml-3 sm:ml-4 flex-1 min-w-0">
                 <p class="text-xs sm:text-sm font-medium text-cyan-700 truncate">Tonase Total</p>
-                <p class="text-xl sm:text-2xl font-bold text-cyan-900">{{ number_format($totalStats['total_tonase']) }} Kg</p>
+                <p class="text-xl sm:text-2xl font-bold text-cyan-900">{{ number_format($totalStats['total_tonase'], 2, ',', '.') }} Kg</p>
                 <p class="text-xs text-cyan-600">Keseluruhan</p>
             </div>
         </div>
@@ -483,15 +483,15 @@
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-semibold text-gray-900">
-                                {{ number_format($pengiriman->total_qty_kirim ?? 0) }} Kg
+                                {{ number_format($pengiriman->total_qty_kirim ?? 0, 2, ',', '.') }} Kg
                             </div>
                             <div class="text-xs text-gray-500 md:hidden">
-                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}
+                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 2, ',', '.') }}
                             </div>
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold hidden md:table-cell">
                             <div class="flex items-center">
-                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}
+                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 2, ',', '.') }}
                             </div>
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
@@ -808,7 +808,10 @@ function initCombinedChart() {
                             const label = context.dataset.label;
                             const value = context.parsed.y;
                             const unit = currentDataType === 'pengiriman' ? 'pengiriman' : 'Kg';
-                            return `${label}: ${value.toLocaleString('id-ID')} ${unit}`;
+                            const formattedValue = currentDataType === 'pengiriman' ? 
+                                value.toLocaleString('id-ID') : 
+                                value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                            return `${label}: ${formattedValue} ${unit}`;
                         },
                         
                     },
@@ -1122,10 +1125,10 @@ function displayPieChartDetails(data) {
                 <td class="px-4 py-3 text-sm text-gray-700">${tanggal}</td>
                 <td class="px-4 py-3 text-sm text-gray-900">${item.supplier || '-'}</td>
                 <td class="px-4 py-3 text-sm text-gray-900 text-right font-semibold">
-                    ${Number(item.qty_forecast || 0).toLocaleString('id-ID')}
+                    ${Number(item.qty_forecast || 0).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-900 text-right font-semibold">
-                    ${Number(item.qty_pengiriman || 0).toLocaleString('id-ID')}
+                    ${Number(item.qty_pengiriman || 0).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </td>
                 <td class="px-4 py-3 text-sm text-center">
                     <span class="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${badgeClass}">

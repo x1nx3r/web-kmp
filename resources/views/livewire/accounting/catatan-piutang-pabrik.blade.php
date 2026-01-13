@@ -24,7 +24,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-purple-100 text-sm font-medium">Total Piutang</p>
-                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalPiutang, 0, ',', '.') }}</h3>
+                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalPiutang, 2, ',', '.') }}</h3>
                 </div>
                 <div class="bg-purple-400 bg-opacity-30 rounded-full p-3">
                     <i class="fas fa-coins text-2xl"></i>
@@ -36,7 +36,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-green-100 text-sm font-medium">Sudah Dibayar</p>
-                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalDibayar, 0, ',', '.') }}</h3>
+                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalDibayar, 2, ',', '.') }}</h3>
                 </div>
                 <div class="bg-green-400 bg-opacity-30 rounded-full p-3">
                     <i class="fas fa-check-circle text-2xl"></i>
@@ -48,7 +48,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-orange-100 text-sm font-medium">Sisa Piutang</p>
-                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalSisa, 0, ',', '.') }}</h3>
+                    <h3 class="text-2xl font-bold mt-1">Rp {{ number_format($totalSisa, 2, ',', '.') }}</h3>
                 </div>
                 <div class="bg-orange-400 bg-opacity-30 rounded-full p-3">
                     <i class="fas fa-hourglass-half text-2xl"></i>
@@ -233,7 +233,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($piutang->total_amount, 0, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($piutang->total_amount, 2, ',', '.') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($sisaPiutang <= 0)
@@ -245,7 +245,7 @@
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                             <i class="fas fa-clock mr-1"></i>Cicilan
                                         </span>
-                                        <p class="text-xs text-gray-600 mt-1">Sisa: Rp {{ number_format($sisaPiutang, 0, ',', '.') }}</p>
+                                        <p class="text-xs text-gray-600 mt-1">Sisa: Rp {{ number_format($sisaPiutang, 2, ',', '.') }}</p>
                                     </div>
                                 @else
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
@@ -376,19 +376,19 @@
                         <p class="text-sm text-blue-700 font-medium mb-1 flex items-center">
                             <i class="fas fa-file-alt mr-2"></i>Subtotal
                         </p>
-                        <p class="text-2xl font-bold text-blue-900 mt-1">Rp {{ number_format($detailPiutang->subtotal, 0, ',', '.') }}</p>
+                        <p class="text-2xl font-bold text-blue-900 mt-1">Rp {{ number_format($detailPiutang->subtotal, 2, ',', '.') }}</p>
                     </div>
                     <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-5 border border-green-200 shadow-sm">
                         <p class="text-sm text-green-700 font-medium mb-1 flex items-center">
                             <i class="fas fa-percentage mr-2"></i>Pajak ({{ $detailPiutang->tax_rate }}%)
                         </p>
-                        <p class="text-2xl font-bold text-green-900 mt-1">Rp {{ number_format($detailPiutang->tax, 0, ',', '.') }}</p>
+                        <p class="text-2xl font-bold text-green-900 mt-1">Rp {{ number_format($detailPiutang->tax, 2, ',', '.') }}</p>
                     </div>
                     <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-200 shadow-sm">
                         <p class="text-sm text-purple-700 font-medium mb-1 flex items-center">
                             <i class="fas fa-wallet mr-2"></i>Total Amount
                         </p>
-                        <p class="text-2xl font-bold text-purple-900 mt-1">Rp {{ number_format($detailPiutang->total_amount, 0, ',', '.') }}</p>
+                        <p class="text-2xl font-bold text-purple-900 mt-1">Rp {{ number_format($detailPiutang->total_amount, 2, ',', '.') }}</p>
                     </div>
                 </div>
 
@@ -498,15 +498,15 @@
                         <div class="grid grid-cols-3 gap-3 mb-4">
                             <div class="bg-white rounded-lg p-3 text-center">
                                 <p class="text-xs text-gray-600">Total Invoice</p>
-                                <p class="text-lg font-bold text-blue-900">Rp {{ number_format($detailPiutang->total_amount, 0, ',', '.') }}</p>
+                                <p class="text-lg font-bold text-blue-900">Rp {{ number_format($detailPiutang->total_amount, 2, ',', '.') }}</p>
                             </div>
                             <div class="bg-white rounded-lg p-3 text-center">
                                 <p class="text-xs text-gray-600">Terbayar</p>
-                                <p class="text-lg font-bold text-green-900">Rp {{ number_format($totalPaid, 0, ',', '.') }}</p>
+                                <p class="text-lg font-bold text-green-900">Rp {{ number_format($totalPaid, 2, ',', '.') }}</p>
                             </div>
                             <div class="bg-white rounded-lg p-3 text-center">
                                 <p class="text-xs text-gray-600">Sisa</p>
-                                <p class="text-lg font-bold text-orange-900">Rp {{ number_format($sisa, 0, ',', '.') }}</p>
+                                <p class="text-lg font-bold text-orange-900">Rp {{ number_format($sisa, 2, ',', '.') }}</p>
                             </div>
                         </div>
 
@@ -524,7 +524,7 @@
                                 </div>
                                 <div>
                                     <span class="font-medium text-gray-600">Jumlah:</span>
-                                    <p class="text-green-900 font-bold">Rp {{ number_format($pembayaran->jumlah_bayar, 0, ',', '.') }}</p>
+                                    <p class="text-green-900 font-bold">Rp {{ number_format($pembayaran->jumlah_bayar, 2, ',', '.') }}</p>
                                 </div>
                                 <div>
                                     <span class="font-medium text-gray-600">Metode:</span>
@@ -713,7 +713,7 @@
                         </div>
                         <div>
                             <label class="font-medium text-gray-600">Total Invoice:</label>
-                            <p class="text-lg font-bold text-blue-900">Rp {{ number_format($selectedPiutang->total_amount, 0, ',', '.') }}</p>
+                            <p class="text-lg font-bold text-blue-900">Rp {{ number_format($selectedPiutang->total_amount, 2, ',', '.') }}</p>
                         </div>
                         <div>
                             <label class="font-medium text-gray-600">Jatuh Tempo:</label>
@@ -721,11 +721,11 @@
                         </div>
                         <div>
                             <label class="font-medium text-gray-600">Sudah Dibayar:</label>
-                            <p class="font-semibold text-green-600">Rp {{ number_format($totalPaidBefore, 0, ',', '.') }}</p>
+                            <p class="font-semibold text-green-600">Rp {{ number_format($totalPaidBefore, 2, ',', '.') }}</p>
                         </div>
                         <div>
                             <label class="font-medium text-gray-600">Sisa Piutang:</label>
-                            <p class="text-lg font-bold text-orange-600">Rp {{ number_format($sisaPiutang, 0, ',', '.') }}</p>
+                            <p class="text-lg font-bold text-orange-600">Rp {{ number_format($sisaPiutang, 2, ',', '.') }}</p>
                         </div>
                     </div>
                 </div>
@@ -752,7 +752,7 @@
                             <input
                                 type="text"
                                 id="jumlah_bayar_pabrik_display"
-                                value="{{ $jumlah_bayar ? number_format($jumlah_bayar, 0, ',', '.') : '' }}"
+                                value="{{ $jumlah_bayar ? number_format($jumlah_bayar, 2, ',', '.') : '' }}"
                                 placeholder="0"
                                 class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 oninput="formatCurrencyJumlahBayarPabrik(this)"
@@ -761,7 +761,7 @@
                         </div>
                         <p class="text-xs text-gray-500 mt-1">
                             <i class="fas fa-info-circle mr-1"></i>
-                            Maksimal: Rp {{ number_format($sisaPiutang, 0, ',', '.') }}
+                            Maksimal: Rp {{ number_format($sisaPiutang, 2, ',', '.') }}
                         </p>
                         @error('jumlah_bayar') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                     </div>

@@ -159,10 +159,10 @@
                                 <td class="px-6 py-4">
                                     <div class="space-y-1">
                                         <div class="text-sm font-medium text-blue-600">
-                                            {{ number_format($pengiriman->total_qty_kirim ?? 0, 0, ',', '.') }} kg
+                                            {{ number_format($pengiriman->total_qty_kirim ?? 0, 2, ',', '.') }} kg
                                         </div>
                                         <div class="text-sm font-medium text-green-600">
-                                            Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 0, ',', '.') }}
+                                            Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 2, ',', '.') }}
                                         </div>
                                         <div class="text-xs text-gray-500">
                                             {{ $pengiriman->pengirimanDetails->count() }} item
@@ -181,7 +181,7 @@
                                         </span>
                                         @if(isset($pengiriman->partialInfo) && $pengiriman->partialInfo['isPartial'])
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300 w-fit" 
-                                                  title="Pengiriman sebagian: {{ $pengiriman->partialInfo['percentage'] }}% dari forecast ({{ number_format($pengiriman->partialInfo['totalQtyKirim'], 0, ',', '.') }} kg dari {{ number_format($pengiriman->partialInfo['totalQtyForecast'], 0, ',', '.') }} kg)">
+                                                  title="Pengiriman sebagian: {{ $pengiriman->partialInfo['percentage'] }}% dari forecast ({{ number_format($pengiriman->partialInfo['totalQtyKirim'], 2, ',', '.') }} kg dari {{ number_format($pengiriman->partialInfo['totalQtyForecast'], 2, ',', '.') }} kg)">
                                                 <i class="fas fa-exclamation-triangle mr-1"></i>
                                                 Kirim Sebagian
                                             </span>

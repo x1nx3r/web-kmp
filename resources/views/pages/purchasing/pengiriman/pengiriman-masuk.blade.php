@@ -162,7 +162,7 @@
                                 <p class="text-xs text-gray-500">{{ $pengirimanList->count() }} {{ $pengirimanList->count() == 1 ? 'pengiriman' : 'pengiriman' }}</p>
                                 @php $totalHarga = $pengirimanList->sum('total_harga_kirim'); @endphp
                                 @if($totalHarga > 0)
-                                    <p class="text-sm font-semibold text-green-600">Rp {{ number_format($totalHarga, 0, ',', '.') }}</p>
+                                    <p class="text-sm font-semibold text-green-600">Rp {{ number_format($totalHarga, 2, ',', '.') }}</p>
                                 @endif
                             </div>
                         </div>
@@ -236,13 +236,13 @@
                                                 @if($pengiriman->total_qty_kirim && $pengiriman->total_qty_kirim > 0)
                                                     <span class="flex items-center gap-1">
                                                         <i class="fas fa-weight text-blue-600"></i>
-                                                        {{ number_format($pengiriman->total_qty_kirim, 0, ',', '.') }} kg
+                                                        {{ number_format($pengiriman->total_qty_kirim, 2, ',', '.') }} kg
                                                     </span>
                                                 @endif
                                                 @if($pengiriman->total_harga_kirim && $pengiriman->total_harga_kirim > 0)
                                                     <span class="flex items-center gap-1 font-medium text-green-700">
                                                         <i class="fas fa-money-bill-wave"></i>
-                                                        Rp {{ number_format($pengiriman->total_harga_kirim, 0, ',', '.') }}
+                                                        Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}
                                                     </span>
                                                 @endif
                                             </div>
@@ -1222,9 +1222,9 @@ function populateModalSummary(formData, modalElement) {
                 const rowHtml = `
                     <tr class="border-b">
                         <td class="px-3 py-2 text-sm">${bahanBaku}</td>
-                        <td class="px-3 py-2 text-sm">${qty.toLocaleString('id-ID')} kg</td>
-                        <td class="px-3 py-2 text-sm">Rp ${harga.toLocaleString('id-ID')}</td>
-                        <td class="px-3 py-2 text-sm font-semibold">Rp ${total.toLocaleString('id-ID')}</td>
+                        <td class="px-3 py-2 text-sm">${qty.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})} kg</td>
+                        <td class="px-3 py-2 text-sm">Rp ${harga.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="px-3 py-2 text-sm font-semibold">Rp ${total.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     </tr>
                 `;
                 detailContainer.insertAdjacentHTML('beforeend', rowHtml);
@@ -1236,10 +1236,10 @@ function populateModalSummary(formData, modalElement) {
         if (setTotalItem) setTotalItem.textContent = totalItems + ' item';
         
         const setTotalQty = modalElement.querySelector('#summary-total-qty');
-        if (setTotalQty) setTotalQty.textContent = totalQty.toLocaleString('id-ID') + ' kg';
+        if (setTotalQty) setTotalQty.textContent = totalQty.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' kg';
         
         const setTotalHarga = modalElement.querySelector('#summary-total-harga');
-        if (setTotalHarga) setTotalHarga.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID');
+        if (setTotalHarga) setTotalHarga.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
     
     // Store formData for submission

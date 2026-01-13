@@ -59,7 +59,7 @@
         <div class="marketing-header">
             <strong>Marketing: {{ $marketingNama }}</strong>
             <span style="float: right;">
-                Total: Rp {{ number_format($details->sum('total_nilai'), 0, ',', '.') }}
+                Total: Rp {{ number_format($details->sum('total_nilai'), 2, ',', '.') }}
             </span>
         </div>
         
@@ -78,12 +78,12 @@
                         <td>{{ $index + 1 }}</td>
                         <td>{{ $item->po_number }}</td>
                         <td>{{ $item->klien_nama }}</td>
-                        <td style="text-align: right;">Rp {{ number_format($item->total_nilai, 0, ',', '.') }}</td>
+                        <td style="text-align: right;">Rp {{ number_format($item->total_nilai, 2, ',', '.') }}</td>
                     </tr>
                 @endforeach
                 <tr class="total-row">
                     <td colspan="3" style="text-align: right;"><strong>Subtotal {{ $marketingNama }}:</strong></td>
-                    <td style="text-align: right;"><strong>Rp {{ number_format($details->sum('total_nilai'), 0, ',', '.') }}</strong></td>
+                    <td style="text-align: right;"><strong>Rp {{ number_format($details->sum('total_nilai'), 2, ',', '.') }}</strong></td>
                 </tr>
             </tbody>
         </table>
@@ -92,7 +92,7 @@
     <table style="margin-top: 30px;">
         <tr class="total-row">
             <td style="text-align: right; font-size: 14px;"><strong>TOTAL KESELURUHAN:</strong></td>
-            <td style="text-align: right; width: 30%; font-size: 14px;"><strong>Rp {{ number_format($totalOverall, 0, ',', '.') }}</strong></td>
+            <td style="text-align: right; width: 30%; font-size: 14px;"><strong>Rp {{ number_format($totalOverall, 2, ',', '.') }}</strong></td>
         </tr>
     </table>
 </body>

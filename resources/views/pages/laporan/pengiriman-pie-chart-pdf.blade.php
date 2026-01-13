@@ -288,8 +288,8 @@
                 <td class="po-number">{{ $detail['po_number'] }}</td>
                 <td>{{ $detail['tanggal_kirim'] }}</td>
                 <td>{{ $detail['supplier'] }}</td>
-                <td class="text-right">{{ number_format($detail['qty_forecast'], 0, ',', '.') }}</td>
-                <td class="text-right">{{ number_format($detail['qty_pengiriman'], 0, ',', '.') }}</td>
+                <td class="text-right">{{ number_format($detail['qty_forecast'], 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format($detail['qty_pengiriman'], 2, ',', '.') }}</td>
                 <td class="text-center">
                     <span class="badge {{ $detail['kategori'] }}">
                         {{ $detail['status_label'] }}

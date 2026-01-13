@@ -364,7 +364,10 @@ function createGroupedBarChart(ctx, labels, datasets) {
                             if (label) {
                                 label += ': ';
                             }
-                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
                             return label;
                         }
                     }
@@ -391,7 +394,7 @@ function createGroupedBarChart(ctx, labels, datasets) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return 'Rp ' + (value / 1000000).toFixed(0) + 'Jt';
+                            return 'Rp ' + (value / 1000000).toFixed(2) + 'Jt';
                         }
                     },
                     grid: {
@@ -612,8 +615,11 @@ function createPieChart(ctx, labels, values) {
                             const label = context.label || '';
                             const value = context.parsed || 0;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return label + ': Rp ' + value.toLocaleString('id-ID') + ' (' + percentage + '%)';
+                            const percentage = ((value / total) * 100).toFixed(2);
+                            return label + ': Rp ' + value.toLocaleString('id-ID', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }) + ' (' + percentage + '%)';
                         }
                     }
                 },
@@ -719,7 +725,7 @@ function displayMarketingDetails(data) {
             <div class="mb-6">
                 <div class="bg-blue-600 text-white px-4 py-2 rounded-t-lg flex justify-between items-center">
                     <strong>Marketing: ${marketing}</strong>
-                    <span>Total: Rp ${subtotal.toLocaleString('id-ID')}</span>
+                    <span>Total: Rp ${subtotal.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                 </div>
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -736,12 +742,12 @@ function displayMarketingDetails(data) {
                                 <td class="px-4 py-2 text-sm">${idx + 1}</td>
                                 <td class="px-4 py-2 text-sm">${item.po_number || '-'}</td>
                                 <td class="px-4 py-2 text-sm">${item.klien_nama}</td>
-                                <td class="px-4 py-2 text-sm text-right">Rp ${parseFloat(item.total_nilai).toLocaleString('id-ID')}</td>
+                                <td class="px-4 py-2 text-sm text-right">Rp ${parseFloat(item.total_nilai).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             </tr>
                         `).join('')}
                         <tr class="bg-blue-50 font-bold">
                             <td colspan="4" class="px-4 py-2 text-sm text-right">Subtotal:</td>
-                            <td class="px-4 py-2 text-sm text-right">Rp ${subtotal.toLocaleString('id-ID')}</td>
+                            <td class="px-4 py-2 text-sm text-right">Rp ${subtotal.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -753,7 +759,7 @@ function displayMarketingDetails(data) {
         <div class="bg-indigo-100 p-4 rounded-lg mt-4">
             <div class="flex justify-between items-center">
                 <strong class="text-lg">TOTAL KESELURUHAN:</strong>
-                <strong class="text-lg text-indigo-700">Rp ${totalOverall.toLocaleString('id-ID')}</strong>
+                <strong class="text-lg text-indigo-700">Rp ${totalOverall.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
             </div>
         </div>
     `;
@@ -803,7 +809,7 @@ function displayProcurementDetails(data) {
             <div class="mb-6">
                 <div class="bg-green-600 text-white px-4 py-2 rounded-t-lg flex justify-between items-center">
                     <strong>Procurement: ${procurement}</strong>
-                    <span>Total: Rp ${subtotal.toLocaleString('id-ID')}</span>
+                    <span>Total: Rp ${subtotal.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                 </div>
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -820,12 +826,12 @@ function displayProcurementDetails(data) {
                                 <td class="px-4 py-2 text-sm">${idx + 1}</td>
                                 <td class="px-4 py-2 text-sm">${item.po_number || '-'}</td>
                                 <td class="px-4 py-2 text-sm">${item.klien_nama}</td>
-                                <td class="px-4 py-2 text-sm text-right">Rp ${parseFloat(item.total_nilai).toLocaleString('id-ID')}</td>
+                                <td class="px-4 py-2 text-sm text-right">Rp ${parseFloat(item.total_nilai).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             </tr>
                         `).join('')}
                         <tr class="bg-green-50 font-bold">
                             <td colspan="4" class="px-4 py-2 text-sm text-right">Subtotal:</td>
-                            <td class="px-4 py-2 text-sm text-right">Rp ${subtotal.toLocaleString('id-ID')}</td>
+                            <td class="px-4 py-2 text-sm text-right">Rp ${subtotal.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -837,7 +843,7 @@ function displayProcurementDetails(data) {
         <div class="bg-green-100 p-4 rounded-lg mt-4">
             <div class="flex justify-between items-center">
                 <strong class="text-lg">TOTAL KESELURUHAN:</strong>
-                <strong class="text-lg text-green-700">Rp ${totalOverall.toLocaleString('id-ID')}</strong>
+                <strong class="text-lg text-green-700">Rp ${totalOverall.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
             </div>
         </div>
     `;

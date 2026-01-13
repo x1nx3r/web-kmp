@@ -341,8 +341,8 @@
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
                     <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($hargaJual, 0, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($totalHargaItem, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($hargaJual, 2, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
@@ -360,7 +360,7 @@
                 <table class="summary-row">
                     <tr>
                         <td class="summary-label">Total Harga</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $pengiriman->total_harga_kirim, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $pengiriman->total_harga_kirim, 2, ',', '.') }}</td>
                     </tr>
                 </table>
 
@@ -369,7 +369,7 @@
                         <td class="summary-label">Refraksi</td>
                         <td class="summary-value">
                             @if($invoice->refraksi_value > 0)
-                                Rp {{ number_format($invoice->refraksi_amount, 0, ',', '.') }}
+                                Rp {{ number_format($invoice->refraksi_amount, 2, ',', '.') }}
                             @else
                                 -
                             @endif
@@ -380,7 +380,7 @@
                 <table class="summary-row total-row">
                     <tr>
                         <td class="summary-label">Total Tagihan</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format($invoice->total_amount, 2, ',', '.') }}</td>
                     </tr>
                 </table>
             </td>

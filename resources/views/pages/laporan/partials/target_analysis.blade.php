@@ -203,7 +203,7 @@
             <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Pencapaian:</span>
-                    <span class="font-bold text-green-600">Rp {{ number_format($omsetMingguIniCard, 0, ',', '.') }}</span>
+                    <span class="font-bold text-green-600">Rp {{ number_format($omsetMingguIniCard, 2, ',', '.') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Progress:</span>
@@ -218,7 +218,7 @@
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, $targetMingguanAdjustedCard - $omsetMingguIniCard), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, $targetMingguanAdjustedCard - $omsetMingguIniCard), 2, ',', '.') }}
                     </span>
                 </div>
             </div>
@@ -273,7 +273,7 @@
             <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Pencapaian:</span>
-                    <span class="font-bold text-green-600">Rp {{ number_format($omsetBulanIniSummary, 0, ',', '.') }}</span>
+                    <span class="font-bold text-green-600">Rp {{ number_format($omsetBulanIniSummary, 2, ',', '.') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Progress:</span>
@@ -288,7 +288,7 @@
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, $targetBulanIniAdjusted - $omsetBulanIniSummary), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, $targetBulanIniAdjusted - $omsetBulanIniSummary), 2, ',', '.') }}
                     </span>
                 </div>
             </div>
@@ -315,7 +315,7 @@
             <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Pencapaian:</span>
-                    <span class="font-bold text-green-600">Rp {{ number_format($omsetTahunIniSummary, 0, ',', '.') }}</span>
+                    <span class="font-bold text-green-600">Rp {{ number_format($omsetTahunIniSummary, 2, ',', '.') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Progress:</span>
@@ -330,7 +330,7 @@
                 <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span class="text-gray-600">Sisa Target:</span>
                     <span class="font-bold text-orange-600">
-                        Rp {{ number_format(max(0, $targetTahunanCurrent - $omsetTahunIniSummary), 0, ',', '.') }}
+                        Rp {{ number_format(max(0, $targetTahunanCurrent - $omsetTahunIniSummary), 2, ',', '.') }}
                     </span>
                 </div>
             </div>
@@ -347,7 +347,7 @@
             <div class="flex items-center space-x-2">
                 <span class="text-xs text-gray-500">Total Akumulasi:</span>
                 <span id="totalAkumulasi" class="text-sm font-bold text-indigo-600">
-                    Rp {{ number_format($omsetTahunIni ?? 0, 0, ',', '.') }}
+                    Rp {{ number_format($omsetTahunIni ?? 0, 2, ',', '.') }}
                 </span>
             </div>
         </div>
@@ -412,18 +412,18 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
                                 <div class="space-y-1">
                                     <div class="font-semibold text-gray-900">
-                                        Rp {{ number_format($realisasi, 0, ',', '.') }}
+                                        Rp {{ number_format($realisasi, 2, ',', '.') }}
                                     </div>
                                     @if($omsetManual > 0 || $omsetSistem > 0)
                                         <div class="text-xs text-gray-400">
                                             @if($omsetSistem > 0)
                                                 <span class="inline-flex items-center">
-                                                    S: Rp {{ number_format($omsetSistem, 0, ',', '.') }}
+                                                    S: Rp {{ number_format($omsetSistem, 2, ',', '.') }}
                                                 </span>
                                             @endif
                                             @if($omsetManual > 0)
                                                 <span class="inline-flex items-center {{ $omsetSistem > 0 ? 'ml-2' : '' }}">
-                                                    M: Rp {{ number_format($omsetManual, 0, ',', '.') }}
+                                                    M: Rp {{ number_format($omsetManual, 2, ',', '.') }}
                                                 </span>
                                             @endif
                                         </div>
@@ -437,7 +437,7 @@
                                 @if($selectedYearTarget < $currentYear || ($selectedYearTarget == $currentYear && $bulanNum <= $currentMonth))
                                     {{-- Tampilkan selisih untuk: 1) Tahun yang sudah lewat (semua bulan), 2) Tahun sekarang (bulan yang sudah lewat dan bulan current) --}}
                                     <span class="font-semibold {{ $selisih >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                        {{ $selisih >= 0 ? '+' : '' }}Rp {{ number_format(abs($selisih), 0, ',', '.') }}
+                                        {{ $selisih >= 0 ? '+' : '' }}Rp {{ number_format(abs($selisih), 2, ',', '.') }}
                                     </span>
                                 @else
                                     {{-- Bulan yang belum terjadi tidak tampilkan selisih --}}
@@ -499,7 +499,7 @@
                                                 </div>
                                                 <div class="flex items-center space-x-4">
                                                     <span class="text-sm font-semibold text-gray-700">
-                                                        Rp {{ number_format($omsetWeek, 0, ',', '.') }}
+                                                        Rp {{ number_format($omsetWeek, 2, ',', '.') }}
                                                     </span>
                                                     <div class="w-32 bg-gray-200 rounded-full h-2">
                                                         <div class="bg-indigo-500 h-2 rounded-full" 
@@ -524,13 +524,13 @@
                             Rp {{ number_format($targetTahunan ?? 0, 0, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 text-sm font-bold text-right text-green-600">
-                            Rp {{ number_format($omsetTahunIni ?? 0, 0, ',', '.') }}
+                            Rp {{ number_format($omsetTahunIni ?? 0, 2, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 text-sm font-bold text-right text-indigo-600">
                             {{ number_format($progressTahun ?? 0, 1) }}%
                         </td>
                         <td class="px-6 py-4 text-sm font-bold text-right {{ (($omsetTahunIni ?? 0) - ($targetTahunan ?? 0)) >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            {{ (($omsetTahunIni ?? 0) - ($targetTahunan ?? 0)) >= 0 ? '+' : '' }}Rp {{ number_format(($omsetTahunIni ?? 0) - ($targetTahunan ?? 0), 0, ',', '.') }}
+                            {{ (($omsetTahunIni ?? 0) - ($targetTahunan ?? 0)) >= 0 ? '+' : '' }}Rp {{ number_format(abs(($omsetTahunIni ?? 0) - ($targetTahunan ?? 0)), 2, ',', '.') }}
                         </td>
                         <td></td>
                         <td></td>
@@ -714,7 +714,7 @@ function openOmsetManualModal(bulan, namaBulan, omsetManualSaatIni) {
     
     // Set existing value if any
     if (omsetManualSaatIni > 0) {
-        document.getElementById('omsetManualInput').value = parseInt(omsetManualSaatIni).toLocaleString('id-ID');
+        document.getElementById('omsetManualInput').value = parseInt(omsetManualSaatIni).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     } else {
         document.getElementById('omsetManualInput').value = '';
     }
@@ -734,7 +734,7 @@ function closeOmsetManualModal() {
 function formatOmsetManualInput(input) {
     let value = input.value.replace(/\D/g, '');
     if (value) {
-        value = parseInt(value).toLocaleString('id-ID');
+        value = parseInt(value).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
     input.value = value;
     updateTotalOmsetDisplay();
@@ -745,8 +745,8 @@ function updateTotalOmsetDisplay() {
     const omsetManual = omsetManualInput ? parseInt(omsetManualInput.replace(/\D/g, '')) : 0;
     const totalOmset = currentOmsetSistem + omsetManual;
     
-    document.getElementById('omsetSistemDisplay').textContent = 'Rp ' + currentOmsetSistem.toLocaleString('id-ID');
-    document.getElementById('totalOmsetDisplay').textContent = 'Rp ' + totalOmset.toLocaleString('id-ID');
+    document.getElementById('omsetSistemDisplay').textContent = 'Rp ' + currentOmsetSistem.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('totalOmsetDisplay').textContent = 'Rp ' + totalOmset.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
 function fetchOmsetSistem(tahun, bulan) {
@@ -903,6 +903,7 @@ function updateTargetPreview() {
     // Target Mingguan = Target Tahunan / 48 minggu (12 bulan x 4 minggu per bulan)
     const targetMingguan = Math.round(targetTahunan / 48);
     
+    // Target tetap tanpa desimal (0 decimal)
     document.getElementById('previewMingguan').textContent = 'Rp ' + targetMingguan.toLocaleString('id-ID');
     document.getElementById('previewBulanan').textContent = 'Rp ' + targetBulanan.toLocaleString('id-ID');
 }
@@ -911,6 +912,7 @@ function updateTargetPreview() {
 document.getElementById('targetTahunanInput')?.addEventListener('input', function(e) {
     let value = e.target.value.replace(/\D/g, '');
     if (value) {
+        // Target tetap tanpa desimal (0 decimal)
         value = parseInt(value).toLocaleString('id-ID');
     }
     e.target.value = value;
@@ -935,7 +937,7 @@ document.getElementById('targetTahunInput')?.addEventListener('change', function
     .then(response => response.json())
     .then(data => {
         if (data.target_tahunan > 0) {
-            // Format and set existing target
+            // Format and set existing target (target tetap 0 desimal)
             const formatted = parseInt(data.target_tahunan).toLocaleString('id-ID');
             document.getElementById('targetTahunanInput').value = formatted;
         } else {

@@ -396,6 +396,7 @@
                 {{-- <div style="margin-bottom: 10px;">
                     <img src="{{ public_path('assets/image/signature/vitol.jpg') }}" alt="Signature" style="width: 150px; height: auto;">
                 </div> --}}
+                <br><br><br>
                 <div class="signature-line">
                     <div class="signature-name">MAHENDA ABDILLAH KAMIL</div>
                     <div class="signature-title">Direktur</div>

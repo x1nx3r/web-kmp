@@ -115,8 +115,8 @@
                                         <option value="">Pilih Role</option>
                                         <option value="direktur">Direktur</option>
                                         <option value="marketing">Marketing</option>
-                                        <option value="manager_purchasing">Manager Purchasing</option>
-                                        <option value="staff_purchasing">Staff Purchasing</option>
+                                        <option value="manager_purchasing">Manager Procurement</option>
+                                        <option value="staff_purchasing">Staff Procurement</option>
                                         <option value="manager_accounting">Manager Accounting</option>
                                         <option value="staff_accounting">Staff Accounting</option>
                                     </select>

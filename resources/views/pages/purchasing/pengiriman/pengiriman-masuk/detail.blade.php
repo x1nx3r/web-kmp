@@ -53,7 +53,7 @@
                            readonly>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">PIC Purchasing</label>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">PIC Procurement</label>
                     <input type="text" 
                            value="{{ $pengiriman->purchasing->nama ?? '-' }}" 
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-medium cursor-not-allowed" 

@@ -238,7 +238,7 @@
                             {{-- Additional Info --}}
                             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="bg-green-50 rounded-lg p-3 border border-green-200">
-                                    <p class="text-xs font-medium text-green-700 mb-1">PIC Purchasing</p>
+                                    <p class="text-xs font-medium text-green-700 mb-1">PIC Procurement</p>
                                     <p class="text-sm text-green-800">{{ $item->purchasing->nama ?? 'N/A' }}</p>
                                 </div>
                                 <div class="bg-purple-50 rounded-lg p-3 border border-purple-200">

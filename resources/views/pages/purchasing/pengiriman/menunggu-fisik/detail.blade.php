@@ -24,7 +24,7 @@
             <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
                 <i class="fas fa-file-alt text-purple-600"></i>
             </div>
-            <h3 class="text-lg font-semibold text-gray-900">Data PO & PIC Purchasing</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Data PO & PIC Procurement</h3>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -35,7 +35,7 @@
                        readonly>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">PIC Purchasing</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">PIC Procurement</label>
                 <input type="text" 
                        value="{{ optional($pengiriman->purchasing)->nama ?? '-' }}" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" 
@@ -606,7 +606,7 @@
             <div class="w-full sm:w-auto text-center bg-gray-50 border border-gray-200 rounded-lg px-6 py-3">
                 <p class="text-sm text-gray-600">
                     <i class="fas fa-info-circle mr-2"></i>
-                    Hanya Direktur dan Manager Purchasing yang dapat memverifikasi fisik
+                    Hanya Direktur dan Manager Procurement yang dapat memverifikasi fisik
                 </p>
             </div>
         @endif

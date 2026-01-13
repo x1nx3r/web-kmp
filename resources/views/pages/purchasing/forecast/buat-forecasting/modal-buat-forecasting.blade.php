@@ -111,7 +111,7 @@
                                             <p class="font-semibold text-green-700" id="infoSupplier">-</p>
                                         </div>
                                         <div>
-                                            <span class="text-gray-600">PIC Purchasing:</span>
+                                            <span class="text-gray-600">PIC Procurement:</span>
                                             <p class="font-semibold text-green-700" id="infoPICPurchasing">-</p>
                                         </div>
                                     </div>

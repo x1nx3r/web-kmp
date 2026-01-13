@@ -109,8 +109,8 @@
                         <option value="">Semua Role</option>
                         <option value="direktur">Direktur</option>
                         <option value="marketing">Marketing</option>
-                        <option value="manager_purchasing">Manager Purchasing</option>
-                        <option value="staff_purchasing">Staff Purchasing</option>
+                        <option value="manager_purchasing">Manager Procurement</option>
+                        <option value="staff_purchasing">Staff Procurement</option>
                         <option value="staff_accounting">Staff Accounting</option>
                         <option value="manager_accounting">Manager Accounting</option>
                     </select>
@@ -230,8 +230,8 @@
                                     $roleConfig = [
                                         'direktur' => ['label' => 'Direktur', 'color' => 'red', 'icon' => 'fas fa-crown'],
                                         'marketing' => ['label' => 'Marketing', 'color' => 'blue', 'icon' => 'fas fa-bullhorn'],
-                                        'manager_purchasing' => ['label' => 'Manager Purchasing', 'color' => 'green', 'icon' => 'fas fa-user-tie'],
-                                        'staff_purchasing' => ['label' => 'Staff Purchasing', 'color' => 'green', 'icon' => 'fas fa-user'],
+                                        'manager_purchasing' => ['label' => 'Manager Procurement', 'color' => 'green', 'icon' => 'fas fa-user-tie'],
+                                        'staff_purchasing' => ['label' => 'Staff Procurement', 'color' => 'green', 'icon' => 'fas fa-user'],
                                         'staff_accounting' => ['label' => 'Staff Accounting', 'color' => 'yellow', 'icon' => 'fas fa-calculator'],
                                         'manager_accounting' => ['label' => 'Manager Accounting', 'color' => 'yellow', 'icon' => 'fas fa-chart-line']
                                     ];
@@ -337,8 +337,8 @@
                                     $roleConfig = [
                                         'direktur' => ['label' => 'Direktur', 'color' => 'red', 'icon' => 'fas fa-crown'],
                                         'marketing' => ['label' => 'Marketing', 'color' => 'blue', 'icon' => 'fas fa-bullhorn'],
-                                        'manager_purchasing' => ['label' => 'Manager Purchasing', 'color' => 'green', 'icon' => 'fas fa-user-tie'],
-                                        'staff_purchasing' => ['label' => 'Staff Purchasing', 'color' => 'green', 'icon' => 'fas fa-user'],
+                                        'manager_purchasing' => ['label' => 'Manager Procurement', 'color' => 'green', 'icon' => 'fas fa-user-tie'],
+                                        'staff_purchasing' => ['label' => 'Staff Procurement', 'color' => 'green', 'icon' => 'fas fa-user'],
                                         'staff_accounting' => ['label' => 'Staff Accounting', 'color' => 'yellow', 'icon' => 'fas fa-calculator'],
                                         'manager_accounting' => ['label' => 'Manager Accounting', 'color' => 'yellow', 'icon' => 'fas fa-chart-line']
                                     ];

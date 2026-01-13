@@ -60,7 +60,7 @@
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
                             <i class="fas fa-user-tie mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
-                            PIC Purchasing
+                            PIC Procurement
                         </label>
                         <select id="filterPurchasingPending" name="filter_purchasing_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
                             <option value="">Semua PIC</option>

@@ -346,7 +346,7 @@
                         <div class="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
                             <i class="fas fa-user-tie text-green-600 text-sm"></i>
                             <div class="flex-1 min-w-0">
-                                <p class="text-xs text-green-600 font-semibold mb-0.5">PIC PURCHASING</p>
+                                <p class="text-xs text-green-600 font-semibold mb-0.5">PIC Procurement</p>
                                 <p class="text-sm text-gray-900 truncate">{{ $supplier->picPurchasing->nama ?? 'Belum ditentukan' }}</p>
                             </div>
                         </div>

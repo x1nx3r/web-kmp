@@ -142,8 +142,8 @@
                                         $roleLabels = [
                                             'direktur' => 'Direktur',
                                             'marketing' => 'Marketing',
-                                            'manager_purchasing' => 'Manager Purchasing',
-                                            'staff_purchasing' => 'Staff Purchasing',
+                                            'manager_purchasing' => 'Manager Procurement',
+                                            'staff_purchasing' => 'Staff Procurement',
                                             'staff_accounting' => 'Staff Accounting',
                                             'manager_accounting' => 'Manager Accounting'
                                         ];

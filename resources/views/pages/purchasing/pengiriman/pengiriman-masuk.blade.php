@@ -19,7 +19,7 @@
                                    id="searchInputMasuk" 
                                    name="search_masuk"
                                    value="{{ request('search_masuk') }}"
-                                   placeholder="Cari No. PO atau nama purchasing..." 
+                                   placeholder="Cari No. PO atau nama Procurement..." 
                                    class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-masuk"
                                    onkeypress="handleSearchKeyPressMasuk(event)">
                             <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
@@ -53,10 +53,10 @@
                     <div class="w-full sm:w-64 shrink-0">
                         <label class="block text-xs font-medium text-blue-600 mb-1">
                             <i class="fas fa-user mr-1 text-blue-500 text-xs"></i>
-                            PIC Purchasing
+                            PIC Procurement
                         </label>
                         <select id="filterPurchasing" name="filter_purchasing" class="w-full py-2 px-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersMasuk()">
-                            <option value="">Semua Purchasing</option>
+                            <option value="">Semua Procurement</option>
                             @php
                                 // Debug: check purchasing data
                                 $purchasingOptions = collect();

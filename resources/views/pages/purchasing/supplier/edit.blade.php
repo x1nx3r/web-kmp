@@ -92,11 +92,11 @@
             <div>
                 <label for="pic_purchasing_id" class="block text-sm font-semibold text-green-700 mb-2">
                     <i class="fas fa-user-tie mr-2 text-green-500"></i>
-                    PIC Purchasing
+                    PIC Procurement
                 </label>
                 <select name="pic_purchasing_id" id="pic_purchasing_id"
                         class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200">
-                    <option value="">Pilih PIC Purchasing</option>
+                    <option value="">Pilih PIC Procurement</option>
                     @if(isset($purchasingUsers))
                         @foreach($purchasingUsers as $user)
                             <option value="{{ $user->id }}" {{ $supplier->pic_purchasing_id == $user->id ? 'selected' : '' }}>

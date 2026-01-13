@@ -46,7 +46,7 @@
                         <span class="font-medium">{{ $pengiriman->order->po_number ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600">PIC Purchasing:</span>
+                        <span class="text-gray-600">PIC Procurement:</span>
                         <span class="font-medium">{{ $pengiriman->purchasing->nama ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between">
@@ -123,7 +123,7 @@
                               required></textarea>
                     <p class="text-xs text-gray-500 mt-1">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Catatan ini akan digunakan sebagai alasan revisi dan akan terlihat oleh tim purchasing.
+                        Catatan ini akan digunakan sebagai alasan revisi dan akan terlihat oleh tim Procurement.
                     </p>
                 </div>
 
@@ -136,7 +136,7 @@
                             <ul class="text-sm text-red-700 space-y-1">
                                 <li>• Pengiriman akan dikembalikan ke status pending</li>
                                 <li>• Catatan revisi akan tersimpan dalam riwayat pengiriman</li>
-                                <li>• Tim purchasing perlu melakukan perbaikan sesuai catatan</li>
+                                <li>• Tim Procurement perlu melakukan perbaikan sesuai catatan</li>
                                 <li>• Proses verifikasi harus dilakukan ulang setelah perbaikan</li>
                             </ul>
                         </div>
@@ -164,7 +164,7 @@
                     Revisi Pengiriman
                 </button>
             @else
-                <div class="w-full sm:w-auto px-6 py-2.5 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed text-sm font-medium text-center" title="Hanya Direktur dan Manager Purchasing yang dapat merevisi">
+                <div class="w-full sm:w-auto px-6 py-2.5 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed text-sm font-medium text-center" title="Hanya Direktur dan Manager Procurement yang dapat merevisi">
                     <i class="fas fa-lock mr-2"></i>
                     Akses Terbatas
                 </div>

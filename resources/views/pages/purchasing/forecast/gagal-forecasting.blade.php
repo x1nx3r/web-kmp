@@ -60,7 +60,7 @@
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
                             <i class="fas fa-user-tie mr-1 sm:mr-2 text-red-500 text-xs"></i>
-                            PIC Purchasing
+                            PIC Procurement
                         </label>
                         <select id="filterPurchasingGagal" name="filter_purchasing_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersGagal()">
                             <option value="">Semua PIC</option>

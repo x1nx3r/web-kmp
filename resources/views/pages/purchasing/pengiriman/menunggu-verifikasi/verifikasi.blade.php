@@ -46,7 +46,7 @@
                         <span class="font-medium">{{ optional($pengiriman->order)->po_number ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600">PIC Purchasing:</span>
+                        <span class="text-gray-600">PIC Procurement:</span>
                         <span class="font-medium">{{ optional($pengiriman->purchasing)->nama ?? '-' }}</span>
                     </div>
                     <div class="flex justify-between">
@@ -179,7 +179,7 @@
                     Verifikasi Pengiriman
                 </button>
             @else
-                <div class="w-full sm:w-auto px-6 py-2.5 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed text-sm font-medium text-center" title="Hanya Direktur dan Manager Purchasing yang dapat memverifikasi">
+                <div class="w-full sm:w-auto px-6 py-2.5 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed text-sm font-medium text-center" title="Hanya Direktur dan Manager Procurement yang dapat memverifikasi">
                     <i class="fas fa-lock mr-2"></i>
                     Akses Terbatas
                 </div>

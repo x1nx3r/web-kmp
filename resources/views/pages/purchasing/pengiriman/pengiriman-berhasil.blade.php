@@ -19,7 +19,7 @@
                                    id="searchInputBerhasil" 
                                    name="search_berhasil"
                                    value="{{ request('search_berhasil') }}"
-                                   placeholder="Cari No. Pengiriman, No. PO, atau nama purchasing..." 
+                                   placeholder="Cari No. Pengiriman, No. PO, atau nama Procurement..." 
                                    class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-berhasil"
                                    onkeypress="handleSearchKeyPressBerhasil(event)">
                             <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
@@ -65,7 +65,7 @@
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
                             <i class="fas fa-user-tie mr-1 sm:mr-2 text-green-500 text-xs"></i>
-                            PIC Purchasing
+                            PIC Procurement
                         </label>
                         <select id="filterPurchasingBerhasil" 
                                 name="filter_purchasing_berhasil" 

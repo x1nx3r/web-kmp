@@ -144,7 +144,7 @@
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900">Omset Procurement</h3>
-                <p class="text-sm text-gray-500">Berdasarkan PIC Purchasing</p>
+                <p class="text-sm text-gray-500">Berdasarkan PIC Procurement</p>
             </div>
             <div class="flex items-center gap-2">
                 @if($omsetProcurement->count() > 0)

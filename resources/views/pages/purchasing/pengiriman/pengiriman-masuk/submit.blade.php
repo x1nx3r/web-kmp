@@ -97,7 +97,7 @@
                         <h4 class="text-sm font-semibold text-red-900 mb-1">Perhatian!</h4>
                         <ul class="text-sm text-red-800 space-y-1">
                             <li>• Pastikan semua informasi sudah benar</li>
-                            <li>• Pengiriman akan menunggu verifikasi dari Manajer Purchasing</li>
+                            <li>• Pengiriman akan menunggu verifikasi dari Manajer Procurement</li>
                         </ul>
                     </div>
                 </div>

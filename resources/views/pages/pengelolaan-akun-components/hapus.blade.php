@@ -207,8 +207,8 @@ function populateDeleteModalWithUserData(user) {
     const roleConfig = {
         'direktur': { label: 'Direktur', color: 'red', icon: 'fas fa-crown' },
         'marketing': { label: 'Marketing', color: 'blue', icon: 'fas fa-bullhorn' },
-        'manager_purchasing': { label: 'Manager Purchasing', color: 'green', icon: 'fas fa-user-tie' },
-        'staff_purchasing': { label: 'Staff Purchasing', color: 'green', icon: 'fas fa-user' },
+        'manager_purchasing': { label: 'Manager Procurement', color: 'green', icon: 'fas fa-user-tie' },
+        'staff_purchasing': { label: 'Staff Procurement', color: 'green', icon: 'fas fa-user' },
         'staff_accounting': { label: 'Staff Accounting', color: 'yellow', icon: 'fas fa-calculator' },
         'manager_accounting': { label: 'Manager Accounting', color: 'yellow', icon: 'fas fa-chart-line' }
     };

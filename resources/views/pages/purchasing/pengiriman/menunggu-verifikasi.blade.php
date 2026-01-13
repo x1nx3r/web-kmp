@@ -19,7 +19,7 @@
                                    id="searchInputVerifikasi" 
                                    name="search_verifikasi"
                                    value="{{ request('search_verifikasi') }}"
-                                   placeholder="Cari No. PO atau nama purchasing..." 
+                                   placeholder="Cari No. PO atau nama Procurement..." 
                                    class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-verifikasi"
                                    onkeypress="handleSearchKeyPressVerifikasi(event)">
                             <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
@@ -53,10 +53,10 @@
                     <div class="w-full sm:w-64 shrink-0">
                         <label class="block text-xs font-medium text-yellow-600 mb-1">
                             <i class="fas fa-user mr-1 text-yellow-500 text-xs"></i>
-                            PIC Purchasing
+                            PIC Procurement
                         </label>
                         <select id="filterPurchasingVerifikasi" name="filter_purchasing_verifikasi" class="w-full py-2 px-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersVerifikasi()">
-                            <option value="">Semua Purchasing</option>
+                            <option value="">Semua Procurement</option>
                             @php
                                 // Debug: check purchasing data
                                 $purchasingOptions = collect();
@@ -333,7 +333,7 @@
                                                 {{-- Disabled button for Staff Purchasing who are NOT PIC --}}
                                                 <button disabled
                                                         class="bg-gray-300 text-gray-500 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center cursor-not-allowed opacity-60 w-full sm:w-auto whitespace-nowrap" 
-                                                        title="Hanya PIC Purchasing yang dapat upload foto untuk pengiriman ini">
+                                                        title="Hanya PIC Procurement yang dapat upload foto untuk pengiriman ini">
                                                     <i class="fas fa-lock mr-1.5"></i>
                                                     Locked
                                                 </button>
@@ -359,7 +359,7 @@
                                                 {{-- Button for Other Roles: Disabled --}}
                                                 <button disabled
                                                         class="bg-gray-400 text-gray-200 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center cursor-not-allowed opacity-60 w-full sm:w-auto whitespace-nowrap" 
-                                                        title="Akses Terbatas - Hanya Direktur dan Manager Purchasing yang dapat melakukan verifikasi">
+                                                        title="Akses Terbatas - Hanya Direktur dan Manager Procurement yang dapat melakukan verifikasi">
                                                     <i class="fas fa-lock mr-1.5"></i>
                                                     Terbatas
                                                 </button>
@@ -747,7 +747,7 @@ function updateActiveFiltersVerifikasi() {
     if (filterPurchasing) {
         const purchasingSelect = document.getElementById('filterPurchasingVerifikasi');
         const purchasingName = purchasingSelect.options[purchasingSelect.selectedIndex].text;
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs active-filter-tag">Purchasing: ${purchasingName}</span>`;
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs active-filter-tag">Procurement: ${purchasingName}</span>`;
         hasActiveFilters = true;
     }
     

@@ -74,6 +74,45 @@
     </div>
 </div>
 
+{{-- Fullscreen Chart Modal --}}
+<div id="chart-fullscreen-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+    {{-- Backdrop --}}
+    <div class="fixed inset-0 bg-gray-900/80 transition-opacity" onclick="closeChartFullscreen()"></div>
+    
+    {{-- Modal Content --}}
+    <div class="fixed inset-4 sm:inset-8 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {{-- Header --}}
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div class="flex items-center space-x-3">
+                <div id="modal-chart-icon" class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white"></i>
+                </div>
+                <div>
+                    <h3 id="modal-chart-title" class="text-lg font-semibold text-gray-900">Chart Title</h3>
+                    <p id="modal-chart-subtitle" class="text-sm text-gray-500">Material Name</p>
+                </div>
+            </div>
+            <button onclick="closeChartFullscreen()" 
+                    class="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 hover:text-gray-700"
+                    title="Close fullscreen">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        {{-- Chart Container --}}
+        <div class="flex-1 p-6 overflow-hidden">
+            <div class="h-full w-full relative bg-gray-50 rounded-lg p-4">
+                <canvas id="fullscreen-chart-canvas" class="w-full h-full"></canvas>
+            </div>
+        </div>
+        
+        {{-- Legend Container --}}
+        <div class="px-6 py-3 border-t border-gray-200 bg-gray-50">
+            <div id="fullscreen-chart-legend" class="flex flex-wrap items-center justify-center gap-4"></div>
+        </div>
+    </div>
+</div>
+
 {{-- Chart.js Script --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -291,9 +330,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="flex-1 min-w-0 bg-gray-50 rounded-lg p-4">
                     <div class="flex items-center justify-between mb-4">
                         <h4 class="text-md font-semibold text-gray-900">Client Price History</h4>
-                        <div class="flex items-center space-x-2 text-xs">
-                            <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <span class="text-gray-600">${materialData.nama}</span>
+                        <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-2 text-xs">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <span class="text-gray-600">${materialData.nama}</span>
+                            </div>
+                            <button onclick="openChartFullscreen('client', ${index}, '${materialData.nama}')" 
+                                    class="p-1.5 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 hover:text-gray-700" 
+                                    title="View fullscreen">
+                                <i class="fas fa-expand text-sm"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="h-80 w-full relative">
@@ -305,9 +351,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="flex-1 min-w-0 bg-gray-50 rounded-lg p-4">
                     <div class="flex items-center justify-between mb-4">
                         <h4 class="text-md font-semibold text-gray-900">Supplier Options</h4>
-                        <div class="flex items-center space-x-2 text-xs">
-                            <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
-                            <span class="text-gray-600">${materialData.supplier_options ? materialData.supplier_options.length : 0} suppliers</span>
+                        <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-2 text-xs">
+                                <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                <span class="text-gray-600">${materialData.supplier_options ? materialData.supplier_options.length : 0} suppliers</span>
+                            </div>
+                            <button onclick="openChartFullscreen('supplier', ${index}, '${materialData.nama}')" 
+                                    class="p-1.5 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 hover:text-gray-700" 
+                                    title="View fullscreen">
+                                <i class="fas fa-expand text-sm"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="h-80 w-full relative">
@@ -768,6 +821,118 @@ document.addEventListener('DOMContentLoaded', function() {
             legendContainer.appendChild(legendItem);
         });
     }
+
+    // ========================================
+    // FULLSCREEN MODAL FUNCTIONS
+    // ========================================
+    
+    let fullscreenChart = null;
+    
+    // Function to open chart in fullscreen modal
+    window.openChartFullscreen = function(chartType, materialIndex, materialName) {
+        console.log('🔲 Opening fullscreen:', chartType, materialIndex, materialName);
+        
+        const modal = document.getElementById('chart-fullscreen-modal');
+        const titleEl = document.getElementById('modal-chart-title');
+        const subtitleEl = document.getElementById('modal-chart-subtitle');
+        const iconEl = document.getElementById('modal-chart-icon');
+        const canvas = document.getElementById('fullscreen-chart-canvas');
+        const legendContainer = document.getElementById('fullscreen-chart-legend');
+        
+        if (!modal || !canvas) return;
+        
+        // Destroy existing fullscreen chart
+        if (fullscreenChart) {
+            fullscreenChart.destroy();
+            fullscreenChart = null;
+        }
+        
+        // Clear legend
+        legendContainer.innerHTML = '';
+        
+        // Set titles and icon based on chart type
+        if (chartType === 'client') {
+            titleEl.textContent = 'Client Price History';
+            subtitleEl.textContent = materialName;
+            iconEl.className = 'w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center';
+        } else {
+            titleEl.textContent = 'Supplier Options';
+            subtitleEl.textContent = materialName;
+            iconEl.className = 'w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center';
+        }
+        
+        // Show modal
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        // Get material data
+        const materialData = orderMaterialsData[materialIndex];
+        if (!materialData) return;
+        
+        // Calculate y-axis config (same logic as createOrderMaterialCharts)
+        const allPrices = [];
+        if (chartType === 'client') {
+            if (materialData.client_price_history) {
+                materialData.client_price_history.forEach(p => p.harga && allPrices.push(p.harga));
+            }
+            if (materialData.order_price > 0) allPrices.push(parseFloat(materialData.order_price));
+        } else {
+            if (materialData.supplier_options) {
+                materialData.supplier_options.forEach(s => {
+                    if (s.price_history) s.price_history.forEach(p => p.harga && allPrices.push(p.harga));
+                    if (s.current_price) allPrices.push(parseFloat(s.current_price));
+                });
+            }
+        }
+        
+        let yAxisMin = 0, yAxisMax = 100000;
+        if (allPrices.length > 0) {
+            const minPrice = Math.min(...allPrices);
+            const maxPrice = Math.max(...allPrices);
+            const padding = (maxPrice - minPrice) * 0.1 || maxPrice * 0.1;
+            yAxisMin = Math.max(0, Math.floor((minPrice - padding) / 100) * 100);
+            yAxisMax = Math.ceil((maxPrice + padding) / 100) * 100;
+        }
+        
+        // Wait for modal to be visible, then create chart
+        setTimeout(() => {
+            if (chartType === 'client') {
+                fullscreenChart = createOrderClientChart(canvas, materialData, 'fullscreen', { yAxisMin, yAxisMax });
+            } else {
+                fullscreenChart = createOrderSupplierChart(canvas, materialData, 'fullscreen', { yAxisMin, yAxisMax });
+            }
+            
+            // Create legend
+            if (fullscreenChart) {
+                createOrderExternalLegend(fullscreenChart, 'fullscreen-chart-legend');
+            }
+        }, 50);
+    };
+    
+    // Function to close fullscreen modal
+    window.closeChartFullscreen = function() {
+        const modal = document.getElementById('chart-fullscreen-modal');
+        
+        // Destroy chart
+        if (fullscreenChart) {
+            fullscreenChart.destroy();
+            fullscreenChart = null;
+        }
+        
+        // Hide modal
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    };
+    
+    // ESC key handler
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('chart-fullscreen-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                closeChartFullscreen();
+            }
+        }
+    });
 
     // Initialize - show first material if available
     if (orderMaterialsData.length > 0) {

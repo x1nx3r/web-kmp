@@ -295,37 +295,53 @@ class SupplierController extends Controller
                 'pic_purchasing_id' => $request->pic_purchasing_id,
             ]);
 
-            // Handle bahan baku updates - use upsert approach to avoid duplicate key errors
-            $existingBahanBaku = $supplier->bahanBakuSuppliers()->get()->keyBy('nama');
-            $submittedNames = [];
+            // Handle bahan baku updates - use ID-based tracking to avoid duplicate key errors
+            $existingBahanBaku = $supplier->bahanBakuSuppliers()->get()->keyBy('id');
+            $submittedIds = [];
 
             // Update or create bahan baku from form data
             if ($request->has('bahan_baku') && is_array($request->bahan_baku)) {
                 foreach ($request->bahan_baku as $bahanBaku) {
                     if (!empty($bahanBaku['nama']) && !empty($bahanBaku['satuan'])) {
                         $nama = trim($bahanBaku['nama']);
-                        $submittedNames[] = $nama;
 
                         // Clean up numeric values
                         $hargaPerSatuan = str_replace(['.', ','], '', $bahanBaku['harga_per_satuan'] ?? '0');
                         $stok = str_replace(['.', ','], '', $bahanBaku['stok'] ?? '0');
 
-                        $bahanBakuData = [
-                            'nama' => $nama,
-                            'slug' => \App\Models\BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id, $existingBahanBaku->has($nama) ? $existingBahanBaku[$nama]->id : null),
-                            'satuan' => $bahanBaku['satuan'],
-                            'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
-                            'stok' => is_numeric($stok) ? $stok : 0,
-                        ];
-
-                        // Check if this bahan baku already exists for this supplier
-                        if ($existingBahanBaku->has($nama)) {
+                        // Check if this is an update (has id) or create (no id)
+                        if (!empty($bahanBaku['id']) && $existingBahanBaku->has($bahanBaku['id'])) {
                             // Update existing bahan baku
-                            $bahanBakuToUpdate = $existingBahanBaku[$nama];
-                            $hargaLama = (float) $bahanBakuToUpdate->harga_per_satuan;
-                            $hargaBaru = (float) $hargaPerSatuan;
+                            $bahanBakuToUpdate = $existingBahanBaku[$bahanBaku['id']];
+                            $submittedIds[] = $bahanBakuToUpdate->id;
                             
-                            $bahanBakuToUpdate->update($bahanBakuData);
+                            $hargaLama = (float) $bahanBakuToUpdate->harga_per_satuan;
+                            $hargaBaru = (float) $hargaPerSatuan;   
+                            
+                            // Always generate unique slug (nama boleh sama, tapi slug harus beda)
+                            if ($bahanBakuToUpdate->nama !== $nama) {
+                                // Nama berubah, generate slug baru
+                                $slug = \App\Models\BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id, $bahanBakuToUpdate->id);
+                                
+                                Log::info('Updating bahan baku nama', [
+                                    'id' => $bahanBakuToUpdate->id,
+                                    'old_nama' => $bahanBakuToUpdate->nama,
+                                    'new_nama' => $nama,
+                                    'old_slug' => $bahanBakuToUpdate->slug,
+                                    'new_slug' => $slug
+                                ]);
+                            } else {
+                                // Nama tidak berubah, keep existing slug
+                                $slug = $bahanBakuToUpdate->slug;
+                            }
+                            
+                            $bahanBakuToUpdate->update([
+                                'nama' => $nama,
+                                'slug' => $slug,
+                                'satuan' => $bahanBaku['satuan'],
+                                'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
+                                'stok' => is_numeric($stok) ? $stok : 0,
+                            ]);
                             
                             // Catat riwayat harga jika ada perubahan harga
                             if ($hargaLama != $hargaBaru) {
@@ -338,7 +354,18 @@ class SupplierController extends Controller
                             }
                         } else {
                             // Create new bahan baku
-                            $newBahanBaku = $supplier->bahanBakuSuppliers()->create($bahanBakuData);
+                            // Generate unique slug (nama boleh sama, slug harus beda)
+                            $slug = \App\Models\BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id);
+                            
+                            $newBahanBaku = $supplier->bahanBakuSuppliers()->create([
+                                'nama' => $nama,
+                                'slug' => $slug,
+                                'satuan' => $bahanBaku['satuan'],
+                                'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
+                                'stok' => is_numeric($stok) ? $stok : 0,
+                            ]);
+                            
+                            $submittedIds[] = $newBahanBaku->id;
                             
                             // Catat riwayat harga untuk bahan baku baru
                             RiwayatHargaBahanBaku::catatPerubahanHarga(
@@ -354,7 +381,7 @@ class SupplierController extends Controller
 
             // Delete bahan baku that were removed from the form
             $supplier->bahanBakuSuppliers()
-                ->whereNotIn('nama', $submittedNames)
+                ->whereNotIn('id', $submittedIds)
                 ->delete();
 
             DB::commit();

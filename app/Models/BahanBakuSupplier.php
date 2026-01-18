@@ -45,21 +45,23 @@ class BahanBakuSupplier extends Model
         $slug = $baseSlug;
         $counter = 1;
 
-        // Cek unik secara global, bukan per supplier
-        $query = self::where('slug', $slug);
-        
-        if ($excludeId) {
-            $query->where('id', '!=', $excludeId);
-        }
-
-        while ($query->exists()) {
-            $slug = $baseSlug . '-' . $counter;
-            $counter++;
+        // Check if slug exists globally (including soft deleted records)
+        // Slug must be unique even for soft deleted records because of database constraint
+        while (true) {
+            $query = self::withTrashed()->where('slug', $slug);
             
-            $query = self::where('slug', $slug);
             if ($excludeId) {
                 $query->where('id', '!=', $excludeId);
             }
+            
+            // If slug doesn't exist (or only exists for the excluded ID), it's available
+            if (!$query->exists()) {
+                break;
+            }
+            
+            // Try next variation
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
         }
 
         return $slug;

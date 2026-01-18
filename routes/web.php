@@ -16,6 +16,10 @@ use App\Http\Controllers\Laporan\PengirimanController as LaporanPengirimanContro
 use App\Http\Controllers\Laporan\PenagihanController as LaporanPenagihanController;
 use App\Http\Controllers\Laporan\PembayaranController as LaporanPembayaranController;
 use App\Http\Controllers\Laporan\MarginController;
+use App\Http\Controllers\MonitoringController;
+
+// Monitoring Route (Prometheus/Grafana)
+Route::get('/metrics', [MonitoringController::class, 'metrics']);
 
 // Authentication routes
 Route::middleware("guest")->group(function () {

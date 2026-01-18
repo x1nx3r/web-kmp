@@ -59,6 +59,7 @@
         return $qty * $hargaJual;
     });
 
+    // Order-time supplier cost (from snapshot)
     $totalSupplierCost = $order->orderDetails->sum(function ($detail) {
         $qty = (float) ($detail->qty ?? 0);
 
@@ -79,8 +80,35 @@
         return $qty * (float) ($unitCost ?? 0);
     });
 
+    // Current supplier cost (from live BahanBakuSupplier prices)
+    $totalCurrentSupplierCost = $order->orderDetails->sum(function ($detail) {
+        $qty = (float) ($detail->qty ?? 0);
+
+        if ($qty <= 0) {
+            return 0;
+        }
+
+        $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first();
+        if ($bestSupplier && $bestSupplier->bahanBakuSupplier) {
+            return $qty * (float) ($bestSupplier->bahanBakuSupplier->harga_per_satuan ?? 0);
+        }
+
+        // Fallback to order snapshot if no live data
+        $unitCost = $detail->recommended_price ?? $detail->cheapest_price;
+        if ($unitCost === null && $bestSupplier) {
+            $unitCost = $bestSupplier->harga_supplier;
+        }
+        return $qty * (float) ($unitCost ?? 0);
+    });
+
     $totalMargin = $totalSelling - $totalSupplierCost;
     $marginPercentage = $totalSelling > 0 ? round(($totalMargin / $totalSelling) * 100, 2) : 0;
+
+    // Current margin calculations
+    $totalCurrentMargin = $totalSelling - $totalCurrentSupplierCost;
+    $currentMarginPercentage = $totalSelling > 0 ? round(($totalCurrentMargin / $totalSelling) * 100, 2) : 0;
+    $marginChange = $totalCurrentMargin - $totalMargin;
+    $marginPctChange = $currentMarginPercentage - $marginPercentage;
 @endphp
 <div class="min-h-screen bg-gray-50">
     <!-- Header -->
@@ -503,10 +531,29 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                                                 {{ number_format($detail->qty, 2) }} {{ $detail->satuan }}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
                                                 @if($detail->orderSuppliers->count() > 0)
-                                                    @php $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first(); @endphp
-                                                    Rp {{ number_format($bestSupplier->harga_supplier ?? 0, 0, ',', '.') }}
+                                                    @php
+                                                        $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first();
+                                                        $orderPrice = $bestSupplier->harga_supplier ?? 0;
+                                                        // Get current price from live supplier data
+                                                        $currentPrice = null;
+                                                        if ($bestSupplier->bahanBakuSupplier) {
+                                                            $currentPrice = $bestSupplier->bahanBakuSupplier->harga_per_satuan;
+                                                        }
+                                                        $priceChanged = $currentPrice !== null && (float)$currentPrice !== (float)$orderPrice;
+                                                        $priceDiff = $currentPrice ? (float)$currentPrice - (float)$orderPrice : 0;
+                                                        $priceDiffPct = $orderPrice > 0 ? ($priceDiff / $orderPrice) * 100 : 0;
+                                                    @endphp
+                                                    <div class="text-gray-900 font-medium">Rp {{ number_format($orderPrice, 0, ',', '.') }}</div>
+                                                    @if($priceChanged)
+                                                        <div class="text-xs {{ $priceDiff > 0 ? 'text-red-500' : 'text-green-500' }}">
+                                                            <span title="Harga saat ini">Now: Rp {{ number_format($currentPrice, 0, ',', '.') }}</span>
+                                                            <span class="ml-1">
+                                                                ({{ $priceDiff > 0 ? '↑' : '↓' }} {{ number_format(abs($priceDiffPct), 1) }}%)
+                                                            </span>
+                                                        </div>
+                                                    @endif
                                                 @else
                                                     -
                                                 @endif
@@ -563,9 +610,23 @@
                                                                         </div>
                                                                     </div>
                                                                     <div class="text-right">
+                                                                        @php
+                                                                            $osOrderPrice = $orderSupplier->harga_supplier ?? 0;
+                                                                            $osCurrentPrice = $orderSupplier->bahanBakuSupplier ? $orderSupplier->bahanBakuSupplier->harga_per_satuan : null;
+                                                                            $osPriceChanged = $osCurrentPrice !== null && (float)$osCurrentPrice !== (float)$osOrderPrice;
+                                                                            $osPriceDiff = $osCurrentPrice ? (float)$osCurrentPrice - (float)$osOrderPrice : 0;
+                                                                            $osPriceDiffPct = $osOrderPrice > 0 ? ($osPriceDiff / $osOrderPrice) * 100 : 0;
+                                                                        @endphp
                                                                         <div class="text-sm font-semibold text-gray-900">
-                                                                            Rp {{ number_format($orderSupplier->harga_supplier ?? 0, 0, ',', '.') }}
+                                                                            Rp {{ number_format($osOrderPrice, 0, ',', '.') }}
+                                                                            <span class="text-xs font-normal text-gray-500">(order)</span>
                                                                         </div>
+                                                                        @if($osPriceChanged)
+                                                                            <div class="text-xs {{ $osPriceDiff > 0 ? 'text-red-500' : 'text-green-500' }}">
+                                                                                Now: Rp {{ number_format($osCurrentPrice, 0, ',', '.') }}
+                                                                                ({{ $osPriceDiff > 0 ? '↑' : '↓' }} {{ number_format(abs($osPriceDiffPct), 1) }}%)
+                                                                            </div>
+                                                                        @endif
                                                                         <div class="text-xs {{ ($orderSupplier->margin_percentage ?? 0) >= 20 ? 'text-green-600' : (($orderSupplier->margin_percentage ?? 0) >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
                                                                             Margin: {{ number_format($orderSupplier->margin_percentage ?? 0, 1) }}%
                                                                         </div>
@@ -754,11 +815,25 @@
                             </h3>
                         </div>
                         <div class="p-3 space-y-2">
-                            <!-- Total Harga Supplier -->
+                            <!-- Total Harga Supplier (Order) -->
                             <div>
-                                <div class="text-xs font-medium text-gray-500 mb-0.5">Total Harga Supplier:</div>
+                                <div class="text-xs font-medium text-gray-500 mb-0.5">Harga Supplier (Order):</div>
                                 <div class="text-xs font-bold text-gray-900">Rp {{ number_format($totalSupplierCost, 0, ',', '.') }}</div>
                             </div>
+
+                            <!-- Total Harga Supplier (Current) -->
+                            @if($totalCurrentSupplierCost != $totalSupplierCost)
+                            <div>
+                                <div class="text-xs font-medium text-gray-500 mb-0.5">Harga Supplier (Saat Ini):</div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs font-bold text-gray-900">Rp {{ number_format($totalCurrentSupplierCost, 0, ',', '.') }}</span>
+                                    @php $supplierCostDiff = $totalCurrentSupplierCost - $totalSupplierCost; @endphp
+                                    <span class="text-xs {{ $supplierCostDiff > 0 ? 'text-red-500' : 'text-green-500' }}">
+                                        ({{ $supplierCostDiff > 0 ? '↑' : '↓' }} Rp {{ number_format(abs($supplierCostDiff), 0, ',', '.') }})
+                                    </span>
+                                </div>
+                            </div>
+                            @endif
 
                             <!-- Total Harga Jual -->
                             <div>
@@ -782,9 +857,9 @@
 
                             <hr class="border-gray-200">
 
-                            <!-- Total Margin -->
+                            <!-- Order Margin -->
                             <div class="pt-1">
-                                <div class="text-xs font-semibold text-gray-900 mb-0.5">Total Margin:</div>
+                                <div class="text-xs font-semibold text-gray-900 mb-0.5">Margin (Order):</div>
                                 <div class="text-base font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     Rp {{ number_format($totalMargin, 0, ',', '.') }}
                                 </div>
@@ -792,6 +867,23 @@
                                     {{ number_format($marginPercentage, 2, ',', '.') }}%
                                 </div>
                             </div>
+
+                            <!-- Current Margin (if different) -->
+                            @if($marginChange != 0)
+                            <div class="pt-1 border-t border-dashed border-gray-300 mt-2">
+                                <div class="text-xs font-semibold text-gray-900 mb-0.5">Margin (Saat Ini):</div>
+                                <div class="text-base font-bold {{ $totalCurrentMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    Rp {{ number_format($totalCurrentMargin, 0, ',', '.') }}
+                                </div>
+                                <div class="text-xs {{ $currentMarginPercentage >= 20 ? 'text-green-600' : ($currentMarginPercentage >= 10 ? 'text-yellow-600' : 'text-red-600') }}">
+                                    {{ number_format($currentMarginPercentage, 2, ',', '.') }}%
+                                </div>
+                                <div class="mt-1 text-xs {{ $marginChange > 0 ? 'text-green-600' : 'text-red-600' }} font-medium">
+                                    <i class="fas {{ $marginChange > 0 ? 'fa-arrow-up' : 'fa-arrow-down' }} mr-1"></i>
+                                    {{ $marginChange > 0 ? '+' : '' }}Rp {{ number_format($marginChange, 0, ',', '.') }} sejak order
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
 

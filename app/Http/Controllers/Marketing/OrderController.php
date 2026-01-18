@@ -339,10 +339,16 @@ class OrderController extends Controller
                     ];
                 }
 
+                // Get live current price from BahanBakuSupplier (not order snapshot)
+                $liveCurrentPrice = $orderSupplier->bahanBakuSupplier
+                    ? (float) $orderSupplier->bahanBakuSupplier->harga_per_satuan
+                    : (float) $orderSupplier->harga_supplier; // fallback to order snapshot
+
                 $supplierOptions[] = [
                     "supplier_name" => $supplier->nama,
                     "pic_name" => $supplier->picPurchasing->nama ?? null,
-                    "current_price" => (float) $orderSupplier->harga_supplier,
+                    "current_price" => $liveCurrentPrice,
+                    "order_price" => (float) $orderSupplier->harga_supplier,
                     "price_history" => $supplierPriceHistory,
                     "is_selected" => $orderSupplier->is_recommended ?? false,
                 ];

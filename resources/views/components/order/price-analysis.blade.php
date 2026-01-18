@@ -86,10 +86,50 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // Custom plugin to draw order date vertical line
+    const orderDateLinePlugin = {
+        id: 'orderDateLine',
+        afterDraw: (chart, args, options) => {
+            if (options.orderDateIndex === undefined || options.orderDateIndex < 0) return;
+
+            const { ctx, chartArea: { left, right, top, bottom }, scales: { x } } = chart;
+            const xPos = x.getPixelForValue(options.orderDateIndex);
+
+            if (xPos < left || xPos > right) return;
+
+            // Draw dashed vertical line
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.moveTo(xPos, top);
+            ctx.lineTo(xPos, bottom);
+            ctx.stroke();
+
+            // Draw label
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(99, 102, 241, 0.9)';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Order', xPos, top - 5);
+
+            ctx.restore();
+        }
+    };
+
+    // Register the plugin globally
+    Chart.register(orderDateLinePlugin);
+
     // Global date constants
     const today = new Date();
     const todayString = today.toISOString().split('T')[0];
     const todayFormatted = today.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+
+    // Order date (when the order was created)
+    const orderDateString = @json($order->tanggal_order->format('Y-m-d'));
+    const orderDate = new Date(orderDateString);
+    const orderDateFormatted = orderDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
 
     // Generate 30-day date frame (from 30 days ago to today)
     function generate30DayFrame() {
@@ -108,12 +148,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const thirtyDayFrame = generate30DayFrame();
     const thirtyDayLabels = thirtyDayFrame.map(d => d.formatted);
 
+    // Find the index of order date in the 30-day frame
+    const orderDateIndex = thirtyDayFrame.findIndex(d => d.dateString === orderDateString);
+
     // Order chart system state
     let activeOrderMaterialIndex = 0;
     let orderMaterialsData = @json($chartsData);
     let orderMaterialCharts = {};
 
     console.log('📊 Order materials data:', orderMaterialsData);
+    console.log('📅 Order date:', orderDateString, 'Index:', orderDateIndex);
 
     // Function to interpolate missing data points
     function interpolateOrderData(priceHistory, allDates) {
@@ -466,6 +510,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
+                    orderDateLine: {
+                        orderDateIndex: orderDateIndex
+                    },
                     tooltip: {
                         backgroundColor: 'rgba(17, 24, 39, 0.95)',
                         titleColor: '#fff',
@@ -492,7 +539,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             maxTicksLimit: 8,
                             callback: function(value, index) {
                                 const label = this.getLabelForValue(value);
-                                return label === todayFormatted ? label + ' (Order)' : label;
+                                return label === todayFormatted ? label + ' (Today)' : label;
                             }
                         }
                     },
@@ -545,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     tanggal: todayString,
                     harga: parseFloat(supplier.current_price),
                     formatted_tanggal: todayFormatted,
-                    is_current_price: true
+                    is_current_price: true  // This is the LIVE current price
                 });
             }
 
@@ -623,6 +670,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
+                    orderDateLine: {
+                        orderDateIndex: orderDateIndex
+                    },
                     tooltip: {
                         backgroundColor: 'rgba(17, 24, 39, 0.95)',
                         titleColor: '#fff',
@@ -636,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const point = dataset.chartData[context.dataIndex];
 
                                 let suffix = '';
-                                if (point?.is_current_price) suffix = ' (Order Price)';
+                                if (point?.is_current_price) suffix = ' (Current)';
 
                                 return context.dataset.label + ': Rp ' +
                                        new Intl.NumberFormat('id-ID').format(context.parsed.y) + suffix;
@@ -652,7 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             maxTicksLimit: 8,
                             callback: function(value, index) {
                                 const label = this.getLabelForValue(value);
-                                return label === todayFormatted ? label + ' (Order)' : label;
+                                return label === todayFormatted ? label + ' (Today)' : label;
                             }
                         }
                     },

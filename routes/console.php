@@ -47,3 +47,10 @@ Schedule::command("pengiriman:notify-review")
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path("logs/pengiriman-review-reminder.log"));
+
+// Push OTEL metrics every 3 hours
+Schedule::command("metrics:push-otel")
+    ->everyThreeHours()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path("logs/metrics-otel.log"));

@@ -40,4 +40,10 @@ return [
         'secret_key' => env('TURNSTILE_SECRET_KEY'),
     ],
 
+    'otel' => [
+        'endpoint' => env('OTEL_ENDPOINT'),
+        'username' => env('OTEL_USERNAME'),
+        'token' => env('OTEL_TOKEN'),
+    ],
+
 ];

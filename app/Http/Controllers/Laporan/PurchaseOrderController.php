@@ -95,17 +95,22 @@ class PurchaseOrderController extends Controller
         // Get PO details for each priority
         $poDetailsByPriority = [];
         foreach ($poByPriority as $priorityData) {
-            $poDetails = Order::with('klien')
+            $poDetails = Order::with(['klien', 'orderDetails'])
                 ->where('priority', $priorityData->priority)
                 ->whereIn('status', ['dikonfirmasi', 'diproses'])
                 ->orderBy('po_number')
                 ->get()
                 ->map(function($order) {
+                    // Get list of materials from order details
+                    $materials = $order->orderDetails->pluck('nama_material_po')->filter()->unique()->values()->toArray();
+                    $materialsText = !empty($materials) ? implode(', ', $materials) : '-';
+                    
                     return [
                         'po_number' => $order->po_number ?: $order->no_order,
                         'klien_nama' => $order->klien->nama ?? '-',
                         'cabang' => $order->klien->cabang ?? '-',
                         'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'bahan_baku' => $materialsText,
                         'total_amount' => $order->total_amount,
                         'total_qty' => $order->total_qty,
                         'status' => $order->status
@@ -366,7 +371,7 @@ class PurchaseOrderController extends Controller
         return $pdf->download($filename);
     }
     
-    /**
+    /** 
      * Get Order Winner Details for AJAX
      * Grouped by Marketing > Klien > Cabang > PO
      */
@@ -376,7 +381,6 @@ class PurchaseOrderController extends Controller
         $startDate = $request->get('start_date');
         $endDate = $request->get('end_date');
         
-        // Build date filter query
         $query = DB::table('order_winners')
             ->join('orders', 'order_winners.order_id', '=', 'orders.id')
             ->join('users', 'order_winners.user_id', '=', 'users.id')
@@ -681,17 +685,22 @@ class PurchaseOrderController extends Controller
         // Get PO details for each priority
         $poDetailsByPriority = [];
         foreach ($poByPriority as $priorityData) {
-            $poDetails = Order::with('klien')
+            $poDetails = Order::with(['klien', 'orderDetails'])
                 ->where('priority', $priorityData->priority)
                 ->whereIn('status', ['dikonfirmasi', 'diproses'])
                 ->orderBy('po_number')
                 ->get()
                 ->map(function($order) {
+                    // Get list of materials from order details
+                    $materials = $order->orderDetails->pluck('nama_material_po')->filter()->unique()->values()->toArray();
+                    $materialsText = !empty($materials) ? implode(', ', $materials) : '-';
+                    
                     return [
                         'po_number' => $order->po_number ?: $order->no_order,
                         'klien_nama' => $order->klien->nama ?? '-',
                         'cabang' => $order->klien->cabang ?? '-',
                         'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'bahan_baku' => $materialsText,
                         'total_amount' => $order->total_amount,
                         'total_qty' => $order->total_qty,
                         'status' => $order->status

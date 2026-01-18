@@ -342,14 +342,15 @@
             <table style="margin-bottom: 20px;">
                 <thead>
                     <tr>
-                        <th style="width: 4%">No</th>
-                        <th style="width: 14%">No. PO</th>
-                        <th style="width: 22%">Klien</th>
-                        <th style="width: 14%">Cabang</th>
-                        <th style="width: 10%">Tanggal</th>
-                        <th style="width: 8%" class="text-center">Qty</th>
-                        <th style="width: 18%" class="text-right">Nilai</th>
-                        <th style="width: 10%" class="text-center">Status</th>
+                        <th style="width: 3%">No</th>
+                        <th style="width: 11%">No. PO</th>
+                        <th style="width: 18%">Klien</th>
+                        <th style="width: 11%">Cabang</th>
+                        <th style="width: 8%">Tanggal</th>
+                        <th style="width: 20%">Bahan Baku</th>
+                        <th style="width: 7%" class="text-center">Qty</th>
+                        <th style="width: 14%" class="text-right">Nilai</th>
+                        <th style="width: 8%" class="text-center">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -360,6 +361,7 @@
                         <td>{{ $po['klien_nama'] }}</td>
                         <td>{{ $po['cabang'] }}</td>
                         <td class="text-center">{{ $po['tanggal_order'] }}</td>
+                        <td style="font-size: 9px;">{{ $po['bahan_baku'] }}</td>
                         <td class="text-center">{{ number_format($po['total_qty'], 0, ',', '.') }}</td>
                         <td class="text-right font-bold">Rp {{ number_format($po['total_amount'], 0, ',', '.') }}</td>
                         <td class="text-center">
@@ -372,7 +374,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="5" class="text-right font-bold">Subtotal {{ ucfirst($priority->priority) }}:</td>
+                        <td colspan="6" class="text-right font-bold">Subtotal {{ ucfirst($priority->priority) }}:</td>
                         <td class="text-center font-bold">
                             {{ number_format(collect($poDetailsByPriority[$priority->priority])->sum('total_qty'), 0, ',', '.') }}
                         </td>

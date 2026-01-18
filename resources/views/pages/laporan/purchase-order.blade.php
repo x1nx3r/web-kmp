@@ -1818,6 +1818,7 @@ document.addEventListener('click', function(event) {
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Klien</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cabang</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bahan Baku</th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
                                     <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Nilai</th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -1833,6 +1834,7 @@ document.addEventListener('click', function(event) {
                                     <td class="px-3 py-2 text-xs text-gray-900">{{ $po['klien_nama'] }}</td>
                                     <td class="px-3 py-2 text-xs text-gray-600">{{ $po['cabang'] }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-700">{{ $po['tanggal_order'] }}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-700">{{ $po['bahan_baku'] }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-center">
                                         {{ number_format($po['total_qty'], 2, ',', '.') }}
                                     </td>

@@ -43,7 +43,9 @@ class PushOtelMetrics extends Command
         }
 
         $metricsData = $this->metricService->getMetrics();
-        $timestamp = (string)(Carbon::now()->getPreciseTimestamp(3) * 1000000); // Nano seconds string
+        // Use microseconds * 1000 to get nanoseconds. 
+        // Use number_format to avoid scientific notation (e.g. 1.7E+18) which OTLP rejects.
+        $timestamp = number_format(Carbon::now()->getPreciseTimestamp(6) * 1000, 0, '', '');
 
         $otlpMetrics = [];
 

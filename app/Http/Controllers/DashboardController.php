@@ -380,6 +380,7 @@ class DashboardController extends Controller
         $pengirimanMarginMingguIni = Pengiriman::with([
             'purchasing:id,nama',
             'order.klien:id,nama,cabang',
+            'order.winner.user:id,nama',
             'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
             'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
             'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
@@ -447,6 +448,10 @@ class DashboardController extends Controller
                 $klien = $p->order->klien ?? null;
                 $namaKlien = $klien ? $klien->nama . ($klien->cabang ? " - {$klien->cabang}" : '') : '-';
 
+                // Get PIC Marketing info
+                $picMarketingUser = $p->order->winner->user ?? null;
+                $namaPicMarketing = $picMarketingUser ? $picMarketingUser->nama : '-';
+
                 // Get supplier and bahan baku info
                 $supplier = $detail->bahanBakuSupplier->supplier ?? null;
                 $bahanBaku = $detail->orderDetail->bahanBakuKlien ?? null;
@@ -456,6 +461,7 @@ class DashboardController extends Controller
                     'pengiriman_id' => $p->id,
                     'status' => $p->status,
                     'pic_purchasing' => $p->purchasing->nama ?? '-',
+                    'pic_marketing' => $namaPicMarketing,
                     'klien' => $namaKlien,
                     'supplier' => $supplier->nama ?? '-',
                     'bahan_baku' => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
@@ -959,6 +965,7 @@ class DashboardController extends Controller
             'pengirimanDetails.bahanBakuSupplier',
             'pengirimanDetails.orderDetail.bahanBakuKlien',
             'order.klien',
+            'order.winner.user',
             'purchasing',
             'approvalPembayaran',
             'invoicePenagihan'
@@ -1019,11 +1026,16 @@ class DashboardController extends Controller
                 $bahanBaku = $detail->orderDetail?->bahanBakuKlien;
                 $bahanBakuSupplier = $detail->bahanBakuSupplier;
 
+                // Get PIC Marketing info
+                $picMarketingUser = $p->order->winner->user ?? null;
+                $namaPicMarketing = $picMarketingUser ? $picMarketingUser->nama : '-';
+
                 $marginDataMingguIni[] = [
                     'pengiriman_id' => $p->id,
                     'tanggal_kirim' => $p->tanggal_kirim,
                     'status' => $p->status,
                     'pic_purchasing' => $p->purchasing->nama ?? '-',
+                    'pic_marketing' => $namaPicMarketing,
                     'klien' => $p->order->klien->nama ?? '-',
                     'supplier' => $bahanBakuSupplier->supplier->nama ?? '-',
                     'bahan_baku' => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',

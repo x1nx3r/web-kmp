@@ -141,6 +141,23 @@
                 </select>
             </div>
 
+            {{-- PIC Marketing --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-user-tie mr-1"></i>
+                    PIC Marketing
+                </label>
+                <select name="pic_marketing" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <option value="">Semua PIC</option>
+                    @foreach($picMarketingList as $pic)
+                        <option value="{{ $pic->id }}" {{ $picMarketing == $pic->id ? 'selected' : '' }}>
+                            {{ $pic->nama }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- Klien --}}
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -244,6 +261,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Pengiriman</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIC Procurement</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIC Marketing</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klien</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bahan Baku</th>
@@ -273,6 +291,7 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['pic_purchasing'] }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['pic_marketing'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['klien'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['supplier'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['bahan_baku'] }}</td>
@@ -310,7 +329,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="14" class="px-6 py-12 text-center">
+                        <td colspan="15" class="px-6 py-12 text-center">
                             <div class="flex flex-col items-center justify-center text-gray-400">
                                 <i class="fas fa-inbox text-4xl mb-3"></i>
                                 <p class="text-sm font-medium">Tidak ada data margin</p>
@@ -323,7 +342,7 @@
             @if(count($marginData) > 0)
                 <tfoot class="bg-gray-100 font-semibold">
                     <tr>
-                        <td colspan="7" class="px-6 py-4 text-right text-sm text-gray-900">TOTAL:</td>
+                        <td colspan="8" class="px-6 py-4 text-right text-sm text-gray-900">TOTAL:</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                             {{ number_format($totalQty, 2, ',', '.') }}
                         </td>

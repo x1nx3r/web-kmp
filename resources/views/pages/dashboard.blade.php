@@ -416,6 +416,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIC Procurement</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIC Marketing</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pabrik</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bahan Baku</th>
@@ -429,6 +430,7 @@
                                 onclick="window.location.href='{{ route('purchasing.pengiriman.index') }}?tab={{ $item['status'] === 'berhasil' ? 'pengiriman-berhasil' : ($item['status'] === 'menunggu_verifikasi' ? 'menunggu-verifikasi' : 'menunggu-fisik') }}&detail={{ $item['pengiriman_id'] }}'">
                                 <td class="px-4 py-3 text-gray-700">{{ $index + 1 }}</td>
                                 <td class="px-4 py-3 text-gray-900 font-medium">{{ $item['pic_purchasing'] }}</td>
+                                <td class="px-4 py-3 text-gray-900">{{ $item['pic_marketing'] }}</td>
                                 <td class="px-4 py-3 text-gray-700">{{ $item['klien'] }}</td>
                                 <td class="px-4 py-3 text-gray-700">{{ $item['supplier'] }}</td>
                                 <td class="px-4 py-3 text-gray-700">{{ $item['bahan_baku'] }}</td>

@@ -24,6 +24,7 @@ class MarginController extends Controller
         $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
         $picPurchasing = $request->get('pic_purchasing');
+        $picMarketing = $request->get('pic_marketing');
         $klienId = $request->get('klien');
         $supplierId = $request->get('supplier');
         $bahanBakuId = $request->get('bahan_baku');
@@ -35,6 +36,21 @@ class MarginController extends Controller
                     ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
                     ->whereNull('deleted_at')
                     ->distinct();
+            })
+            ->select('id', 'nama')
+            ->orderBy('nama')
+            ->get();
+
+        $picMarketingList = User::whereIn('id', function($query) {
+                $query->select('user_id')
+                    ->from('order_winners')
+                    ->whereIn('order_id', function($subQuery) {
+                        $subQuery->select('purchase_order_id')
+                            ->from('pengiriman')
+                            ->whereIn('status', ['menunggu_fisik','menunggu_verifikasi', 'berhasil'])
+                            ->whereNull('deleted_at')
+                            ->distinct();
+                    });
             })
             ->select('id', 'nama')
             ->orderBy('nama')
@@ -91,12 +107,15 @@ class MarginController extends Controller
             ->select('id', 'nama')
             ->distinct()
             ->orderBy('nama')
-            ->get();
+            ->get()
+            ->unique('nama') // Filter bahan baku dengan nama yang sama
+            ->values(); // Reset array keys
 
         // Build query untuk pengiriman dengan relasi yang dibutuhkan
         $query = Pengiriman::with([
             'purchasing:id,nama',
             'order.klien:id,nama,cabang',
+            'order.winner.user:id,nama',
             'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
             'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
             'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
@@ -109,6 +128,12 @@ class MarginController extends Controller
         // Apply filters
         if ($picPurchasing) {
             $query->where('purchasing_id', $picPurchasing);
+        }
+
+        if ($picMarketing) {
+            $query->whereHas('order.winner', function($q) use ($picMarketing) {
+                $q->where('user_id', $picMarketing);
+            });
         }
 
         if ($klienId) {
@@ -124,9 +149,14 @@ class MarginController extends Controller
         }
 
         if ($bahanBakuId) {
-            $query->whereHas('pengirimanDetails.orderDetail', function($q) use ($bahanBakuId) {
-                $q->where('bahan_baku_klien_id', $bahanBakuId);
-            });
+            // Cari semua bahan baku dengan nama yang sama
+            $bahanBakuNama = BahanBakuKlien::find($bahanBakuId)->nama ?? null;
+            if ($bahanBakuNama) {
+                $bahanBakuIds = BahanBakuKlien::where('nama', $bahanBakuNama)->pluck('id')->toArray();
+                $query->whereHas('pengirimanDetails.orderDetail', function($q) use ($bahanBakuIds) {
+                    $q->whereIn('bahan_baku_klien_id', $bahanBakuIds);
+                });
+            }
         }
 
         $pengirimanList = $query->orderBy('tanggal_kirim', 'desc')->get();
@@ -193,6 +223,10 @@ class MarginController extends Controller
                 $klien = $p->order->klien ?? null;
                 $namaKlien = $klien ? $klien->nama . ($klien->cabang ? " ({$klien->cabang})" : '') : '-';
 
+                // Get PIC Marketing info
+                $picMarketingUser = $p->order->winner->user ?? null;
+                $namaPicMarketing = $picMarketingUser ? $picMarketingUser->nama : '-';
+
                 // Get supplier and bahan baku info
                 $supplier = $detail->bahanBakuSupplier->supplier ?? null;
                 $bahanBaku = $detail->orderDetail->bahanBakuKlien ?? null;
@@ -205,6 +239,7 @@ class MarginController extends Controller
                     'no_pengiriman' => $p->no_pengiriman ?? '-',
                     'no_po' => $p->order->po_number ?? '-',
                     'pic_purchasing' => $p->purchasing->nama ?? '-',
+                    'pic_marketing' => $namaPicMarketing,
                     'klien' => $namaKlien,
                     'supplier' => $supplier->nama ?? '-',
                     'bahan_baku' => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
@@ -254,10 +289,12 @@ class MarginController extends Controller
             'startDate',
             'endDate',
             'picPurchasing',
+            'picMarketing',
             'klienId',
             'supplierId',
             'bahanBakuId',
             'picPurchasingList',
+            'picMarketingList',
             'klienList',
             'supplierList',
             'bahanBakuList'
@@ -270,6 +307,7 @@ class MarginController extends Controller
         $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
         $picPurchasing = $request->get('pic_purchasing');
+        $picMarketing = $request->get('pic_marketing');
         $klienId = $request->get('klien');
         $supplierId = $request->get('supplier');
         $bahanBakuId = $request->get('bahan_baku');
@@ -278,6 +316,7 @@ class MarginController extends Controller
         $query = Pengiriman::with([
             'purchasing:id,nama',
             'order.klien:id,nama,cabang',
+            'order.winner.user:id,nama',
             'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
             'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
             'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
@@ -291,6 +330,13 @@ class MarginController extends Controller
         if ($picPurchasing) {
             $query->where('purchasing_id', $picPurchasing);
             $picName = User::find($picPurchasing)->nama ?? '';
+        }
+
+        if ($picMarketing) {
+            $query->whereHas('order.winner', function($q) use ($picMarketing) {
+                $q->where('user_id', $picMarketing);
+            });
+            $picMarketingName = User::find($picMarketing)->nama ?? '';
         }
 
         if ($klienId) {
@@ -308,10 +354,15 @@ class MarginController extends Controller
         }
 
         if ($bahanBakuId) {
-            $query->whereHas('pengirimanDetails.orderDetail', function($q) use ($bahanBakuId) {
-                $q->where('bahan_baku_klien_id', $bahanBakuId);
-            });
-            $bahanBakuName = BahanBakuKlien::find($bahanBakuId)->nama ?? '';
+            // Cari semua bahan baku dengan nama yang sama
+            $bahanBakuNama = BahanBakuKlien::find($bahanBakuId)->nama ?? null;
+            if ($bahanBakuNama) {
+                $bahanBakuIds = BahanBakuKlien::where('nama', $bahanBakuNama)->pluck('id')->toArray();
+                $query->whereHas('pengirimanDetails.orderDetail', function($q) use ($bahanBakuIds) {
+                    $q->whereIn('bahan_baku_klien_id', $bahanBakuIds);
+                });
+                $bahanBakuName = $bahanBakuNama;
+            }
         }
 
         $pengirimanList = $query->orderBy('tanggal_kirim', 'desc')->get();
@@ -369,6 +420,10 @@ class MarginController extends Controller
                 $klien = $p->order->klien ?? null;
                 $namaKlien = $klien ? $klien->nama . ($klien->cabang ? " ({$klien->cabang})" : '') : '-';
 
+                // Get PIC Marketing info
+                $picMarketingUser = $p->order->winner->user ?? null;
+                $namaPicMarketing = $picMarketingUser ? $picMarketingUser->nama : '-';
+
                 $supplier = $detail->bahanBakuSupplier->supplier ?? null;
                 $bahanBaku = $detail->orderDetail->bahanBakuKlien ?? null;
                 $bahanBakuSupplier = $detail->bahanBakuSupplier ?? null;
@@ -377,6 +432,7 @@ class MarginController extends Controller
                     'tanggal_kirim' => Carbon::parse($p->tanggal_kirim)->format('d/m/Y'),
                     'no_pengiriman' => $p->no_pengiriman ?? '-',
                     'pic_purchasing' => $p->purchasing->nama ?? '-',
+                    'pic_marketing' => $namaPicMarketing,
                     'klien' => $namaKlien,
                     'supplier' => $supplier->nama ?? '-',
                     'bahan_baku' => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
@@ -413,7 +469,10 @@ class MarginController extends Controller
         // Build filter description
         $filterDesc = [];
         if ($picPurchasing && isset($picName)) {
-            $filterDesc[] = 'PIC: ' . $picName;
+            $filterDesc[] = 'PIC Procurement: ' . $picName;
+        }
+        if ($picMarketing && isset($picMarketingName)) {
+            $filterDesc[] = 'PIC Marketing: ' . $picMarketingName;
         }
         if ($klienId && isset($klienName)) {
             $filterDesc[] = 'Klien: ' . $klienName;

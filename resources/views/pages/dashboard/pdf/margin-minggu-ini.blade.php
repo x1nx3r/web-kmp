@@ -196,14 +196,15 @@
                 <tr>
                     <th style="width: 3%;">No</th>
                     <th style="width: 8%;">Tgl Kirim</th>
-                    <th style="width: 12%;">PIC</th>
-                    <th style="width: 12%;">Pabrik</th>
-                    <th style="width: 12%;">Supplier</th>
-                    <th style="width: 13%;">Bahan Baku</th>
-                    <th class="text-right" style="width: 7%;">Qty</th>
-                    <th class="text-right" style="width: 9%;">H. Beli/Kg</th>
-                    <th class="text-right" style="width: 9%;">H. Jual/Kg</th>
-                    <th class="text-right" style="width: 10%;">Margin</th>
+                    <th style="width: 11%;">PIC Proc.</th>
+                    <th style="width: 11%;">PIC Mkt.</th>
+                    <th style="width: 11%;">Pabrik</th>
+                    <th style="width: 11%;">Supplier</th>
+                    <th style="width: 12%;">Bahan Baku</th>
+                    <th class="text-right" style="width: 6%;">Qty</th>
+                    <th class="text-right" style="width: 8%;">H. Beli/Kg</th>
+                    <th class="text-right" style="width: 8%;">H. Jual/Kg</th>
+                    <th class="text-right" style="width: 9%;">Margin</th>
                     <th class="text-right" style="width: 5%;">%</th>
                 </tr>
             </thead>
@@ -213,6 +214,7 @@
                         <td>{{ $index + 1 }}</td>
                         <td>{{ \Carbon\Carbon::parse($item['tanggal_kirim'])->format('d/m/Y') }}</td>
                         <td>{{ $item['pic_purchasing'] }}</td>
+                        <td>{{ $item['pic_marketing'] }}</td>
                         <td>{{ $item['klien'] }}</td>
                         <td>{{ $item['supplier'] }}</td>
                         <td>{{ $item['bahan_baku'] }}</td>

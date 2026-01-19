@@ -130,9 +130,11 @@
     {{-- Price Trend --}}
     @php
         if (!empty($riwayatHarga)) {
-            // Sort riwayat harga by date to ensure correct order
+            // Sort riwayat harga by date and id to ensure correct order
             usort($riwayatHarga, function($a, $b) {
-                return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+                $dateCompare = strtotime($a['tanggal']) - strtotime($b['tanggal']);
+                if ($dateCompare !== 0) return $dateCompare;
+                return $a['id'] - $b['id']; // Secondary sort by id for same date
             });
             
             $firstPrice = $riwayatHarga[0]['harga'];
@@ -210,7 +212,19 @@
                             <div class="text-xs text-gray-500 hidden sm:block">{{ $item['formatted_hari'] }}</div>
                         </td>
                         <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
-                            <div class="text-xs sm:text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
+                            <div class="flex items-center gap-2">
+                                <div>
+                                    <div class="text-xs sm:text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    onclick="showPOModal({{ $item['harga'] }}, '{{ $item['tanggal'] }}')"
+                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-md transition-colors duration-150"
+                                    title="Lihat PO dengan harga ini">
+                                    <i class="fas fa-file-invoice text-xs mr-1"></i>
+                                    <span class="hidden sm:inline">PO</span>
+                                </button>
+                            </div>
                         </td>
                         <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
                             @if($item['tipe_perubahan'] === 'naik')
@@ -233,7 +247,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-2 sm:px-4 py-6 sm:py-8 text-center text-gray-500">
+                        <td colspan="6" class="px-2 sm:px-4 py-6 sm:py-8 text-center text-gray-500">
                             <div class="flex flex-col items-center">
                                 <i class="fas fa-chart-line text-2xl sm:text-4xl text-gray-300 mb-2 sm:mb-4"></i>
                                 <p class="text-sm sm:text-lg font-medium">Belum ada data riwayat harga</p>
@@ -244,6 +258,91 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+</div>
+
+{{-- Modal for PO Details --}}
+<div id="poModal" class="hidden fixed inset-0 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-lg bg-white max-h-[80vh] overflow-y-auto">
+        {{-- Modal Header --}}
+        <div class="flex items-center justify-between pb-3 border-b">
+            <div class="flex items-center">
+                <div class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
+                    <i class="fas fa-file-invoice text-white"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Purchase Order (PO) dengan Harga Ini</h3>
+                    <p class="text-sm text-gray-500" id="modalSubtitle">Loading...</p>
+                </div>
+            </div>
+            <button type="button" onclick="closePOModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        {{-- Loading State --}}
+        <div id="poModalLoading" class="py-8 text-center">
+            <i class="fas fa-spinner fa-spin text-4xl text-indigo-500 mb-4"></i>
+            <p class="text-gray-600">Memuat data...</p>
+        </div>
+
+        {{-- Modal Content --}}
+        <div id="poModalContent" class="hidden">
+            {{-- Summary Stats --}}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-blue-700">Total PO</p>
+                            <p class="text-2xl font-bold text-blue-900" id="totalPO">0</p>
+                        </div>
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <i class="fas fa-file-invoice text-blue-500"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-green-700">Total Qty</p>
+                            <p class="text-2xl font-bold text-green-900" id="totalQty">0</p>
+                        </div>
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <i class="fas fa-boxes text-green-500"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-purple-700">Harga per <span id="satuanLabel"></span></p>
+                            <p class="text-2xl font-bold text-purple-900" id="hargaLabel">Rp 0</p>
+                        </div>
+                        <div class="p-3 bg-purple-100 rounded-full">
+                            <i class="fas fa-tag text-purple-500"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- PO List --}}
+            <div class="mt-4">
+                <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                    <i class="fas fa-list-ul text-indigo-500 mr-2"></i>
+                    Daftar Purchase Order
+                </h4>
+                <div id="poList" class="space-y-4">
+                    {{-- Will be populated by JavaScript --}}
+                </div>
+            </div>
+        </div>
+
+        {{-- Empty State --}}
+        <div id="poModalEmpty" class="hidden py-8 text-center">
+            <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-600 font-medium">Tidak ada PO yang menggunakan harga ini</p>
+            <p class="text-sm text-gray-500 mt-2">Belum ada order yang dibuat dengan harga ini</p>
+        </div>
     </div>
 </div>
 
@@ -265,8 +364,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // Sort data by date chronologically (oldest to newest)
-    priceData.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+    // Sort data by date chronologically (oldest to newest), then by id for same date
+    priceData.sort((a, b) => {
+        const dateCompare = new Date(a.tanggal) - new Date(b.tanggal);
+        if (dateCompare !== 0) return dateCompare;
+        return a.id - b.id; // Secondary sort by id for same date
+    });
     
     const labels = priceData.map(item => {
         const date = new Date(item.tanggal);
@@ -413,6 +516,170 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+});
+
+// PO Modal Functions
+function showPOModal(harga, tanggal) {
+    const modal = document.getElementById('poModal');
+    const loading = document.getElementById('poModalLoading');
+    const content = document.getElementById('poModalContent');
+    const empty = document.getElementById('poModalEmpty');
+    
+    // Show modal and loading state
+    modal.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    content.classList.add('hidden');
+    empty.classList.add('hidden');
+    
+    // Build URL
+    const url = '{{ route("supplier.riwayat-harga.po-by-harga", ["supplier" => $supplierData->slug, "bahanBaku" => $bahanBakuData->slug]) }}' 
+        + '?harga=' + harga 
+        + '&tanggal=' + encodeURIComponent(tanggal);
+    
+    // Fetch data
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.classList.add('hidden');
+        
+        if (data.success && data.orders.length > 0) {
+            // Update subtitle
+            document.getElementById('modalSubtitle').textContent = 
+                `${data.bahan_baku_nama} - ${data.supplier_nama} | ${tanggal}`;
+            
+            // Update stats
+            document.getElementById('totalPO').textContent = data.total_po;
+            document.getElementById('totalQty').textContent = data.total_qty.toLocaleString('id-ID') + ' ' + data.satuan;
+            document.getElementById('satuanLabel').textContent = data.satuan;
+            document.getElementById('hargaLabel').textContent = 'Rp ' + data.harga.toLocaleString('id-ID');
+            
+            // Build PO list
+            const poList = document.getElementById('poList');
+            poList.innerHTML = '';
+            
+            data.orders.forEach((order, index) => {
+                const orderCard = document.createElement('div');
+                orderCard.className = 'border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow';
+                
+                let pengirimanHTML = '';
+                order.pengiriman.forEach(p => {
+                    const statusBadge = getStatusBadge(p.status);
+                    pengirimanHTML += `
+                        <div class="flex items-center justify-between py-2 border-t border-gray-100 text-sm">
+                            <div class="flex-1">
+                                <span class="font-medium text-gray-700">${p.no_pengiriman}</span>
+                            </div>
+                            <div class="flex-1 text-center">
+                                <span class="text-gray-600">${p.tanggal_kirim}</span>
+                            </div>
+                            <div class="flex-1 text-right">
+                                <span class="font-semibold text-indigo-600">${p.qty_kirim.toLocaleString('id-ID')} ${data.satuan}</span>
+                            </div>
+                            <div class="flex-1 text-right">
+                                <span class="${statusBadge.class}">${statusBadge.text}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                const statusOrderBadge = getOrderStatusBadge(order.status_order);
+                
+                orderCard.innerHTML = `
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                                <span class="text-indigo-700 font-bold">${index + 1}</span>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-indigo-900 text-lg">${order.po_number}</h5>
+                                <p class="text-sm text-gray-600">${order.tanggal_order}</p>
+                            </div>
+                        </div>
+                        <span class="${statusOrderBadge.class}">${statusOrderBadge.text}</span>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-lg p-3 mb-3">
+                        <div class="flex items-center text-sm">
+                            <i class="fas fa-building text-gray-500 mr-2"></i>
+                            <span class="font-semibold text-gray-700">${order.klien_nama}</span>
+                            ${order.klien_cabang ? `<span class="text-gray-500 ml-2">- ${order.klien_cabang}</span>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="flex items-center justify-between text-xs font-semibold text-gray-500 uppercase mb-2">
+                            <span>Pengiriman</span>
+                            <span class="text-right">Tanggal</span>
+                            <span class="text-right">Qty</span>
+                            <span class="text-right">Status</span>
+                        </div>
+                        ${pengirimanHTML}
+                    </div>
+                `;
+                
+                poList.appendChild(orderCard);
+            });
+            
+            content.classList.remove('hidden');
+        } else {
+            empty.classList.remove('hidden');
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching PO data:', error);
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        document.getElementById('poModalEmpty').innerHTML = `
+            <i class="fas fa-exclamation-triangle text-6xl text-red-300 mb-4"></i>
+            <p class="text-red-600 font-medium">Terjadi kesalahan saat memuat data</p>
+            <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+        `;
+    });
+}
+
+function closePOModal() {
+    document.getElementById('poModal').classList.add('hidden');
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'berhasil': { class: 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800', text: 'Berhasil' },
+        'gagal': { class: 'px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800', text: 'Gagal' },
+        'pending': { class: 'px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800', text: 'Pending' },
+        'diproses': { class: 'px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800', text: 'Diproses' },
+    };
+    return badges[status] || { class: 'px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800', text: status };
+}
+
+function getOrderStatusBadge(status) {
+    const badges = {
+        'selesai': { class: 'px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800', text: 'Selesai' },
+        'diproses': { class: 'px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800', text: 'Diproses' },
+        'pending': { class: 'px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800', text: 'Pending' },
+        'dibatalkan': { class: 'px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800', text: 'Dibatalkan' },
+    };
+    return badges[status] || { class: 'px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800', text: status };
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('poModal');
+    if (event.target === modal) {
+        closePOModal();
+    }
+});
+
+// Close modal with ESC key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closePOModal();
+    }
 });
 </script>
 @endpush

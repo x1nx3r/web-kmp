@@ -6,6 +6,7 @@ use App\Models\Supplier;
 use App\Models\BahanBakuSupplier;
 use App\Models\RiwayatHargaBahanBaku;
 use App\Models\Pengiriman; // Import Pengiriman model
+use App\Models\PengirimanDetail; // Import PengirimanDetail model
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -471,6 +472,7 @@ class SupplierController extends Controller
         // Get riwayat harga dari database
         $riwayatHarga = $bahanBaku->riwayatHarga()
             ->orderBy('tanggal_perubahan', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
         // Jika tidak ada riwayat, buat entry pertama dari harga saat ini
@@ -485,6 +487,7 @@ class SupplierController extends Controller
             // Refresh riwayat harga setelah dibuat
             $riwayatHarga = $bahanBaku->riwayatHarga()
                 ->orderBy('tanggal_perubahan', 'asc')
+                ->orderBy('id', 'asc')
                 ->get();
         }
 
@@ -498,6 +501,7 @@ class SupplierController extends Controller
         // Format data bahan baku
         $bahanBakuData = (object) [
             'id' => $bahanBaku->id,
+            'slug' => $bahanBaku->slug,
             'nama' => $bahanBaku->nama,
             'satuan' => $bahanBaku->satuan,
             'supplier_nama' => $supplier->nama,
@@ -613,5 +617,83 @@ class SupplierController extends Controller
         }
 
         return view('pages.purchasing.supplier.reviews', compact('supplier', 'pengiriman', 'stats', 'klienList'));
+    }
+
+    /**
+     * Get PO/Orders data for specific price in riwayat harga
+     */
+    public function getPOByHarga(Request $request, Supplier $supplier, BahanBakuSupplier $bahanBaku)
+    {
+        // Validate that bahan baku belongs to supplier
+        if ($bahanBaku->supplier_id !== $supplier->id) {
+            return response()->json(['error' => 'Bahan baku tidak ditemukan untuk supplier ini'], 404);
+        }
+
+        $harga = $request->input('harga');
+        $tanggal = $request->input('tanggal');
+
+        if (!$harga) {
+            return response()->json(['error' => 'Harga tidak ditemukan'], 400);
+        }
+
+        // Get all pengiriman details that used this specific price
+        $pengirimanDetails = PengirimanDetail::where('bahan_baku_supplier_id', $bahanBaku->id)
+            ->where('harga_satuan', $harga)
+            ->with([
+                'pengiriman.order.klien',
+                'pengiriman.forecast',
+                'orderDetail.bahanBakuKlien'
+            ])
+            ->get();
+
+        // Group by order/PO
+        $orders = [];
+        $totalPO = 0;
+        $totalQty = 0;
+
+        foreach ($pengirimanDetails as $detail) {
+            $pengiriman = $detail->pengiriman;
+            $order = $pengiriman->order;
+            
+            if (!$order) continue;
+
+            $orderId = $order->id;
+            
+            if (!isset($orders[$orderId])) {
+                $totalPO++;
+                $orders[$orderId] = [
+                    'order_id' => $order->id,
+                    'no_order' => $order->no_order,
+                    'po_number' => $order->po_number ?? '-',
+                    'tanggal_order' => $order->tanggal_order ? \Carbon\Carbon::parse($order->tanggal_order)->format('d M Y') : '-',
+                    'klien_nama' => $order->klien->nama ?? '-',
+                    'klien_cabang' => $order->klien->cabang ?? '-',
+                    'status_order' => $order->status,
+                    'pengiriman' => []
+                ];
+            }
+
+            $orders[$orderId]['pengiriman'][] = [
+                'no_pengiriman' => $pengiriman->no_pengiriman,
+                'tanggal_kirim' => $pengiriman->tanggal_kirim ? \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d M Y') : '-',
+                'qty_kirim' => (float) $detail->qty_kirim,
+                'total_harga' => (float) $detail->total_harga,
+                'status' => $pengiriman->status,
+            ];
+
+            $totalQty += (float) $detail->qty_kirim;
+        }
+
+        return response()->json([
+            'success' => true,
+            'harga' => (float) $harga,
+            'tanggal' => $tanggal,
+            'satuan' => $bahanBaku->satuan,
+            'bahan_baku_nama' => $bahanBaku->nama,
+            'supplier_nama' => $supplier->nama,
+            'total_po' => $totalPO,
+            'total_qty' => $totalQty,
+            'orders' => array_values($orders),
+        ]);
     }
 }

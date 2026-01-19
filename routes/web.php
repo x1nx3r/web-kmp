@@ -513,6 +513,10 @@ Route::middleware(["auth"])->group(function () {
             "/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga",
             [SupplierController::class, "riwayatHarga"],
         )->name("supplier.riwayat-harga");
+        Route::get(
+            "/supplier/{supplier:slug}/bahan-baku/{bahanBaku:slug}/riwayat-harga/po-by-harga",
+            [SupplierController::class, "getPOByHarga"],
+        )->name("supplier.riwayat-harga.po-by-harga");
 
         // Forecasting routes
         Route::get("/forecasting", [

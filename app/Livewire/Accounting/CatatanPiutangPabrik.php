@@ -72,7 +72,8 @@ class CatatanPiutangPabrik extends Component
                 $q->where('invoice_number', 'like', '%' . $this->search . '%')
                   ->orWhere('customer_name', 'like', '%' . $this->search . '%')
                   ->orWhereHas('pengiriman.klien', function($q2) {
-                      $q2->where('nama', 'like', '%' . $this->search . '%');
+                      $q2->where('nama', 'like', '%' . $this->search . '%')
+                         ->orWhere('cabang', 'like', '%' . $this->search . '%');
                   });
             });
         }

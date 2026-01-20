@@ -119,7 +119,7 @@
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                     <option value="all">Semua Klien</option>
                     @foreach($kliens as $klien)
-                        <option value="{{ $klien->id }}">{{ $klien->nama }}</option>
+                        <option value="{{ $klien->id }}">{{ $klien->nama }}{{ $klien->cabang ? ' - ' . $klien->cabang : '' }}</option>
                     @endforeach
                 </select>
             </div>
@@ -213,7 +213,9 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">{{ $piutang->pengiriman->klien->nama ?? $piutang->customer_name }}</div>
-                                <div class="text-xs text-gray-500">{{ $piutang->pengiriman->klien->no_hp ?? '-' }}</div>
+                                @if($piutang->pengiriman->klien && $piutang->pengiriman->klien->cabang)
+                                    <div class="text-xs text-gray-500">Cabang: {{ $piutang->pengiriman->klien->cabang }}</div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{ $piutang->invoice_date->format('d M Y') }}</div>
@@ -339,7 +341,12 @@
                         </div>
                         <div class="flex justify-between py-2 px-3 bg-white rounded-lg">
                             <span class="font-medium text-gray-600">Klien (Pabrik):</span>
-                            <span class="text-gray-900 font-semibold">{{ $detailPiutang->pengiriman->klien->nama ?? $detailPiutang->customer_name }}</span>
+                            <span class="text-gray-900 font-semibold">
+                                {{ $detailPiutang->pengiriman->klien->nama ?? $detailPiutang->customer_name }}
+                                @if($detailPiutang->pengiriman->klien && $detailPiutang->pengiriman->klien->cabang)
+                                    - {{ $detailPiutang->pengiriman->klien->cabang }}
+                                @endif
+                            </span>
                         </div>
                         <div class="flex justify-between py-2 px-3 bg-white rounded-lg">
                             <span class="font-medium text-gray-600">Customer:</span>
@@ -453,7 +460,12 @@
                         </div>
                         <div class="flex justify-between py-2 px-3 bg-white rounded-lg">
                             <span class="font-medium text-gray-600">Klien:</span>
-                            <span class="text-gray-900">{{ $detailPiutang->pengiriman->klien->nama }}</span>
+                            <span class="text-gray-900">
+                                {{ $detailPiutang->pengiriman->klien->nama }}
+                                @if($detailPiutang->pengiriman->klien->cabang)
+                                    - {{ $detailPiutang->pengiriman->klien->cabang }}
+                                @endif
+                            </span>
                         </div>
                         <div class="flex justify-between py-2 px-3 bg-white rounded-lg">
                             <span class="font-medium text-gray-600">No HP Klien:</span>
@@ -552,13 +564,13 @@
                                             $buktiFiles = [$pembayaran->bukti_pembayaran];
                                         }
                                     @endphp
-                                    
+
                                     @if(count($buktiFiles) > 1)
                                         <span class="text-gray-600 text-sm font-medium mb-2 block">
                                             <i class="fas fa-files mr-1"></i>Bukti Pembayaran ({{ count($buktiFiles) }} file):
                                         </span>
                                     @endif
-                                    
+
                                     <div class="flex flex-wrap gap-2">
                                         @foreach($buktiFiles as $index => $filePath)
                                             <a href="{{ Storage::url($filePath) }}" target="_blank"
@@ -632,7 +644,7 @@
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Pilih Klien --</option>
                         @foreach($kliens as $klien)
-                            <option value="{{ $klien->id }}">{{ $klien->nama }}</option>
+                            <option value="{{ $klien->id }}">{{ $klien->nama }}{{ $klien->cabang ? ' - ' . $klien->cabang : '' }}</option>
                         @endforeach
                     </select>
                     @error('selectedKlienForExport')
@@ -809,7 +821,7 @@
                                         $totalSize += $file->getSize();
                                     }
                                 @endphp
-                                
+
                                 <div class="p-3 bg-green-50 border border-green-200 rounded-md">
                                     <p class="text-xs font-medium text-gray-700">
                                         <i class="fas fa-files text-green-600 mr-2"></i>
@@ -818,7 +830,7 @@
                                             (Total: {{ number_format($totalSize / 1024 / 1024, 2) }} MB)
                                         </span>
                                     </p>
-                                    
+
                                     @if($totalSize > 20 * 1024 * 1024)
                                         <p class="text-xs text-red-600 font-semibold mt-1">
                                             <i class="fas fa-exclamation-triangle mr-1"></i>

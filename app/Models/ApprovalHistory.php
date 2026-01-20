@@ -20,6 +20,13 @@ class ApprovalHistory extends Model
         'user_id',
         'action',
         'notes',
+        'changes',
+    ];
+
+    protected $casts = [
+        'changes' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**

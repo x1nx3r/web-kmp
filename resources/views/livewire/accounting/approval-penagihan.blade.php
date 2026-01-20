@@ -223,7 +223,7 @@
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900">
                         @if($activeTab === 'approved')
-                            Invoice Selesai 
+                            Invoice Selesai
                         @else
                             Invoice Menunggu Approval
                         @endif
@@ -318,11 +318,18 @@
                                         Detail & Approve
                                     </a>
                                 @else
-                                    <a href="{{ route('accounting.approval-penagihan.view', $approval->id) }}"
-                                       class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
-                                        <i class="fas fa-file-alt mr-1"></i>
-                                        Lihat Detail
-                                    </a>
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <a href="{{ route('accounting.approval-penagihan.view', $approval->id) }}"
+                                           class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+                                            <i class="fas fa-file-alt mr-1"></i>
+                                            Lihat Detail
+                                        </a>
+                                        <a href="{{ route('accounting.approval-penagihan.edit', $approval->id) }}"
+                                           class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors">
+                                            <i class="fas fa-edit mr-1"></i>
+                                            Edit
+                                        </a>
+                                    </div>
                                 @endif
                             </td>
                         </tr>

@@ -34,7 +34,13 @@
             <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-2xl font-bold text-white mb-2">Detail Approval Penagihan</h1>
+                        <h1 class="text-2xl font-bold text-white mb-2">
+                            @if($editMode)
+                                Edit Invoice Penagihan
+                            @else
+                                Detail Approval Penagihan
+                            @endif
+                        </h1>
                         <p class="text-purple-100 text-sm">
                             Nomor Invoice Saat Ini: <span class="font-semibold">{{ $invoiceNumber ?: '-' }}</span>
                         </p>
@@ -55,28 +61,19 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="col-span-2">
                                     <label class="block text-sm font-medium text-gray-600 mb-2">Nomor Invoice</label>
-                                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                                        <input
-                                            type="text"
-                                            wire:model.defer="invoiceNumber"
-                                            placeholder="Masukkan nomor invoice"
-                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                        >
-                                        <button
-                                            wire:click="updateInvoiceNumber"
-                                            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                                        >
-                                            <i class="fas fa-save mr-2"></i>
-                                            Simpan Nomor Invoice
-                                        </button>
-                                    </div>
+                                    <input
+                                        type="text"
+                                        wire:model.defer="invoiceNumber"
+                                        placeholder="Masukkan nomor invoice"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    >
                                     @error('invoiceNumber')
                                         <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>
 
                                 {{-- Bank Selection --}}
-                                @if($canManage && $approval->status !== 'completed' && $approval->status !== 'rejected')
+                                @if($canManage && ($approval->status !== 'completed' && $approval->status !== 'rejected' || $editMode))
                                     <div class="col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                         <label class="block text-sm font-medium text-gray-700 mb-3">
                                             <i class="fas fa-university text-blue-600 mr-1"></i>
@@ -140,10 +137,78 @@
                                     <p class="text-sm text-gray-600">Jatuh Tempo</p>
                                     <p class="font-semibold text-gray-900">{{ $invoice->due_date->format('d M Y') }}</p>
                                 </div>
+
+                                {{-- Editable Invoice Dates --}}
                                 <div class="col-span-2">
-                                    <p class="text-sm text-gray-600">Customer</p>
-                                    <p class="font-semibold text-gray-900">{{ $invoice->customer_name }}</p>
-                                    <p class="text-xs text-gray-500">{{ $invoice->customer_address }}</p>
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Update Tanggal Invoice</label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Tanggal Invoice</label>
+                                            <input
+                                                type="date"
+                                                wire:model.defer="invoiceDate"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                            >
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Jatuh Tempo</label>
+                                            <input
+                                                type="date"
+                                                wire:model.defer="dueDate"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                            >
+                                        </div>
+                                    </div>
+                                    @error('invoiceDate') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                    @error('dueDate') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+
+                                {{-- Editable Customer Information --}}
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Informasi Customer</label>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Nama Customer *</label>
+                                            <input
+                                                type="text"
+                                                wire:model.defer="customerName"
+                                                placeholder="Nama customer"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                            >
+                                            @error('customerName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Alamat Customer *</label>
+                                            <textarea
+                                                wire:model.defer="customerAddress"
+                                                rows="2"
+                                                placeholder="Alamat customer"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                            ></textarea>
+                                            @error('customerAddress') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block text-xs text-gray-500 mb-1">No. Telepon</label>
+                                                <input
+                                                    type="text"
+                                                    wire:model.defer="customerPhone"
+                                                    placeholder="No. telepon"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                                >
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs text-gray-500 mb-1">Email</label>
+                                                <input
+                                                    type="email"
+                                                    wire:model.defer="customerEmail"
+                                                    placeholder="Email customer"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                                >
+                                                @error('customerEmail') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -333,8 +398,8 @@
                                 </div>
                             @endif
 
-                            {{-- Edit Refraksi Form - Only if not completed --}}
-                            @if($canManage && $approval->status !== 'completed' && $approval->status !== 'rejected')
+                            {{-- Edit Refraksi Form - Only if not completed or in edit mode --}}
+                            @if($canManage && ($approval->status !== 'completed' && $approval->status !== 'rejected' || $editMode))
                                 <div class="mb-4 p-4 bg-white rounded-lg border border-yellow-300">
                                     <h4 class="text-sm font-semibold text-gray-700 mb-3">
                                         <i class="fas fa-edit mr-1"></i>
@@ -385,10 +450,37 @@
 
                     {{-- Right Column - Approval Status & Actions --}}
                     <div class="space-y-6">
+                        {{-- Invoice Notes --}}
+                        <div class="bg-white rounded-lg border border-gray-200 p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                                <i class="fas fa-sticky-note mr-2 text-purple-600"></i>
+                                Catatan Invoice
+                            </h3>
+                            <textarea wire:model.defer="invoiceNotes" rows="4"
+                                      class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                      placeholder="Tambahkan catatan untuk invoice ini..."></textarea>
+                        </div>
+                        
+                        {{-- Single Save All Button --}}
+                        <div class="bg-white rounded-lg border border-gray-200 p-6">
+                            <button
+                                wire:click="updateAllInvoiceFields"
+                                wire:loading.attr="disabled"
+                                class="w-full px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg disabled:opacity-50"
+                            >
+                                <span wire:loading.remove wire:target="updateAllInvoiceFields">
+                                    <i class="fas fa-save mr-2"></i> Simpan Semua Perubahan
+                                </span>
+                                <span wire:loading wire:target="updateAllInvoiceFields">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+
                         {{-- Notes Input - Only if not completed --}}
                         @if($canManage && $approval->status !== 'completed' && $approval->status !== 'rejected')
                             <div class="bg-white rounded-lg border border-gray-200 p-6">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Catatan</h3>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Catatan Approval</h3>
                                 <textarea wire:model="notes" rows="4"
                                           class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
                                           placeholder="Tambahkan catatan untuk approval ini..."></textarea>
@@ -397,15 +489,27 @@
                             {{-- Action Buttons --}}
                             <div class="bg-white rounded-lg border border-gray-200 p-6">
                                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Aksi</h3>
-                                <button wire:click="approve" wire:loading.attr="disabled"
-                                        class="w-full px-4 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
-                                    <span wire:loading.remove wire:target="approve">
-                                        <i class="fas fa-check mr-2"></i> Approve
-                                    </span>
-                                    <span wire:loading wire:target="approve">
-                                        <i class="fas fa-spinner fa-spin mr-2"></i> Processing...
-                                    </span>
-                                </button>
+                                @if($editMode)
+                                    <button wire:click="updateInvoice" wire:loading.attr="disabled"
+                                            class="w-full px-4 py-3 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50">
+                                        <span wire:loading.remove wire:target="updateInvoice">
+                                            <i class="fas fa-save mr-2"></i> Update Invoice
+                                        </span>
+                                        <span wire:loading wire:target="updateInvoice">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i> Updating...
+                                        </span>
+                                    </button>
+                                @else
+                                    <button wire:click="approve" wire:loading.attr="disabled"
+                                            class="w-full px-4 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
+                                        <span wire:loading.remove wire:target="approve">
+                                            <i class="fas fa-check mr-2"></i> Approve
+                                        </span>
+                                        <span wire:loading wire:target="approve">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i> Processing...
+                                        </span>
+                                    </button>
+                                @endif
                             </div>
                         @endif
 

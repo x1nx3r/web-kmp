@@ -279,18 +279,29 @@
             <td style="width: 50%; vertical-align: top;">
                 <div class="customer-section" style="margin: 0;">
                     <div class="customer-label">Kepada Yth:</div>
-                    <div class="customer-name">{{ $pengiriman->purchaseOrder->klien->nama ?? $invoice->customer_name }}</div>
+                    <div class="customer-name">{{ $invoice->customer_name ?? $pengiriman->purchaseOrder->klien->nama ?? '-' }}</div>
                     {{-- @if($pengiriman->purchaseOrder->klien->cabang)
                         <div style="font-size: 10pt; margin-top: 5px;">
                             <strong>Plant:</strong> {{ $pengiriman->purchaseOrder->klien->cabang }}
                         </div>
                     @endif --}}
-                    @if($pengiriman->purchaseOrder->klien->alamat_lengkap)
+                    @if($invoice->customer_address)
+                        <div style="font-size: 9pt; margin-top: 3px; line-height: 1.4;">
+                            {{ $invoice->customer_address }}
+                        </div>
+                    @elseif($pengiriman->purchaseOrder->klien->alamat_lengkap)
                         <div style="font-size: 9pt; margin-top: 3px; line-height: 1.4;">
                             {{ $pengiriman->purchaseOrder->klien->alamat_lengkap }}
                         </div>
                     @endif
-                    @if($pengiriman->purchaseOrder->klien->contactPerson)
+                    @if($invoice->customer_phone || $invoice->customer_email)
+                        @if($invoice->customer_phone)
+                            <div class="customer-phone" style="margin-top: 5px;">Telp: {{ $invoice->customer_phone }}</div>
+                        @endif
+                        @if($invoice->customer_email)
+                            <div class="customer-phone">Email: {{ $invoice->customer_email }}</div>
+                        @endif
+                    @elseif($pengiriman->purchaseOrder->klien->contactPerson)
                         <div class="customer-phone" style="margin-top: 5px;">Contact: {{ $pengiriman->purchaseOrder->klien->contactPerson->nama }}</div>
                         <div class="customer-phone">Telp: {{ $pengiriman->purchaseOrder->klien->contactPerson->nomor_hp }}</div>
                     @endif

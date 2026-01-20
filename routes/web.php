@@ -73,7 +73,7 @@ Route::middleware(["auth"])->group(function () {
 
             Route::get('/penagihan', [LaporanPenagihanController::class, 'index'])->name('penagihan');
             Route::post('/penagihan/export', [LaporanPenagihanController::class, 'export'])->name('penagihan.export');
-            
+
             // Laporan Margin
             Route::get('/margin', [MarginController::class, 'index'])->name('margin');
             Route::get('/margin/pdf', [MarginController::class, 'export'])->name('margin.pdf');
@@ -570,7 +570,7 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "batalPengiriman",
         ])->name("purchasing.pengiriman.batal");
-        
+
         // Delete individual bukti foto
         Route::post("pengiriman/{pengiriman}/delete-bukti-foto", [
             PengirimanController::class,
@@ -586,19 +586,19 @@ Route::middleware(["auth"])->group(function () {
             "update" => "purchasing.pengiriman.update",
             "destroy" => "purchasing.pengiriman.destroy",
         ]);
-        
+
         // Aksi modal route (untuk pengiriman masuk)
         Route::get("pengiriman/{pengiriman}/aksi-modal", [
             PengirimanController::class,
             "getAksiModal",
         ])->name("purchasing.pengiriman.aksi-modal");
-        
+
         // Delete pengiriman gagal route (STRICT - hanya jika tidak ada forecast/pengiriman terkait)
         Route::delete("pengiriman/{pengiriman}/delete-gagal", [
             PengirimanController::class,
             "deletePengirimanGagal",
         ])->name("purchasing.pengiriman.delete-gagal");
-        
+
         Route::put("pengiriman/{pengiriman}/status", [
             PengirimanController::class,
             "updateStatus",
@@ -708,6 +708,15 @@ Route::middleware(["auth"])->group(function () {
                     "approvalId" => $approvalId,
                 ]);
             })->name("approval-penagihan.view");
+
+            Route::get("/approval-penagihan/{approvalId}/edit", function (
+                $approvalId,
+            ) {
+                return view("pages.accounting.approve-penagihan", [
+                    "approvalId" => $approvalId,
+                    "editMode" => true,
+                ]);
+            })->name("approval-penagihan.edit");
 
             // Company Settings
             Route::get("/company-settings", function () {

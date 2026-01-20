@@ -17,6 +17,7 @@ class ApprovePenagihan extends Component
     public $pengiriman;
     public $approvalHistory;
     public $notes = '';
+    public $editMode = false;
 
     public $canManage = false;
 
@@ -46,9 +47,19 @@ class ApprovePenagihan extends Component
     public $dueDate;
     public $invoiceNumber = '';
 
-    public function mount($approvalId)
+    // Customer information
+    public $customerName = '';
+    public $customerAddress = '';
+    public $customerPhone = '';
+    public $customerEmail = '';
+
+    // Invoice notes
+    public $invoiceNotes = '';
+
+    public function mount($approvalId, $editMode = false)
     {
         $this->approvalId = $approvalId;
+        $this->editMode = $editMode;
         $this->canManage = in_array(Auth::user()->role, ['staff_accounting', 'manager_accounting', 'direktur', 'superadmin']);
         $this->loadApproval();
     }
@@ -63,8 +74,12 @@ class ApprovePenagihan extends Component
      */
     public function updatedRefraksiForm()
     {
-        // Only auto-update if user can manage and approval is not completed
-        if (!$this->canManage || $this->approval->status === 'completed' || $this->approval->status === 'rejected') {
+        // Only auto-update if user can manage and (approval is not completed OR we're in edit mode)
+        if (!$this->canManage) {
+            return;
+        }
+
+        if (!$this->editMode && ($this->approval->status === 'completed' || $this->approval->status === 'rejected')) {
             return;
         }
 
@@ -104,6 +119,15 @@ class ApprovePenagihan extends Component
         $this->invoiceDate = $this->invoice->invoice_date?->format('Y-m-d');
         $this->dueDate = $this->invoice->due_date?->format('Y-m-d');
         $this->invoiceNumber = $this->invoice->invoice_number ?? '';
+
+        // Load customer information
+        $this->customerName = $this->invoice->customer_name ?? '';
+        $this->customerAddress = $this->invoice->customer_address ?? '';
+        $this->customerPhone = $this->invoice->customer_phone ?? '';
+        $this->customerEmail = $this->invoice->customer_email ?? '';
+
+        // Load invoice notes
+        $this->invoiceNotes = $this->invoice->notes ?? '';
 
         // Load bank selection - default to mandiri if not set
         if ($this->invoice->bank_name) {
@@ -220,6 +244,23 @@ class ApprovePenagihan extends Component
                 'bank_account_name' => $bankInfo['account_name'],
             ]);
 
+            // Log change if in edit mode for completed invoice
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id' => $this->approval->invoice_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Bank diubah menjadi ' . $bankInfo['name'],
+                ]);
+            }
+
             $this->loadApproval();
 
             session()->flash('message', 'Bank berhasil diupdate');
@@ -295,6 +336,56 @@ class ApprovePenagihan extends Component
             DB::commit();
 
             session()->flash('message', 'Approval berhasil disimpan');
+            return redirect()->route('accounting.approval-penagihan');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', $e->getMessage());
+        }
+    }
+
+    public function updateInvoice()
+    {
+        $user = Auth::user();
+
+        if (!$this->approval) {
+            session()->flash('error', 'Data approval tidak ditemukan');
+            return;
+        }
+
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        // Validate bank selection
+        if (!$this->invoice->bank_name) {
+            session()->flash('error', 'Silakan pilih bank terlebih dahulu');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $role = $this->getUserRole($user);
+
+            if (!$role) {
+                throw new \Exception('Anda tidak memiliki akses untuk melakukan update');
+            }
+
+            // Log the edit to history
+            ApprovalHistory::create([
+                'approval_type' => 'penagihan',
+                'approval_id' => $this->approval->id,
+                'pengiriman_id' => $this->approval->pengiriman_id,
+                'invoice_id' => $this->approval->invoice_id,
+                'role' => $role,
+                'user_id' => $user->id,
+                'action' => 'edited',
+                'notes' => $this->notes ?: 'Invoice telah diupdate',
+            ]);
+
+            DB::commit();
+
+            session()->flash('message', 'Invoice berhasil diperbarui');
             return redirect()->route('accounting.approval-penagihan');
 
         } catch (\Exception $e) {
@@ -431,6 +522,23 @@ class ApprovePenagihan extends Component
             // Recalculate total using the model method
             $this->invoice->recalculateTotal();
 
+            // Log change if in edit mode for completed invoice
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id' => $this->approval->invoice_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Refraksi diubah: ' . ($this->invoice->refraksi_type ?? 'tidak ada') . ' - ' . ($this->invoice->refraksi_value ?? 0),
+                ]);
+            }
+
             DB::commit();
 
             session()->flash('message', 'Refraksi berhasil diupdate');
@@ -472,9 +580,28 @@ class ApprovePenagihan extends Component
         }
 
         try {
+            $oldNumber = $this->invoice->invoice_number;
+
             $this->invoice->update([
                 'invoice_number' => $this->invoiceNumber,
             ]);
+
+            // Log change if in edit mode for completed invoice
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id' => $this->approval->invoice_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Nomor invoice diubah dari ' . $oldNumber . ' menjadi ' . $this->invoiceNumber,
+                ]);
+            }
 
             session()->flash('message', 'Nomor invoice berhasil diperbarui');
             $this->loadApproval();
@@ -517,11 +644,206 @@ class ApprovePenagihan extends Component
                 'due_date' => $this->dueDate,
             ]);
 
+            // Log change if in edit mode for completed invoice
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id' => $this->approval->invoice_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Tanggal invoice diubah menjadi ' . $this->invoiceDate . ' dengan jatuh tempo ' . $this->dueDate,
+                ]);
+            }
+
             session()->flash('message', 'Tanggal invoice berhasil diupdate');
             $this->loadApproval();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengupdate tanggal: ' . $e->getMessage());
+        }
+    }
+
+    public function updateCustomerInfo()
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        $this->validate([
+            'customerName' => 'required|string|max:255',
+            'customerAddress' => 'required|string',
+            'customerPhone' => 'nullable|string|max:20',
+            'customerEmail' => 'nullable|email|max:255',
+        ], [
+            'customerName.required' => 'Nama customer harus diisi',
+            'customerAddress.required' => 'Alamat customer harus diisi',
+            'customerEmail.email' => 'Format email tidak valid',
+        ]);
+
+        try {
+            $this->invoice->update([
+                'customer_name' => $this->customerName,
+                'customer_address' => $this->customerAddress,
+                'customer_phone' => $this->customerPhone,
+                'customer_email' => $this->customerEmail,
+            ]);
+
+            // Log change if in edit mode for completed invoice
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id' => $this->approval->invoice_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Informasi customer diubah: ' . $this->customerName,
+                ]);
+            }
+
+            session()->flash('message', 'Informasi customer berhasil diupdate');
+            $this->loadApproval();
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengupdate informasi customer: ' . $e->getMessage());
+        }
+    }
+
+    public function updateInvoiceNotes()
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        try {
+            $this->invoice->update([
+                'notes' => $this->invoiceNotes,
+            ]);
+
+            // Log change if in edit mode for completed invoice
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id' => $this->approval->invoice_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Catatan invoice diperbarui',
+                ]);
+            }
+
+            session()->flash('message', 'Catatan invoice berhasil diupdate');
+            $this->loadApproval();
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengupdate catatan: ' . $e->getMessage());
+        }
+    }
+
+    public function updateAllInvoiceFields()
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        // Validate all fields at once
+        $this->validate([
+            'invoiceNumber' => 'required|string|max:191',
+            'invoiceDate' => 'required|date',
+            'dueDate' => 'required|date|after_or_equal:invoiceDate',
+            'customerName' => 'required|string|max:255',
+            'customerAddress' => 'required|string',
+            'customerPhone' => 'nullable|string|max:20',
+            'customerEmail' => 'nullable|email|max:255',
+        ], [
+            'invoiceNumber.required' => 'Nomor invoice harus diisi',
+            'invoiceDate.required' => 'Tanggal invoice harus diisi',
+            'dueDate.required' => 'Tanggal jatuh tempo harus diisi',
+            'dueDate.after_or_equal' => 'Tanggal jatuh tempo harus sama atau setelah tanggal invoice',
+            'customerName.required' => 'Nama customer harus diisi',
+            'customerAddress.required' => 'Alamat customer harus diisi',
+            'customerEmail.email' => 'Format email tidak valid',
+        ]);
+
+        // Check if invoice number already exists (excluding current invoice)
+        $exists = InvoicePenagihan::where('invoice_number', $this->invoiceNumber)
+            ->where('id', '!=', $this->invoice->id)
+            ->exists();
+
+        if ($exists) {
+            session()->flash('error', 'Nomor invoice "' . $this->invoiceNumber . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update all invoice fields at once
+            $this->invoice->update([
+                'invoice_number' => $this->invoiceNumber,
+                'invoice_date' => $this->invoiceDate,
+                'due_date' => $this->dueDate,
+                'customer_name' => $this->customerName,
+                'customer_address' => $this->customerAddress,
+                'customer_phone' => $this->customerPhone,
+                'customer_email' => $this->customerEmail,
+                'notes' => $this->invoiceNotes,
+            ]);
+
+            // Log change if in edit mode for completed invoice
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+                
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id' => $this->approval->invoice_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Invoice diperbarui: ' . $this->invoiceNumber,
+                ]);
+            }
+
+            DB::commit();
+            
+            session()->flash('message', 'Semua perubahan berhasil disimpan');
+            return redirect()->route('accounting.approval-penagihan');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menyimpan perubahan: ' . $e->getMessage());
         }
     }
 

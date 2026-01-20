@@ -223,7 +223,7 @@
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900">
                         @if($activeTab === 'approved')
-                            Invoice Selesai (Approved)
+                            Invoice Selesai 
                         @else
                             Invoice Menunggu Approval
                         @endif
@@ -241,6 +241,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengiriman</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                         {{-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th> --}}
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -273,6 +275,22 @@
                                 @else
                                     <div class="text-sm text-gray-400 italic">-</div>
                                 @endif
+                            </td>
+                            <td class="px-6 py-4">
+                                @php
+                                    $products = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.nama')->filter();
+                                @endphp
+                                @if($products->count() > 0)
+                                    <div class="text-sm font-medium text-gray-900">{{ $products->first() }}</div>
+                                    @if($products->count() > 1)
+                                        <div class="text-xs text-gray-500">+{{ $products->count() - 1 }} produk lainnya</div>
+                                    @endif
+                                @else
+                                    <div class="text-sm text-gray-400 italic">-</div>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ number_format($approval->pengiriman->pengirimanDetails->sum('qty_kirim'), 2, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 2, ',', '.') }}</div>
@@ -310,7 +328,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center">
+                            <td colspan="9" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
                                     <p class="text-gray-500 text-sm">Belum ada invoice yang dibuat</p>

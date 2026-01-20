@@ -823,7 +823,7 @@ class ApprovePenagihan extends Component
             if ($this->editMode && $this->approval->status === 'completed') {
                 $user = Auth::user();
                 $role = $this->getUserRole($user);
-                
+
                 ApprovalHistory::create([
                     'approval_type' => 'penagihan',
                     'approval_id' => $this->approval->id,
@@ -837,7 +837,7 @@ class ApprovePenagihan extends Component
             }
 
             DB::commit();
-            
+
             session()->flash('message', 'Semua perubahan berhasil disimpan');
             return redirect()->route('accounting.approval-penagihan');
 

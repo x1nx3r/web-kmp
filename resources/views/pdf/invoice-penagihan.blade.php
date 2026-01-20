@@ -314,18 +314,18 @@
     <table class="info-table">
         <thead>
             <tr>
-                <th style="width: 25%;">NO. INVOICE</th>
-                <th style="width: 25%;">NO. PO</th>
-                <th style="width: 25%;">TANGGAL INVOICE</th>
-                <th style="width: 25%;">JATUH TEMPO</th>
+                <th style="width: 25%; text-align: center;">NO. INVOICE</th>
+                <th style="width: 25%; text-align: center;">NO. PO</th>
+                <th style="width: 25%; text-align: center;">TANGGAL INVOICE</th>
+                <th style="width: 25%; text-align: center;">JATUH TEMPO</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>{{ $invoice->invoice_number }}</td>
-                <td>{{ $pengiriman->purchaseOrder->po_number ?? $pengiriman->purchaseOrder->no_order ?? '-' }}</td>
-                <td>{{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
-                <td>{{ \Carbon\Carbon::parse($invoice->due_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
+                <td class="text-center">{{ $invoice->invoice_number }}</td>
+                <td class="text-center">{{ $pengiriman->purchaseOrder->po_number ?? $pengiriman->purchaseOrder->no_order ?? '-' }}</td>
+                <td class="text-center">{{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
+                <td class="text-center">{{ \Carbon\Carbon::parse($invoice->due_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
             </tr>
         </tbody>
     </table>
@@ -335,10 +335,10 @@
         <thead>
             <tr>
                 <th style="width: 5%;" class="text-center">NO</th>
-                <th style="width: 40%;">DESKRIPSI</th>
+                <th style="width: 40%; text-align: left;">DESKRIPSI</th>
                 <th style="width: 15%;" class="text-center">QTY PER KG</th>
-                <th style="width: 18%;" class="text-right">HARGA SATUAN<br>PER-KG</th>
-                <th style="width: 22%;" class="text-right">TOTAL HARGA</th>
+                <th style="width: 18%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
+                <th style="width: 22%;" class="text-center">TOTAL HARGA</th>
             </tr>
         </thead>
         <tbody>
@@ -350,10 +350,10 @@
                 @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
+                    <td style="text-align: left;">{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
                     <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($hargaJual, 2, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
+                    <td class="text-center">Rp {{ number_format($hargaJual, 2, ',', '.') }}</td>
+                    <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>

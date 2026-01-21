@@ -55,6 +55,37 @@ class ApprovalPenagihan extends Component
         'invoiceForm.notes' => 'nullable|string',
     ];
 
+    public function updatingSearch()
+    {
+        $this->resetPage();
+        $this->resetPage('page_without_invoice');
+    }
+
+    public function updatingCustomerFilter()
+    {
+        $this->resetPage();
+        $this->resetPage('page_without_invoice');
+    }
+
+    public function updatingSupplierFilter()
+    {
+        $this->resetPage();
+        $this->resetPage('page_without_invoice');
+    }
+
+    public function setActiveTab($tab)
+    {
+        $this->activeTab = $tab;
+        $this->resetPage();
+        $this->resetPage('page_without_invoice');
+    }
+
+    public function gotoPage($page, $pageName = 'page_approval')
+    {
+        // Use Livewire's setPage method from WithPagination trait
+        parent::setPage($page, $pageName);
+    }
+
     public function render()
     {
         // Get pengiriman with status 'berhasil' OR 'menunggu_verifikasi' AND approval_pembayaran completed
@@ -502,22 +533,5 @@ class ApprovalPenagihan extends Component
             'refraksi_value' => 0,
             'notes' => '',
         ];
-    }
-
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingStatusFilter()
-    {
-        $this->resetPage();
-    }
-
-    public function setActiveTab($tab)
-    {
-        $this->activeTab = $tab;
-        $this->statusFilter = 'all';
-        $this->resetPage();
     }
 }

@@ -18,6 +18,8 @@ class CatatanPiutangPabrik extends Component
 {
     use WithPagination, WithFileUploads;
 
+    protected $paginationTheme = 'tailwind';
+
     public $search = '';
     public $klienFilter = 'all';
     public $statusFilter = 'all'; // all, belum_bayar, cicilan, lunas, overdue
@@ -51,11 +53,61 @@ class CatatanPiutangPabrik extends Component
         'statusFilter' => ['except' => 'all'],
         'bulanFilter' => ['except' => ''],
         'tahunFilter' => ['except' => ''],
+        'pabrikPage' => ['except' => 1, 'as' => 'page'],
     ];
+
+    public $pabrikPage = 1;
 
     public function mount()
     {
         // No need to update statuses for invoice-based piutang
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage('pabrikPage');
+    }
+
+    public function updatingKlienFilter()
+    {
+        $this->resetPage('pabrikPage');
+    }
+
+    public function updatingStatusFilter()
+    {
+        $this->resetPage('pabrikPage');
+    }
+
+    public function updatingBulanFilter()
+    {
+        $this->resetPage('pabrikPage');
+    }
+
+    public function updatingTahunFilter()
+    {
+        $this->resetPage('pabrikPage');
+    }
+
+    public function resetPage($pageName = 'pabrikPage')
+    {
+        $this->pabrikPage = 1;
+    }
+
+    public function gotoPage($page)
+    {
+        $this->pabrikPage = $page;
+    }
+
+    public function nextPage()
+    {
+        $this->pabrikPage++;
+    }
+
+    public function previousPage()
+    {
+        if ($this->pabrikPage > 1) {
+            $this->pabrikPage--;
+        }
     }
 
     public function render()
@@ -139,15 +191,17 @@ class CatatanPiutangPabrik extends Component
             }
         });
 
-        // Manual pagination
-        $page = request()->get('page', 1);
+        // Manual pagination with custom page name to avoid conflicts with parent component
         $perPage = 10;
         $paginatedInvoices = new \Illuminate\Pagination\LengthAwarePaginator(
-            $sortedInvoices->forPage($page, $perPage)->values(),
+            $sortedInvoices->forPage($this->pabrikPage, $perPage)->values(),
             $sortedInvoices->count(),
             $perPage,
-            $page,
-            ['path' => request()->url(), 'query' => request()->query()]
+            $this->pabrikPage,
+            [
+                'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
+                'pageName' => 'page',
+            ]
         );
 
         $kliens = Klien::orderBy('nama')->get();

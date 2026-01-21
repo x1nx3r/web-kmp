@@ -80,6 +80,31 @@ class CatatanPiutang extends Component
         'keterangan' => 'nullable|string',
     ];
 
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSupplierFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingBulanFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTahunFilter()
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $query = CatatanPiutangModel::with(['supplier', 'creator', 'pembayaran']);
@@ -429,30 +454,5 @@ class CatatanPiutang extends Component
             'deletePiutang',
         ]);
         $this->metode_pembayaran = 'transfer';
-    }
-
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingStatusFilter()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingSupplierFilter()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingBulanFilter()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingTahunFilter()
-    {
-        $this->resetPage();
     }
 }

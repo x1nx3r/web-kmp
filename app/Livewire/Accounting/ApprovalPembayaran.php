@@ -33,6 +33,22 @@ class ApprovalPembayaran extends Component
         'activeTab' => ['except' => 'pending'],
     ];
 
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function gotoPage($page, $pageName = 'page')
+    {
+        // Use Livewire's setPage method from WithPagination trait
+        parent::setPage($page, $pageName);
+    }
+
     public function render()
     {
         $query = ApprovalPembayaranModel::with([
@@ -241,14 +257,5 @@ class ApprovalPembayaran extends Component
         }
 
         return null;
-    }
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingStatusFilter()
-    {
-        $this->resetPage();
     }
 }

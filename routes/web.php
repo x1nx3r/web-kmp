@@ -62,6 +62,10 @@ Route::middleware(["auth"])->group(function () {
             Route::post('/omset/marketing-pdf', [LaporanOmsetController::class, 'exportMarketingPDF'])->name('omset.marketingPDF');
             Route::get('/omset/procurement-details', [LaporanOmsetController::class, 'getProcurementDetails'])->name('omset.procurementDetails');
             Route::post('/omset/procurement-pdf', [LaporanOmsetController::class, 'exportProcurementPDF'])->name('omset.procurementPDF');
+            
+            // Procurement Target Routes (AJAX only, no separate page)
+            Route::post('/omset/procurement-target/set', [LaporanOmsetController::class, 'setProcurementTarget'])->name('omset.setProcurementTarget');
+            Route::get('/omset/procurement-target/data', [LaporanOmsetController::class, 'getProcurementTargetData'])->name('omset.getProcurementTargetData');
 
             Route::get('/pengiriman', [LaporanPengirimanController::class, 'index'])->name('pengiriman');
             Route::match(['GET', 'POST'], '/pengiriman/export', [LaporanPengirimanController::class, 'export'])->name('pengiriman.export');

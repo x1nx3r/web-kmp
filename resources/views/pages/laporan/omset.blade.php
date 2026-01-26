@@ -204,6 +204,9 @@
     </div>
 </div>
 
+{{-- Include Procurement Target Section --}}
+@include('pages.laporan.partials.procurement_target')
+
 {{-- Include Klien Chart Section --}}
 @include('pages.laporan.partials.klien_chart')
 
@@ -212,6 +215,8 @@
 
 {{-- Include Bahan Baku Chart Section --}}
 @include('pages.laporan.partials.bahan_baku_chart')
+
+
 
 {{-- Chart.js Script --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

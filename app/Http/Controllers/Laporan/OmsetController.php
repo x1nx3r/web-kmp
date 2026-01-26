@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\Pengiriman;
 use App\Models\TargetOmset;
 use App\Models\OmsetManual;
+use App\Models\TargetOmsetProcurement;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\BahanBakuKlien;
 use App\Models\InvoicePenagihan;
@@ -1669,5 +1671,225 @@ class OmsetController extends Controller
     {
         // TODO: Implement export functionality
         return response()->json(['message' => 'Export functionality will be implemented']);
+    }
+
+    /**
+     * Set procurement target percentages
+     */
+    public function setProcurementTarget(Request $request)
+    {
+        try {
+            // Only direktur can set targets
+            if (!Auth::user()->isDirektur()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized action.'
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'tahun' => 'required|integer',
+                'targets' => 'required|array',
+                'targets.*.user_id' => 'required|exists:users,id',
+                'targets.*.persentase' => 'required|numeric|min:0|max:100',
+            ]);
+
+            $tahun = $validated['tahun'];
+            $targets = $validated['targets'];
+
+            // Calculate total percentage
+            $totalPersentase = collect($targets)->sum('persentase');
+
+            if ($totalPersentase > 100) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Total persentase tidak boleh lebih dari 100%'
+                ], 422);
+            }
+
+            // Save each target
+            foreach ($targets as $target) {
+                TargetOmsetProcurement::setTarget(
+                    $target['user_id'],
+                    $tahun,
+                    $target['persentase'],
+                    Auth::id()
+                );
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Target procurement berhasil disimpan',
+                'total_persentase' => $totalPersentase
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan target: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get procurement target data with actual omset
+     */
+    public function getProcurementTargetData(Request $request)
+    {
+        try {
+            $tahun = $request->get('tahun', Carbon::now()->year);
+            $bulan = $request->get('bulan'); // Optional: specific month (1-12)
+            $minggu = $request->get('minggu'); // Optional: specific week (1-4)
+            
+            // If request is for getting users list
+            if ($request->get('get_users')) {
+                $users = User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])
+                    ->where('status', 'aktif')
+                    ->orderBy('nama')
+                    ->get(['id', 'nama', 'role']);
+                
+                $targets = TargetOmsetProcurement::where('tahun', $tahun)
+                    ->pluck('persentase_target', 'user_id')
+                    ->toArray();
+                
+                return response()->json([
+                    'success' => true,
+                    'users' => $users,
+                    'targets' => $targets
+                ]);
+            }
+
+            // Get target omset for the year
+            $targetOmset = TargetOmset::getTargetForYear($tahun);
+
+            if (!$targetOmset) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Target omset untuk tahun ' . $tahun . ' belum ditetapkan'
+                ], 404);
+            }
+
+            // Get procurement targets
+            $procurementTargets = TargetOmsetProcurement::with('user')
+                ->where('tahun', $tahun)
+                ->get();
+
+            // If no targets set, return empty data
+            if ($procurementTargets->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'target_omset' => [
+                        'tahunan' => $targetOmset->target_tahunan,
+                        'bulanan' => $targetOmset->target_bulanan,
+                        'mingguan' => $targetOmset->target_mingguan,
+                    ],
+                    'message' => 'Belum ada target procurement yang ditetapkan untuk tahun ' . $tahun
+                ]);
+            }
+
+            $data = [];
+
+            foreach ($procurementTargets as $target) {
+                $userId = $target->user_id;
+
+                // Calculate target amount based on period
+                if ($minggu && $bulan) {
+                    // Weekly target
+                    $targetAmount = $target->calculateTargetAmount($targetOmset, 'weekly');
+                    $actualOmset = $this->calculateProcurementOmset($userId, $tahun, $bulan, $minggu);
+                } elseif ($bulan) {
+                    // Monthly target
+                    $targetAmount = $target->calculateTargetAmount($targetOmset, 'monthly');
+                    $actualOmset = $this->calculateProcurementOmset($userId, $tahun, $bulan);
+                } else {
+                    // Yearly target
+                    $targetAmount = $target->calculateTargetAmount($targetOmset, 'yearly');
+                    $actualOmset = $this->calculateProcurementOmset($userId, $tahun);
+                }
+
+                $progress = $targetAmount > 0 ? ($actualOmset / $targetAmount) * 100 : 0;
+                $selisih = $actualOmset - $targetAmount;
+
+                $data[] = [
+                    'user_id' => $userId,
+                    'nama' => $target->user->nama,
+                    'role' => $target->user->role,
+                    'persentase_target' => $target->persentase_target,
+                    'target_amount' => $targetAmount,
+                    'actual_omset' => $actualOmset,
+                    'progress' => round($progress, 2),
+                    'selisih' => $selisih,
+                    'status' => $selisih >= 0 ? 'tercapai' : 'belum_tercapai'
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+                'target_omset' => [
+                    'tahunan' => $targetOmset->target_tahunan,
+                    'bulanan' => $targetOmset->target_bulanan,
+                    'mingguan' => $targetOmset->target_mingguan,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate actual omset for a procurement user
+     */
+    private function calculateProcurementOmset($userId, $tahun, $bulan = null, $minggu = null)
+    {
+        $query = DB::table('pengiriman')
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+            ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+            ->where('pengiriman.purchasing_id', $userId)
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->whereNull('pengiriman.deleted_at')
+            ->whereYear('pengiriman.tanggal_kirim', $tahun);
+
+        // Filter by month if specified
+        if ($bulan) {
+            $query->whereMonth('pengiriman.tanggal_kirim', $bulan);
+        }
+
+        // Filter by week if specified (1-4 in a month)
+        if ($minggu && $bulan) {
+            $startOfMonth = Carbon::create($tahun, $bulan, 1)->startOfDay();
+            
+            if ($minggu == 1) {
+                $startOfWeek = $startOfMonth->copy();
+            } else {
+                $startOfWeek = $startOfMonth->copy()->addDays(($minggu - 1) * 7);
+            }
+            
+            if ($minggu == 4) {
+                $endOfWeek = $startOfMonth->copy()->endOfMonth();
+            } else {
+                $endOfWeek = $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+            }
+            
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()]);
+        }
+
+        $result = $query->select(
+                'pengiriman.id',
+                DB::raw('COALESCE(
+                    MAX(invoice_penagihan.amount_after_refraksi),
+                    SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                ) as omset_pengiriman')
+            )
+            ->groupBy('pengiriman.id')
+            ->get();
+
+        return $result->sum('omset_pengiriman');
     }
 }

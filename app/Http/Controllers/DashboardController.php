@@ -709,17 +709,17 @@ class DashboardController extends Controller
         $tahun = $request->get('tahun', Carbon::now()->year);
         $search = $request->get('search', '');
         
-        // Get top 5 supplier berdasarkan total omset tahun ini (with optional search filter & fallback logic)
+        // Using approval_pembayaran.amount_after_refraksi with fallback to pengiriman_details.total_harga
         $topSupplierQuery = DB::table('pengiriman')
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
             ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
             ->select('suppliers.id as supplier_id', 'suppliers.nama', 'pengiriman.id as pengiriman_id',
                 DB::raw('COALESCE(
-                    MAX(invoice_penagihan.amount_after_refraksi),
-                    SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                    MAX(approval_pembayaran.amount_after_refraksi),
+                    SUM(pengiriman_details.total_harga)
                 ) as omset_pengiriman'))
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', $tahun)
@@ -763,9 +763,10 @@ class DashboardController extends Controller
             $monthData = [];
             
             foreach ($topSupplier as $supplier) {
-                // Get omset untuk supplier ini di bulan ini (dengan fallback logic)
+                // Get omset untuk supplier ini di bulan ini
+                // Using approval_pembayaran.amount_after_refraksi with fallback to pengiriman_details.total_harga
                 $omsetBulan = DB::table('pengiriman')
-                    ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
                     ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
@@ -777,8 +778,8 @@ class DashboardController extends Controller
                     ->select(
                         'pengiriman.id',
                         DB::raw('COALESCE(
-                            MAX(invoice_penagihan.amount_after_refraksi),
-                            SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                            MAX(approval_pembayaran.amount_after_refraksi),
+                            SUM(pengiriman_details.total_harga)
                         ) as omset_pengiriman')
                     )
                     ->groupBy('pengiriman.id')

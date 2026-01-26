@@ -27,6 +27,8 @@ class PengirimanController extends Controller
         $status = $request->get('status');
         $purchasing = $request->get('purchasing');
         $search = $request->get('search');
+        $pabrik = $request->get('pabrik');
+        $supplier = $request->get('supplier');
         
         // Calculate weekly statistics - mengikuti logic dari dashboard (pembagian bulan menjadi 4 minggu)
         $startOfMonth = Carbon::now()->startOfMonth();
@@ -127,10 +129,30 @@ class PengirimanController extends Controller
             });
         }
         
+        // Filter by pabrik (klien)
+        if ($pabrik) {
+            $pengirimanQuery->whereHas('order.klien', function($q) use ($pabrik) {
+                $q->where('id', $pabrik);
+            });
+        }
+        
+        // Filter by supplier
+        if ($supplier) {
+            $pengirimanQuery->whereHas('pengirimanDetails.bahanBakuSupplier.supplier', function($q) use ($supplier) {
+                $q->where('id', $supplier);
+            });
+        }
+        
         $pengirimanData = $pengirimanQuery->orderBy('pengiriman.tanggal_kirim', 'desc')->paginate(15);
         
         // Get purchasing users for filter dropdown (including direktur)
         $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
+        
+        // Get pabrik (klien) list for filter dropdown
+        $pabrikList = \App\Models\Klien::orderBy('nama', 'asc')->get();
+        
+        // Get supplier list for filter dropdown
+        $supplierList = \App\Models\Supplier::orderBy('nama', 'asc')->get();
         
         return view('pages.laporan.pengiriman', compact(
             'title', 
@@ -142,11 +164,15 @@ class PengirimanController extends Controller
             'yearRange',
             'pengirimanData',
             'purchasingUsers',
+            'pabrikList',
+            'supplierList',
             'startDate',
             'endDate',
             'status',
             'purchasing',
             'search',
+            'pabrik',
+            'supplier',
             'pieChartFilter',
             'pieChartStartDate',
             'pieChartEndDate',
@@ -424,9 +450,24 @@ class PengirimanController extends Controller
         $status = $request->get('status');
         $purchasing = $request->get('purchasing');
         $search = $request->get('search');
+        $pabrik = $request->get('pabrik');
+        $supplier = $request->get('supplier');
 
         // Get purchasing users for filter information
         $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])->get();
+        
+        // Get pabrik and supplier names for filter information
+        $pabrikName = null;
+        if ($pabrik) {
+            $pabrikModel = \App\Models\Klien::find($pabrik);
+            $pabrikName = $pabrikModel ? $pabrikModel->nama : null;
+        }
+        
+        $supplierName = null;
+        if ($supplier) {
+            $supplierModel = \App\Models\Supplier::find($supplier);
+            $supplierName = $supplierModel ? $supplierModel->nama : null;
+        }
 
         // Debug: Check if data exists
         $pengirimanCount = Pengiriman::whereBetween('tanggal_kirim', [$startDate, $endDate])->count();
@@ -441,7 +482,7 @@ class PengirimanController extends Controller
 
         // Export menggunakan Laravel Excel
         return Excel::download(
-            new PengirimanExport($startDate, $endDate, $status, $purchasing, $search, $purchasingUsers),
+            new PengirimanExport($startDate, $endDate, $status, $purchasing, $search, $purchasingUsers, $pabrik, $pabrikName, $supplier, $supplierName),
             $filename
         );
         

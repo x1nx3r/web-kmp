@@ -353,7 +353,7 @@
     </div>
     <div class="p-4 sm:p-6">
         <form method="GET" class="space-y-4">
-            <div class="grid grid-cols-3  md:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
                     <input type="date" name="start_date" value="{{ $startDate }}" 
@@ -381,6 +381,26 @@
                         <option value="">Semua PIC</option>
                         @foreach($purchasingUsers as $user)
                             <option value="{{ $user->id }}" {{ $purchasing == $user->id ? 'selected' : '' }}>{{ $user->nama }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Pabrik</label>
+                    <select name="pabrik" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                        <option value="">Semua Pabrik</option>
+                        @foreach($pabrikList as $pabrikItem)
+                            <option value="{{ $pabrikItem->id }}" {{ $pabrik == $pabrikItem->id ? 'selected' : '' }}>
+                                {{ $pabrikItem->nama }}{{ $pabrikItem->cabang ? ' - ' . $pabrikItem->cabang : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
+                    <select name="supplier" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                        <option value="">Semua Supplier</option>
+                        @foreach($supplierList as $supplierItem)
+                            <option value="{{ $supplierItem->id }}" {{ $supplier == $supplierItem->id ? 'selected' : '' }}>{{ $supplierItem->nama }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -431,13 +451,15 @@
                 <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                     <tr>
                         <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No</th>
-                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No. Pengiriman</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No. PO</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Pabrik</th>
+                       
                         <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Tanggal Kirim</th>
                         <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">PIC Procurement</th>
-                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">PO Terkait</th>
-                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Qty Kirim</th>
-                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Total Harga</th>
-                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                        <th class="px-3 sm:px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Qty Kirim</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden xl:table-cell">Supplier</th>
+                        <th class="px-3 sm:px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Harga Beli/Kg</th>
+                        <th class="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -450,13 +472,23 @@
                             {{ ($pengirimanData->currentPage() - 1) * $pengirimanData->perPage() + $index + 1 }}
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-semibold text-gray-900">
-                                {{ $pengiriman->no_pengiriman ?: 'PG-' . str_pad($pengiriman->id, 4, '0', STR_PAD_LEFT) }}
+                            <div class="text-sm font-semibold text-blue-600">
+                                {{ $pengiriman->order->po_number ?? '-' }}
                             </div>
+                            <div class="text-xs text-gray-500 lg:hidden">
+                                {{ $pengiriman->order->klien->nama ?? '-' }}
+                            </div>
+                        </td>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden lg:table-cell">
+                            {{ $pengiriman->order->klien->nama ?? '-' }}
+                            @if($pengiriman->order->klien->cabang ?? false)
+                                <span class="text-xs text-gray-500">({{ $pengiriman->order->klien->cabang }})</span>
+                            @endif
+                        </td>
+                            
                             <div class="text-xs text-gray-500 sm:hidden">
                                 {{ $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('d/m/Y') : '-' }}
                             </div>
-                        </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                             <div class="flex items-center">
                                 <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>
@@ -464,37 +496,41 @@
                             </div>
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                
-                                <div>
-                                    <div class="text-sm font-medium text-gray-900">
-                                        {{ $pengiriman->purchasing->nama ?? '-' }}
-                                    </div>
-                                    <div class="text-xs text-gray-500 lg:hidden">
-                                        {{ $pengiriman->po_number ?? '-' }}
-                                    </div>
-                                </div>
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ $pengiriman->purchasing->nama ?? '-' }}
                             </div>
                         </td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">
-                            <div class="flex items-center">
-                                {{ $pengiriman->po_number ?? '-' }}
-                            </div>
-                        </td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-right">
                             <div class="text-sm font-semibold text-gray-900">
-                                {{ number_format($pengiriman->total_qty_kirim ?? 0, 2, ',', '.') }} Kg
-                            </div>
-                            <div class="text-xs text-gray-500 md:hidden">
-                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 2, ',', '.') }}
+                                {{ number_format($pengiriman->total_qty_kirim ?? 0, 2, ',', '.') }}
                             </div>
                         </td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold hidden md:table-cell">
-                            <div class="flex items-center">
-                                Rp {{ number_format($pengiriman->display_harga ?? $pengiriman->total_harga_kirim ?? 0, 2, ',', '.') }}
-                            </div>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden xl:table-cell">
+                            @php
+                                $suppliers = $pengiriman->pengirimanDetails->map(function($detail) {
+                                    return $detail->bahanBakuSupplier->supplier->nama ?? '-';
+                                })->unique()->values();
+                            @endphp
+                            @if($suppliers->count() > 1)
+                                <div class="text-xs">{{ $suppliers->first() }}</div>
+                                <div class="text-xs text-gray-500">+{{ $suppliers->count() - 1 }} lainnya</div>
+                            @else
+                                {{ $suppliers->first() ?? '-' }}
+                            @endif
                         </td>
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900 hidden md:table-cell">
+                            @php
+                                $totalHarga = 0;
+                                $totalQty = 0;
+                                foreach($pengiriman->pengirimanDetails as $detail) {
+                                    $totalHarga += ($detail->harga_satuan ?? 0) * ($detail->qty_kirim ?? 0);
+                                    $totalQty += $detail->qty_kirim ?? 0;
+                                }
+                                $avgHarga = $totalQty > 0 ? $totalHarga / $totalQty : 0;
+                            @endphp
+                            Rp {{ number_format($avgHarga, 0, ',', '.') }}
+                        </td>
+                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-center">
                             @switch($pengiriman->status)
                                 @case('pending')
                                     <span class="inline-flex items-center px-2 sm:px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 shadow-sm">

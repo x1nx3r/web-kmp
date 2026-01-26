@@ -108,6 +108,10 @@
     </div>
 </div>
 
+{{-- Load Chart.js and DataLabels Plugin --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
 <script>
 // Procurement Target Variables
 let procurementUsers = [];

@@ -24,8 +24,12 @@ class PengirimanExport implements
     protected $purchasing;
     protected $search;
     protected $purchasingUsers;
+    protected $pabrik;
+    protected $pabrikName;
+    protected $supplier;
+    protected $supplierName;
 
-    public function __construct($startDate, $endDate, $status = null, $purchasing = null, $search = null, $purchasingUsers = null)
+    public function __construct($startDate, $endDate, $status = null, $purchasing = null, $search = null, $purchasingUsers = null, $pabrik = null, $pabrikName = null, $supplier = null, $supplierName = null)
     {
         $this->startDate = $startDate;
         $this->endDate = $endDate;
@@ -33,6 +37,10 @@ class PengirimanExport implements
         $this->purchasing = $purchasing;
         $this->search = $search;
         $this->purchasingUsers = $purchasingUsers;
+        $this->pabrik = $pabrik;
+        $this->pabrikName = $pabrikName;
+        $this->supplier = $supplier;
+        $this->supplierName = $supplierName;
     }
 
     /**
@@ -59,6 +67,12 @@ class PengirimanExport implements
                 ($this->purchasingUsers->find($this->purchasing)->nama ?? 'Unknown') : 
                 'ID: ' . $this->purchasing;
             $filterInfo[] = 'PIC Purchasing: ' . $purchasingName;
+        }
+        if ($this->pabrik && $this->pabrikName) {
+            $filterInfo[] = 'Pabrik: ' . $this->pabrikName;
+        }
+        if ($this->supplier && $this->supplierName) {
+            $filterInfo[] = 'Supplier: ' . $this->supplierName;
         }
         if ($this->search) {
             $filterInfo[] = 'Pencarian: ' . $this->search;
@@ -325,6 +339,20 @@ class PengirimanExport implements
                   ->orWhereHas('purchasing', function($q2) {
                       $q2->where('nama', 'like', "%{$this->search}%");
                   });
+            });
+        }
+        
+        // Filter by pabrik (klien)
+        if ($this->pabrik) {
+            $query->whereHas('order.klien', function($q) {
+                $q->where('id', $this->pabrik);
+            });
+        }
+        
+        // Filter by supplier
+        if ($this->supplier) {
+            $query->whereHas('pengirimanDetails.bahanBakuSupplier.supplier', function($q) {
+                $q->where('id', $this->supplier);
             });
         }
 

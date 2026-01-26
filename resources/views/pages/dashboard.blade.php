@@ -363,6 +363,11 @@
                 <p class="text-sm text-gray-500 mt-1">Seluruh pengiriman dengan margin minggu ini ({{ count($topMarginMingguIni) }} pengiriman)</p>
             </div>
             <div class="flex gap-2">
+                <a href="{{ route('dashboard.margin-minggu-ini.excel') }}" 
+                   class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2">
+                    <i class="fas fa-file-excel"></i>
+                    Download Excel
+                </a>
                 <a href="{{ route('dashboard.margin-minggu-ini.pdf') }}" 
                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm flex items-center gap-2">
                     <i class="fas fa-file-pdf"></i>

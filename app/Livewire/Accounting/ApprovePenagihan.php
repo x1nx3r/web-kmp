@@ -156,6 +156,11 @@ class ApprovePenagihan extends Component
      */
     private function syncRefraksiFromPembayaran()
     {
+        // Check if pengiriman exists first
+        if (!$this->pengiriman) {
+            return;
+        }
+
         // Cek apakah pengiriman punya approval pembayaran dengan refraksi
         $approvalPembayaran = $this->pengiriman->approvalPembayaran;
 
@@ -453,6 +458,11 @@ class ApprovePenagihan extends Component
 
         if (!$this->invoice) {
             session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        if (!$this->pengiriman) {
+            session()->flash('error', 'Data pengiriman tidak ditemukan');
             return;
         }
 
@@ -875,30 +885,36 @@ class ApprovePenagihan extends Component
     public function render()
     {
         // Calculate financial summary from order
-        $order = $this->pengiriman->purchaseOrder ?? null;
-
-        // Refresh pengiriman data untuk memastikan nilai terbaru
-        $this->pengiriman->refresh();
-
-        // Ambil total harga supplier (beli) dari total_harga_kirim pengiriman
-        $totalSupplierCost = floatval($this->pengiriman->total_harga_kirim ?? 0);
+        $order = null;
+        $totalSupplierCost = 0;
         $totalSelling = 0;
         $totalMargin = 0;
         $marginPercentage = 0;
 
-        // Hitung total harga jual berdasarkan qty kirim × harga jual
-        if ($this->pengiriman->pengirimanDetails) {
-            foreach ($this->pengiriman->pengirimanDetails as $detail) {
-                // Ambil harga jual dari order detail
-                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                if ($orderDetail && $orderDetail->harga_jual) {
-                    // Total = qty kirim × harga jual
-                    $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
-                }
-            }
+        // Check if pengiriman exists
+        if ($this->pengiriman) {
+            $order = $this->pengiriman->purchaseOrder ?? null;
 
-            $totalMargin = $totalSelling - $totalSupplierCost;
-            $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
+            // Refresh pengiriman data untuk memastikan nilai terbaru
+            $this->pengiriman->refresh();
+
+            // Ambil total harga supplier (beli) dari total_harga_kirim pengiriman
+            $totalSupplierCost = floatval($this->pengiriman->total_harga_kirim ?? 0);
+
+            // Hitung total harga jual berdasarkan qty kirim × harga jual
+            if ($this->pengiriman->pengirimanDetails) {
+                foreach ($this->pengiriman->pengirimanDetails as $detail) {
+                    // Ambil harga jual dari order detail
+                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                    if ($orderDetail && $orderDetail->harga_jual) {
+                        // Total = qty kirim × harga jual
+                        $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+                    }
+                }
+
+                $totalMargin = $totalSelling - $totalSupplierCost;
+                $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
+            }
         }
 
         return view('livewire.accounting.approve-penagihan', [

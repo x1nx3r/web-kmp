@@ -254,6 +254,7 @@
                         @endif
 
                         {{-- Pengiriman Information --}}
+                        @if($pengiriman)
                         <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <i class="fas fa-truck text-blue-600 mr-2"></i>
@@ -289,6 +290,14 @@
                                 </div>
                             </div>
                         </div>
+                        @else
+                        <div class="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
+                            <p class="text-sm text-yellow-700">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                Data pengiriman tidak tersedia
+                            </p>
+                        </div>
+                        @endif
 
                         {{-- Refraksi & Calculation --}}
                         <div class="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg p-6 border border-yellow-200">
@@ -343,7 +352,7 @@
                                 <div class="mb-4 p-4 bg-white rounded-lg border border-yellow-300">
                                     <div class="flex items-center justify-between mb-2">
                                         <p class="text-sm font-semibold text-gray-700">Refraksi Saat Ini:</p>
-                                        @if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->refraksi_value > 0)
+                                        @if($pengiriman && $pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->refraksi_value > 0)
                                             <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
                                                 <i class="fas fa-sync-alt mr-1"></i>
                                                 Dari Pembayaran
@@ -382,7 +391,7 @@
                                     <p class="text-sm text-red-600 font-semibold mt-2">
                                         Potongan: Rp {{ number_format($invoice->refraksi_amount, 2, ',', '.') }}
                                     </p>
-                                    @if($pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->refraksi_value > 0)
+                                    @if($pengiriman && $pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->refraksi_value > 0)
                                         <p class="text-xs text-blue-600 mt-2">
                                             <i class="fas fa-info-circle mr-1"></i>
                                             Refraksi otomatis diambil dari approval pembayaran

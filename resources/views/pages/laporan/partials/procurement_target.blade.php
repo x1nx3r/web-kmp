@@ -247,12 +247,11 @@ function saveProcurementTargets() {
         const persentase = parseFloat(input.value) || 0;
         total += persentase;
         
-        if (persentase > 0) {
-            targets.push({
-                user_id: userId,
-                persentase: persentase
-            });
-        }
+        // Simpan semua target termasuk yang 0% (untuk reset/nonaktifkan procurement)
+        targets.push({
+            user_id: userId,
+            persentase: persentase
+        });
     });
     
     if (total > 100) {
@@ -362,12 +361,15 @@ function loadProcurementProgress() {
 
 // Render Procurement Progress (Donut Chart + Cards)
 function renderProcurementProgress(data, period) {
-    if (!data || data.length === 0) {
+    // Filter out procurement dengan target 0%
+    const activeData = data ? data.filter(item => parseFloat(item.persentase_target) > 0) : [];
+    
+    if (!activeData || activeData.length === 0) {
         document.getElementById('procurementProgressContent').innerHTML = `
             <div class="text-center py-12 text-gray-400">
                 <i class="fas fa-user-slash text-4xl mb-2"></i>
-                <p class="font-semibold mb-2">Belum Ada Target Procurement</p>
-                <p class="text-sm">Direktur perlu mengatur target procurement terlebih dahulu</p>
+                <p class="font-semibold mb-2">Belum Ada Target Procurement Aktif</p>
+                <p class="text-sm">Tidak ada procurement dengan target > 0% untuk periode ini</p>
             </div>
         `;
         return;
@@ -391,6 +393,11 @@ function renderProcurementProgress(data, period) {
     `;
     
     data.forEach((item, index) => {
+        // Skip procurement dengan target 0%
+        if (parseFloat(item.persentase_target) <= 0) {
+            return;
+        }
+        
         const progressPercent = item.progress;
         const statusColor = item.status === 'tercapai' ? 'green' : 'red';
         const progressBarColor = progressPercent >= 100 ? 'bg-green-500' : (progressPercent >= 70 ? 'bg-yellow-500' : 'bg-red-500');
@@ -448,8 +455,16 @@ function renderProcurementChart(data) {
         procurementChartInstance.destroy();
     }
     
-    const labels = data.map(item => item.nama);
-    const actualData = data.map(item => parseFloat(item.actual_omset));
+    // Filter out procurement dengan target 0%
+    const activeData = data.filter(item => parseFloat(item.persentase_target) > 0);
+    
+    // If no active procurement, don't render chart
+    if (activeData.length === 0) {
+        return;
+    }
+    
+    const labels = activeData.map(item => item.nama);
+    const actualData = activeData.map(item => parseFloat(item.actual_omset));
     const totalOmset = actualData.reduce((a, b) => a + b, 0);
     const percentages = actualData.map(value => ((value / totalOmset) * 100).toFixed(1));
     

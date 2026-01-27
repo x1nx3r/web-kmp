@@ -115,7 +115,8 @@ class ApprovalPenagihan extends Component
             'pengiriman.purchasing',
             'staff',
             'manager'
-        ]);
+        ])
+        ->whereHas('pengiriman'); // Only show approvals that have pengiriman
 
         // Filter by tab
         if ($this->activeTab === 'pending') {

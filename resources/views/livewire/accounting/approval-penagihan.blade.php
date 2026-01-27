@@ -342,57 +342,41 @@
                                 <div class="text-xs text-gray-500">{{ $approval->invoice->invoice_date->format('d M Y') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                @if($approval->pengiriman)
-                                    <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
-                                    <div class="text-xs text-gray-500">{{ $approval->pengiriman->tanggal_kirim->format('d M Y') }}</div>
-                                @else
-                                    <div class="text-sm text-gray-400 italic">-</div>
-                                @endif
+                                <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
+                                <div class="text-xs text-gray-500">{{ $approval->pengiriman->tanggal_kirim->format('d M Y') }}</div>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">{{ $approval->invoice->customer_name }}</div>
                                 <div class="text-xs text-gray-500 truncate max-w-xs">{{ Str::limit($approval->invoice->customer_address, 40) }}</div>
                             </td>
                             <td class="px-6 py-4">
-                                @if($approval->pengiriman)
-                                    @php
-                                        $suppliers = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama')->filter()->unique();
-                                    @endphp
-                                    @if($suppliers->count() > 0)
-                                        <div class="text-sm font-medium text-gray-900">{{ $suppliers->first() }}</div>
-                                        @if($suppliers->count() > 1)
-                                            <div class="text-xs text-gray-500">+{{ $suppliers->count() - 1 }} lainnya</div>
-                                        @endif
-                                    @else
-                                        <div class="text-sm text-gray-400 italic">-</div>
+                                @php
+                                    $suppliers = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama')->filter()->unique();
+                                @endphp
+                                @if($suppliers->count() > 0)
+                                    <div class="text-sm font-medium text-gray-900">{{ $suppliers->first() }}</div>
+                                    @if($suppliers->count() > 1)
+                                        <div class="text-xs text-gray-500">+{{ $suppliers->count() - 1 }} lainnya</div>
                                     @endif
                                 @else
                                     <div class="text-sm text-gray-400 italic">-</div>
                                 @endif
                             </td>
                             <td class="px-6 py-4">
-                                @if($approval->pengiriman)
-                                    @php
-                                        $products = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.nama')->filter();
-                                    @endphp
-                                    @if($products->count() > 0)
-                                        <div class="text-sm font-medium text-gray-900">{{ $products->first() }}</div>
-                                        @if($products->count() > 1)
-                                            <div class="text-xs text-gray-500">+{{ $products->count() - 1 }} produk lainnya</div>
-                                        @endif
-                                    @else
-                                        <div class="text-sm text-gray-400 italic">-</div>
+                                @php
+                                    $products = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.nama')->filter();
+                                @endphp
+                                @if($products->count() > 0)
+                                    <div class="text-sm font-medium text-gray-900">{{ $products->first() }}</div>
+                                    @if($products->count() > 1)
+                                        <div class="text-xs text-gray-500">+{{ $products->count() - 1 }} produk lainnya</div>
                                     @endif
                                 @else
                                     <div class="text-sm text-gray-400 italic">-</div>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                @if($approval->pengiriman)
-                                    <div class="text-sm font-medium text-gray-900">{{ number_format($approval->pengiriman->pengirimanDetails->sum('qty_kirim'), 2, ',', '.') }} kg</div>
-                                @else
-                                    <div class="text-sm text-gray-400 italic">-</div>
-                                @endif
+                                <div class="text-sm font-medium text-gray-900">{{ number_format($approval->pengiriman->pengirimanDetails->sum('qty_kirim'), 2, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 2, ',', '.') }}</div>

@@ -166,14 +166,19 @@
 
 {{-- Price Chart --}}
 <div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-6 border border-gray-200 mb-4 sm:mb-6">
-    <div class="flex items-center mb-3 sm:mb-6">
-        <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
-            <i class="fas fa-chart-line text-white text-xs sm:text-sm"></i>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-6 gap-3">
+        <div class="flex items-center">
+            <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
+                <i class="fas fa-chart-line text-white text-xs sm:text-sm"></i>
+            </div>
+            <h2 class="text-base sm:text-lg lg:text-xl font-bold text-purple-800">Grafik Perubahan Harga</h2>
         </div>
-        <h2 class="text-base sm:text-lg lg:text-xl font-bold text-purple-800">Grafik Perubahan Harga Harian</h2>
+        
+        <!-- Filter Klien -->
+        <div id="klienFilter" class="flex flex-wrap gap-2"></div>
     </div>
     
-    <div class="relative h-48 sm:h-64 lg:h-80">
+    <div class="relative h-64 sm:h-80 lg:h-96">
         <canvas id="priceChart" class="w-full h-full"></canvas>
     </div>
 </div>
@@ -289,191 +294,248 @@ document.addEventListener('DOMContentLoaded', function() {
         { border: 'rgb(132, 204, 22)', bg: 'rgba(132, 204, 22, 0.1)' },      // Lime
     ];
     
-    // Prepare datasets untuk Chart.js
-    const datasets = [];
+    // Track which kliens are visible
+    let visibleKliens = new Set(Object.keys(chartDataByKlien));
+    
+    // Create filter buttons
+    const filterContainer = document.getElementById('klienFilter');
     let colorIndex = 0;
     
     Object.keys(chartDataByKlien).forEach(klienKey => {
         const klienData = chartDataByKlien[klienKey];
         const color = colorPalette[colorIndex % colorPalette.length];
         
-        // Build data array matching allDates
-        const dataPoints = allDates.map(date => {
-            const point = klienData.data.find(d => d.tanggal === date);
-            return point ? point.harga : null;
-        });
+        const button = document.createElement('button');
+        button.className = 'px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 border-2';
+        button.style.borderColor = color.border;
+        button.style.backgroundColor = color.bg;
+        button.style.color = color.border;
+        button.dataset.klienKey = klienKey;
+        button.innerHTML = `<i class="fas fa-check-circle mr-1"></i>${klienData.label}`;
         
-        datasets.push({
-            label: klienData.label,
-            data: dataPoints,
-            borderColor: color.border,
-            backgroundColor: color.bg,
-            borderWidth: 3,
-            fill: false, // Disable fill to make lines clearer
-            tension: 0.4,
-            pointBackgroundColor: color.border,
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            pointHoverBorderWidth: 3,
-            spanGaps: true, // Connect across null values to show continuous line
-            segment: {
-                borderDash: ctx => {
-                    // Show dashed line for forward-filled segments (same value as previous)
-                    const prevValue = ctx.p0.parsed.y;
-                    const currValue = ctx.p1.parsed.y;
-                    const prevIndex = ctx.p0.$context.dataIndex;
-                    const currIndex = ctx.p1.$context.dataIndex;
-                    
-                    // Skip null values
-                    if (prevValue === null || currValue === null) {
-                        return undefined;
-                    }
-                    
-                    // If values are exactly same (forward-filled), show dashed
-                    if (prevValue === currValue) {
-                        return [5, 5];
-                    }
-                    
-                    return undefined; // Solid line for actual changes
-                }
+        button.addEventListener('click', function() {
+            if (visibleKliens.has(klienKey)) {
+                // Hide this klien
+                visibleKliens.delete(klienKey);
+                button.style.backgroundColor = 'white';
+                button.style.opacity = '0.5';
+                button.innerHTML = `<i class="fas fa-circle mr-1"></i>${klienData.label}`;
+            } else {
+                // Show this klien
+                visibleKliens.add(klienKey);
+                button.style.backgroundColor = color.bg;
+                button.style.opacity = '1';
+                button.innerHTML = `<i class="fas fa-check-circle mr-1"></i>${klienData.label}`;
             }
+            updateChart();
         });
         
+        filterContainer.appendChild(button);
         colorIndex++;
     });
     
-    // Format labels untuk x-axis
-    const labels = allDates.map(date => {
-        const d = new Date(date);
-        return d.toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'short'
+    // Prepare datasets untuk Chart.js
+    function prepareDatasets() {
+        const datasets = [];
+        let colorIndex = 0;
+        
+        Object.keys(chartDataByKlien).forEach(klienKey => {
+            if (!visibleKliens.has(klienKey)) {
+                colorIndex++;
+                return; // Skip hidden kliens
+            }
+            
+            const klienData = chartDataByKlien[klienKey];
+            const color = colorPalette[colorIndex % colorPalette.length];
+            
+            // SIMPLIFIED: Only show actual data points, no forced alignment
+            // Filter out null values to show actual price changes only
+            const actualData = klienData.data.filter(d => d.harga !== null);
+            const labels = actualData.map(d => d.tanggal);
+            const values = actualData.map(d => d.harga);
+            
+            datasets.push({
+                label: klienData.label,
+                data: values,
+                labels: labels, // Store labels with dataset for custom x-axis handling
+                borderColor: color.border,
+                backgroundColor: color.bg,
+                borderWidth: 3,
+                fill: false,
+                tension: 0.3,
+                pointBackgroundColor: color.border,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                pointHoverBorderWidth: 3,
+            });
+            
+            colorIndex++;
         });
-    });
+        
+        return datasets;
+    }
+    
+    // Get unique dates from visible datasets
+    function getAllVisibleDates() {
+        const dates = new Set();
+        Object.keys(chartDataByKlien).forEach(klienKey => {
+            if (!visibleKliens.has(klienKey)) return;
+            const klienData = chartDataByKlien[klienKey];
+            klienData.data.forEach(d => {
+                if (d.harga !== null) {
+                    dates.add(d.tanggal);
+                }
+            });
+        });
+        return Array.from(dates).sort();
+    }
+    
+    // Format labels untuk x-axis
+    function formatLabels(dates) {
+        return dates.map(date => {
+            const d = new Date(date);
+            return d.toLocaleDateString('id-ID', { 
+                day: 'numeric', 
+                month: 'short'
+            });
+        });
+    }
     
     // Konfigurasi Chart.js
     const ctx = document.getElementById('priceChart').getContext('2d');
+    let chart;
     
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
+    function createChart() {
+        const datasets = prepareDatasets();
+        const visibleDates = getAllVisibleDates();
+        const labels = formatLabels(visibleDates);
+        
+        // Map data to common x-axis
+        const mappedDatasets = datasets.map(dataset => {
+            const mappedData = visibleDates.map(date => {
+                const index = dataset.labels.indexOf(date);
+                return index !== -1 ? dataset.data[index] : null;
+            });
+            
+            return {
+                ...dataset,
+                data: mappedData
+            };
+        });
+        
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: mappedDatasets
             },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: 'rgb(75, 85, 99)',
-                        font: {
-                            size: 12,
-                            weight: '600'
-                        },
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 15
-                    }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
                 },
-                tooltip: {
-                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: 'rgb(99, 102, 241)',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    padding: 12,
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            const dataIndex = tooltipItems[0].dataIndex;
-                            const fullDate = new Date(allDates[dataIndex]);
-                            return fullDate.toLocaleDateString('id-ID', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',  
-                                day: 'numeric'
-                            });
-                        },
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
+                plugins: {
+                    legend: {
+                        display: false // Hidden because we use custom filter buttons
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: 'rgb(99, 102, 241)',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        padding: 12,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const dataIndex = tooltipItems[0].dataIndex;
+                                const fullDate = new Date(visibleDates[dataIndex]);
+                                return fullDate.toLocaleDateString('id-ID', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',  
+                                    day: 'numeric'
+                                });
+                            },
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                } else {
+                                    label += 'Tidak ada data';
+                                }
+                                return label;
                             }
-                            if (context.parsed.y !== null) {
-                                label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
-                            } else {
-                                label += 'Belum ada data';
-                            }
-                            return label;
-                        },
-                        afterLabel: function(context) {
-                            // Show if this is forward-filled data
-                            const dataIndex = context.dataIndex;
-                            if (dataIndex > 0 && context.parsed.y !== null) {
-                                const klienKey = Object.keys(chartDataByKlien)[context.datasetIndex];
-                                const currentData = chartDataByKlien[klienKey].data[dataIndex];
-                                const prevData = chartDataByKlien[klienKey].data[dataIndex - 1];
-                                
-                               
-                            }
-                            return '';
                         }
                     }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(156, 163, 175, 0.1)',
-                        drawBorder: false,
-                    },
-                    ticks: {
-                        color: 'rgb(107, 114, 128)',
-                        font: {
-                            size: 10
-                        },
-                        maxRotation: 45,
-                        minRotation: 45
-                    }
                 },
-                y: {
-                    grid: {
-                        color: 'rgba(156, 163, 175, 0.1)',
-                        drawBorder: false,
-                    },
-                    ticks: {
-                        color: 'rgb(107, 114, 128)',
-                        font: {
-                            size: 11
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)',
+                            drawBorder: false,
                         },
-                        callback: function(value) {
-                            return 'Rp ' + value.toLocaleString('id-ID');
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
+                            font: {
+                                size: 10
+                            },
+                            maxRotation: 45,
+                            minRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 15
                         }
                     },
-                    beginAtZero: false
+                    y: {
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)',
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
+                            font: {
+                                size: 11
+                            },
+                            callback: function(value) {
+                                return 'Rp ' + value.toLocaleString('id-ID');
+                            }
+                        },
+                        beginAtZero: false
+                    }
+                },
+                elements: {
+                    point: {
+                        hoverBorderWidth: 3
+                    },
+                    line: {
+                        spanGaps: false // Don't connect across gaps
+                    }
+                },
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
                 }
-            },
-            elements: {
-                point: {
-                    hoverBorderWidth: 3
-                }
-            },
-            animation: {
-                duration: 2000,
-                easing: 'easeInOutQuart'
             }
+        });
+    }
+    
+    function updateChart() {
+        if (chart) {
+            chart.destroy();
         }
-    });
+        createChart();
+    }
+    
+    // Initial chart creation
+    createChart();
 });
 
 // PO Modal Functions

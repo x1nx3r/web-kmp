@@ -193,6 +193,7 @@
                 <tr>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klien/Pabrik</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perubahan</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -211,20 +212,14 @@
                             <div class="text-xs sm:text-sm font-medium text-gray-900">{{ $item['formatted_tanggal'] }}</div>
                             <div class="text-xs text-gray-500 hidden sm:block">{{ $item['formatted_hari'] }}</div>
                         </td>
+                        <td class="px-2 sm:px-4 py-2 sm:py-4">
+                            <div class="text-xs sm:text-sm font-medium text-gray-900">{{ $item['klien_nama'] }}</div>
+                            @if($item['klien_cabang'])
+                                <div class="text-xs text-gray-500">{{ $item['klien_cabang'] }}</div>
+                            @endif
+                        </td>
                         <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
-                            <div class="flex items-center gap-2">
-                                <div>
-                                    <div class="text-xs sm:text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
-                                </div>
-                                <button 
-                                    type="button"
-                                    onclick="showPOModal({{ $item['harga'] }}, '{{ $item['tanggal'] }}')"
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-md transition-colors duration-150"
-                                    title="Lihat PO dengan harga ini">
-                                    <i class="fas fa-file-invoice text-xs mr-1"></i>
-                                    <span class="hidden sm:inline">PO</span>
-                                </button>
-                            </div>
+                            <div class="text-xs sm:text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
                         </td>
                         <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
                             @if($item['tipe_perubahan'] === 'naik')
@@ -261,91 +256,6 @@
     </div>
 </div>
 
-{{-- Modal for PO Details --}}
-<div id="poModal" class="hidden fixed inset-0 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-lg bg-white max-h-[80vh] overflow-y-auto">
-        {{-- Modal Header --}}
-        <div class="flex items-center justify-between pb-3 border-b">
-            <div class="flex items-center">
-                <div class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
-                    <i class="fas fa-file-invoice text-white"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-gray-900">Purchase Order (PO) dengan Harga Ini</h3>
-                    <p class="text-sm text-gray-500" id="modalSubtitle">Loading...</p>
-                </div>
-            </div>
-            <button type="button" onclick="closePOModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-
-        {{-- Loading State --}}
-        <div id="poModalLoading" class="py-8 text-center">
-            <i class="fas fa-spinner fa-spin text-4xl text-indigo-500 mb-4"></i>
-            <p class="text-gray-600">Memuat data...</p>
-        </div>
-
-        {{-- Modal Content --}}
-        <div id="poModalContent" class="hidden">
-            {{-- Summary Stats --}}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
-                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-blue-700">Total PO</p>
-                            <p class="text-2xl font-bold text-blue-900" id="totalPO">0</p>
-                        </div>
-                        <div class="p-3 bg-blue-100 rounded-full">
-                            <i class="fas fa-file-invoice text-blue-500"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-green-700">Total Qty</p>
-                            <p class="text-2xl font-bold text-green-900" id="totalQty">0</p>
-                        </div>
-                        <div class="p-3 bg-green-100 rounded-full">
-                            <i class="fas fa-boxes text-green-500"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-purple-700">Harga per <span id="satuanLabel"></span></p>
-                            <p class="text-2xl font-bold text-purple-900" id="hargaLabel">Rp 0</p>
-                        </div>
-                        <div class="p-3 bg-purple-100 rounded-full">
-                            <i class="fas fa-tag text-purple-500"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- PO List --}}
-            <div class="mt-4">
-                <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                    <i class="fas fa-list-ul text-indigo-500 mr-2"></i>
-                    Daftar Purchase Order
-                </h4>
-                <div id="poList" class="space-y-4">
-                    {{-- Will be populated by JavaScript --}}
-                </div>
-            </div>
-        </div>
-
-        {{-- Empty State --}}
-        <div id="poModalEmpty" class="hidden py-8 text-center">
-            <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
-            <p class="text-gray-600 font-medium">Tidak ada PO yang menggunakan harga ini</p>
-            <p class="text-sm text-gray-500 mt-2">Belum ada order yang dibuat dengan harga ini</p>
-        </div>
-    </div>
-</div>
-
 @endsection
 
 @push('scripts')
@@ -353,10 +263,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Data untuk chart
-    let priceData = @json($riwayatHarga);
+    let chartDataByKlien = @json($chartDataByKlien ?? []);
+    let allDates = @json($allDates ?? []);
     
     // Check if data is empty
-    if (!priceData || priceData.length === 0) {
+    if (!chartDataByKlien || Object.keys(chartDataByKlien).length === 0) {
         // Show message instead of chart
         document.getElementById('priceChart').style.display = 'none';
         const chartContainer = document.getElementById('priceChart').parentElement;
@@ -364,49 +275,92 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // Sort data by date chronologically (oldest to newest), then by id for same date
-    priceData.sort((a, b) => {
-        const dateCompare = new Date(a.tanggal) - new Date(b.tanggal);
-        if (dateCompare !== 0) return dateCompare;
-        return a.id - b.id; // Secondary sort by id for same date
+    // Color palette untuk berbeda klien (vibrant colors)
+    const colorPalette = [
+        { border: 'rgb(99, 102, 241)', bg: 'rgba(99, 102, 241, 0.1)' },      // Indigo
+        { border: 'rgb(236, 72, 153)', bg: 'rgba(236, 72, 153, 0.1)' },      // Pink
+        { border: 'rgb(34, 197, 94)', bg: 'rgba(34, 197, 94, 0.1)' },        // Green
+        { border: 'rgb(249, 115, 22)', bg: 'rgba(249, 115, 22, 0.1)' },      // Orange
+        { border: 'rgb(168, 85, 247)', bg: 'rgba(168, 85, 247, 0.1)' },      // Purple
+        { border: 'rgb(14, 165, 233)', bg: 'rgba(14, 165, 233, 0.1)' },      // Sky
+        { border: 'rgb(234, 179, 8)', bg: 'rgba(234, 179, 8, 0.1)' },        // Yellow
+        { border: 'rgb(239, 68, 68)', bg: 'rgba(239, 68, 68, 0.1)' },        // Red
+        { border: 'rgb(6, 182, 212)', bg: 'rgba(6, 182, 212, 0.1)' },        // Cyan
+        { border: 'rgb(132, 204, 22)', bg: 'rgba(132, 204, 22, 0.1)' },      // Lime
+    ];
+    
+    // Prepare datasets untuk Chart.js
+    const datasets = [];
+    let colorIndex = 0;
+    
+    Object.keys(chartDataByKlien).forEach(klienKey => {
+        const klienData = chartDataByKlien[klienKey];
+        const color = colorPalette[colorIndex % colorPalette.length];
+        
+        // Build data array matching allDates
+        const dataPoints = allDates.map(date => {
+            const point = klienData.data.find(d => d.tanggal === date);
+            return point ? point.harga : null;
+        });
+        
+        datasets.push({
+            label: klienData.label,
+            data: dataPoints,
+            borderColor: color.border,
+            backgroundColor: color.bg,
+            borderWidth: 3,
+            fill: false, // Disable fill to make lines clearer
+            tension: 0.4,
+            pointBackgroundColor: color.border,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointHoverBorderWidth: 3,
+            spanGaps: true, // Connect across null values to show continuous line
+            segment: {
+                borderDash: ctx => {
+                    // Show dashed line for forward-filled segments (same value as previous)
+                    const prevValue = ctx.p0.parsed.y;
+                    const currValue = ctx.p1.parsed.y;
+                    const prevIndex = ctx.p0.$context.dataIndex;
+                    const currIndex = ctx.p1.$context.dataIndex;
+                    
+                    // Skip null values
+                    if (prevValue === null || currValue === null) {
+                        return undefined;
+                    }
+                    
+                    // If values are exactly same (forward-filled), show dashed
+                    if (prevValue === currValue) {
+                        return [5, 5];
+                    }
+                    
+                    return undefined; // Solid line for actual changes
+                }
+            }
+        });
+        
+        colorIndex++;
     });
     
-    const labels = priceData.map(item => {
-        const date = new Date(item.tanggal);
-        return date.toLocaleDateString('id-ID', { 
+    // Format labels untuk x-axis
+    const labels = allDates.map(date => {
+        const d = new Date(date);
+        return d.toLocaleDateString('id-ID', { 
             day: 'numeric', 
             month: 'short'
         });
     });
-    const prices = priceData.map(item => item.harga);
     
     // Konfigurasi Chart.js
     const ctx = document.getElementById('priceChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
-    gradient.addColorStop(1, 'rgba(99, 102, 241, 0.01)');
     
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [{
-                label: 'Harga per {{ $bahanBakuData->satuan }}',
-                data: prices,
-                borderColor: 'rgb(99, 102, 241)',
-                backgroundColor: gradient,
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: 'rgb(99, 102, 241)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 6,
-                pointHoverRadius: 8,
-                pointHoverBackgroundColor: 'rgb(79, 70, 229)',
-                pointHoverBorderColor: '#fff',
-                pointHoverBorderWidth: 3,
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -426,7 +380,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             weight: '600'
                         },
                         usePointStyle: true,
-                        pointStyle: 'circle'
+                        pointStyle: 'circle',
+                        padding: 15
                     }
                 },
                 tooltip: {
@@ -436,11 +391,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderColor: 'rgb(99, 102, 241)',
                     borderWidth: 1,
                     cornerRadius: 8,
-                    displayColors: false,
+                    displayColors: true,
+                    padding: 12,
                     callbacks: {
                         title: function(tooltipItems) {
                             const dataIndex = tooltipItems[0].dataIndex;
-                            const fullDate = new Date(priceData[dataIndex].tanggal);
+                            const fullDate = new Date(allDates[dataIndex]);
                             return fullDate.toLocaleDateString('id-ID', {
                                 weekday: 'long',
                                 year: 'numeric',
@@ -449,26 +405,28 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
                         },
                         label: function(context) {
-                            return 'Harga: Rp ' + context.parsed.y.toLocaleString('id-ID');
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                            } else {
+                                label += 'Belum ada data';
+                            }
+                            return label;
                         },
                         afterLabel: function(context) {
-                            // Show price change from previous date
+                            // Show if this is forward-filled data
                             const dataIndex = context.dataIndex;
-                            if (dataIndex > 0) {
-                                const currentPrice = priceData[dataIndex].harga;
-                                const prevPrice = priceData[dataIndex - 1].harga;
-                                const change = currentPrice - prevPrice;
-                                const changePercent = ((change / prevPrice) * 100).toFixed(1);
+                            if (dataIndex > 0 && context.parsed.y !== null) {
+                                const klienKey = Object.keys(chartDataByKlien)[context.datasetIndex];
+                                const currentData = chartDataByKlien[klienKey].data[dataIndex];
+                                const prevData = chartDataByKlien[klienKey].data[dataIndex - 1];
                                 
-                                if (change > 0) {
-                                    return `Naik: +Rp ${change.toLocaleString('id-ID')} (+${changePercent}%)`;
-                                } else if (change < 0) {
-                                    return `Turun: Rp ${change.toLocaleString('id-ID')} (${changePercent}%)`;
-                                } else {
-                                    return 'Tidak ada perubahan';
-                                }
+                               
                             }
-                            return 'Data pertama';
+                            return '';
                         }
                     }
                 }

@@ -14,6 +14,7 @@ class RiwayatHargaBahanBaku extends Model
 
     protected $fillable = [
         'bahan_baku_supplier_id',
+        'klien_id',
         'harga_lama',
         'harga_baru',
         'selisih_harga',
@@ -38,6 +39,14 @@ class RiwayatHargaBahanBaku extends Model
     public function bahanBakuSupplier()
     {
         return $this->belongsTo(BahanBakuSupplier::class);
+    }
+
+    /**
+     * Relationship dengan Klien
+     */
+    public function klien()
+    {
+        return $this->belongsTo(Klien::class);
     }
 
     /**
@@ -146,7 +155,7 @@ class RiwayatHargaBahanBaku extends Model
     /**
      * Static method untuk mencatat perubahan harga
      */
-    public static function catatPerubahanHarga($bahanBakuSupplierId, $hargaLama, $hargaBaru, $keterangan = null, $updatedBy = null, $tanggal = null)
+    public static function catatPerubahanHarga($bahanBakuSupplierId, $hargaLama, $hargaBaru, $keterangan = null, $updatedBy = null, $tanggal = null, $klienId = null)
     {
         // Hitung selisih dan persentase
         $selisihHarga = $hargaBaru - ($hargaLama ?? 0);
@@ -170,6 +179,7 @@ class RiwayatHargaBahanBaku extends Model
 
         return self::create([
             'bahan_baku_supplier_id' => $bahanBakuSupplierId,
+            'klien_id' => $klienId,
             'harga_lama' => $hargaLama,
             'harga_baru' => $hargaBaru,
             'selisih_harga' => $selisihHarga,

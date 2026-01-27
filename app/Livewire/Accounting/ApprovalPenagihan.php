@@ -129,10 +129,12 @@ class ApprovalPenagihan extends Component
         }
 
         if ($this->search) {
-            $query->whereHas('pengiriman', function ($q) {
-                $q->where('no_pengiriman', 'like', '%' . $this->search . '%');
-            })->orWhereHas('invoice', function ($q) {
-                $q->where('invoice_number', 'like', '%' . $this->search . '%');
+            $query->where(function ($q) {
+                $q->whereHas('pengiriman', function ($subQ) {
+                    $subQ->where('no_pengiriman', 'like', '%' . $this->search . '%');
+                })->orWhereHas('invoice', function ($subQ) {
+                    $subQ->where('invoice_number', 'like', '%' . $this->search . '%');
+                });
             });
         }
 
@@ -143,10 +145,12 @@ class ApprovalPenagihan extends Component
             });
         }
 
-        // Filter by supplier
+        // Filter by supplier - ensure pengiriman exists
         if ($this->supplierFilter !== 'all') {
-            $query->whereHas('pengiriman.pengirimanDetails.bahanBakuSupplier.supplier', function ($q) {
-                $q->where('nama', $this->supplierFilter);
+            $query->whereHas('pengiriman', function($q) {
+                $q->whereHas('pengirimanDetails.bahanBakuSupplier.supplier', function ($subQ) {
+                    $subQ->where('nama', $this->supplierFilter);
+                });
             });
         }
 
@@ -162,12 +166,17 @@ class ApprovalPenagihan extends Component
 
         $customers = $allApprovals->pluck('invoice.customer_name')->unique()->filter()->sort()->values();
 
-        $suppliers = $allApprovals->pluck('pengiriman.pengirimanDetails.*.bahanBakuSupplier.supplier.nama')
-            ->flatten()
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values();
+        // Safely get suppliers - handle null pengiriman
+        $suppliers = collect();
+        foreach ($allApprovals as $approval) {
+            if ($approval->pengiriman && $approval->pengiriman->pengirimanDetails) {
+                $supplierNames = $approval->pengiriman->pengirimanDetails
+                    ->pluck('bahanBakuSupplier.supplier.nama')
+                    ->filter();
+                $suppliers = $suppliers->merge($supplierNames);
+            }
+        }
+        $suppliers = $suppliers->unique()->sort()->values();
 
         return view('livewire.accounting.approval-penagihan', [
             'pengirimansWithoutInvoice' => $pengirimansWithoutInvoice,

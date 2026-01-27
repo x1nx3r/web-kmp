@@ -166,14 +166,19 @@
 
 {{-- Price Chart --}}
 <div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-6 border border-gray-200 mb-4 sm:mb-6">
-    <div class="flex items-center mb-3 sm:mb-6">
-        <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
-            <i class="fas fa-chart-line text-white text-xs sm:text-sm"></i>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-6 gap-3">
+        <div class="flex items-center">
+            <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center mr-2 sm:mr-3">
+                <i class="fas fa-chart-line text-white text-xs sm:text-sm"></i>
+            </div>
+            <h2 class="text-base sm:text-lg lg:text-xl font-bold text-purple-800">Grafik Perubahan Harga</h2>
         </div>
-        <h2 class="text-base sm:text-lg lg:text-xl font-bold text-purple-800">Grafik Perubahan Harga Harian</h2>
+        
+        <!-- Filter Klien -->
+        <div id="klienFilter" class="flex flex-wrap gap-2"></div>
     </div>
     
-    <div class="relative h-48 sm:h-64 lg:h-80">
+    <div class="relative h-64 sm:h-80 lg:h-96">
         <canvas id="priceChart" class="w-full h-full"></canvas>
     </div>
 </div>
@@ -193,6 +198,7 @@
                 <tr>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klien/Pabrik</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perubahan</th>
                     <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -211,20 +217,14 @@
                             <div class="text-xs sm:text-sm font-medium text-gray-900">{{ $item['formatted_tanggal'] }}</div>
                             <div class="text-xs text-gray-500 hidden sm:block">{{ $item['formatted_hari'] }}</div>
                         </td>
+                        <td class="px-2 sm:px-4 py-2 sm:py-4">
+                            <div class="text-xs sm:text-sm font-medium text-gray-900">{{ $item['klien_nama'] }}</div>
+                            @if($item['klien_cabang'])
+                                <div class="text-xs text-gray-500">{{ $item['klien_cabang'] }}</div>
+                            @endif
+                        </td>
                         <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
-                            <div class="flex items-center gap-2">
-                                <div>
-                                    <div class="text-xs sm:text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
-                                </div>
-                                <button 
-                                    type="button"
-                                    onclick="showPOModal({{ $item['harga'] }}, '{{ $item['tanggal'] }}')"
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-md transition-colors duration-150"
-                                    title="Lihat PO dengan harga ini">
-                                    <i class="fas fa-file-invoice text-xs mr-1"></i>
-                                    <span class="hidden sm:inline">PO</span>
-                                </button>
-                            </div>
+                            <div class="text-xs sm:text-sm font-semibold text-gray-900">Rp {{ $item['formatted_harga'] }}</div>
                         </td>
                         <td class="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
                             @if($item['tipe_perubahan'] === 'naik')
@@ -261,91 +261,6 @@
     </div>
 </div>
 
-{{-- Modal for PO Details --}}
-<div id="poModal" class="hidden fixed inset-0 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-lg bg-white max-h-[80vh] overflow-y-auto">
-        {{-- Modal Header --}}
-        <div class="flex items-center justify-between pb-3 border-b">
-            <div class="flex items-center">
-                <div class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
-                    <i class="fas fa-file-invoice text-white"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-gray-900">Purchase Order (PO) dengan Harga Ini</h3>
-                    <p class="text-sm text-gray-500" id="modalSubtitle">Loading...</p>
-                </div>
-            </div>
-            <button type="button" onclick="closePOModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-
-        {{-- Loading State --}}
-        <div id="poModalLoading" class="py-8 text-center">
-            <i class="fas fa-spinner fa-spin text-4xl text-indigo-500 mb-4"></i>
-            <p class="text-gray-600">Memuat data...</p>
-        </div>
-
-        {{-- Modal Content --}}
-        <div id="poModalContent" class="hidden">
-            {{-- Summary Stats --}}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
-                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-blue-700">Total PO</p>
-                            <p class="text-2xl font-bold text-blue-900" id="totalPO">0</p>
-                        </div>
-                        <div class="p-3 bg-blue-100 rounded-full">
-                            <i class="fas fa-file-invoice text-blue-500"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-green-700">Total Qty</p>
-                            <p class="text-2xl font-bold text-green-900" id="totalQty">0</p>
-                        </div>
-                        <div class="p-3 bg-green-100 rounded-full">
-                            <i class="fas fa-boxes text-green-500"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-purple-700">Harga per <span id="satuanLabel"></span></p>
-                            <p class="text-2xl font-bold text-purple-900" id="hargaLabel">Rp 0</p>
-                        </div>
-                        <div class="p-3 bg-purple-100 rounded-full">
-                            <i class="fas fa-tag text-purple-500"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- PO List --}}
-            <div class="mt-4">
-                <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                    <i class="fas fa-list-ul text-indigo-500 mr-2"></i>
-                    Daftar Purchase Order
-                </h4>
-                <div id="poList" class="space-y-4">
-                    {{-- Will be populated by JavaScript --}}
-                </div>
-            </div>
-        </div>
-
-        {{-- Empty State --}}
-        <div id="poModalEmpty" class="hidden py-8 text-center">
-            <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
-            <p class="text-gray-600 font-medium">Tidak ada PO yang menggunakan harga ini</p>
-            <p class="text-sm text-gray-500 mt-2">Belum ada order yang dibuat dengan harga ini</p>
-        </div>
-    </div>
-</div>
-
 @endsection
 
 @push('scripts')
@@ -353,10 +268,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Data untuk chart
-    let priceData = @json($riwayatHarga);
+    let chartDataByKlien = @json($chartDataByKlien ?? []);
+    let allDates = @json($allDates ?? []);
     
     // Check if data is empty
-    if (!priceData || priceData.length === 0) {
+    if (!chartDataByKlien || Object.keys(chartDataByKlien).length === 0) {
         // Show message instead of chart
         document.getElementById('priceChart').style.display = 'none';
         const chartContainer = document.getElementById('priceChart').parentElement;
@@ -364,158 +280,262 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // Sort data by date chronologically (oldest to newest), then by id for same date
-    priceData.sort((a, b) => {
-        const dateCompare = new Date(a.tanggal) - new Date(b.tanggal);
-        if (dateCompare !== 0) return dateCompare;
-        return a.id - b.id; // Secondary sort by id for same date
-    });
+    // Color palette untuk berbeda klien (vibrant colors)
+    const colorPalette = [
+        { border: 'rgb(99, 102, 241)', bg: 'rgba(99, 102, 241, 0.1)' },      // Indigo
+        { border: 'rgb(236, 72, 153)', bg: 'rgba(236, 72, 153, 0.1)' },      // Pink
+        { border: 'rgb(34, 197, 94)', bg: 'rgba(34, 197, 94, 0.1)' },        // Green
+        { border: 'rgb(249, 115, 22)', bg: 'rgba(249, 115, 22, 0.1)' },      // Orange
+        { border: 'rgb(168, 85, 247)', bg: 'rgba(168, 85, 247, 0.1)' },      // Purple
+        { border: 'rgb(14, 165, 233)', bg: 'rgba(14, 165, 233, 0.1)' },      // Sky
+        { border: 'rgb(234, 179, 8)', bg: 'rgba(234, 179, 8, 0.1)' },        // Yellow
+        { border: 'rgb(239, 68, 68)', bg: 'rgba(239, 68, 68, 0.1)' },        // Red
+        { border: 'rgb(6, 182, 212)', bg: 'rgba(6, 182, 212, 0.1)' },        // Cyan
+        { border: 'rgb(132, 204, 22)', bg: 'rgba(132, 204, 22, 0.1)' },      // Lime
+    ];
     
-    const labels = priceData.map(item => {
-        const date = new Date(item.tanggal);
-        return date.toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'short'
+    // Track which kliens are visible
+    let visibleKliens = new Set(Object.keys(chartDataByKlien));
+    
+    // Create filter buttons
+    const filterContainer = document.getElementById('klienFilter');
+    let colorIndex = 0;
+    
+    Object.keys(chartDataByKlien).forEach(klienKey => {
+        const klienData = chartDataByKlien[klienKey];
+        const color = colorPalette[colorIndex % colorPalette.length];
+        
+        const button = document.createElement('button');
+        button.className = 'px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 border-2';
+        button.style.borderColor = color.border;
+        button.style.backgroundColor = color.bg;
+        button.style.color = color.border;
+        button.dataset.klienKey = klienKey;
+        button.innerHTML = `<i class="fas fa-check-circle mr-1"></i>${klienData.label}`;
+        
+        button.addEventListener('click', function() {
+            if (visibleKliens.has(klienKey)) {
+                // Hide this klien
+                visibleKliens.delete(klienKey);
+                button.style.backgroundColor = 'white';
+                button.style.opacity = '0.5';
+                button.innerHTML = `<i class="fas fa-circle mr-1"></i>${klienData.label}`;
+            } else {
+                // Show this klien
+                visibleKliens.add(klienKey);
+                button.style.backgroundColor = color.bg;
+                button.style.opacity = '1';
+                button.innerHTML = `<i class="fas fa-check-circle mr-1"></i>${klienData.label}`;
+            }
+            updateChart();
         });
+        
+        filterContainer.appendChild(button);
+        colorIndex++;
     });
-    const prices = priceData.map(item => item.harga);
     
-    // Konfigurasi Chart.js
-    const ctx = document.getElementById('priceChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
-    gradient.addColorStop(1, 'rgba(99, 102, 241, 0.01)');
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Harga per {{ $bahanBakuData->satuan }}',
-                data: prices,
-                borderColor: 'rgb(99, 102, 241)',
-                backgroundColor: gradient,
+    // Prepare datasets untuk Chart.js
+    function prepareDatasets() {
+        const datasets = [];
+        let colorIndex = 0;
+        
+        Object.keys(chartDataByKlien).forEach(klienKey => {
+            if (!visibleKliens.has(klienKey)) {
+                colorIndex++;
+                return; // Skip hidden kliens
+            }
+            
+            const klienData = chartDataByKlien[klienKey];
+            const color = colorPalette[colorIndex % colorPalette.length];
+            
+            // SIMPLIFIED: Only show actual data points, no forced alignment
+            // Filter out null values to show actual price changes only
+            const actualData = klienData.data.filter(d => d.harga !== null);
+            const labels = actualData.map(d => d.tanggal);
+            const values = actualData.map(d => d.harga);
+            
+            datasets.push({
+                label: klienData.label,
+                data: values,
+                labels: labels, // Store labels with dataset for custom x-axis handling
+                borderColor: color.border,
+                backgroundColor: color.bg,
                 borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: 'rgb(99, 102, 241)',
+                fill: false,
+                tension: 0.3,
+                pointBackgroundColor: color.border,
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointRadius: 6,
                 pointHoverRadius: 8,
-                pointHoverBackgroundColor: 'rgb(79, 70, 229)',
-                pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 3,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
+            });
+            
+            colorIndex++;
+        });
+        
+        return datasets;
+    }
+    
+    // Get unique dates from visible datasets
+    function getAllVisibleDates() {
+        const dates = new Set();
+        Object.keys(chartDataByKlien).forEach(klienKey => {
+            if (!visibleKliens.has(klienKey)) return;
+            const klienData = chartDataByKlien[klienKey];
+            klienData.data.forEach(d => {
+                if (d.harga !== null) {
+                    dates.add(d.tanggal);
+                }
+            });
+        });
+        return Array.from(dates).sort();
+    }
+    
+    // Format labels untuk x-axis
+    function formatLabels(dates) {
+        return dates.map(date => {
+            const d = new Date(date);
+            return d.toLocaleDateString('id-ID', { 
+                day: 'numeric', 
+                month: 'short'
+            });
+        });
+    }
+    
+    // Konfigurasi Chart.js
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    let chart;
+    
+    function createChart() {
+        const datasets = prepareDatasets();
+        const visibleDates = getAllVisibleDates();
+        const labels = formatLabels(visibleDates);
+        
+        // Map data to common x-axis
+        const mappedDatasets = datasets.map(dataset => {
+            const mappedData = visibleDates.map(date => {
+                const index = dataset.labels.indexOf(date);
+                return index !== -1 ? dataset.data[index] : null;
+            });
+            
+            return {
+                ...dataset,
+                data: mappedData
+            };
+        });
+        
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: mappedDatasets
             },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: 'rgb(75, 85, 99)',
-                        font: {
-                            size: 12,
-                            weight: '600'
-                        },
-                        usePointStyle: true,
-                        pointStyle: 'circle'
-                    }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
                 },
-                tooltip: {
-                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: 'rgb(99, 102, 241)',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    displayColors: false,
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            const dataIndex = tooltipItems[0].dataIndex;
-                            const fullDate = new Date(priceData[dataIndex].tanggal);
-                            return fullDate.toLocaleDateString('id-ID', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',  
-                                day: 'numeric'
-                            });
-                        },
-                        label: function(context) {
-                            return 'Harga: Rp ' + context.parsed.y.toLocaleString('id-ID');
-                        },
-                        afterLabel: function(context) {
-                            // Show price change from previous date
-                            const dataIndex = context.dataIndex;
-                            if (dataIndex > 0) {
-                                const currentPrice = priceData[dataIndex].harga;
-                                const prevPrice = priceData[dataIndex - 1].harga;
-                                const change = currentPrice - prevPrice;
-                                const changePercent = ((change / prevPrice) * 100).toFixed(1);
-                                
-                                if (change > 0) {
-                                    return `Naik: +Rp ${change.toLocaleString('id-ID')} (+${changePercent}%)`;
-                                } else if (change < 0) {
-                                    return `Turun: Rp ${change.toLocaleString('id-ID')} (${changePercent}%)`;
-                                } else {
-                                    return 'Tidak ada perubahan';
+                plugins: {
+                    legend: {
+                        display: false // Hidden because we use custom filter buttons
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: 'rgb(99, 102, 241)',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        padding: 12,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const dataIndex = tooltipItems[0].dataIndex;
+                                const fullDate = new Date(visibleDates[dataIndex]);
+                                return fullDate.toLocaleDateString('id-ID', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',  
+                                    day: 'numeric'
+                                });
+                            },
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
                                 }
+                                if (context.parsed.y !== null) {
+                                    label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                } else {
+                                    label += 'Tidak ada data';
+                                }
+                                return label;
                             }
-                            return 'Data pertama';
                         }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(156, 163, 175, 0.1)',
-                        drawBorder: false,
-                    },
-                    ticks: {
-                        color: 'rgb(107, 114, 128)',
-                        font: {
-                            size: 10
-                        },
-                        maxRotation: 45,
-                        minRotation: 45
                     }
                 },
-                y: {
-                    grid: {
-                        color: 'rgba(156, 163, 175, 0.1)',
-                        drawBorder: false,
-                    },
-                    ticks: {
-                        color: 'rgb(107, 114, 128)',
-                        font: {
-                            size: 11
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)',
+                            drawBorder: false,
                         },
-                        callback: function(value) {
-                            return 'Rp ' + value.toLocaleString('id-ID');
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
+                            font: {
+                                size: 10
+                            },
+                            maxRotation: 45,
+                            minRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 15
                         }
                     },
-                    beginAtZero: false
+                    y: {
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)',
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
+                            font: {
+                                size: 11
+                            },
+                            callback: function(value) {
+                                return 'Rp ' + value.toLocaleString('id-ID');
+                            }
+                        },
+                        beginAtZero: false
+                    }
+                },
+                elements: {
+                    point: {
+                        hoverBorderWidth: 3
+                    },
+                    line: {
+                        spanGaps: false // Don't connect across gaps
+                    }
+                },
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
                 }
-            },
-            elements: {
-                point: {
-                    hoverBorderWidth: 3
-                }
-            },
-            animation: {
-                duration: 2000,
-                easing: 'easeInOutQuart'
             }
+        });
+    }
+    
+    function updateChart() {
+        if (chart) {
+            chart.destroy();
         }
-    });
+        createChart();
+    }
+    
+    // Initial chart creation
+    createChart();
 });
 
 // PO Modal Functions

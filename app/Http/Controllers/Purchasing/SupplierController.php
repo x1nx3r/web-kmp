@@ -220,8 +220,31 @@ class SupplierController extends Controller
         // Get purchasing users for PIC dropdown
         $purchasingUsers = \App\Models\User::whereIn('role', ['direktur','manager_purchasing', 'staff_purchasing'])
             ->get();
+        
+        // Get all klien for price selection dropdown
+        $klienList = \App\Models\Klien::select('id', 'nama', 'cabang')
+            ->orderBy('nama')
+            ->orderBy('cabang')
+            ->get();
+        
+        // Load harga per klien untuk setiap bahan baku
+        $supplier->load(['bahanBakuSuppliers.hargaPerKlien.klien']);
+        
+        // Build price data structure untuk JavaScript
+        $priceData = [];
+        foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
+            $priceData[$bahanBaku->id] = [
+                'global' => (float) $bahanBaku->harga_per_satuan,
+                'klien' => []
+            ];
             
-        return view('pages.purchasing.supplier.edit', compact('supplier', 'purchasingUsers'));
+            // Add klien-specific prices
+            foreach ($bahanBaku->hargaPerKlien as $hargaKlien) {
+                $priceData[$bahanBaku->id]['klien'][$hargaKlien->klien_id] = (float) $hargaKlien->harga_per_satuan;
+            }
+        }
+            
+        return view('pages.purchasing.supplier.edit', compact('supplier', 'purchasingUsers', 'klienList', 'priceData'));
     }
 
     public function update(Request $request, Supplier $supplier)
@@ -257,6 +280,7 @@ class SupplierController extends Controller
             'alamat' => 'nullable|string',
             'no_hp' => 'nullable|string|max:20',
             'pic_purchasing_id' => 'nullable|exists:users,id',
+            'edit_harga_untuk' => 'required|string', // 'global' or klien_id
             'bahan_baku' => 'nullable|array',
             'bahan_baku.*.nama' => 'required_with:bahan_baku|string|max:255',
             'bahan_baku.*.satuan' => 'required_with:bahan_baku|string|max:50',
@@ -264,6 +288,7 @@ class SupplierController extends Controller
             'bahan_baku.*.stok' => 'required_with:bahan_baku|numeric|min:0',
         ], [
             'nama.required' => 'Nama supplier harus diisi',
+            'edit_harga_untuk.required' => 'Pilihan harga harus dipilih',
             'bahan_baku.*.nama.required_with' => 'Nama bahan baku harus diisi',
             'bahan_baku.*.satuan.required_with' => 'Satuan bahan baku harus dipilih',
             'bahan_baku.*.harga_per_satuan.required_with' => 'Harga per satuan harus diisi',
@@ -296,6 +321,10 @@ class SupplierController extends Controller
                 'pic_purchasing_id' => $request->pic_purchasing_id,
             ]);
 
+            // Determine if editing global or klien-specific price
+            $editHargaUntuk = $request->edit_harga_untuk; // 'global' or klien_id
+            $klienId = ($editHargaUntuk !== 'global') ? (int) $editHargaUntuk : null;
+
             // Handle bahan baku updates - use ID-based tracking to avoid duplicate key errors
             $existingBahanBaku = $supplier->bahanBakuSuppliers()->get()->keyBy('id');
             $submittedIds = [];
@@ -316,9 +345,6 @@ class SupplierController extends Controller
                             $bahanBakuToUpdate = $existingBahanBaku[$bahanBaku['id']];
                             $submittedIds[] = $bahanBakuToUpdate->id;
                             
-                            $hargaLama = (float) $bahanBakuToUpdate->harga_per_satuan;
-                            $hargaBaru = (float) $hargaPerSatuan;   
-                            
                             // Always generate unique slug (nama boleh sama, tapi slug harus beda)
                             if ($bahanBakuToUpdate->nama !== $nama) {
                                 // Nama berubah, generate slug baru
@@ -336,22 +362,64 @@ class SupplierController extends Controller
                                 $slug = $bahanBakuToUpdate->slug;
                             }
                             
+                            // Update nama, slug, satuan, stok (always)
                             $bahanBakuToUpdate->update([
                                 'nama' => $nama,
                                 'slug' => $slug,
                                 'satuan' => $bahanBaku['satuan'],
-                                'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
                                 'stok' => is_numeric($stok) ? $stok : 0,
                             ]);
                             
-                            // Catat riwayat harga jika ada perubahan harga
-                            if ($hargaLama != $hargaBaru) {
-                                RiwayatHargaBahanBaku::catatPerubahanHarga(
-                                    $bahanBakuToUpdate->id,
-                                    $hargaLama,
-                                    $hargaBaru,
-                                    "Update harga bahan baku '{$nama}' melalui edit supplier"
-                                );
+                            // Handle price update based on edit_harga_untuk
+                            if ($klienId === null) {
+                                // Update GLOBAL price
+                                $hargaLama = (float) $bahanBakuToUpdate->harga_per_satuan;
+                                $hargaBaru = (float) $hargaPerSatuan;
+                                
+                                $bahanBakuToUpdate->update([
+                                    'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
+                                ]);
+                                
+                                // Catat riwayat harga global jika ada perubahan
+                                if ($hargaLama != $hargaBaru) {
+                                    RiwayatHargaBahanBaku::catatPerubahanHarga(
+                                        $bahanBakuToUpdate->id,
+                                        $hargaLama,
+                                        $hargaBaru,
+                                        "Update harga GLOBAL bahan baku '{$nama}' melalui edit supplier",
+                                        null, // $updatedBy
+                                        null, // $tanggal
+                                        null  // $klienId = null untuk global
+                                    );
+                                }
+                            } else {
+                                // Update KLIEN-SPECIFIC price
+                                $hargaKlien = \App\Models\BahanBakuSupplierKlien::firstOrNew([
+                                    'bahan_baku_supplier_id' => $bahanBakuToUpdate->id,
+                                    'klien_id' => $klienId
+                                ]);
+                                
+                                $hargaLama = $hargaKlien->exists ? (float) $hargaKlien->harga_per_satuan : (float) $bahanBakuToUpdate->harga_per_satuan;
+                                $hargaBaru = (float) $hargaPerSatuan;
+                                
+                                $hargaKlien->harga_per_satuan = $hargaBaru;
+                                $hargaKlien->save();
+                                
+                                // Catat riwayat harga klien jika ada perubahan
+                                if ($hargaLama != $hargaBaru) {
+                                    $klienInfo = \App\Models\Klien::find($klienId);
+                                    $klienNama = $klienInfo ? $klienInfo->nama . ($klienInfo->cabang ? ' - ' . $klienInfo->cabang : '') : 'Klien';
+                                    
+                                    RiwayatHargaBahanBaku::catatPerubahanHarga(
+                                        $bahanBakuToUpdate->id,
+                                        $hargaLama,
+                                        $hargaBaru,
+                                        "Update harga untuk {$klienNama} - bahan baku '{$nama}' melalui edit supplier",
+                                        null,     // $updatedBy
+                                        null,     // $tanggal
+                                        $klienId  // $klienId
+                                    );
+                                }
                             }
                         } else {
                             // Create new bahan baku
@@ -369,12 +437,40 @@ class SupplierController extends Controller
                             $submittedIds[] = $newBahanBaku->id;
                             
                             // Catat riwayat harga untuk bahan baku baru
-                            RiwayatHargaBahanBaku::catatPerubahanHarga(
-                                $newBahanBaku->id,
-                                null, // harga lama = null karena bahan baku baru
-                                (float) $hargaPerSatuan,
-                                "Bahan baku baru '{$nama}' ditambahkan ke supplier '{$supplier->nama}'"
-                            );
+                            if ($klienId === null) {
+                                // Create bahan baku dengan harga global
+                                RiwayatHargaBahanBaku::catatPerubahanHarga(
+                                    $newBahanBaku->id,
+                                    null, // harga lama = null karena bahan baku baru
+                                    (float) $hargaPerSatuan,
+                                    "Bahan baku baru '{$nama}' ditambahkan ke supplier '{$supplier->nama}' (harga global)",
+                                    null, // $updatedBy
+                                    null, // $tanggal
+                                    null  // $klienId = null untuk global
+                                );
+                            } else {
+                                // Create bahan baku dengan harga klien-specific
+                                // Set harga global dulu = harga yang diinput
+                                // Kemudian create record di bahan_baku_supplier_klien
+                                $hargaKlienRecord = \App\Models\BahanBakuSupplierKlien::create([
+                                    'bahan_baku_supplier_id' => $newBahanBaku->id,
+                                    'klien_id' => $klienId,
+                                    'harga_per_satuan' => (float) $hargaPerSatuan
+                                ]);
+                                
+                                $klienInfo = \App\Models\Klien::find($klienId);
+                                $klienNama = $klienInfo ? $klienInfo->nama . ($klienInfo->cabang ? ' - ' . $klienInfo->cabang : '') : 'Klien';
+                                
+                                RiwayatHargaBahanBaku::catatPerubahanHarga(
+                                    $newBahanBaku->id,
+                                    null, // harga lama = null karena bahan baku baru
+                                    (float) $hargaPerSatuan,
+                                    "Bahan baku baru '{$nama}' ditambahkan untuk {$klienNama}",
+                                    null,     // $updatedBy
+                                    null,     // $tanggal
+                                    $klienId  // $klienId
+                                );
+                            }
                         }
                     }
                 }
@@ -469,8 +565,9 @@ class SupplierController extends Controller
             abort(404, 'Bahan baku tidak ditemukan untuk supplier ini');
         }
         
-        // Get riwayat harga dari database
+        // Get riwayat harga dari database (include data per klien)
         $riwayatHarga = $bahanBaku->riwayatHarga()
+            ->with('klien')
             ->orderBy('tanggal_perubahan', 'asc')
             ->orderBy('id', 'asc')
             ->get();
@@ -486,6 +583,7 @@ class SupplierController extends Controller
             
             // Refresh riwayat harga setelah dibuat
             $riwayatHarga = $bahanBaku->riwayatHarga()
+                ->with('klien')
                 ->orderBy('tanggal_perubahan', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
@@ -520,6 +618,9 @@ class SupplierController extends Controller
                 'persentase_perubahan' => (float) $item->persentase_perubahan,
                 'tipe_perubahan' => $item->tipe_perubahan,
                 'keterangan' => $item->keterangan,
+                'klien_id' => $item->klien_id,
+                'klien_nama' => $item->klien ? $item->klien->nama : 'Global',
+                'klien_cabang' => $item->klien ? $item->klien->cabang : null,
                 'formatted_tanggal' => $item->tanggal_perubahan->format('d M Y'),
                 'formatted_hari' => $item->tanggal_perubahan->format('l'),
                 'formatted_harga' => number_format((float) $item->harga_baru, 0, ',', '.'),
@@ -530,8 +631,99 @@ class SupplierController extends Controller
                 'icon' => $item->icon,
             ];
         })->toArray();
+        
+        // Group data by klien untuk multi-line chart
+        $chartDataByKlien = [];
+        $allDates = [];
+        
+        // First pass: collect all dates and group by klien
+        foreach ($riwayatHarga as $item) {
+            $klienKey = $item['klien_id'] ?? 'global';
+            $klienLabel = $item['klien_nama'];
+            if ($item['klien_cabang']) {
+                $klienLabel .= ' - ' . $item['klien_cabang'];
+            }
+            
+            if (!isset($chartDataByKlien[$klienKey])) {
+                $chartDataByKlien[$klienKey] = [
+                    'label' => $klienLabel,
+                    'dataByDate' => []
+                ];
+            }
+            
+            // Store data by date for easy lookup
+            $chartDataByKlien[$klienKey]['dataByDate'][$item['tanggal']] = $item['harga'];
+            
+            if (!in_array($item['tanggal'], $allDates)) {
+                $allDates[] = $item['tanggal'];
+            }
+        }
+        
+        // Sort dates
+        sort($allDates);
+        
+        // Find first and last date for each klien to determine their actual start/end
+        $klienDateRanges = [];
+        foreach ($chartDataByKlien as $klienKey => $klienData) {
+            $dates = array_keys($klienData['dataByDate']);
+            sort($dates);
+            $klienDateRanges[$klienKey] = [
+                'first' => $dates[0] ?? null,
+                'last' => end($dates) ?: null
+            ];
+        }
+        
+        // Second pass: align all data to same date range with smart forward-fill
+        foreach ($chartDataByKlien as $klienKey => &$klienData) {
+            $alignedData = [];
+            $lastKnownValue = null;
+            $hasStarted = false; // Flag to track if this klien has started
+            
+            $firstDate = $klienDateRanges[$klienKey]['first'];
+            $lastDate = $klienDateRanges[$klienKey]['last'];
+            
+            foreach ($allDates as $date) {
+                if (isset($klienData['dataByDate'][$date])) {
+                    // Harga ada di tanggal ini
+                    $hasStarted = true;
+                    $lastKnownValue = $klienData['dataByDate'][$date];
+                    $alignedData[] = [
+                        'tanggal' => $date,
+                        'harga' => $lastKnownValue
+                    ];
+                } elseif ($hasStarted && $date <= $lastDate) {
+                    // Klien sudah mulai transaksi DAN belum sampai tanggal terakhir -> forward fill
+                    $alignedData[] = [
+                        'tanggal' => $date,
+                        'harga' => $lastKnownValue
+                    ];
+                } elseif (!$hasStarted && $date < $firstDate) {
+                    // Sebelum tanggal pertama klien ini mulai -> null (biar line mulai dari titik yang sama)
+                    $alignedData[] = [
+                        'tanggal' => $date,
+                        'harga' => null
+                    ];
+                } elseif ($date > $lastDate) {
+                    // Setelah tanggal terakhir klien ini -> forward fill untuk kontinuitas
+                    $alignedData[] = [
+                        'tanggal' => $date,
+                        'harga' => $lastKnownValue
+                    ];
+                } else {
+                    // Default: null
+                    $alignedData[] = [
+                        'tanggal' => $date,
+                        'harga' => null
+                    ];
+                }
+            }
+            
+            $klienData['data'] = $alignedData;
+            unset($klienData['dataByDate']); // Clean up temporary data
+        }
+        unset($klienData); // Unset reference
 
-        return view('pages.purchasing.supplier.riwayat-harga', compact('supplierData', 'bahanBakuData', 'riwayatHarga'));
+        return view('pages.purchasing.supplier.riwayat-harga', compact('supplierData', 'bahanBakuData', 'riwayatHarga', 'chartDataByKlien', 'allDates'));
     }
 
     /**

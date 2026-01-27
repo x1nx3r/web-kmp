@@ -111,7 +111,7 @@
 
     {{-- Bahan Baku Section --}}
     <div class="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
-        <div class="flex items-center justify-between mb-4 sm:mb-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
             <div class="flex items-center">
                 <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
                     <i class="fas fa-boxes text-white text-sm"></i>
@@ -125,10 +125,34 @@
             </button>
         </div>
 
+        {{-- Dropdown: Edit Harga Untuk --}}
+        <div class="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+            <label for="edit_harga_untuk" class="block text-sm font-semibold text-blue-800 mb-2">
+                <i class="fas fa-tag mr-2 text-blue-600"></i>
+                Edit Harga Untuk:
+            </label>
+            <select name="edit_harga_untuk" id="edit_harga_untuk" required onchange="handlePriceContextChange()"
+                    class="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 font-medium text-gray-700">
+                <option value="global" selected>🌍 Harga Global (Default untuk semua pabrik)</option>
+                @if(isset($klienList) && $klienList->count() > 0)
+                    @foreach($klienList as $klien)
+                        <option value="{{ $klien->id }}">
+                            🏭 {{ $klien->nama }}{{ $klien->cabang ? ' - ' . $klien->cabang : '' }}
+                        </option>
+                    @endforeach
+                @endif
+            </select>
+            <p class="mt-2 text-xs text-blue-600">
+                <i class="fas fa-info-circle mr-1"></i>
+                <span id="priceContextInfo">Anda sedang mengedit <strong>harga global</strong> yang akan digunakan sebagai default untuk semua pabrik.</span>
+            </p>
+        </div>
+
         <div id="bahan-baku-container" class="space-y-3">
             {{-- Render existing bahan baku items from database --}}
             @foreach($supplier->bahanBakuSuppliers as $index => $bahanBaku)
-                <div class="bahan-baku-item bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-green-300 transition-all duration-200">
+                <div class="bahan-baku-item bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-green-300 transition-all duration-200" 
+                     data-bahan-baku-id="{{ $bahanBaku->id }}">
                     <div class="flex items-start justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -265,6 +289,10 @@
 
 @push('scripts')
 <script>
+// Store price data from backend (Global + Klien-specific)
+const priceData = @json($priceData ?? []);
+const klienList = @json($klienList ?? []);
+
 // Format number with thousand separators
 function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -273,6 +301,53 @@ function formatNumber(num) {
 // Remove formatting from number
 function unformatNumber(str) {
     return str.replace(/\./g, '');
+}
+
+// Handle price context change (Global or Klien-specific)
+function handlePriceContextChange() {
+    const selectedValue = document.getElementById('edit_harga_untuk').value;
+    const infoText = document.getElementById('priceContextInfo');
+    
+    if (selectedValue === 'global') {
+        infoText.innerHTML = 'Anda sedang mengedit <strong>harga global</strong> yang akan digunakan sebagai default untuk semua pabrik.';
+    } else {
+        const klien = klienList.find(k => k.id == selectedValue);
+        const klienNama = klien ? (klien.nama + (klien.cabang ? ' - ' + klien.cabang : '')) : 'Klien';
+        infoText.innerHTML = `Anda sedang mengedit <strong>harga khusus untuk ${klienNama}</strong>. Jika belum ada, akan menggunakan harga global sebagai awal.`;
+    }
+    
+    // Update all price inputs based on selected context
+    updateAllPriceInputs();
+}
+
+// Update all price inputs based on selected context
+function updateAllPriceInputs() {
+    const selectedValue = document.getElementById('edit_harga_untuk').value;
+    const isGlobal = selectedValue === 'global';
+    const klienId = isGlobal ? null : parseInt(selectedValue);
+    
+    // Loop through all bahan baku items
+    document.querySelectorAll('.bahan-baku-item').forEach(item => {
+        const bahanBakuId = item.querySelector('input[name*="[id]"]')?.value;
+        
+        if (bahanBakuId && priceData[bahanBakuId]) {
+            const priceInput = item.querySelector('.currency-input');
+            let price = 0;
+            
+            if (isGlobal) {
+                // Use global price
+                price = priceData[bahanBakuId].global || 0;
+            } else {
+                // Use klien-specific price if exists, otherwise use global
+                price = priceData[bahanBakuId].klien[klienId] || priceData[bahanBakuId].global || 0;
+            }
+            
+            // Update input with formatted price
+            if (priceInput) {
+                priceInput.value = formatNumber(Math.round(price));
+            }
+        }
+    });
 }
 
 // Handle currency input formatting

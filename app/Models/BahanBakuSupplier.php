@@ -92,6 +92,29 @@ class BahanBakuSupplier extends Model
     }
 
     /**
+     * Relasi ke harga per klien
+     */
+    public function hargaPerKlien()
+    {
+        return $this->hasMany(BahanBakuSupplierKlien::class, 'bahan_baku_supplier_id');
+    }
+
+    /**
+     * Get harga untuk klien tertentu (fallback ke harga global jika tidak ada)
+     */
+    public function getHargaForKlien($klienId)
+    {
+        $hargaKlien = $this->hargaPerKlien()->where('klien_id', $klienId)->first();
+        
+        if ($hargaKlien) {
+            return $hargaKlien->harga_per_satuan;
+        }
+        
+        // Fallback ke harga global
+        return $this->harga_per_satuan;
+    }
+
+    /**
      * Get riwayat harga dalam format untuk grafik
      */
     public function getRiwayatHargaForChart()

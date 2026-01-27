@@ -183,7 +183,7 @@ class ForecastingController extends Controller
             $bahanBakuSupplierCount = DB::table('bahan_baku_supplier')->count();
             Log::info("Table counts - suppliers: {$supplierCount}, bahan_baku_supplier: {$bahanBakuSupplierCount}");
             
-            $orderDetail = OrderDetail::with('bahanBakuKlien')->find($orderDetailId);
+            $orderDetail = OrderDetail::with(['bahanBakuKlien', 'order.klien'])->find($orderDetailId);
             
             if (!$orderDetail) {
                 Log::error("OrderDetail not found with ID: {$orderDetailId}");
@@ -191,6 +191,10 @@ class ForecastingController extends Controller
             }
             
             Log::info("Found OrderDetail: " . json_encode($orderDetail));
+
+            // Get klien_id from order
+            $klienId = $orderDetail->order->klien_id ?? null;
+            Log::info("Klien ID: {$klienId}");
 
             // Ambil nama bahan baku dari order detail untuk filtering
             $orderBahanBakuNama = null;
@@ -200,16 +204,21 @@ class ForecastingController extends Controller
             }
 
             // Ambil bahan baku supplier yang tersedia dengan filtering berdasarkan nama bahan baku
-            // Optimized query dengan proper join dan select, termasuk pic_purchasing
+            // Optimized query dengan proper join dan select, termasuk pic_purchasing dan harga per klien
             try {
                 $query = BahanBakuSupplier::select([
                         'bahan_baku_supplier.*',
                         'suppliers.nama as supplier_nama',
                         'suppliers.pic_purchasing_id',
-                        'users.nama as pic_purchasing_nama'
+                        'users.nama as pic_purchasing_nama',
+                        'bahan_baku_supplier_klien.harga_per_satuan as harga_klien'
                     ])
                     ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
                     ->leftJoin('users', 'suppliers.pic_purchasing_id', '=', 'users.id')
+                    ->leftJoin('bahan_baku_supplier_klien', function($join) use ($klienId) {
+                        $join->on('bahan_baku_supplier.id', '=', 'bahan_baku_supplier_klien.bahan_baku_supplier_id')
+                             ->where('bahan_baku_supplier_klien.klien_id', '=', $klienId);
+                    })
                     ->where('bahan_baku_supplier.stok', '>', 0); // Hanya ambil yang ada stoknya
                     
                 // Filter berdasarkan kemiripan nama bahan baku (case-insensitive, partial match)
@@ -238,6 +247,18 @@ class ForecastingController extends Controller
                 }
                 
                 $bahanBakuSuppliers = $query->orderBy('bahan_baku_supplier.nama', 'asc')->get();
+                
+                // Transform data to use harga_klien if available, otherwise use harga global
+                $bahanBakuSuppliers = $bahanBakuSuppliers->map(function($item) {
+                    // Priority: harga_klien > harga_per_satuan (global)
+                    if ($item->harga_klien) {
+                        $item->harga_per_satuan = $item->harga_klien;
+                        $item->is_harga_khusus = true;
+                    } else {
+                        $item->is_harga_khusus = false;
+                    }
+                    return $item;
+                });
                     
                 Log::info('Main query executed successfully, found: ' . $bahanBakuSuppliers->count() . ' records');
             } catch (\Exception $queryError) {
@@ -245,7 +266,9 @@ class ForecastingController extends Controller
                 Log::error('Query error details: ' . $queryError->getTraceAsString());
                 
                 // Fallback to simpler query with manual supplier loading
-                $fallbackQuery = BahanBakuSupplier::with('supplier.picPurchasing')
+                $fallbackQuery = BahanBakuSupplier::with(['supplier.picPurchasing', 'hargaPerKlien' => function($q) use ($klienId) {
+                        $q->where('klien_id', $klienId);
+                    }])
                     ->where('stok', '>', 0);
                 
                 // Apply the same bahan baku name filtering in fallback
@@ -272,11 +295,21 @@ class ForecastingController extends Controller
                 
                 $bahanBakuSuppliers = $fallbackQuery->orderBy('nama', 'asc')->get();
                 
-                // Transform the data to include supplier_nama field
+                // Transform the data to include supplier_nama field and harga per klien
                 $bahanBakuSuppliers = $bahanBakuSuppliers->map(function($item) {
                     $item->supplier_nama = $item->supplier ? $item->supplier->nama : 'Supplier tidak diketahui';
                     $item->pic_purchasing_id = $item->supplier ? $item->supplier->pic_purchasing_id : null;
                     $item->pic_purchasing_nama = $item->supplier && $item->supplier->picPurchasing ? $item->supplier->picPurchasing->nama : null;
+                    
+                    // Check if has harga khusus untuk klien ini
+                    $hargaKlien = $item->hargaPerKlien->first();
+                    if ($hargaKlien) {
+                        $item->harga_per_satuan = $hargaKlien->harga_per_satuan;
+                        $item->is_harga_khusus = true;
+                    } else {
+                        $item->is_harga_khusus = false;
+                    }
+                    
                     return $item;
                 });
                 
@@ -543,8 +576,13 @@ class ForecastingController extends Controller
             if ($request->has('update_harga_supplier') && $request->update_harga_supplier['update_harga_supplier'] === true) {
                 $updatePriceData = $request->update_harga_supplier;
                 
+                // Get klien_id from purchase order
+                $purchaseOrder = \App\Models\Order::find($request->purchase_order_id);
+                $klienId = $purchaseOrder->klien_id ?? null;
+                
                 Log::info('Processing price update for supplier', [
                     'bahan_baku_supplier_id' => $updatePriceData['bahan_baku_supplier_id'],
+                    'klien_id' => $klienId,
                     'harga_lama' => $updatePriceData['harga_lama'],
                     'harga_baru' => $updatePriceData['harga_baru']
                 ]);
@@ -555,25 +593,130 @@ class ForecastingController extends Controller
                     throw new \Exception("Bahan Baku Supplier tidak ditemukan untuk update harga");
                 }
                 
-                // Update harga_per_satuan pada BahanBakuSupplier
-                $supplierToUpdate->update([
-                    'harga_per_satuan' => $updatePriceData['harga_baru']
-                ]);
-                
-                // Catat perubahan harga ke RiwayatHargaBahanBaku
-                RiwayatHargaBahanBaku::catatPerubahanHarga(
-                    $updatePriceData['bahan_baku_supplier_id'],
-                    $updatePriceData['harga_lama'],
-                    $updatePriceData['harga_baru'],
-                    'Perubahan harga melalui forecast', // Default keterangan
-                    Auth::id(),
-                    now()
-                );
+                if ($klienId) {
+                    // Check if harga khusus klien already exists
+                    $hargaKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $updatePriceData['bahan_baku_supplier_id'])
+                        ->where('klien_id', $klienId)
+                        ->first();
+                    
+                    if ($hargaKlien) {
+                        // Update existing harga khusus klien
+                        $hargaKlien->update([
+                            'harga_per_satuan' => $updatePriceData['harga_baru']
+                        ]);
+                        
+                        Log::info('Updated existing harga khusus klien');
+                    } else {
+                        // Create new harga khusus klien
+                        \App\Models\BahanBakuSupplierKlien::create([
+                            'bahan_baku_supplier_id' => $updatePriceData['bahan_baku_supplier_id'],
+                            'klien_id' => $klienId,
+                            'harga_per_satuan' => $updatePriceData['harga_baru']
+                        ]);
+                        
+                        Log::info('Created new harga khusus klien');
+                    }
+                    
+                    // Catat perubahan harga ke RiwayatHargaBahanBaku (with klien_id)
+                    RiwayatHargaBahanBaku::catatPerubahanHarga(
+                        $updatePriceData['bahan_baku_supplier_id'],
+                        $updatePriceData['harga_lama'],
+                        $updatePriceData['harga_baru'],
+                        'Perubahan harga khusus untuk klien melalui forecast',
+                        Auth::id(),
+                        now(),
+                        $klienId // Pass klien_id
+                    );
+                } else {
+                    // Update harga global (fallback jika tidak ada klien_id)
+                    $supplierToUpdate->update([
+                        'harga_per_satuan' => $updatePriceData['harga_baru']
+                    ]);
+                    
+                    // Catat perubahan harga global ke RiwayatHargaBahanBaku (without klien_id)
+                    RiwayatHargaBahanBaku::catatPerubahanHarga(
+                        $updatePriceData['bahan_baku_supplier_id'],
+                        $updatePriceData['harga_lama'],
+                        $updatePriceData['harga_baru'],
+                        'Perubahan harga global melalui forecast',
+                        Auth::id(),
+                        now()
+                    );
+                    
+                    Log::info('Updated harga global supplier');
+                }
                 
                 // Update supplier data dalam collection untuk forecast
                 $suppliers[$updatePriceData['bahan_baku_supplier_id']]->harga_per_satuan = $updatePriceData['harga_baru'];
                 
                 Log::info('Price update completed successfully');
+            }
+
+            // Get klien_id from purchase order for auto-sync harga klien
+            $purchaseOrder = \App\Models\Order::find($request->purchase_order_id);
+            $klienId = $purchaseOrder->klien_id ?? null;
+
+            // Auto-sync harga klien untuk semua detail forecast (baik user edit atau tidak)
+            if ($klienId) {
+                Log::info("Auto-syncing harga klien for klien_id: {$klienId}");
+                
+                foreach ($request->details as $detail) {
+                    $bahanBakuSupplierId = $detail['bahan_baku_supplier_id'];
+                    $hargaForecast = $detail['harga_satuan_forecast'];
+                    
+                    // Check if harga khusus klien already exists
+                    $hargaKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplierId)
+                        ->where('klien_id', $klienId)
+                        ->first();
+                    
+                    if ($hargaKlien) {
+                        // Check if harga berbeda, update jika beda
+                        if ($hargaKlien->harga_per_satuan != $hargaForecast) {
+                            $hargaLama = $hargaKlien->harga_per_satuan;
+                            
+                            $hargaKlien->update([
+                                'harga_per_satuan' => $hargaForecast
+                            ]);
+                            
+                            // Catat perubahan harga
+                            RiwayatHargaBahanBaku::catatPerubahanHarga(
+                                $bahanBakuSupplierId,
+                                $hargaLama,
+                                $hargaForecast,
+                                'Update harga khusus klien dari forecast',
+                                Auth::id(),
+                                now(),
+                                $klienId
+                            );
+                            
+                            Log::info("Updated harga khusus klien - Supplier: {$bahanBakuSupplierId}, Klien: {$klienId}, Harga: {$hargaForecast}");
+                        } else {
+                            Log::info("Harga khusus klien sudah sama, skip update - Supplier: {$bahanBakuSupplierId}, Klien: {$klienId}");
+                        }
+                    } else {
+                        // Create new harga khusus klien
+                        \App\Models\BahanBakuSupplierKlien::create([
+                            'bahan_baku_supplier_id' => $bahanBakuSupplierId,
+                            'klien_id' => $klienId,
+                            'harga_per_satuan' => $hargaForecast
+                        ]);
+                        
+                        // Catat sebagai harga awal untuk klien ini
+                        RiwayatHargaBahanBaku::catatPerubahanHarga(
+                            $bahanBakuSupplierId,
+                            null, // harga lama = null (harga awal)
+                            $hargaForecast,
+                            'Harga awal khusus untuk klien dari forecast pertama',
+                            Auth::id(),
+                            now(),
+                            $klienId
+                        );
+                        
+                        Log::info("Created new harga khusus klien - Supplier: {$bahanBakuSupplierId}, Klien: {$klienId}, Harga: {$hargaForecast}");
+                    }
+                }
+                
+                Log::info("Auto-sync harga klien completed");
             }
 
             // Get timestamp sekali saja

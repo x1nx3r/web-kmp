@@ -336,13 +336,21 @@ class OrderCreate extends Component
 
     protected function autoPopulateSuppliers($material)
     {
+        // Get klien_id for client-specific pricing lookup
+        $klienId = $this->selectedKlienId;
+
         // Get all suppliers for this material using name matching (like in OrderDetail model)
+        // Load hargaPerKlien relationship for client-specific pricing
         $suppliers = Supplier::with([
             "bahanBakuSuppliers" => function ($q) use ($material) {
                 $q->where("nama", "like", "%" . $material->nama . "%")
                     ->whereNotNull("harga_per_satuan")
-                    ->where("harga_per_satuan", ">", 0)
-                    ->orderBy("harga_per_satuan", "asc");
+                    ->where("harga_per_satuan", ">", 0);
+            },
+            "bahanBakuSuppliers.hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
             },
             "picPurchasing",
         ])->get();
@@ -352,10 +360,18 @@ class OrderCreate extends Component
 
         foreach ($suppliers as $supplier) {
             foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
+                // Use client-specific price if available, otherwise fall back to global price
+                $hargaSupplier = $bahanBaku->getHargaForKlien($klienId);
+
+                // Skip if no valid price
+                if (!$hargaSupplier || $hargaSupplier <= 0) {
+                    continue;
+                }
+
                 // Calculate margin with a default selling price (20% markup)
-                $suggestedPrice = $bahanBaku->harga_per_satuan * 1.2;
+                $suggestedPrice = $hargaSupplier * 1.2;
                 $margin =
-                    (($suggestedPrice - $bahanBaku->harga_per_satuan) /
+                    (($suggestedPrice - $hargaSupplier) /
                         $suggestedPrice) *
                     100;
 
@@ -369,7 +385,7 @@ class OrderCreate extends Component
                         ? $supplier->picPurchasing->nama
                         : null,
                     "material_name" => $bahanBaku->nama,
-                    "harga_supplier" => $bahanBaku->harga_per_satuan,
+                    "harga_supplier" => $hargaSupplier,
                     "satuan" => $bahanBaku->satuan,
                     "stok" => $bahanBaku->stok ?? 0,
                     "suggested_price" => $suggestedPrice,
@@ -377,8 +393,8 @@ class OrderCreate extends Component
                     "is_recommended" => false, // Will set best one later
                 ];
 
-                if ($bahanBaku->harga_per_satuan < $bestPrice) {
-                    $bestPrice = $bahanBaku->harga_per_satuan;
+                if ($hargaSupplier < $bestPrice) {
+                    $bestPrice = $hargaSupplier;
                 }
             }
         }

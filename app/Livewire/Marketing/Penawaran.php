@@ -444,12 +444,20 @@ class Penawaran extends Component
 
     private function getBestSupplierPrice($materialName)
     {
+        // Get klien_id for client-specific pricing lookup
+        $klienId = $this->selectedKlienId;
+
         // Find the best supplier price for materials with matching names
+        // Load hargaPerKlien relationship for client-specific pricing
         $suppliers = Supplier::with([
             "bahanBakuSuppliers" => function ($q) use ($materialName) {
                 $q->where("nama", "like", "%" . $materialName . "%")
-                    ->whereNotNull("harga_per_satuan")
-                    ->orderBy("harga_per_satuan", "asc");
+                    ->whereNotNull("harga_per_satuan");
+            },
+            "bahanBakuSuppliers.hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
             },
             "picPurchasing",
         ])->get();
@@ -461,8 +469,11 @@ class Penawaran extends Component
 
         foreach ($suppliers as $supplier) {
             foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
-                if ($bahanBaku->harga_per_satuan < $bestPrice) {
-                    $bestPrice = $bahanBaku->harga_per_satuan;
+                // Use client-specific price if available, otherwise fall back to global
+                $price = $bahanBaku->getHargaForKlien($klienId);
+
+                if ($price && $price < $bestPrice) {
+                    $bestPrice = $price;
                     $bestSupplierName = $supplier->nama;
                     $bestSupplierId = $bahanBaku->id;
                     $bestPicName = $supplier->picPurchasing

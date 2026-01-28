@@ -27,6 +27,96 @@
     </div>
 </div>
 
+{{-- Modal Revisi Pengiriman Berhasil --}}
+<div id="revisiPengirimanModalBerhasil" class="fixed inset-0 bg-black/20 backdrop-blur-xs bg-opacity-50 items-center justify-center z-[60] hidden" style="display: none;">
+    <div class="bg-white rounded-xl shadow-2xl w-11/12 md:w-2/3 lg:w-1/2 max-w-2xl">
+        {{-- Header --}}
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 bg-orange-600 rounded-t-xl">
+            <div class="flex items-center">
+                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-undo text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Revisi Pengiriman</h3>
+                    <p class="text-sm text-orange-100 opacity-90">Kembalikan ke status Pengiriman Masuk untuk diperbaiki</p>
+                </div>
+            </div>
+            <button onclick="closeRevisiModalBerhasil()" 
+                    class="text-white hover:text-gray-200 hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-all duration-200">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        {{-- Content --}}
+        <div class="p-6">
+            {{-- Warning Banner --}}
+            <div class="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 mb-6">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-2xl mr-3 mt-1"></i>
+                    <div>
+                        <h5 class="font-semibold text-red-800 mb-2">⚠️ Peringatan Revisi</h5>
+                        <ul class="text-sm text-red-700 space-y-1">
+                            <li>• Pengiriman akan dikembalikan ke status <strong>Pengiriman Masuk</strong></li>
+                            <li>• Qty yang sudah di-kurangi akan dikembalikan</li>
+                            <li>• Alasan revisi akan tercatat di sistem untuk audit trail</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <form id="formRevisiPengirimanBerhasil" onsubmit="submitRevisiPengirimanBerhasil(event)">
+                <input type="hidden" id="revisi_pengiriman_id" name="pengiriman_id">
+                
+                {{-- Catatan Revisi --}}
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-comment-alt text-orange-600 mr-1"></i>
+                        Alasan Revisi <span class="text-red-600">*</span>
+                    </label>
+                    <textarea id="revisi_catatan" 
+                              name="catatan" 
+                              rows="5" 
+                              required 
+                              minlength="10"
+                              class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200" 
+                              placeholder="Jelaskan alasan revisi secara detail (minimal 10 karakter)...&#10;&#10;Contoh:&#10;- Data qty salah input&#10;- Tanggal kirim tidak sesuai&#10;- Supplier salah pilih"></textarea>
+                    <small class="text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Alasan revisi akan dilihat oleh Staff Procurement dan tercatat di sistem
+                    </small>
+                </div>
+
+                {{-- Confirmation Checkbox --}}
+                <div class="mb-6">
+                    <label class="flex items-start cursor-pointer">
+                        <input type="checkbox" id="revisi_confirm" required 
+                               class="mt-1 w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500">
+                        <span class="ml-3 text-sm text-gray-700">
+                            Saya memahami bahwa revisi ini akan <strong>mengembalikan qty ke order detail</strong> 
+                            dan mengembalikan status pengiriman ke Pengiriman Masuk untuk diperbaiki oleh Staff Procurement.
+                        </span>
+                    </label>
+                </div>
+
+                {{-- Buttons --}}
+                <div class="flex justify-end space-x-3">
+                    <button type="button" 
+                            onclick="closeRevisiModalBerhasil()" 
+                            class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-all duration-200 font-semibold">
+                        <i class="fas fa-times mr-2"></i>
+                        Batal
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all duration-200 font-semibold shadow-md hover:shadow-lg">
+                        <i class="fas fa-undo mr-2"></i>
+                        Revisi Pengiriman
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // Function to open detail modal for pengiriman berhasil
 function openDetailModalBerhasil(pengirimanId) {
@@ -91,13 +181,23 @@ function closeDetailModalBerhasil() {
     modal.classList.add('hidden');
 }
 
-// Close modal when clicking outside
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('detailPengirimanModalBerhasil');
-    if (event.target === modal) {
-        closeDetailModalBerhasil();
-    }
-});
+// Function to open revisi modal
+function openRevisiModalBerhasil(pengirimanId) {
+    document.getElementById('revisi_pengiriman_id').value = pengirimanId;
+    document.getElementById('revisi_catatan').value = '';
+    document.getElementById('revisi_confirm').checked = false;
+    
+    const modal = document.getElementById('revisiPengirimanModalBerhasil');
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+}
+
+// Function to close revisi modal
+function closeRevisiModalBerhasil() {
+    const modal = document.getElementById('revisiPengirimanModalBerhasil');
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+}
 
 // Add keyboard event listeners
 document.addEventListener('keydown', function(event) {
@@ -105,11 +205,14 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         const detailModal = document.getElementById('detailPengirimanModalBerhasil');
         const imageModal = document.getElementById('imageViewModalBerhasil');
+        const revisiModal = document.getElementById('revisiPengirimanModalBerhasil');
         
         if (imageModal && !imageModal.classList.contains('hidden')) {
             closeImageViewBerhasil();
         } else if (detailModal && !detailModal.classList.contains('hidden')) {
             closeDetailModalBerhasil();
+        } else if (revisiModal && !revisiModal.classList.contains('hidden')) {
+            closeRevisiModalBerhasil();
         }
     }
 });
@@ -399,7 +502,37 @@ function populateDetailModalBerhasil(pengiriman) {
         `;
     }
     
+    // Check if user can revisi (only direktur and manager_purchasing)
+    const userRole = '{{ Auth::user()->role ?? "" }}';
+    const canRevisi = ['direktur', 'manager_purchasing'].includes(userRole);
+    
+    // Pengiriman berhasil always can be revised by authorized users
+    // No need to check approval/invoice status - accounting will handle their own data
+    const canBeRevised = true;
+    
     content.innerHTML = `
+        <!-- Action Buttons (if allowed) -->
+        ${canRevisi ? `
+            <div class="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-exclamation-triangle text-white"></i>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold text-gray-900">Perlu Revisi Data?</h5>
+                            <p class="text-xs text-gray-600">Kembalikan ke status Pengiriman Masuk untuk diperbaiki</p>
+                        </div>
+                    </div>
+                    <button onclick="openRevisiModalBerhasil(${pengiriman.id})" 
+                            class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all duration-200 font-semibold shadow-md hover:shadow-lg flex items-center">
+                        <i class="fas fa-undo mr-2"></i>
+                        Revisi Pengiriman
+                    </button>
+                </div>
+            </div>
+        ` : ''}
+    
         <!-- 1. Informasi Pengiriman -->
         <div class="bg-green-50 rounded-lg p-4 border border-green-200">
             <div class="flex items-center justify-between mb-3">
@@ -969,6 +1102,108 @@ function saveCatatan(pengirimanId) {
         editBtn.disabled = false;
     });
 }
+
+// Function to submit revisi
+function submitRevisiPengirimanBerhasil(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const pengirimanId = formData.get('pengiriman_id');
+    const catatan = formData.get('catatan');
+    
+    // Final confirmation
+    Swal.fire({
+        title: 'Konfirmasi Revisi',
+        html: `
+            <div class="text-left">
+                <p class="mb-3">Anda akan merevisi pengiriman dengan alasan:</p>
+                <div class="bg-orange-50 border-l-4 border-orange-400 p-3 mb-3">
+                    <p class="text-sm italic">"${catatan}"</p>
+                </div>
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p class="text-sm text-red-700 font-semibold mb-2">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Dampak Revisi:
+                    </p>
+                    <ul class="text-xs text-red-600 space-y-1 ml-4">
+                        <li>• Status kembali ke Pengiriman Masuk</li>
+                        <li>• Qty dikembalikan ke Order Detail</li>
+                    </ul>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Revisi',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#ea580c',
+        cancelButtonColor: '#6b7280',
+        reverseButtons: true,
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading
+            Swal.fire({
+                title: 'Memproses Revisi...',
+                html: 'Mohon tunggu, sedang mengembalikan data...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => Swal.showLoading()
+            });
+            
+            // Submit via AJAX
+            fetch(`/procurement/pengiriman/${pengirimanId}/revisi`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    catatan: catatan
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        closeRevisiModalBerhasil();
+                        closeDetailModalBerhasil();
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Terjadi kesalahan saat memproses revisi'
+                });
+            });
+        }
+    });
+}
+
+// Close revisi modal when clicking outside
+document.addEventListener('click', function(event) {
+    const revisiModal = document.getElementById('revisiPengirimanModalBerhasil');
+    if (event.target === revisiModal) {
+        closeRevisiModalBerhasil();
+    }
+});
 </script>
 
 <style>

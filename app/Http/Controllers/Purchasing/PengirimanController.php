@@ -2106,6 +2106,7 @@ class PengirimanController extends Controller
 
     /**
      * Revisi pengiriman (kirim kembali ke pending untuk diperbaiki)
+     * Can be used from menunggu_verifikasi OR berhasil status
      */
     public function revisiPengiriman(Request $request, $id)
     {
@@ -2129,18 +2130,19 @@ class PengirimanController extends Controller
                 ], 403);
             }
             
-            // Check if status is menunggu_verifikasi
-            if ($pengiriman->status !== 'menunggu_verifikasi') {
+            // Check if status is menunggu_verifikasi OR berhasil
+            if (!in_array($pengiriman->status, ['menunggu_verifikasi', 'berhasil'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pengiriman tidak dalam status menunggu verifikasi'
+                    'message' => 'Pengiriman hanya dapat direvisi dari status menunggu verifikasi atau berhasil'
                 ], 400);
             }
             
             // Build revisi catatan with timestamp
             $timestamp = now()->format('d M Y, H:i');
             $revisedBy = $user->nama;
-            $revisiCatatan = "[REVISI oleh {$revisedBy} pada {$timestamp}]\n" . $request->catatan;
+            $oldStatus = $pengiriman->status;
+            $revisiCatatan = "[REVISI dari status {$oldStatus} oleh {$revisedBy} pada {$timestamp}]\n" . $request->catatan;
             
             // Append to existing catatan if exists
             if ($pengiriman->catatan) {
@@ -2149,19 +2151,31 @@ class PengirimanController extends Controller
                 $pengiriman->catatan = $revisiCatatan;
             }
             
-            // IMPORTANT: Restore qty to order_detail when pengiriman is revisd back to pending
-            // This will only restore if qty was previously reduced
-            $this->restoreOrderDetailQty($pengiriman);
+            // Begin transaction
+            DB::beginTransaction();
             
-            // Update status back to pending
-            $pengiriman->status = 'pending';
-            $pengiriman->save();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Pengiriman berhasil direvisi dan dikembalikan ke status pending',
-                'pengiriman' => $pengiriman
-            ]);
+            try {
+                // IMPORTANT: Restore qty to order_detail when pengiriman is revised back to pending
+                // This will only restore if qty was previously reduced
+                $this->restoreOrderDetailQty($pengiriman);
+                
+                // Update status back to pending
+                $pengiriman->status = 'pending';
+                $pengiriman->save();
+                
+                DB::commit();
+                
+                Log::info("Pengiriman ID: {$pengiriman->id} successfully revised from {$oldStatus} to pending by user ID: {$user->id}");
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pengiriman berhasil direvisi dan dikembalikan ke status pending',
+                    'pengiriman' => $pengiriman
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,

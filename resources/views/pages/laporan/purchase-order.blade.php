@@ -1475,7 +1475,20 @@ document.addEventListener('click', function(event) {
         </div>
 
         {{-- Export Button --}}
-        <div class="mb-4 flex justify-end">
+        <div class="mb-4 flex justify-end gap-2">
+            {{-- Excel Export --}}
+            <form action="{{ route('laporan.po.client.excel') }}" method="POST" target="_blank">
+                @csrf
+                <input type="hidden" name="periode" value="{{ $periode }}">
+                <input type="hidden" name="start_date" value="{{ $startDate }}">
+                <input type="hidden" name="end_date" value="{{ $endDate }}">
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-excel"></i>
+                    Download Excel
+                </button>
+            </form>
+
+            {{-- PDF Export --}}
             <form action="{{ route('laporan.po.client.pdf') }}" method="POST" target="_blank">
                 @csrf
                 <input type="hidden" name="periode" value="{{ $periode }}">

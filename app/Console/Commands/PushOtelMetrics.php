@@ -53,12 +53,15 @@ class PushOtelMetrics extends Command
         $addGauge = function ($name, $value, $asType = 'asInt', $attributes = []) use (&$otlpMetrics, $timestamp) {
             $otlpMetrics[] = [
                 'name' => $name,
-                'unit' => '1',
+                // Changing unit from '1' to 'count' or empty to prevent backend (e.g. Mimir) 
+                // from auto-appending '_ratio' suffix.
+                'unit' => '', 
                 'gauge' => [
                     'dataPoints' => [
                         [
                             $asType => $value,
-                            'timeUnixNano' => $timestamp,
+                            // 'timeUnixNano' => $timestamp, // OTLP often omits this for "now" or accepts it. Keeping it.
+                            'timeUnixNano' => $timestamp, 
                             'attributes' => $attributes
                         ]
                     ]

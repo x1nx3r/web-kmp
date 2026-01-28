@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         "no_order",
@@ -484,7 +485,34 @@ class Order extends Model
             $order->syncPriorityFromSchedule();
         });
 
-        // Remove the problematic updating event that causes recursion
-        // Status updates should be handled manually through business logic methods
+        // Cascade soft-delete to related records
+        // This bypasses FK RESTRICT constraints since we're not actually deleting rows
+        static::deleting(function ($order) {
+            // Soft-delete related forecasts and their details first
+            $order->forecasts()->each(function ($forecast) {
+                $forecast->forecastDetails()->delete(); // Soft-delete forecast details
+                $forecast->delete(); // Soft-delete forecast
+            });
+
+            // Soft-delete pengiriman and their details
+            $order->pengiriman()->each(function ($pengiriman) {
+                $pengiriman->pengirimanDetails()->delete(); // Soft-delete pengiriman details
+                $pengiriman->delete(); // Soft-delete pengiriman
+            });
+
+            // Soft-delete order details and their suppliers
+            $order->orderDetails()->each(function ($detail) {
+                $detail->orderSuppliers()->delete(); // Soft-delete order suppliers
+                $detail->delete(); // Soft-delete order detail
+            });
+
+            // Soft-delete consultations
+            $order->consultations()->delete();
+
+            // Soft-delete winner record
+            if ($order->winner) {
+                $order->winner->delete();
+            }
+        });
     }
 }

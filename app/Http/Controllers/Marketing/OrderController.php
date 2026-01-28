@@ -501,25 +501,19 @@ class OrderController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Uses soft delete - order and related records are removed from active views but preserved in database.
      */
     public function destroy(string $id)
     {
         $order = Order::findOrFail($id);
 
-        if ($order->status !== "draft") {
-            return redirect()
-                ->route("orders.index")
-                ->with(
-                    "error",
-                    "Hanya order dengan status draft yang dapat dihapus.",
-                );
-        }
-
+        // Soft-delete cascades to related records (forecasts, pengiriman, order details, etc.)
+        // See Order model's boot() deleting event
         $order->delete();
 
         return redirect()
             ->route("orders.index")
-            ->with("success", "Order berhasil dihapus.");
+            ->with("success", "Order berhasil dihapus. Data terkait (forecast, pengiriman, dll) juga dihapus.");
     }
 
     /**

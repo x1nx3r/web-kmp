@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Klien;
+use App\Exports\ClientPOExport;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PurchaseOrderController extends Controller
 {
@@ -128,7 +130,14 @@ class PurchaseOrderController extends Controller
                 'kliens.cabang',
                 DB::raw('COUNT(orders.id) as total_po'),
                 DB::raw('SUM(orders.total_amount) as total_nilai'),
-                DB::raw('SUM(orders.total_qty) as total_qty')
+                DB::raw('SUM(orders.total_qty) as total_qty'),
+                DB::raw('MAX(orders.tanggal_order) as last_order_date'),
+                DB::raw('MIN(orders.tanggal_order) as first_order_date'),
+                DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
+                DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
+                DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_amount ELSE 0 END) as outstanding_amount"),
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_qty ELSE 0 END) as outstanding_qty")
             )
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
@@ -138,8 +147,59 @@ class PurchaseOrderController extends Controller
             ->get()
             ->map(function($item) use ($totalNilaiPOForPercentage) {
                 $item->percentage = $totalNilaiPOForPercentage > 0 ? ($item->total_nilai / $totalNilaiPOForPercentage) * 100 : 0;
+                $item->avg_nilai_per_po = $item->total_po > 0 ? $item->total_nilai / $item->total_po : 0;
                 return $item;
             });
+        
+        // ========== PO DETAILS BY CLIENT (for expandable list) ==========
+        $poDetailsByClient = [];
+        foreach ($poByClient as $client) {
+            $poDetails = Order::with(['orderDetails.bahanBakuKlien'])
+                ->where('klien_id', $client->klien_id)
+                ->whereIn('status', ['dikonfirmasi', 'diproses', 'selesai'])
+                ->where($dateFilterQuery)
+                ->orderBy('tanggal_order', 'desc')
+                ->get()
+                ->map(function($order) {
+                    // Get materials list
+                    $materials = $order->orderDetails
+                        ->pluck('bahanBakuKlien.nama')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+                    
+                    return [
+                        'id' => $order->id,
+                        'po_number' => $order->po_number ?: $order->no_order,
+                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'status' => $order->status,
+                        'priority' => $order->priority,
+                        'total_amount' => $order->total_amount,
+                        'total_qty' => $order->total_qty,
+                        'materials' => implode(', ', $materials) ?: '-',
+                        'materials_count' => count($materials),
+                    ];
+                })
+                ->toArray();
+            
+            // Get unique materials for this client
+            $clientMaterials = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
+                ->where('orders.klien_id', $client->klien_id)
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+                ->where($dateFilterQuery)
+                ->select('bahan_baku_klien.nama', DB::raw('SUM(order_details.qty) as total_qty'), DB::raw('SUM(order_details.total_harga) as total_nilai'))
+                ->groupBy('bahan_baku_klien.id', 'bahan_baku_klien.nama')
+                ->orderBy('total_nilai', 'desc')
+                ->get()
+                ->toArray();
+            
+            $poDetailsByClient[$client->klien_id] = [
+                'orders' => $poDetails,
+                'materials' => $clientMaterials,
+            ];
+        }
         
         // ========== PO TREND BY MONTH (dikonfirmasi & diproses only) - NO FILTER ==========
         $poTrendByMonth = [];
@@ -236,6 +296,7 @@ class PurchaseOrderController extends Controller
             'poByPriority',
             'poDetailsByPriority',
             'poByClient',
+            'poDetailsByClient',
             'poTrendByMonth',
             'monthLabels',
             'recentPOs',
@@ -318,14 +379,19 @@ class PurchaseOrderController extends Controller
             // 'all' = no date filter
         };
         
-        // Get PO by client data
+        // Get PO by client data with enhanced metrics
         $poByClient = Order::select(
                 'kliens.id as klien_id',
                 'kliens.nama as klien_nama',
                 'kliens.cabang',
                 DB::raw('COUNT(orders.id) as total_po'),
                 DB::raw('SUM(orders.total_amount) as total_nilai'),
-                DB::raw('SUM(orders.total_qty) as total_qty')
+                DB::raw('SUM(orders.total_qty) as total_qty'),
+                DB::raw('MAX(orders.tanggal_order) as last_order_date'),
+                DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
+                DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
+                DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_amount ELSE 0 END) as outstanding_amount")
             )
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
@@ -338,6 +404,47 @@ class PurchaseOrderController extends Controller
         $totalKlien = $poByClient->count();
         $totalPO = $poByClient->sum('total_po');
         $totalNilai = $poByClient->sum('total_nilai');
+        $totalOutstanding = $poByClient->sum('outstanding_amount');
+        $avgPerPO = $totalPO > 0 ? $totalNilai / $totalPO : 0;
+        
+        // Calculate percentages for each client
+        $poByClient = $poByClient->map(function($item) use ($totalNilai) {
+            $item->percentage = $totalNilai > 0 ? ($item->total_nilai / $totalNilai) * 100 : 0;
+            $item->avg_nilai_per_po = $item->total_po > 0 ? $item->total_nilai / $item->total_po : 0;
+            return $item;
+        });
+        
+        // Get detailed PO list per client
+        $poDetailsByClient = [];
+        foreach ($poByClient as $client) {
+            $poDetails = Order::with(['orderDetails.bahanBakuKlien'])
+                ->where('klien_id', $client->klien_id)
+                ->whereIn('status', ['dikonfirmasi', 'diproses', 'selesai'])
+                ->where($dateFilterQuery)
+                ->orderBy('tanggal_order', 'desc')
+                ->get()
+                ->map(function($order) {
+                    $materials = $order->orderDetails
+                        ->pluck('bahanBakuKlien.nama')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+                    
+                    return [
+                        'po_number' => $order->po_number ?: $order->no_order,
+                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'status' => $order->status,
+                        'priority' => $order->priority,
+                        'total_amount' => $order->total_amount,
+                        'total_qty' => $order->total_qty,
+                        'materials' => implode(', ', $materials) ?: '-',
+                    ];
+                })
+                ->toArray();
+            
+            $poDetailsByClient[$client->klien_id] = $poDetails;
+        }
         
         // Build filter info text
         $filterInfo = null;
@@ -354,21 +461,138 @@ class PurchaseOrderController extends Controller
         // Load PDF view
         $pdf = Pdf::loadView('pages.laporan.pdf.client', [
             'poByClient' => $poByClient,
+            'poDetailsByClient' => $poDetailsByClient,
             'totalKlien' => $totalKlien,
             'totalPO' => $totalPO,
             'totalNilai' => $totalNilai,
+            'totalOutstanding' => $totalOutstanding,
+            'avgPerPO' => $avgPerPO,
             'filterInfo' => $filterInfo,
             'generatedAt' => now()->format('d/m/Y H:i')
         ]);
         
-        // Set paper size and orientation
-        $pdf->setPaper('A4', 'portrait');
+        // Set paper size and orientation (landscape for more data)
+        $pdf->setPaper('A4', 'landscape');
         
         // Generate filename with timestamp
         $filename = 'PO_By_Client_' . now()->format('Ymd_His') . '.pdf';
         
         // Return PDF download
         return $pdf->download($filename);
+    }
+    
+    /**
+     * Export PO by Client to Excel
+     */
+    public function exportClientExcel(Request $request)
+    {
+        // Get filter parameters
+        $periode = $request->get('periode', 'all');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        
+        // Build date filter query
+        $dateFilterQuery = function($query) use ($periode, $startDate, $endDate) {
+            if ($periode === 'tahun_ini') {
+                $query->whereYear('tanggal_order', Carbon::now()->year);
+            } elseif ($periode === 'bulan_ini') {
+                $query->whereYear('tanggal_order', Carbon::now()->year)
+                      ->whereMonth('tanggal_order', Carbon::now()->month);
+            } elseif ($periode === 'custom' && $startDate && $endDate) {
+                $query->whereBetween('tanggal_order', [$startDate, $endDate]);
+            }
+        };
+        
+        // Get PO by client data with enhanced metrics
+        $poByClient = Order::select(
+                'kliens.id as klien_id',
+                'kliens.nama as klien_nama',
+                'kliens.cabang',
+                DB::raw('COUNT(orders.id) as total_po'),
+                DB::raw('SUM(orders.total_amount) as total_nilai'),
+                DB::raw('SUM(orders.total_qty) as total_qty'),
+                DB::raw('MAX(orders.tanggal_order) as last_order_date'),
+                DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
+                DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
+                DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_amount ELSE 0 END) as outstanding_amount")
+            )
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+            ->where($dateFilterQuery)
+            ->groupBy('kliens.id', 'kliens.nama', 'kliens.cabang')
+            ->orderBy('total_nilai', 'desc')
+            ->get();
+        
+        // Calculate totals
+        $totalKlien = $poByClient->count();
+        $totalPO = $poByClient->sum('total_po');
+        $totalNilai = $poByClient->sum('total_nilai');
+        $totalOutstanding = $poByClient->sum('outstanding_amount');
+        $avgPerPO = $totalPO > 0 ? $totalNilai / $totalPO : 0;
+        
+        // Calculate percentages for each client
+        $poByClient = $poByClient->map(function($item) use ($totalNilai) {
+            $item->percentage = $totalNilai > 0 ? ($item->total_nilai / $totalNilai) * 100 : 0;
+            $item->avg_nilai_per_po = $item->total_po > 0 ? $item->total_nilai / $item->total_po : 0;
+            return $item;
+        });
+        
+        // Get detailed PO list per client
+        $poDetailsByClient = [];
+        foreach ($poByClient as $client) {
+            $poDetails = Order::with(['orderDetails.bahanBakuKlien'])
+                ->where('klien_id', $client->klien_id)
+                ->whereIn('status', ['dikonfirmasi', 'diproses', 'selesai'])
+                ->where($dateFilterQuery)
+                ->orderBy('tanggal_order', 'desc')
+                ->get()
+                ->map(function($order) {
+                    $materials = $order->orderDetails
+                        ->pluck('bahanBakuKlien.nama')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+                    
+                    return [
+                        'po_number' => $order->po_number ?: $order->no_order,
+                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
+                        'status' => $order->status,
+                        'priority' => $order->priority,
+                        'total_amount' => $order->total_amount,
+                        'total_qty' => $order->total_qty,
+                        'materials' => implode(', ', $materials) ?: '-',
+                    ];
+                })
+                ->toArray();
+            
+            $poDetailsByClient[$client->klien_id] = $poDetails;
+        }
+        
+        // Build filter info text
+        $filterInfo = null;
+        if ($periode === 'tahun_ini') {
+            $filterInfo = 'Tahun ' . Carbon::now()->year;
+        } elseif ($periode === 'bulan_ini') {
+            $filterInfo = Carbon::now()->isoFormat('MMMM YYYY');
+        } elseif ($periode === 'custom' && $startDate && $endDate) {
+            $filterInfo = Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } else {
+            $filterInfo = 'Semua Data';
+        }
+        
+        $totals = [
+            'totalKlien' => $totalKlien,
+            'totalPO' => $totalPO,
+            'totalNilai' => $totalNilai,
+            'totalOutstanding' => $totalOutstanding,
+            'avgPerPO' => $avgPerPO,
+        ];
+        
+        $filename = 'PO_By_Client_' . now()->format('Ymd_His') . '.xlsx';
+        
+        return Excel::download(new ClientPOExport($poByClient, $poDetailsByClient, $totals, $filterInfo), $filename);
     }
     
     /** 

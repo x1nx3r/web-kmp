@@ -31,20 +31,31 @@ class OrderController extends Controller
     /**
      * Return top suppliers for a given client material (limit 5), ordered by supplier price asc.
      * Used by the order create page to auto-populate supplier rows.
+     * Accepts optional klien_id query parameter for client-specific pricing.
      */
-    public function getSuppliersForMaterial($materialId)
+    public function getSuppliersForMaterial(Request $request, $materialId)
     {
         $material = BahanBakuKlien::findOrFail($materialId);
+        $klienId = $request->query("klien_id") ?? $material->klien_id;
 
-        $suppliers = BahanBakuSupplier::with(["supplier.picPurchasing"])
+        // Load suppliers with client-specific pricing relationship
+        $suppliers = BahanBakuSupplier::with([
+            "supplier.picPurchasing",
+            "hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
+            },
+        ])
             ->where("nama", "like", "%" . $material->nama . "%")
             ->whereNotNull("harga_per_satuan")
-            ->orderBy("harga_per_satuan", "asc")
-            ->limit(5)
             ->get();
 
-        // Mirror Penawaran's supplier option shape but include supplier_table_id for convenience
-        $result = $suppliers->map(function ($s) {
+        // Map and calculate client-specific prices
+        $result = $suppliers->map(function ($s) use ($klienId) {
+            // Use client-specific price if available, otherwise fall back to global
+            $price = $s->getHargaForKlien($klienId);
+
             return [
                 // canonical keys:
                 // - bahan_baku_supplier_id => id of the supplier-material (BahanBakuSupplier)
@@ -56,14 +67,19 @@ class OrderController extends Controller
                         : null,
                 "bahan_baku_supplier_id" => $s->id,
                 "supplier_id" => $s->supplier ? $s->supplier->id : null,
-                "price" => (float) $s->harga_per_satuan,
+                "price" => (float) $price,
                 "satuan" => $s->satuan,
                 "stok" => (float) $s->stok,
             ];
-        });
+        })
+            // Sort by client-specific price and take top 5
+            ->sortBy("price")
+            ->take(5)
+            ->values();
 
         return response()->json(["data" => $result]);
     }
+
 
     /**
      * Show the form for creating a new resource.
@@ -339,9 +355,10 @@ class OrderController extends Controller
                     ];
                 }
 
-                // Get live current price from BahanBakuSupplier (not order snapshot)
+                // Get live current price from BahanBakuSupplier using client-specific pricing
+                $klienId = $order->klien_id;
                 $liveCurrentPrice = $orderSupplier->bahanBakuSupplier
-                    ? (float) $orderSupplier->bahanBakuSupplier->harga_per_satuan
+                    ? (float) $orderSupplier->bahanBakuSupplier->getHargaForKlien($klienId)
                     : (float) $orderSupplier->harga_supplier; // fallback to order snapshot
 
                 $supplierOptions[] = [
@@ -392,12 +409,13 @@ class OrderController extends Controller
             "orderDetails.orderSuppliers.bahanBakuSupplier",
         ])->findOrFail($id);
 
-        if ($order->status !== "draft") {
+        // Allow editing for draft and confirmed orders
+        if (!in_array($order->status, ["draft", "dikonfirmasi"])) {
             return redirect()
                 ->route("orders.show", $order->id)
                 ->with(
                     "error",
-                    "Hanya order dengan status draft yang dapat diedit.",
+                    "Hanya order dengan status draft atau dikonfirmasi yang dapat diedit.",
                 );
         }
 
@@ -411,12 +429,13 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        if ($order->status !== "draft") {
+        // Allow updating for draft and confirmed orders
+        if (!in_array($order->status, ["draft", "dikonfirmasi"])) {
             return redirect()
                 ->route("orders.show", $order->id)
                 ->with(
                     "error",
-                    "Hanya order dengan status draft yang dapat diupdate.",
+                    "Hanya order dengan status draft atau dikonfirmasi yang dapat diupdate.",
                 );
         }
 
@@ -484,25 +503,19 @@ class OrderController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Uses soft delete - order and related records are removed from active views but preserved in database.
      */
     public function destroy(string $id)
     {
         $order = Order::findOrFail($id);
 
-        if ($order->status !== "draft") {
-            return redirect()
-                ->route("orders.index")
-                ->with(
-                    "error",
-                    "Hanya order dengan status draft yang dapat dihapus.",
-                );
-        }
-
+        // Soft-delete cascades to related records (forecasts, pengiriman, order details, etc.)
+        // See Order model's boot() deleting event
         $order->delete();
 
         return redirect()
             ->route("orders.index")
-            ->with("success", "Order berhasil dihapus.");
+            ->with("success", "Order berhasil dihapus. Data terkait (forecast, pengiriman, dll) juga dihapus.");
     }
 
     /**

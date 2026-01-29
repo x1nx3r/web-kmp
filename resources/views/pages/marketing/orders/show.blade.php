@@ -136,11 +136,13 @@
                     $canManageOrder = $isMarketing || $isDirektur;
                 @endphp
                 <div class="flex flex-wrap gap-2 sm:space-x-3">
-                    @if($order->status === 'draft' && $canManageOrder)
+                    @if(in_array($order->status, ['draft', 'dikonfirmasi']) && $canManageOrder)
                         <a href="{{ route('orders.edit', $order->id) }}" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors text-center">
                             <i class="fas fa-edit mr-1 sm:mr-2"></i>
                             <span class="hidden sm:inline">Edit</span>
                         </a>
+                    @endif
+                    @if($order->status === 'draft' && $canManageOrder)
                         <form action="{{ route('orders.confirm', $order->id) }}" method="POST" class="flex-1 sm:flex-none inline">
                             @csrf
                             <button type="submit" class="w-full px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"

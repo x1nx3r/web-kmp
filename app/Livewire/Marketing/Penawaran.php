@@ -444,12 +444,20 @@ class Penawaran extends Component
 
     private function getBestSupplierPrice($materialName)
     {
+        // Get klien_id for client-specific pricing lookup
+        $klienId = $this->selectedKlienId;
+
         // Find the best supplier price for materials with matching names
+        // Load hargaPerKlien relationship for client-specific pricing
         $suppliers = Supplier::with([
             "bahanBakuSuppliers" => function ($q) use ($materialName) {
                 $q->where("nama", "like", "%" . $materialName . "%")
-                    ->whereNotNull("harga_per_satuan")
-                    ->orderBy("harga_per_satuan", "asc");
+                    ->whereNotNull("harga_per_satuan");
+            },
+            "bahanBakuSuppliers.hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
             },
             "picPurchasing",
         ])->get();
@@ -461,8 +469,11 @@ class Penawaran extends Component
 
         foreach ($suppliers as $supplier) {
             foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
-                if ($bahanBaku->harga_per_satuan < $bestPrice) {
-                    $bestPrice = $bahanBaku->harga_per_satuan;
+                // Use client-specific price if available, otherwise fall back to global
+                $price = $bahanBaku->getHargaForKlien($klienId);
+
+                if ($price && $price < $bestPrice) {
+                    $bestPrice = $price;
                     $bestSupplierName = $supplier->nama;
                     $bestSupplierId = $bahanBaku->id;
                     $bestPicName = $supplier->picPurchasing
@@ -482,12 +493,20 @@ class Penawaran extends Component
 
     private function getAllSuppliersForMaterial($materialName)
     {
+        // Get klien_id for client-specific pricing lookup
+        $klienId = $this->selectedKlienId;
+
         // Get all suppliers that have this material with their prices
+        // Load hargaPerKlien relationship for client-specific pricing
         $suppliers = Supplier::with([
             "bahanBakuSuppliers" => function ($q) use ($materialName) {
                 $q->where("nama", "like", "%" . $materialName . "%")
-                    ->whereNotNull("harga_per_satuan")
-                    ->orderBy("harga_per_satuan", "asc");
+                    ->whereNotNull("harga_per_satuan");
+            },
+            "bahanBakuSuppliers.hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
             },
             "picPurchasing",
         ])->get();
@@ -496,13 +515,16 @@ class Penawaran extends Component
 
         foreach ($suppliers as $supplier) {
             foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
+                // Use client-specific price if available, otherwise fall back to global
+                $price = $bahanBaku->getHargaForKlien($klienId);
+
                 $supplierOptions[] = [
                     "supplier" => $supplier->nama,
                     "pic_name" => $supplier->picPurchasing
                         ? $supplier->picPurchasing->nama
                         : null,
                     "supplier_id" => $bahanBaku->id,
-                    "price" => $bahanBaku->harga_per_satuan,
+                    "price" => $price,
                     "satuan" => $bahanBaku->satuan,
                     "stok" => $bahanBaku->stok,
                 ];
@@ -519,10 +541,18 @@ class Penawaran extends Component
 
     private function getSupplierSpecificPriceHistory($bahanBakuSupplierId)
     {
+        // Get klien_id for client-specific pricing lookup
+        $klienId = $this->selectedKlienId;
+
         // Get price history for a specific supplier material
         $supplierMaterial = \App\Models\BahanBakuSupplier::with([
             "riwayatHarga" => function ($q) {
                 $q->orderBy("tanggal_perubahan", "asc")->limit(30); // Last 30 records
+            },
+            "hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
             },
         ])
             ->where("id", $bahanBakuSupplierId)
@@ -532,13 +562,14 @@ class Penawaran extends Component
             return [];
         }
 
-        // If no price history exists, fallback to current price in bahan_baku_supplier
+        // If no price history exists, fallback to current price (client-specific or global)
         if ($supplierMaterial->riwayatHarga->isEmpty()) {
-            if ($supplierMaterial->harga_per_satuan) {
+            $currentPrice = $supplierMaterial->getHargaForKlien($klienId);
+            if ($currentPrice) {
                 return [
                     [
                         "tanggal" => now()->format("Y-m-d"),
-                        "harga" => (float) $supplierMaterial->harga_per_satuan,
+                        "harga" => (float) $currentPrice,
                         "formatted_tanggal" => now()->format("d M"),
                         "is_fallback" => true,
                     ],
@@ -613,10 +644,18 @@ class Penawaran extends Component
 
     private function getSupplierPriceHistory($materialName)
     {
+        // Get klien_id for client-specific pricing lookup
+        $klienId = $this->selectedKlienId;
+
         // Get supplier price history from materials with matching names
         $supplierMaterial = \App\Models\BahanBakuSupplier::with([
             "riwayatHarga" => function ($q) {
                 $q->orderBy("tanggal_perubahan", "asc")->limit(30); // Last 30 records
+            },
+            "hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
             },
         ])
             ->where("nama", "like", "%" . $materialName . "%")
@@ -628,13 +667,14 @@ class Penawaran extends Component
             return [];
         }
 
-        // If no price history exists, fallback to current price in bahan_baku_supplier
+        // If no price history exists, fallback to current price (client-specific or global)
         if ($supplierMaterial->riwayatHarga->isEmpty()) {
-            if ($supplierMaterial->harga_per_satuan) {
+            $currentPrice = $supplierMaterial->getHargaForKlien($klienId);
+            if ($currentPrice) {
                 return [
                     [
                         "tanggal" => now()->format("Y-m-d"),
-                        "harga" => (float) $supplierMaterial->harga_per_satuan,
+                        "harga" => (float) $currentPrice,
                         "formatted_tanggal" => now()->format("d M"),
                         "is_fallback" => true,
                     ],

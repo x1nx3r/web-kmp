@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class OrderDetail extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         "order_id",
@@ -343,11 +344,21 @@ class OrderDetail extends Model
             return;
         }
 
+        // Get klien_id from the parent order for client-specific pricing
+        $klienId = $this->order->klien_id ?? null;
+
         $materialName = $material->nama;
         $firstWord = trim(explode(" ", $materialName)[0]);
 
-        // Find suppliers with matching material names
-        $bahanBakuSuppliers = BahanBakuSupplier::with("supplier")
+        // Find suppliers with matching material names and load client-specific pricing
+        $bahanBakuSuppliers = BahanBakuSupplier::with([
+            "supplier",
+            "hargaPerKlien" => function ($q) use ($klienId) {
+                if ($klienId) {
+                    $q->where("klien_id", $klienId);
+                }
+            },
+        ])
             ->where(function ($query) use ($materialName, $firstWord) {
                 $query
                     ->where("nama", "LIKE", "%" . $materialName . "%")
@@ -365,7 +376,7 @@ class OrderDetail extends Model
         // Group by supplier_id and take the best matching material name to avoid duplicates
         $uniqueSuppliers = $bahanBakuSuppliers
             ->groupBy("supplier_id")
-            ->map(function ($group) use ($materialName, $firstWord) {
+            ->map(function ($group) use ($materialName, $firstWord, $klienId) {
                 // Prioritize exact/best match over cheapest price
                 // 1. Exact match (material name equals search term)
                 $exactMatch = $group->first(function ($item) use (
@@ -387,20 +398,27 @@ class OrderDetail extends Model
                     return $fullNameMatch;
                 }
 
-                // 3. Fallback: first word match, pick the one with lowest price
-                return $group->sortBy("harga_per_satuan")->first();
+                // 3. Fallback: first word match, pick the one with lowest client-specific price
+                return $group->sortBy(function ($item) use ($klienId) {
+                    return $item->getHargaForKlien($klienId);
+                })->first();
             })
             ->values();
 
-        // Sort by price to assign ranks (use harga_per_satuan field)
-        $sortedSuppliers = $uniqueSuppliers->sortBy("harga_per_satuan");
+        // Sort by client-specific price to assign ranks
+        $sortedSuppliers = $uniqueSuppliers->sortBy(function ($item) use ($klienId) {
+            return $item->getHargaForKlien($klienId);
+        });
 
         foreach ($sortedSuppliers as $bahanBakuSupplier) {
+            // Get client-specific price (falls back to global if not set)
+            $unitPrice = $bahanBakuSupplier->getHargaForKlien($klienId);
+
             $orderSupplier = new OrderSupplier([
                 "order_detail_id" => $this->id,
                 "supplier_id" => $bahanBakuSupplier->supplier_id,
                 "bahan_baku_supplier_id" => $bahanBakuSupplier->id,
-                "unit_price" => $bahanBakuSupplier->harga_per_satuan, // Use correct field name
+                "unit_price" => $unitPrice, // Use client-specific price
                 "price_rank" => $rank,
                 "is_recommended" => $rank === 1, // Best price is recommended
                 "is_available" => true,

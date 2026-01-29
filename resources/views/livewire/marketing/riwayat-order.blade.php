@@ -630,7 +630,7 @@
                                     <i class="fas fa-eye mr-1"></i>
                                     Lihat Detail
                                 </a>
-                                @if($order->status === 'draft' && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
+                                @if(in_array($order->status, ['draft', 'dikonfirmasi']) && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
                                     <a href="{{ route('orders.edit', $order) }}" class="text-green-600 hover:text-green-800 text-sm font-medium">
                                         <i class="fas fa-edit mr-1"></i>
                                         Edit
@@ -669,7 +669,7 @@
                                 <button
                                     wire:click="confirmDelete({{ $order->id }})"
                                     class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
-                                    title="Hapus Order (hanya jika tidak ada forecast/pengiriman)"
+                                    title="Hapus Order"
                                 >
                                     <i class="fas fa-trash mr-1"></i>
                                     Hapus
@@ -742,7 +742,7 @@
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-white">Konfirmasi Hapus Order</h3>
-                                <p class="text-sm text-red-100">Tindakan ini tidak dapat dibatalkan!</p>
+                                <p class="text-sm text-red-100">Order akan dihapus dari sistem</p>
                             </div>
                         </div>
                     </div>
@@ -753,16 +753,16 @@
                             <div class="flex items-start">
                                 <i class="fas fa-exclamation-triangle text-red-600 text-xl mr-3 mt-0.5"></i>
                                 <div class="flex-1">
-                                    <h4 class="font-semibold text-red-900 mb-2">Peringatan Penting!</h4>
+                                    <h4 class="font-semibold text-red-900 mb-2">Apa yang terjadi?</h4>
                                     <p class="text-sm text-red-800 mb-3">
-                                        Order ini akan <strong>dihapus permanen</strong> beserta semua data terkait:
+                                        Order akan <strong>dihapus</strong> beserta semua data terkait:
                                     </p>
                                     <ul class="text-sm text-red-800 space-y-1 list-disc list-inside">
-                                        <li>Semua detail material order</li>
+                                        <li>Detail material order</li>
                                         <li>Data supplier yang dipilih</li>
-                                        <li>Konsultasi yang telah dilakukan</li>
-                                        <li>Dokumen PO (jika ada)</li>
-                                        <li>Data winner (jika ada)</li>
+                                        <li>Forecasting terkait (jika ada)</li>
+                                        <li>Pengiriman terkait (jika ada)</li>
+                                        <li>Konsultasi dan data winner</li>
                                     </ul>
                                 </div>
                             </div>
@@ -772,17 +772,9 @@
                             <div class="flex items-start">
                                 <i class="fas fa-info-circle text-blue-600 text-xl mr-3 mt-0.5"></i>
                                 <div class="flex-1">
-                                    <h4 class="font-semibold text-blue-900 mb-2">Syarat Hapus Order (STRICT)</h4>
+                                    <h4 class="font-semibold text-blue-900 mb-2">Info</h4>
                                     <p class="text-sm text-blue-800">
-                                        Hanya order dengan kondisi berikut yang bisa dihapus:
-                                    </p>
-                                    <ul class="text-sm text-blue-800 space-y-1 mt-2 list-disc list-inside">
-                                        <li><strong>Status = DRAFT</strong> (belum dikonfirmasi)</li>
-                                        <li><strong>Tidak ada forecasting</strong> terkait</li>
-                                        <li><strong>Tidak ada pengiriman</strong> terkait</li>
-                                    </ul>
-                                    <p class="text-xs text-blue-700 mt-3 font-medium">
-                                        💡 Jika tidak memenuhi syarat, gunakan fitur "Batalkan" sebagai alternatif.
+                                        Data yang dihapus tidak akan muncul di laporan aktif.
                                     </p>
                                 </div>
                             </div>

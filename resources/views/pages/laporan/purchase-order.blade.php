@@ -1396,12 +1396,12 @@ document.addEventListener('click', function(event) {
 
 {{-- PO By Client Modal --}}
 <div id="clientModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-5xl shadow-lg rounded-xl bg-white">
+    <div class="relative top-6 mx-auto p-5 border w-[95%] max-w-[1600px] shadow-lg rounded-xl bg-white mb-10">
         {{-- Header --}}
         <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
             <div>
                 <h3 class="text-xl font-bold text-gray-900">Detail PO Berdasarkan Klien</h3>
-                <p class="text-sm text-gray-500 mt-1">Akumulasi Purchase Order per Pabrik/Klien</p>
+                <p class="text-sm text-gray-500 mt-1">Akumulasi Purchase Order per Pabrik/Klien (Lengkap dengan Detail)</p>
             </div>
             <button onclick="closeClientModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                 <i class="fas fa-times text-2xl"></i>
@@ -1409,7 +1409,7 @@ document.addEventListener('click', function(event) {
         </div>
 
         {{-- Summary Info --}}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -1440,7 +1440,34 @@ document.addEventListener('click', function(event) {
                     <div>
                         <p class="text-xs text-purple-600 font-medium">Total Nilai</p>
                         <p class="text-lg font-bold text-purple-700">
-                            Rp {{ number_format($poByClient->sum('total_nilai'), 2, ',', '.') }}
+                            Rp {{ number_format($poByClient->sum('total_nilai') / 1000000, 1, ',', '.') }} Jt
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-clock text-orange-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-orange-600 font-medium">Outstanding</p>
+                        <p class="text-lg font-bold text-orange-700">
+                            Rp {{ number_format($poByClient->sum('outstanding_amount') / 1000000, 1, ',', '.') }} Jt
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-teal-50 rounded-lg p-4 border border-teal-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-teal-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-teal-600 font-medium">Rata-rata/PO</p>
+                        <p class="text-lg font-bold text-teal-700">
+                            @php $avgAll = $poByClient->sum('total_po') > 0 ? $poByClient->sum('total_nilai') / $poByClient->sum('total_po') : 0; @endphp
+                            Rp {{ number_format($avgAll / 1000000, 1, ',', '.') }} Jt
                         </p>
                     </div>
                 </div>
@@ -1448,7 +1475,20 @@ document.addEventListener('click', function(event) {
         </div>
 
         {{-- Export Button --}}
-        <div class="mb-4 flex justify-end">
+        <div class="mb-4 flex justify-end gap-2">
+            {{-- Excel Export --}}
+            <form action="{{ route('laporan.po.client.excel') }}" method="POST" target="_blank">
+                @csrf
+                <input type="hidden" name="periode" value="{{ $periode }}">
+                <input type="hidden" name="start_date" value="{{ $startDate }}">
+                <input type="hidden" name="end_date" value="{{ $endDate }}">
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-file-excel"></i>
+                    Download Excel
+                </button>
+            </form>
+
+            {{-- PDF Export --}}
             <form action="{{ route('laporan.po.client.pdf') }}" method="POST" target="_blank">
                 @csrf
                 <input type="hidden" name="periode" value="{{ $periode }}">
@@ -1461,56 +1501,219 @@ document.addEventListener('click', function(event) {
             </form>
         </div>
 
-        {{-- Table --}}
-        <div class="overflow-x-auto max-h-96 overflow-y-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50 sticky top-0">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pabrik</th>
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah PO</th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga Semua PO</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @php $no = 1; @endphp
-                    @forelse($poByClient as $client)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-900">
-                                <div class="font-medium">{{ $client->klien_nama }}</div>
-                                @if($client->cabang)
-                                    <div class="text-xs text-gray-500">{{ $client->cabang }}</div>
+        {{-- Client Cards with Expandable Details --}}
+        <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            @php $no = 1; @endphp
+            @forelse($poByClient as $client)
+                <div class="border border-gray-200 rounded-xl overflow-hidden">
+                    {{-- Client Header --}}
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-xl font-bold">
+                                    {{ $no++ }}
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-lg">{{ $client->klien_nama }}</h4>
+                                    @if($client->cabang)
+                                        <p class="text-sm text-blue-100">{{ $client->cabang }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-4 lg:gap-6">
+                                <div class="text-center">
+                                    <p class="text-xs text-blue-100">Total PO</p>
+                                    <p class="font-bold text-lg">{{ $client->total_po }}</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs text-blue-100">Total Nilai</p>
+                                    <p class="font-bold text-lg">Rp {{ number_format($client->total_nilai / 1000000, 1, ',', '.') }} Jt</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs text-blue-100">Outstanding</p>
+                                    <p class="font-bold text-lg {{ $client->outstanding_amount > 0 ? 'text-yellow-300' : 'text-green-300' }}">
+                                        Rp {{ number_format($client->outstanding_amount / 1000000, 1, ',', '.') }} Jt
+                                    </p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs text-blue-100">Kontribusi</p>
+                                    <p class="font-bold text-lg">{{ number_format($client->percentage, 1, ',', '.') }}%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Quick Stats --}}
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <div class="flex flex-wrap items-center gap-4 text-sm">
+                            {{-- Status Breakdown --}}
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-500">Status:</span>
+                                @if($client->status_dikonfirmasi > 0)
+                                    <span class="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                                        {{ $client->status_dikonfirmasi }} Dikonfirmasi
+                                    </span>
                                 @endif
-                            </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center font-medium">
-                                {{ number_format($client->total_po, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
-                                Rp {{ number_format($client->total_nilai, 2, ',', '.') }}
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-4 py-8 text-center text-gray-500">
-                                <i class="fas fa-inbox text-4xl mb-2"></i>
-                                <p>Tidak ada data klien</p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-                <tfoot class="bg-gray-50 sticky bottom-0">
-                    <tr class="font-bold">
-                        <td colspan="2" class="px-4 py-3 text-sm text-gray-900 text-right">TOTAL:</td>
-                        <td class="px-4 py-3 text-sm text-gray-900 text-center">
-                            {{ number_format($poByClient->sum('total_po'), 0, ',', '.') }}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                            Rp {{ number_format($poByClient->sum('total_nilai'), 2, ',', '.') }}
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
+                                @if($client->status_diproses > 0)
+                                    <span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                        {{ $client->status_diproses }} Diproses
+                                    </span>
+                                @endif
+                                @if($client->status_selesai > 0)
+                                    <span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                        {{ $client->status_selesai }} Selesai
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="text-gray-300">|</div>
+                            <div class="flex items-center gap-2 text-gray-600">
+                                <i class="fas fa-calendar-alt text-gray-400"></i>
+                                <span>Last Order: {{ $client->last_order_date ? \Carbon\Carbon::parse($client->last_order_date)->format('d M Y') : '-' }}</span>
+                            </div>
+                            <div class="text-gray-300">|</div>
+                            <div class="flex items-center gap-2 text-gray-600">
+                                <i class="fas fa-chart-bar text-gray-400"></i>
+                                <span>Avg/PO: Rp {{ number_format($client->avg_nilai_per_po / 1000000, 2, ',', '.') }} Jt</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Expandable Details --}}
+                    <details class="group">
+                        <summary class="px-4 py-3 bg-white cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between">
+                            <span class="text-sm font-medium text-blue-600">
+                                <i class="fas fa-chevron-right mr-2 group-open:rotate-90 transition-transform"></i>
+                                Lihat Detail ({{ $client->total_po }} PO)
+                            </span>
+                            <span class="text-xs text-gray-500">Klik untuk expand</span>
+                        </summary>
+                        
+                        <div class="border-t border-gray-200">
+                            {{-- Materials Section --}}
+                            @if(isset($poDetailsByClient[$client->klien_id]['materials']) && count($poDetailsByClient[$client->klien_id]['materials']) > 0)
+                            <div class="p-4 bg-blue-50 border-b border-gray-200">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-box mr-2"></i>Material yang Dipesan
+                                </h5>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($poDetailsByClient[$client->klien_id]['materials'] as $material)
+                                        <span class="px-3 py-1 bg-white border border-blue-200 rounded-full text-xs">
+                                            <span class="font-medium text-gray-800">{{ $material['nama'] }}</span>
+                                            <span class="text-gray-500 ml-1">({{ number_format($material['total_qty'], 0, ',', '.') }} kg • Rp {{ number_format($material['total_nilai'] / 1000000, 1, ',', '.') }} Jt)</span>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+
+                            {{-- PO List --}}
+                            @if(isset($poDetailsByClient[$client->klien_id]['orders']) && count($poDetailsByClient[$client->klien_id]['orders']) > 0)
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">No. PO</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Material</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Prioritas</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Nilai</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @foreach($poDetailsByClient[$client->klien_id]['orders'] as $po)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-blue-600">
+                                                {{ $po['po_number'] }}
+                                            </td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                                                {{ $po['tanggal_order'] }}
+                                            </td>
+                                            <td class="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title="{{ $po['materials'] }}">
+                                                {{ Str::limit($po['materials'], 40) }}
+                                            </td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-center">
+                                                @php
+                                                    $statusConfig = match($po['status']) {
+                                                        'dikonfirmasi' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-800'],
+                                                        'diproses' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-800'],
+                                                        'selesai' => ['bg' => 'bg-green-100', 'text' => 'text-green-800'],
+                                                        default => ['bg' => 'bg-gray-100', 'text' => 'text-gray-800'],
+                                                    };
+                                                @endphp
+                                                <span class="px-2 py-0.5 {{ $statusConfig['bg'] }} {{ $statusConfig['text'] }} rounded-full text-xs font-medium">
+                                                    {{ ucfirst($po['status']) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-center">
+                                                @php
+                                                    $priorityConfig = match($po['priority']) {
+                                                        'tinggi' => ['bg' => 'bg-red-100', 'text' => 'text-red-800'],
+                                                        'sedang' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-800'],
+                                                        'rendah' => ['bg' => 'bg-gray-100', 'text' => 'text-gray-800'],
+                                                        default => ['bg' => 'bg-gray-100', 'text' => 'text-gray-800'],
+                                                    };
+                                                @endphp
+                                                <span class="px-2 py-0.5 {{ $priorityConfig['bg'] }} {{ $priorityConfig['text'] }} rounded-full text-xs font-medium">
+                                                    {{ ucfirst($po['priority'] ?? '-') }}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {{ number_format($po['total_qty'], 0, ',', '.') }} kg
+                                            </td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">
+                                                Rp {{ number_format($po['total_amount'], 0, ',', '.') }}
+                                            </td>
+                                            <td class="px-3 py-2 whitespace-nowrap text-center">
+                                                <a href="{{ route('orders.show', $po['id']) }}" target="_blank" 
+                                                   class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                                                    <i class="fas fa-external-link-alt"></i> Lihat
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @else
+                            <div class="p-4 text-center text-gray-500">
+                                <i class="fas fa-inbox text-2xl mb-2"></i>
+                                <p class="text-sm">Tidak ada data PO untuk klien ini</p>
+                            </div>
+                            @endif
+                        </div>
+                    </details>
+                </div>
+            @empty
+                <div class="text-center py-12 text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-2"></i>
+                    <p>Tidak ada data klien</p>
+                </div>
+            @endforelse
+        </div>
+
+        {{-- Footer Summary --}}
+        <div class="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                    <span class="text-gray-500">Total Klien:</span>
+                    <span class="font-bold text-gray-900 ml-2">{{ $poByClient->count() }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Total PO:</span>
+                    <span class="font-bold text-gray-900 ml-2">{{ number_format($poByClient->sum('total_po'), 0, ',', '.') }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Total Nilai:</span>
+                    <span class="font-bold text-gray-900 ml-2">Rp {{ number_format($poByClient->sum('total_nilai'), 0, ',', '.') }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Total Outstanding:</span>
+                    <span class="font-bold text-orange-600 ml-2">Rp {{ number_format($poByClient->sum('outstanding_amount'), 0, ',', '.') }}</span>
+                </div>
+            </div>
         </div>
 
         {{-- Footer --}}

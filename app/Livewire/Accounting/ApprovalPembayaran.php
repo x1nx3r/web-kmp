@@ -46,7 +46,7 @@ class ApprovalPembayaran extends Component
     public function gotoPage($page, $pageName = 'page')
     {
         // Use Livewire's setPage method from WithPagination trait
-        parent::setPage($page, $pageName);
+        $this->setPage($page, $pageName);
     }
 
     public function render()

@@ -708,6 +708,21 @@ Route::middleware(["auth"])->group(function () {
                 return view("pages.accounting.approval-penagihan");
             })->name("approval-penagihan");
 
+            // Detail Approval Penagihan
+            Route::get("/approval-penagihan/{id}/detail", function ($id) {
+                return view("pages.accounting.approval-penagihan.detail", [
+                    "approvalId" => $id,
+                ]);
+            })->name("approval-penagihan.detail");
+
+            // Edit Approval Penagihan
+            Route::get("/approval-penagihan/{id}/edit", function ($id) {
+                return view("pages.accounting.approval-penagihan.detail", [
+                    "approvalId" => $id,
+                    "editMode" => true,
+                ]);
+            })->name("approval-penagihan.edit");
+
             Route::get("/approval-penagihan/{approvalId}/approve", function (
                 $approvalId,
             ) {

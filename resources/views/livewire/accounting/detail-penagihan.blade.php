@@ -100,6 +100,267 @@
                             </div>
                         </div>
 
+                        {{-- Edit Customer Info Section --}}
+                        @if($canManage && $editMode)
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                    <i class="fas fa-user-edit mr-1"></i>
+                                    Edit Informasi Customer
+                                </h5>
+
+                                <div class="grid grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Customer *</label>
+                                        <input
+                                            type="text"
+                                            wire:model="customerForm.customer_name"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Nama customer"
+                                        />
+                                        @error('customerForm.customer_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">No. Telepon</label>
+                                        <input
+                                            type="text"
+                                            wire:model="customerForm.customer_phone"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="No. telepon"
+                                        />
+                                        @error('customerForm.customer_phone') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Alamat *</label>
+                                        <textarea
+                                            wire:model="customerForm.customer_address"
+                                            rows="2"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Alamat customer"
+                                        ></textarea>
+                                        @error('customerForm.customer_address') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                                        <input
+                                            type="email"
+                                            wire:model="customerForm.customer_email"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Email customer"
+                                        />
+                                        @error('customerForm.customer_email') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+
+                                <button
+                                    wire:click="updateCustomerInfo"
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                                >
+                                    <span wire:loading.remove wire:target="updateCustomerInfo">
+                                        <i class="fas fa-save mr-1"></i>
+                                        Update Informasi Customer
+                                    </span>
+                                    <span wire:loading wire:target="updateCustomerInfo">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>
+                                        Menyimpan...
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
+
+                        {{-- Edit Invoice Dates Section --}}
+                        @if($canManage && $editMode)
+                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                    <i class="fas fa-calendar-alt mr-1"></i>
+                                    Edit Tanggal Invoice
+                                </h5>
+
+                                <div class="grid grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal Invoice *</label>
+                                        <input
+                                            type="date"
+                                            wire:model="dateForm.invoice_date"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                        @error('dateForm.invoice_date') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Jatuh Tempo *</label>
+                                        <input
+                                            type="date"
+                                            wire:model="dateForm.due_date"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                        @error('dateForm.due_date') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+
+                                <button
+                                    wire:click="updateInvoiceDates"
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
+                                >
+                                    <span wire:loading.remove wire:target="updateInvoiceDates">
+                                        <i class="fas fa-save mr-1"></i>
+                                        Update Tanggal Invoice
+                                    </span>
+                                    <span wire:loading wire:target="updateInvoiceDates">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>
+                                        Menyimpan...
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
+
+                        {{-- Edit Bank Info Section --}}
+                        @if($canManage && $editMode)
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                    <i class="fas fa-university mr-1"></i>
+                                    Edit Informasi Bank
+                                </h5>
+
+                                <div class="grid grid-cols-1 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Bank *</label>
+                                        <input
+                                            type="text"
+                                            wire:model="bankForm.bank_name"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                            placeholder="Contoh: Bank BCA"
+                                        />
+                                        @error('bankForm.bank_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nomor Rekening *</label>
+                                        <input
+                                            type="text"
+                                            wire:model="bankForm.bank_account_number"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                            placeholder="Nomor rekening"
+                                        />
+                                        @error('bankForm.bank_account_number') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Pemilik Rekening *</label>
+                                        <input
+                                            type="text"
+                                            wire:model="bankForm.bank_account_name"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                            placeholder="Nama pemilik rekening"
+                                        />
+                                        @error('bankForm.bank_account_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+
+                                <button
+                                    wire:click="updateBankInfo"
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                                >
+                                    <span wire:loading.remove wire:target="updateBankInfo">
+                                        <i class="fas fa-save mr-1"></i>
+                                        Update Informasi Bank
+                                    </span>
+                                    <span wire:loading wire:target="updateBankInfo">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>
+                                        Menyimpan...
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
+
+                        {{-- Edit Refraksi Section --}}
+                        @if($canManage && $editMode)
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                    <i class="fas fa-edit mr-1"></i>
+                                    Edit Refraksi
+                                </h5>
+
+                                <div class="grid grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                                            Tipe Refraksi
+                                        </label>
+                                        <select
+                                            wire:model="invoiceForm.refraksi_type"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        >
+                                            <option value="qty">Refraksi Qty (%)</option>
+                                            <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
+                                            <option value="lainnya">Refraksi Lainnya (Manual)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                                            Nilai Refraksi
+                                        </label>
+                                        <input
+                                            type="number"
+                                            wire:model="invoiceForm.refraksi_value"
+                                            min="0"
+                                            step="0.01"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                            placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : (($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah' ? '40 untuk Rp 40/kg' : '500000 untuk Rp 500.000') }}"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    wire:click="updateRefraksi"
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition-colors disabled:bg-gray-400"
+                                >
+                                    <span wire:loading.remove wire:target="updateRefraksi">
+                                        <i class="fas fa-save mr-1"></i>
+                                        Update Refraksi
+                                    </span>
+                                    <span wire:loading wire:target="updateRefraksi">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>
+                                        Menyimpan...
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
+
+                        {{-- Edit Invoice Notes Section --}}
+                        @if($canManage && $editMode)
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                    <i class="fas fa-sticky-note mr-1"></i>
+                                    Edit Catatan Invoice
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Catatan</label>
+                                    <textarea
+                                        wire:model="invoiceNotesForm"
+                                        rows="3"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                        placeholder="Catatan tambahan untuk invoice..."
+                                    ></textarea>
+                                </div>
+
+                                <button
+                                    wire:click="updateInvoiceNotes"
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400"
+                                >
+                                    <span wire:loading.remove wire:target="updateInvoiceNotes">
+                                        <i class="fas fa-save mr-1"></i>
+                                        Update Catatan Invoice
+                                    </span>
+                                    <span wire:loading wire:target="updateInvoiceNotes">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>
+                                        Menyimpan...
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
+
                         {{-- Financial Summary from Order --}}
                         @if($order)
                             <div class="bg-white rounded-lg shadow-sm border border-gray-200">

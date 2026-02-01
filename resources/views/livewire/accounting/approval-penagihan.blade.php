@@ -405,16 +405,18 @@
                                     </a>
                                 @else
                                     <div class="flex items-center justify-center space-x-2">
-                                        <a href="{{ route('accounting.approval-penagihan.view', $approval->id) }}"
-                                           class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
-                                            <i class="fas fa-file-alt mr-1"></i>
-                                            Lihat Detail
+                                        <a href="{{ route('accounting.approval-penagihan.detail', $approval->id) }}"
+                                           class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                            <i class="fas fa-eye mr-1"></i>
+                                            Detail
                                         </a>
-                                        <a href="{{ route('accounting.approval-penagihan.edit', $approval->id) }}"
-                                           class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors">
-                                            <i class="fas fa-edit mr-1"></i>
-                                            Edit
-                                        </a>
+                                        @if($canManage)
+                                            <a href="{{ route('accounting.approval-penagihan.edit', $approval->id) }}"
+                                               class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors">
+                                                <i class="fas fa-edit mr-1"></i>
+                                                Edit
+                                            </a>
+                                        @endif
                                     </div>
                                 @endif
                             </td>
@@ -855,8 +857,8 @@
                             </div>
                         </div>
 
-                        {{-- Edit Refraksi Section - Only in pending tab and not completed --}}
-                        @if($activeTab === 'pending' && $selectedData->status !== 'completed')
+                        {{-- Edit Refraksi Section - Can edit if canManage, regardless of status --}}
+                        @if($canManage && ($selectedData->status !== 'completed' || $editMode))
                             <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                                 <h5 class="text-sm font-semibold text-gray-700 mb-3">
                                     <i class="fas fa-edit mr-1"></i>
@@ -902,6 +904,213 @@
                             </div>
                         @endif
                     </div>
+
+                    {{-- Edit Customer Info Section --}}
+                    @if($canManage && $editMode)
+                        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-user-edit mr-1"></i>
+                                Edit Informasi Customer
+                            </h5>
+
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Nama Customer *</label>
+                                    <input
+                                        type="text"
+                                        wire:model="customerForm.customer_name"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Nama customer"
+                                    />
+                                    @error('customerForm.customer_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">No. Telepon</label>
+                                    <input
+                                        type="text"
+                                        wire:model="customerForm.customer_phone"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="No. telepon"
+                                    />
+                                    @error('customerForm.customer_phone') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Alamat *</label>
+                                    <textarea
+                                        wire:model="customerForm.customer_address"
+                                        rows="2"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Alamat customer"
+                                    ></textarea>
+                                    @error('customerForm.customer_address') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        wire:model="customerForm.customer_email"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Email customer"
+                                    />
+                                    @error('customerForm.customer_email') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            <button
+                                wire:click="updateCustomerInfo"
+                                wire:loading.attr="disabled"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                            >
+                                <span wire:loading.remove wire:target="updateCustomerInfo">
+                                    <i class="fas fa-save mr-1"></i>
+                                    Update Informasi Customer
+                                </span>
+                                <span wire:loading wire:target="updateCustomerInfo">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
+
+                    {{-- Edit Invoice Dates Section --}}
+                    @if($canManage && $editMode)
+                        <div class="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-calendar-alt mr-1"></i>
+                                Edit Tanggal Invoice
+                            </h5>
+
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal Invoice *</label>
+                                    <input
+                                        type="date"
+                                        wire:model="dateForm.invoice_date"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                    @error('dateForm.invoice_date') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Jatuh Tempo *</label>
+                                    <input
+                                        type="date"
+                                        wire:model="dateForm.due_date"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                    @error('dateForm.due_date') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            <button
+                                wire:click="updateInvoiceDates"
+                                wire:loading.attr="disabled"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
+                            >
+                                <span wire:loading.remove wire:target="updateInvoiceDates">
+                                    <i class="fas fa-save mr-1"></i>
+                                    Update Tanggal Invoice
+                                </span>
+                                <span wire:loading wire:target="updateInvoiceDates">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
+
+                    {{-- Edit Bank Info Section --}}
+                    @if($canManage && $editMode)
+                        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-university mr-1"></i>
+                                Edit Informasi Bank
+                            </h5>
+
+                            <div class="grid grid-cols-1 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Nama Bank *</label>
+                                    <input
+                                        type="text"
+                                        wire:model="bankForm.bank_name"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        placeholder="Contoh: Bank BCA"
+                                    />
+                                    @error('bankForm.bank_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Nomor Rekening *</label>
+                                    <input
+                                        type="text"
+                                        wire:model="bankForm.bank_account_number"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        placeholder="Nomor rekening"
+                                    />
+                                    @error('bankForm.bank_account_number') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Nama Pemilik Rekening *</label>
+                                    <input
+                                        type="text"
+                                        wire:model="bankForm.bank_account_name"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        placeholder="Nama pemilik rekening"
+                                    />
+                                    @error('bankForm.bank_account_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            <button
+                                wire:click="updateBankInfo"
+                                wire:loading.attr="disabled"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                            >
+                                <span wire:loading.remove wire:target="updateBankInfo">
+                                    <i class="fas fa-save mr-1"></i>
+                                    Update Informasi Bank
+                                </span>
+                                <span wire:loading wire:target="updateBankInfo">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
+
+                    {{-- Edit Invoice Notes Section --}}
+                    @if($canManage && $editMode)
+                        <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-sticky-note mr-1"></i>
+                                Edit Catatan Invoice
+                            </h5>
+
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Catatan</label>
+                                <textarea
+                                    wire:model="invoiceNotesForm"
+                                    rows="3"
+                                    class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    placeholder="Catatan tambahan untuk invoice..."
+                                ></textarea>
+                            </div>
+
+                            <button
+                                wire:click="updateInvoiceNotes"
+                                wire:loading.attr="disabled"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400"
+                            >
+                                <span wire:loading.remove wire:target="updateInvoiceNotes">
+                                    <i class="fas fa-save mr-1"></i>
+                                    Update Catatan Invoice
+                                </span>
+                                <span wire:loading wire:target="updateInvoiceNotes">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
 
                     {{-- Approval Status --}}
                     <div class="mb-6 bg-purple-50 rounded-lg p-4">
@@ -973,6 +1182,72 @@
                         </div>
                     </div>
 
+                    {{-- History Section --}}
+                    @if(count($approvalHistory) > 0)
+                        <div class="mb-6 bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <i class="fas fa-history mr-2 text-gray-600"></i>
+                                Riwayat Perubahan
+                            </h4>
+                            <div class="space-y-4">
+                                @foreach($approvalHistory as $history)
+                                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex items-center space-x-2">
+                                                @if($history['action'] === 'approved')
+                                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                        <i class="fas fa-check mr-1"></i>Approved
+                                                    </span>
+                                                @elseif($history['action'] === 'edited')
+                                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                                        <i class="fas fa-edit mr-1"></i>Edited
+                                                    </span>
+                                                @endif
+                                                <span class="text-sm font-medium text-gray-900">{{ $history['user']['nama'] ?? 'System' }}</span>
+                                                <span class="text-xs text-gray-500">({{ ucfirst($history['role']) }})</span>
+                                            </div>
+                                            <span class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($history['created_at'])->format('d M Y H:i') }}</span>
+                                        </div>
+
+                                        @if(!empty($history['changes']))
+                                            <div class="mt-3 space-y-2">
+                                                <p class="text-xs font-semibold text-gray-700 mb-2">Perubahan:</p>
+                                                <div class="grid grid-cols-2 gap-3 text-xs">
+                                                    <div class="bg-red-50 border border-red-200 rounded p-2">
+                                                        <p class="font-semibold text-red-700 mb-1">Sebelum:</p>
+                                                        @foreach($history['changes']['before'] as $key => $value)
+                                                            <div class="mb-1">
+                                                                <span class="text-gray-600">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
+                                                                <span class="text-gray-900">{{ is_array($value) ? json_encode($value) : ($value ?: '-') }}</span>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                    <div class="bg-green-50 border border-green-200 rounded p-2">
+                                                        <p class="font-semibold text-green-700 mb-1">Sesudah:</p>
+                                                        @foreach($history['changes']['after'] as $key => $value)
+                                                            <div class="mb-1">
+                                                                <span class="text-gray-600">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
+                                                                <span class="text-gray-900">{{ is_array($value) ? json_encode($value) : ($value ?: '-') }}</span>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        @if($history['notes'])
+                                            <div class="mt-2 p-2 bg-gray-50 rounded">
+                                                <p class="text-xs text-gray-600">
+                                                    <i class="fas fa-comment mr-1"></i>{{ $history['notes'] }}
+                                                </p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Notes Input - Only in pending tab and not completed --}}
                     @if($activeTab === 'pending' && $selectedData->status !== 'completed')
                         <div class="mb-6">
@@ -990,13 +1265,22 @@
                 </div>
 
                 <div class="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button
-                        wire:click="closeModal"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                        Tutup
-                    </button>
-                    @if($activeTab === 'pending' && $selectedData->status !== 'completed')
+                    @if($editMode)
+                        <a
+                            href="{{ route('accounting.approval-penagihan') }}"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            Kembali ke List
+                        </a>
+                    @else
+                        <button
+                            wire:click="closeModal"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            Tutup
+                        </button>
+                    @endif
+                    @if($activeTab === 'pending' && $selectedData->status !== 'completed' && !$editMode)
                         <button
                             wire:click="approve"
                             wire:loading.attr="disabled"

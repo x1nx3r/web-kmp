@@ -150,11 +150,12 @@
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Pengiriman</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengiriman</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
@@ -165,59 +166,54 @@
                             @continue
                         @endif
 
+                        @php
+                            $pengiriman = $approval->pengiriman;
+                            $suppliers = $pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama')->unique()->filter()->values();
+                            $products = $pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.nama')->unique()->filter()->values();
+                            $totalQty = $pengiriman->pengirimanDetails->sum('qty_kirim');
+                        @endphp
+
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman ?? '-' }}</div>
-                                <div class="text-xs text-gray-500">PO: {{ $approval->pengiriman->purchaseOrder->po_number ?? '-' }}</div>
+                                <div class="text-sm font-medium text-gray-900">{{ $pengiriman->no_pengiriman ?? '-' }}</div>
+                                <div class="text-xs text-gray-500">{{ $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('d M Y') : '-' }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {{ $approval->pengiriman->tanggal_kirim ? $approval->pengiriman->tanggal_kirim->format('d M Y') : '-' }}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ $pengiriman->purchaseOrder->klien->nama ?? '-' }}</div>
+                                <div class="text-xs text-gray-500">PO: {{ $pengiriman->purchaseOrder->po_number ?? '-' }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                @if($suppliers->count() > 0)
+                                    <div class="text-sm text-gray-900">{{ $suppliers->first() }}</div>
+                                    @if($suppliers->count() > 1)
+                                        <div class="text-xs text-blue-600">+{{ $suppliers->count() - 1 }} lainnya</div>
+                                    @endif
+                                @else
+                                    <span class="text-sm text-gray-400">-</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4">
+                                @if($products->count() > 0)
+                                    <div class="text-sm text-gray-900">{{ $products->first() }}</div>
+                                    @if($products->count() > 1)
+                                        <div class="text-xs text-blue-600">+{{ $products->count() - 1 }} lainnya</div>
+                                    @endif
+                                @else
+                                    <span class="text-sm text-gray-400">-</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ number_format($totalQty, 2, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">
-                                    Rp {{ number_format($approval->amount_after_refraksi > 0 ? $approval->amount_after_refraksi : ($approval->pengiriman->total_harga_kirim ?? 0), 2, ',', '.') }}
+                                    Rp {{ number_format($approval->amount_after_refraksi > 0 ? $approval->amount_after_refraksi : ($pengiriman->total_harga_kirim ?? 0), 2, ',', '.') }}
                                 </div>
                                 @if($approval->refraksi_value > 0)
                                     <div class="text-xs text-red-600">
                                         <i class="fas fa-arrow-down mr-1"></i>Refraksi: Rp {{ number_format($approval->refraksi_amount, 2, ',', '.') }}
                                     </div>
                                 @endif
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                @if($approval->status === 'pending')
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                        <i class="fas fa-clock mr-1"></i> Menunggu Approval
-                                    </span>
-                                @elseif($approval->status === 'completed')
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        <i class="fas fa-check-circle mr-1"></i> Selesai
-                                    </span>
-                                @else
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                        <i class="fas fa-circle mr-1"></i> {{ ucfirst($approval->status) }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="text-xs">
-                                    @if($approval->status === 'completed')
-                                        @if($approval->staff)
-                                            <div class="flex items-center text-green-600">
-                                                <i class="fas fa-check-circle mr-1"></i>
-                                                <span>{{ $approval->staff->nama }}</span>
-                                            </div>
-                                        @elseif($approval->manager)
-                                            <div class="flex items-center text-green-600">
-                                                <i class="fas fa-check-circle mr-1"></i>
-                                                <span>{{ $approval->manager->nama }}</span>
-                                            </div>
-                                        @else
-                                            <span class="text-gray-400">-</span>
-                                        @endif
-                                    @else
-                                        <span class="text-gray-400">Belum diproses</span>
-                                    @endif
-                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center space-x-2">
@@ -239,13 +235,22 @@
                                             <i class="fas fa-eye mr-1"></i>
                                             Detail
                                         </a>
+                                        @if($canManage)
+                                            <a
+                                                href="{{ route('accounting.approval-pembayaran.edit', $approval->id) }}"
+                                                class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
+                                            >
+                                                <i class="fas fa-edit mr-1"></i>
+                                                Edit
+                                            </a>
+                                        @endif
                                     @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="7" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
                                     @if($activeTab === 'pending')
@@ -513,7 +518,7 @@
                                 <select
                                     wire:model="refraksiForm.type"
                                     class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                    @if($selectedPengiriman->status === 'completed') disabled @endif
+                                    @if($selectedPengiriman->status === 'completed' && !$editMode) disabled @endif
                                 >
                                     <option value="qty">Refraksi Qty (%)</option>
                                     <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
@@ -530,12 +535,12 @@
                                     step="0.01"
                                     class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                     placeholder="{{ ($refraksiForm['type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : '40 untuk Rp 40/kg' }}"
-                                    @if($selectedPengiriman->status === 'completed') disabled @endif
+                                    @if($selectedPengiriman->status === 'completed' && !$editMode) disabled @endif
                                 />
                             </div>
                         </div>
 
-                        @if($selectedPengiriman->status === 'completed')
+                        @if($selectedPengiriman->status === 'completed' && !$editMode)
                             <div class="text-xs text-gray-600 bg-white p-3 rounded border border-yellow-100 mb-3">
                                 <i class="fas fa-info-circle mr-1"></i>
                                 Approval sudah completed, refraksi tidak dapat diubah.
@@ -546,7 +551,7 @@
                             wire:click="updateRefraksi"
                             wire:loading.attr="disabled"
                             class="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400"
-                            @if($selectedPengiriman->status === 'completed') disabled @endif
+                            @if($selectedPengiriman->status === 'completed' && !$editMode) disabled @endif
                         >
                             <span wire:loading.remove wire:target="updateRefraksi">
                                 <i class="fas fa-save mr-1"></i>
@@ -558,6 +563,283 @@
                             </span>
                         </button>
                     </div>
+
+                    {{-- Edit Bukti Pembayaran Section --}}
+                    @if($canManage && ($selectedPengiriman->status !== 'completed' || $editMode))
+                        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-file-invoice mr-1"></i>
+                                Bukti Pembayaran
+                            </h5>
+
+                            {{-- Existing Files Display --}}
+                            @if(!empty($existingBuktiPembayaran))
+                                <div class="mb-4">
+                                    <label class="block text-xs font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-folder-open mr-1"></i>
+                                        File Saat Ini ({{ count($existingBuktiPembayaran) }} file)
+                                    </label>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        @foreach($existingBuktiPembayaran as $index => $filePath)
+                                            @php
+                                                $fileUrl = Storage::disk('public')->url($filePath);
+                                                $fileName = basename($filePath);
+                                                $fileExt = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                                            @endphp
+                                            <div class="relative group border border-gray-300 rounded-lg p-2 bg-white hover:shadow-md transition-shadow">
+                                                {{-- Remove Button --}}
+                                                <button
+                                                    type="button"
+                                                    wire:click="removeExistingFile({{ $index }})"
+                                                    class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 shadow-lg"
+                                                    title="Hapus file"
+                                                >
+                                                    <i class="fas fa-times text-xs"></i>
+                                                </button>
+
+                                                {{-- File Preview --}}
+                                                @if(in_array($fileExt, ['jpg', 'jpeg', 'png']))
+                                                    <a href="{{ $fileUrl }}" target="_blank" class="block">
+                                                        <img src="{{ $fileUrl }}" alt="Preview" class="w-full h-24 object-cover rounded mb-1">
+                                                    </a>
+                                                @elseif($fileExt === 'pdf')
+                                                    <a href="{{ $fileUrl }}" target="_blank" class="block text-center py-6">
+                                                        <i class="fas fa-file-pdf text-red-500 text-3xl"></i>
+                                                    </a>
+                                                @endif
+
+                                                {{-- File Name --}}
+                                                <p class="text-xs text-gray-600 truncate" title="{{ $fileName }}">
+                                                    <i class="fas fa-file text-gray-400 mr-1"></i>
+                                                    {{ Str::limit($fileName, 20) }}
+                                                </p>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <p class="text-xs text-blue-600 mt-2">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Klik tombol <i class="fas fa-times text-red-600"></i> untuk menghapus file yang tidak diperlukan
+                                    </p>
+                                </div>
+                            @endif
+
+                            {{-- Upload New Files --}}
+                            <p class="text-xs text-gray-600 mb-3">
+                                {{ !empty($existingBuktiPembayaran) ? 'Tambah file baru (opsional)' : 'Upload bukti pembayaran (multiple files)' }} dalam format JPG, PNG, atau PDF (Total Max: 20MB)
+                            </p>
+
+                            <div class="mb-3">
+                                <input
+                                    type="file"
+                                    wire:model="buktiPembayaran"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    multiple
+                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
+                                />
+                            </div>
+
+                            {{-- Upload Progress --}}
+                            <div wire:loading wire:target="buktiPembayaran" class="mb-3">
+                                <div class="flex items-center text-blue-600">
+                                    <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span class="text-sm font-medium">Mengunggah file...</span>
+                                </div>
+                            </div>
+
+                            @error('buktiPembayaran.*')
+                                <p class="text-xs text-red-600 mb-2">{{ $message }}</p>
+                            @enderror
+
+                            {{-- New File Preview --}}
+                            @if($buktiPembayaran && count($buktiPembayaran) > 0)
+                                <div class="mb-3 space-y-2">
+                                    <label class="block text-xs font-medium text-green-700 mb-2">
+                                        <i class="fas fa-plus-circle mr-1"></i>
+                                        File Baru yang Akan Ditambahkan ({{ count($buktiPembayaran) }} file)
+                                    </label>
+
+                                    @php
+                                        $totalSize = 0;
+                                        foreach($buktiPembayaran as $file) {
+                                            $totalSize += $file->getSize();
+                                        }
+                                    @endphp
+
+                                    <div class="p-2 bg-green-50 border border-green-200 rounded text-xs">
+                                        <i class="fas fa-upload text-green-600 mr-1"></i>
+                                        {{ count($buktiPembayaran) }} file baru dipilih
+                                        <span class="text-gray-600 ml-2">
+                                            ({{ number_format($totalSize / 1024 / 1024, 2) }} MB)
+                                        </span>
+                                        @if($totalSize > 20 * 1024 * 1024)
+                                            <p class="text-red-600 font-semibold mt-1">
+                                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                Total ukuran melebihi 20 MB!
+                                            </p>
+                                        @endif
+                                    </div>
+
+                                    @foreach($buktiPembayaran as $index => $file)
+                                        <div class="p-2 bg-white border border-green-200 rounded">
+                                            <p class="text-xs font-medium text-gray-700 mb-1">
+                                                <i class="fas fa-file-upload text-green-600 mr-1"></i>
+                                                {{ $file->getClientOriginalName() }}
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                {{ number_format($file->getSize() / 1024, 2) }} KB
+                                            </p>
+                                            @if(in_array($file->getClientOriginalExtension(), ['jpg', 'jpeg', 'png']))
+                                                <img src="{{ $file->temporaryUrl() }}" alt="Preview" class="mt-2 w-full h-auto rounded border max-h-32 object-contain">
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            <button
+                                wire:click="updateBuktiPembayaran"
+                                wire:loading.attr="disabled"
+                                wire:target="buktiPembayaran,updateBuktiPembayaran"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                            >
+                                <span wire:loading.remove wire:target="updateBuktiPembayaran">
+                                    <i class="fas fa-save mr-1"></i>
+                                    Update Bukti Pembayaran
+                                </span>
+                                <span wire:loading wire:target="updateBuktiPembayaran">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
+
+                    {{-- Edit Piutang Section (Only for Pending) --}}
+                    @if($canManage && $selectedPengiriman->status === 'pending')
+                        <div class="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                            <h5 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                                <i class="fas fa-edit text-indigo-600 mr-2"></i>
+                                {{ $selectedPengiriman->catatan_piutang_id ? 'Edit' : 'Tambah' }} Pemotongan Piutang
+                            </h5>
+
+                            @php
+                                $supplier = $selectedPengiriman->pengiriman->pengirimanDetails->first()?->bahanBakuSupplier->supplier ?? null;
+                                $piutangList = $supplier ? \App\Models\CatatanPiutang::where('supplier_id', $supplier->id)
+                                    ->where('status', '!=', 'lunas')
+                                    ->where('sisa_piutang', '>', 0)
+                                    ->orderBy('tanggal_piutang', 'asc')
+                                    ->with('supplier')
+                                    ->get() : collect();
+                            @endphp
+
+                            <div class="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-2">
+                                        Pilih Piutang Supplier
+                                        @if($supplier)
+                                            <span class="text-blue-600">({{ $supplier->nama }})</span>
+                                        @endif
+                                    </label>
+                                    <select wire:model.live="piutangForm.catatan_piutang_id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="">-- Tidak ada pemotongan piutang --</option>
+                                        @foreach($piutangList as $index => $piutang)
+                                            <option value="{{ $piutang->id }}">
+                                                {{ $index === 0 ? '⭐ ' : '' }}{{ \Carbon\Carbon::parse($piutang->tanggal_piutang)->format('d/m/Y') }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 2, ',', '.') }}{{ $index === 0 ? ' (Terlama)' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @if($piutangList->isEmpty() && $supplier)
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Supplier ini tidak memiliki piutang aktif
+                                        </p>
+                                    @elseif(!$piutangList->isEmpty())
+                                        <p class="text-xs text-indigo-600 mt-1">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Piutang diurutkan dari yang terlama (sistem FIFO)
+                                        </p>
+                                    @endif
+                                </div>
+
+                                @if($piutangForm['catatan_piutang_id'])
+                                    @php
+                                        $selectedPiutang = $piutangList->firstWhere('id', $piutangForm['catatan_piutang_id']);
+                                    @endphp
+                                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                        <p class="text-xs font-medium text-blue-800 mb-2">Informasi Piutang Terpilih</p>
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <span class="text-gray-600">Total Piutang:</span>
+                                                <span class="font-semibold ml-2">Rp {{ number_format($selectedPiutang->jumlah_piutang ?? 0, 2, ',', '.') }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-600">Sisa Piutang:</span>
+                                                <span class="font-semibold ml-2 text-orange-600">Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 2, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">
+                                            Jumlah Pemotongan <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-medium">Rp</span>
+                                            <input
+                                                type="number"
+                                                wire:model="piutangForm.amount"
+                                                min="0"
+                                                step="0.01"
+                                                max="{{ $selectedPiutang->sisa_piutang ?? 0 }}"
+                                                class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                                placeholder="0"
+                                            >
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Maksimal: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 2, ',', '.') }}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
+                                        <textarea
+                                            wire:model="piutangForm.notes"
+                                            rows="2"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Tambahkan catatan untuk pemotongan ini..."
+                                        ></textarea>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                <p class="text-xs text-yellow-800 flex items-start">
+                                    <i class="fas fa-exclamation-triangle mr-2 mt-0.5"></i>
+                                    <span>Perubahan data piutang akan dicatat dalam riwayat perubahan.</span>
+                                </p>
+                            </div>
+
+                            <button
+                                wire:click="updatePiutang"
+                                wire:loading.attr="disabled"
+                                class="mt-3 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
+                            >
+                                <span wire:loading.remove wire:target="updatePiutang">
+                                    <i class="fas fa-save mr-1"></i>
+                                    Update Data Piutang
+                                </span>
+                                <span wire:loading wire:target="updatePiutang">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
+
                     {{-- Approval Status --}}
                     <div class="mb-6 bg-green-50 rounded-lg p-4">
                         <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
@@ -606,6 +888,94 @@
                         </div>
                     </div>
 
+                    {{-- History Section --}}
+                    @if(count($approvalHistory) > 0)
+                        <div class="mb-6 bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
+                                <i class="fas fa-history mr-2 text-gray-600"></i>
+                                Riwayat Perubahan
+                            </h4>
+                            <div class="space-y-3">
+                                @foreach($approvalHistory as $history)
+                                    <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                                    {{ strtoupper(substr($history->user->nama ?? 'U', 0, 1)) }}
+                                                </div>
+                                                <div>
+                                                    <p class="font-medium text-gray-900 text-sm">{{ $history->user->nama ?? 'Unknown' }}</p>
+                                                    <p class="text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', $history->role)) }}</p>
+                                                </div>
+                                            </div>
+                                            <span class="px-2 py-1 text-xs rounded-full font-semibold {{
+                                                $history->action === 'approved' ? 'bg-green-100 text-green-700' :
+                                                ($history->action === 'edited' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700')
+                                            }}">
+                                                <i class="fas {{
+                                                    $history->action === 'approved' ? 'fa-check-circle' :
+                                                    ($history->action === 'edited' ? 'fa-edit' : 'fa-times-circle')
+                                                }} mr-1"></i>
+                                                {{ ucfirst($history->action) }}
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mb-2">
+                                            <i class="fas fa-clock mr-1"></i>
+                                            {{ $history->created_at->format('d M Y H:i') }}
+                                        </p>
+                                        @if($history->notes)
+                                            <p class="text-xs text-gray-700 p-2 bg-gray-50 rounded border border-gray-100">
+                                                <i class="fas fa-comment-dots mr-1 text-gray-400"></i>
+                                                {{ $history->notes }}
+                                            </p>
+                                        @endif
+                                        @if($history->changes && is_array($history->changes))
+                                            <div class="mt-2 text-xs">
+                                                <p class="font-medium text-gray-700 mb-1">
+                                                    <i class="fas fa-exchange-alt mr-1"></i>
+                                                    Detail Perubahan:
+                                                </p>
+                                                <div class="bg-gray-50 p-2 rounded border border-gray-100">
+                                                    @if(isset($history->changes['field']))
+                                                        <p class="text-gray-600 mb-1">Field: <span class="font-medium">{{ ucfirst($history->changes['field']) }}</span></p>
+                                                    @endif
+                                                    @if(isset($history->changes['old']) && isset($history->changes['new']))
+                                                        <div class="grid grid-cols-2 gap-2 mt-1">
+                                                            <div>
+                                                                <p class="text-red-600 font-medium mb-1">Sebelum:</p>
+                                                                <div class="text-gray-700">
+                                                                    @if(is_array($history->changes['old']))
+                                                                        @foreach($history->changes['old'] as $key => $value)
+                                                                            <p>{{ ucfirst(str_replace('_', ' ', $key)) }}: {{ is_numeric($value) ? number_format($value, 2, ',', '.') : $value }}</p>
+                                                                        @endforeach
+                                                                    @else
+                                                                        <p>{{ $history->changes['old'] }}</p>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <p class="text-green-600 font-medium mb-1">Sesudah:</p>
+                                                                <div class="text-gray-700">
+                                                                    @if(is_array($history->changes['new']))
+                                                                        @foreach($history->changes['new'] as $key => $value)
+                                                                            <p>{{ ucfirst(str_replace('_', ' ', $key)) }}: {{ is_numeric($value) ? number_format($value, 2, ',', '.') : $value }}</p>
+                                                                        @endforeach
+                                                                    @else
+                                                                        <p>{{ $history->changes['new'] }}</p>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Notes Input --}}
                     @if($selectedPengiriman->status !== 'completed')
                         <div class="mb-6">
@@ -624,13 +994,22 @@
 
                 {{-- Modal Footer --}}
                 <div class="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button
-                        wire:click="closeModal"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                        Tutup
-                    </button>
-                    @if($selectedPengiriman->status !== 'completed')
+                    @if($editMode)
+                        <a
+                            href="{{ route('accounting.approval-pembayaran') }}"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            Kembali ke List
+                        </a>
+                    @else
+                        <button
+                            wire:click="closeModal"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            Tutup
+                        </button>
+                    @endif
+                    @if($selectedPengiriman->status !== 'completed' && !$editMode)
                         <button
                             wire:click="approve"
                             wire:loading.attr="disabled"

@@ -64,7 +64,7 @@ Route::middleware(["auth"])->group(function () {
             Route::post('/omset/marketing-pdf', [LaporanOmsetController::class, 'exportMarketingPDF'])->name('omset.marketingPDF');
             Route::get('/omset/procurement-details', [LaporanOmsetController::class, 'getProcurementDetails'])->name('omset.procurementDetails');
             Route::post('/omset/procurement-pdf', [LaporanOmsetController::class, 'exportProcurementPDF'])->name('omset.procurementPDF');
-            
+
             // Procurement Target Routes (AJAX only, no separate page)
             Route::post('/omset/procurement-target/set', [LaporanOmsetController::class, 'setProcurementTarget'])->name('omset.setProcurementTarget');
             Route::get('/omset/procurement-target/data', [LaporanOmsetController::class, 'getProcurementTargetData'])->name('omset.getProcurementTargetData');
@@ -694,6 +694,14 @@ Route::middleware(["auth"])->group(function () {
                     "approvalId" => $id,
                 ]);
             })->name("approval-pembayaran.detail");
+
+            // Edit Approval Pembayaran
+            Route::get("/approval-pembayaran/{id}/edit", function ($id) {
+                return view("pages.accounting.approval-pembayaran.detail", [
+                    "approvalId" => $id,
+                    "editMode" => true,
+                ]);
+            })->name("approval-pembayaran.edit");
 
             // Approval Penagihan
             Route::get("/approval-penagihan", function () {

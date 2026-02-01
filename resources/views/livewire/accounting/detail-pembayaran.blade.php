@@ -479,6 +479,362 @@
                 </div>
             @endif
 
+            {{-- Edit Forms (Only in Edit Mode) --}}
+            @if($canManage && $editMode)
+                <div class="space-y-6 mb-6">
+                    {{-- Edit Refraksi Pembayaran --}}
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-edit text-yellow-600 mr-2"></i>
+                            Edit Refraksi Pembayaran
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Refraksi ini untuk approval pembayaran, terpisah dari refraksi penagihan (invoice).
+                        </p>
+
+                        @if(session()->has('message'))
+                            <div class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                                <div class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <p class="text-green-700 text-sm font-medium">{{ session('message') }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if(session()->has('error'))
+                            <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                                <div class="flex items-center">
+                                    <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                                    <p class="text-red-700 text-sm font-medium">{{ session('error') }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Tipe Refraksi
+                                </label>
+                                <select
+                                    wire:model="refraksiForm.type"
+                                    class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                >
+                                    <option value="qty">Refraksi Qty (%)</option>
+                                    <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Nilai Refraksi
+                                </label>
+                                <input
+                                    type="number"
+                                    wire:model="refraksiForm.value"
+                                    min="0"
+                                    step="0.01"
+                                    class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    placeholder="{{ ($refraksiForm['type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : '40 untuk Rp 40/kg' }}"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            wire:click="updateRefraksi"
+                            wire:loading.attr="disabled"
+                            class="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                        >
+                            <span wire:loading.remove wire:target="updateRefraksi">
+                                <i class="fas fa-save mr-1"></i>
+                                Update Refraksi Pembayaran
+                            </span>
+                            <span wire:loading wire:target="updateRefraksi">
+                                <i class="fas fa-spinner fa-spin mr-1"></i>
+                                Menyimpan...
+                            </span>
+                        </button>
+                    </div>
+
+                    {{-- Edit Bukti Pembayaran --}}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-file-invoice text-blue-600 mr-2"></i>
+                            Edit Bukti Pembayaran
+                        </h3>
+
+                        {{-- Existing Files Display --}}
+                        @if(!empty($existingBuktiPembayaran))
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-3">
+                                    <i class="fas fa-folder-open mr-1"></i>
+                                    File Saat Ini ({{ count($existingBuktiPembayaran) }} file)
+                                </label>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    @foreach($existingBuktiPembayaran as $index => $filePath)
+                                        @php
+                                            $fileUrl = Storage::disk('public')->url($filePath);
+                                            $fileName = basename($filePath);
+                                            $fileExt = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                                        @endphp
+                                        <div class="relative group border border-gray-300 rounded-lg p-3 bg-white hover:shadow-lg transition-shadow">
+                                            {{-- Remove Button --}}
+                                            <button
+                                                type="button"
+                                                wire:click="removeExistingFile({{ $index }})"
+                                                class="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 shadow-lg"
+                                                title="Hapus file"
+                                            >
+                                                <i class="fas fa-times"></i>
+                                            </button>
+
+                                            {{-- File Preview --}}
+                                            @if(in_array($fileExt, ['jpg', 'jpeg', 'png']))
+                                                <a href="{{ $fileUrl }}" target="_blank" class="block">
+                                                    <img src="{{ $fileUrl }}" alt="Preview" class="w-full h-32 object-cover rounded mb-2">
+                                                </a>
+                                            @elseif($fileExt === 'pdf')
+                                                <a href="{{ $fileUrl }}" target="_blank" class="block text-center py-8">
+                                                    <i class="fas fa-file-pdf text-red-500 text-4xl"></i>
+                                                </a>
+                                            @endif
+
+                                            {{-- File Name --}}
+                                            <p class="text-xs text-gray-600 truncate" title="{{ $fileName }}">
+                                                <i class="fas fa-file text-gray-400 mr-1"></i>
+                                                {{ Str::limit($fileName, 18) }}
+                                            </p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <p class="text-sm text-blue-600 mt-3">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Klik tombol <i class="fas fa-times text-red-600"></i> untuk menghapus file yang tidak diperlukan
+                                </p>
+                            </div>
+                        @endif
+
+                        {{-- Upload New Files --}}
+                        <p class="text-sm text-gray-600 mb-4">
+                            {{ !empty($existingBuktiPembayaran) ? 'Tambah file baru (opsional)' : 'Upload bukti pembayaran (multiple files)' }} dalam format JPG, PNG, atau PDF (Total Max: 20MB)
+                        </p>
+
+                        <div class="mb-4">
+                            <input
+                                type="file"
+                                wire:model="buktiPembayaran"
+                                accept=".jpg,.jpeg,.png,.pdf"
+                                multiple
+                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
+                            />
+                        </div>
+
+                        {{-- Upload Progress --}}
+                        <div wire:loading wire:target="buktiPembayaran" class="mb-4">
+                            <div class="flex items-center text-blue-600">
+                                <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span class="text-sm font-medium">Mengunggah file...</span>
+                            </div>
+                        </div>
+
+                        @error('buktiPembayaran.*')
+                            <p class="text-sm text-red-600 mb-3">{{ $message }}</p>
+                        @enderror
+
+                        {{-- New File Preview --}}
+                        @if($buktiPembayaran && count($buktiPembayaran) > 0)
+                            <div class="mb-4 space-y-3">
+                                <label class="block text-sm font-medium text-green-700 mb-2">
+                                    <i class="fas fa-plus-circle mr-1"></i>
+                                    File Baru yang Akan Ditambahkan ({{ count($buktiPembayaran) }} file)
+                                </label>
+
+                                @php
+                                    $totalSize = 0;
+                                    foreach($buktiPembayaran as $file) {
+                                        $totalSize += $file->getSize();
+                                    }
+                                @endphp
+
+                                <div class="p-3 bg-green-50 border border-green-200 rounded">
+                                    <p class="text-sm font-medium text-gray-700 mb-1">
+                                        <i class="fas fa-upload text-green-600 mr-2"></i>
+                                        {{ count($buktiPembayaran) }} file baru dipilih
+                                        <span class="text-gray-600 ml-2">
+                                            (Total: {{ number_format($totalSize / 1024 / 1024, 2) }} MB)
+                                        </span>
+                                    </p>
+                                    @if($totalSize > 20 * 1024 * 1024)
+                                        <p class="text-sm text-red-600 font-semibold mt-2">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            Total ukuran file melebihi 20 MB!
+                                        </p>
+                                    @endif
+                                </div>
+
+                                @foreach($buktiPembayaran as $index => $file)
+                                    <div class="p-3 bg-white border border-green-200 rounded">
+                                        <p class="text-sm font-medium text-gray-700 mb-1">
+                                            <i class="fas fa-file-upload text-green-600 mr-2"></i>
+                                            {{ $file->getClientOriginalName() }}
+                                        </p>
+                                        <p class="text-sm text-gray-500">
+                                            Ukuran: {{ number_format($file->getSize() / 1024, 2) }} KB
+                                        </p>
+                                        @if(in_array($file->getClientOriginalExtension(), ['jpg', 'jpeg', 'png']))
+                                            <div class="mt-2">
+                                                <img src="{{ $file->temporaryUrl() }}" alt="Preview" class="w-full h-auto rounded border border-gray-200 max-h-48 object-contain">
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <button
+                            wire:click="updateBuktiPembayaran"
+                            wire:loading.attr="disabled"
+                            wire:target="buktiPembayaran,updateBuktiPembayaran"
+                            class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                        >
+                            <span wire:loading.remove wire:target="updateBuktiPembayaran">
+                                <i class="fas fa-save mr-1"></i>
+                                Update Bukti Pembayaran
+                            </span>
+                            <span wire:loading wire:target="updateBuktiPembayaran">
+                                <i class="fas fa-spinner fa-spin mr-1"></i>
+                                Menyimpan...
+                            </span>
+                        </button>
+                    </div>
+
+                    {{-- Edit Piutang (Only for Pending) --}}
+                    @if($approval->status === 'pending')
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-edit text-indigo-600 mr-2"></i>
+                            {{ $approval->catatan_piutang_id ? 'Edit' : 'Tambah' }} Pemotongan Piutang
+                        </h3>
+
+                        @php
+                            $supplier = $approval->pengiriman->pengirimanDetails->first()?->bahanBakuSupplier->supplier ?? null;
+                            $piutangList = $supplier ? \App\Models\CatatanPiutang::where('supplier_id', $supplier->id)
+                                ->where('status', '!=', 'lunas')
+                                ->where('sisa_piutang', '>', 0)
+                                ->orderBy('tanggal_piutang', 'asc')
+                                ->with('supplier')
+                                ->get() : collect();
+                        @endphp
+
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Pilih Piutang Supplier
+                                    @if($supplier)
+                                        <span class="text-blue-600">({{ $supplier->nama }})</span>
+                                    @endif
+                                </label>
+                                <select wire:model.live="piutangForm.catatan_piutang_id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">-- Tidak ada pemotongan piutang --</option>
+                                    @foreach($piutangList as $index => $piutang)
+                                        <option value="{{ $piutang->id }}">
+                                            {{ $index === 0 ? '⭐ ' : '' }}{{ \Carbon\Carbon::parse($piutang->tanggal_piutang)->format('d/m/Y') }} - Sisa: Rp {{ number_format($piutang->sisa_piutang, 2, ',', '.') }}{{ $index === 0 ? ' (Terlama)' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if($piutangList->isEmpty() && $supplier)
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Supplier ini tidak memiliki piutang aktif
+                                    </p>
+                                @elseif(!$piutangList->isEmpty())
+                                    <p class="text-xs text-indigo-600 mt-1">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Piutang diurutkan dari yang terlama (sistem FIFO)
+                                    </p>
+                                @endif
+                            </div>
+
+                            @if($piutangForm['catatan_piutang_id'])
+                                @php
+                                    $selectedPiutang = $piutangList->firstWhere('id', $piutangForm['catatan_piutang_id']);
+                                @endphp
+                                <div class="bg-blue-50 border border-blue-200 rounded p-4">
+                                    <p class="text-sm font-medium text-blue-800 mb-2">Informasi Piutang Terpilih</p>
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <span class="text-gray-600">Total Piutang:</span>
+                                            <span class="font-semibold ml-2">Rp {{ number_format($selectedPiutang->jumlah_piutang ?? 0, 2, ',', '.') }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-600">Sisa Piutang:</span>
+                                            <span class="font-semibold ml-2 text-orange-600">Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 2, ',', '.') }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Jumlah Pemotongan <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">Rp</span>
+                                        <input
+                                            type="number"
+                                            wire:model="piutangForm.amount"
+                                            min="0"
+                                            step="0.01"
+                                            max="{{ $selectedPiutang->sisa_piutang ?? 0 }}"
+                                            class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="0"
+                                        >
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Maksimal: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 2, ',', '.') }}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
+                                    <textarea
+                                        wire:model="piutangForm.notes"
+                                        rows="3"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Tambahkan catatan untuk pemotongan ini..."
+                                    ></textarea>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                            <p class="text-sm text-yellow-800 flex items-start">
+                                <i class="fas fa-exclamation-triangle mr-2 mt-0.5"></i>
+                                <span>Perubahan data piutang akan dicatat dalam riwayat perubahan.</span>
+                            </p>
+                        </div>
+
+                        <button
+                            wire:click="updatePiutang"
+                            wire:loading.attr="disabled"
+                            class="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
+                        >
+                            <span wire:loading.remove wire:target="updatePiutang">
+                                <i class="fas fa-save mr-1"></i>
+                                Update Data Piutang
+                            </span>
+                            <span wire:loading wire:target="updatePiutang">
+                                <i class="fas fa-spinner fa-spin mr-1"></i>
+                                Menyimpan...
+                            </span>
+                        </button>
+                    </div>
+                    @endif
+                </div>
+            @endif
+
             {{-- Bukti Foto Bongkar --}}
             @if($pengiriman->bukti_foto_bongkar_raw)
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
@@ -706,33 +1062,51 @@
                 <div class="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4">
                     <h2 class="text-lg font-semibold text-gray-900 flex items-center">
                         <i class="fas fa-history text-gray-600 mr-3"></i>
-                        Riwayat Approval
+                        Riwayat Approval & Perubahan
                     </h2>
                 </div>
                 <div class="p-6">
                     @if($approvalHistory && count($approvalHistory) > 0)
                         <div class="space-y-4">
                             @foreach($approvalHistory as $history)
-                                <div class="border-l-4 pl-4 py-2
+                                <div class="border-l-4 pl-4 py-3 rounded-r-lg
                                     @if($history->action === 'approved') border-green-500 bg-green-50
                                     @elseif($history->action === 'rejected') border-red-500 bg-red-50
+                                    @elseif($history->action === 'edited') border-orange-500 bg-orange-50
                                     @else border-blue-500 bg-blue-50
                                     @endif">
                                     <div class="flex items-start justify-between">
                                         <div class="flex-1">
-                                            <div class="flex items-center space-x-3">
-                                                <span class="font-semibold text-gray-900">
-                                                    {{ $history->user->nama ?? 'System' }}
-                                                </span>
-                                                <span class="px-2 py-1 text-xs font-medium rounded-full
-                                                    @if($history->action === 'approved') bg-green-200 text-green-800
-                                                    @elseif($history->action === 'rejected') bg-red-200 text-red-800
-                                                    @else bg-blue-200 text-blue-800
+                                            <div class="flex items-center space-x-3 mb-2">
+                                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold
+                                                    @if($history->action === 'approved') bg-green-500
+                                                    @elseif($history->action === 'rejected') bg-red-500
+                                                    @elseif($history->action === 'edited') bg-orange-500
+                                                    @else bg-blue-500
                                                     @endif">
-                                                    {{ ucfirst($history->action) }}
-                                                </span>
+                                                    {{ strtoupper(substr($history->user->nama ?? 'S', 0, 1)) }}
+                                                </div>
+                                                <div>
+                                                    <span class="font-semibold text-gray-900">
+                                                        {{ $history->user->nama ?? 'System' }}
+                                                    </span>
+                                                    <span class="px-2 py-1 text-xs font-semibold rounded-full ml-2
+                                                        @if($history->action === 'approved') bg-green-200 text-green-800
+                                                        @elseif($history->action === 'rejected') bg-red-200 text-red-800
+                                                        @elseif($history->action === 'edited') bg-orange-200 text-orange-800
+                                                        @else bg-blue-200 text-blue-800
+                                                        @endif">
+                                                        <i class="fas {{
+                                                            $history->action === 'approved' ? 'fa-check-circle' :
+                                                            ($history->action === 'rejected' ? 'fa-times-circle' :
+                                                            ($history->action === 'edited' ? 'fa-edit' : 'fa-circle'))
+                                                        }} mr-1"></i>
+                                                        {{ ucfirst($history->action) }}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <p class="text-sm text-gray-600 mt-1">
+                                            <p class="text-sm text-gray-600 mb-1">
+                                                <i class="fas fa-user-tag mr-1"></i>
                                                 Role: <span class="font-medium">
                                                     @if($history->role === 'staff')
                                                         Staff Accounting
@@ -740,28 +1114,85 @@
                                                         Manager Keuangan
                                                     @elseif($history->role === 'superadmin')
                                                         Direktur
+                                                    @else
+                                                        {{ ucfirst(str_replace('_', ' ', $history->role)) }}
                                                     @endif
                                                 </span>
                                             </p>
-                                            @if($history->catatan)
-                                                <p class="text-sm text-gray-700 mt-2 bg-white p-2 rounded border border-gray-200">
-                                                    <i class="fas fa-comment-alt text-gray-400 mr-2"></i>{{ $history->catatan }}
+                                            @if($history->notes)
+                                                <p class="text-sm text-gray-700 mt-2 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                    <i class="fas fa-comment-dots text-gray-400 mr-2"></i>{{ $history->notes }}
                                                 </p>
+                                            @endif
+                                            @if($history->changes && is_array($history->changes))
+                                                <div class="mt-3 bg-white p-3 rounded-lg border border-gray-200">
+                                                    <p class="text-xs font-semibold text-gray-700 mb-2">
+                                                        <i class="fas fa-exchange-alt mr-1"></i>
+                                                        Detail Perubahan:
+                                                    </p>
+                                                    @if(isset($history->changes['field']))
+                                                        <p class="text-xs text-gray-600 mb-2">Field: <span class="font-medium">{{ ucfirst($history->changes['field']) }}</span></p>
+                                                    @endif
+                                                    @if(isset($history->changes['old']) && isset($history->changes['new']))
+                                                        <div class="grid grid-cols-2 gap-3 mt-2">
+                                                            <div class="bg-red-50 p-2 rounded border border-red-200">
+                                                                <p class="text-xs text-red-700 font-semibold mb-1">
+                                                                    <i class="fas fa-arrow-left mr-1"></i>Sebelum:
+                                                                </p>
+                                                                <div class="text-xs text-gray-700">
+                                                                    @if(is_array($history->changes['old']))
+                                                                        @foreach($history->changes['old'] as $key => $value)
+                                                                            <p class="mb-1">
+                                                                                <span class="font-medium">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
+                                                                                {{ is_numeric($value) ? number_format($value, 2, ',', '.') : ($value ?: '-') }}
+                                                                            </p>
+                                                                        @endforeach
+                                                                    @else
+                                                                        <p>{{ $history->changes['old'] ?: '-' }}</p>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                            <div class="bg-green-50 p-2 rounded border border-green-200">
+                                                                <p class="text-xs text-green-700 font-semibold mb-1">
+                                                                    <i class="fas fa-arrow-right mr-1"></i>Sesudah:
+                                                                </p>
+                                                                <div class="text-xs text-gray-700">
+                                                                    @if(is_array($history->changes['new']))
+                                                                        @foreach($history->changes['new'] as $key => $value)
+                                                                            <p class="mb-1">
+                                                                                <span class="font-medium">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
+                                                                                {{ is_numeric($value) ? number_format($value, 2, ',', '.') : ($value ?: '-') }}
+                                                                            </p>
+                                                                        @endforeach
+                                                                    @else
+                                                                        <p>{{ $history->changes['new'] ?: '-' }}</p>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             @endif
                                         </div>
                                         <div class="text-right text-sm text-gray-500 ml-4">
                                             <i class="fas fa-clock mr-1"></i>
                                             {{ \Carbon\Carbon::parse($history->created_at)->format('d M Y H:i') }}
+                                            <p class="text-xs text-gray-400 mt-1">
+                                                {{ \Carbon\Carbon::parse($history->created_at)->diffForHumans() }}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
                     @else
-                        <p class="text-gray-500 text-center py-8">
-                            <i class="fas fa-inbox text-4xl text-gray-300 mb-3"></i>
-                            <br>Belum ada riwayat approval
-                        </p>
+                        <div class="text-center py-12">
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-inbox text-gray-300 text-3xl"></i>
+                            </div>
+                            <p class="text-gray-500 font-medium">Belum ada riwayat approval</p>
+                            <p class="text-gray-400 text-sm mt-1">Riwayat akan muncul setelah approval diproses</p>
+                        </div>
                     @endif
                 </div>
             </div>

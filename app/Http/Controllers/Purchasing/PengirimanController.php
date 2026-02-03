@@ -980,11 +980,14 @@ class PengirimanController extends Controller
                 $existingDetail = $pengiriman->pengirimanDetails->get($index);
 
                 if ($existingDetail) {
-                    // Update existing detail
+                    // ✅ PENTING: Jangan update harga_satuan!
+                    // Harga yang tersimpan adalah harga FROZEN saat pengiriman dibuat
+                    // Tidak boleh berubah meskipun harga supplier naik/turun
                     $existingDetail->update([
                         "qty_kirim" => $detail["qty_kirim"],
-                        "harga_satuan" => $detail["harga_satuan"],
-                        "total_harga" => $detail["total_harga"],
+                        // ❌ JANGAN update harga_satuan: "harga_satuan" => $detail["harga_satuan"],
+                        // Recalculate total_harga based on EXISTING harga_satuan
+                        "total_harga" => $detail["qty_kirim"] * $existingDetail->harga_satuan,
                     ]);
                 } else {
                     // If detail doesn't exist (shouldn't happen in this case), create new

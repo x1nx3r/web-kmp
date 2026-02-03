@@ -335,20 +335,25 @@
                                     // Get klien_id from order
                                     $klienId = $pengiriman->order->klien_id ?? null;
                                     
-                                    // Get harga beli (supplier price specific to this client)
-                                    // First try to get from bahan_baku_supplier_klien (client-specific price)
-                                    $hargaBeli = 0;
-                                    if ($klienId && $detail->bahan_baku_supplier_id) {
-                                        $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $detail->bahan_baku_supplier_id)
-                                            ->where('klien_id', $klienId)
-                                            ->first();
-                                        $hargaBeli = $bahanBakuSupplierKlien ? $bahanBakuSupplierKlien->harga_per_satuan : 0;
-                                    }
+                                    // ✅ PRIORITAS 1: Gunakan harga HISTORIS yang sudah tersimpan di database
+                                    // Ini adalah harga yang FROZEN saat pengiriman dibuat, tidak boleh berubah!
+                                    $hargaBeli = $detail->harga_satuan ?? 0;
                                     
-                                    // Fallback to default supplier price if client-specific price not found
-                                    if ($hargaBeli == 0) {
-                                        $latestHarga = $detail->bahanBakuSupplier->riwayatHarga->first();
-                                        $hargaBeli = $latestHarga ? $latestHarga->harga_baru : ($detail->bahanBakuSupplier->harga_per_satuan ?? 0);
+                                    // ✅ FALLBACK: Hanya jika data lama yang belum punya harga tersimpan (data corrupt/migration)
+                                    if ($hargaBeli == 0 && $detail->bahan_baku_supplier_id) {
+                                        // Try to get client-specific price
+                                        if ($klienId) {
+                                            $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $detail->bahan_baku_supplier_id)
+                                                ->where('klien_id', $klienId)
+                                                ->first();
+                                            $hargaBeli = $bahanBakuSupplierKlien ? $bahanBakuSupplierKlien->harga_per_satuan : 0;
+                                        }
+                                        
+                                        // Final fallback to default supplier price
+                                        if ($hargaBeli == 0) {
+                                            $latestHarga = $detail->bahanBakuSupplier->riwayatHarga->first();
+                                            $hargaBeli = $latestHarga ? $latestHarga->harga_baru : ($detail->bahanBakuSupplier->harga_per_satuan ?? 0);
+                                        }
                                     }
                                     
                                     // Get harga jual (PO price to client)

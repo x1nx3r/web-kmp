@@ -332,9 +332,24 @@
                         <tbody id="pengirimanDetailContainer" class="bg-white divide-y divide-gray-200">
                             @forelse($pengiriman->pengirimanDetails ?? [] as $index => $detail)
                                 @php
-                                    // Get harga beli (supplier price)
-                                    $latestHarga = $detail->bahanBakuSupplier->riwayatHarga->first();
-                                    $hargaBeli = $latestHarga ? $latestHarga->harga_baru : ($detail->bahanBakuSupplier->harga_per_satuan ?? 0);
+                                    // Get klien_id from order
+                                    $klienId = $pengiriman->order->klien_id ?? null;
+                                    
+                                    // Get harga beli (supplier price specific to this client)
+                                    // First try to get from bahan_baku_supplier_klien (client-specific price)
+                                    $hargaBeli = 0;
+                                    if ($klienId && $detail->bahan_baku_supplier_id) {
+                                        $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $detail->bahan_baku_supplier_id)
+                                            ->where('klien_id', $klienId)
+                                            ->first();
+                                        $hargaBeli = $bahanBakuSupplierKlien ? $bahanBakuSupplierKlien->harga_per_satuan : 0;
+                                    }
+                                    
+                                    // Fallback to default supplier price if client-specific price not found
+                                    if ($hargaBeli == 0) {
+                                        $latestHarga = $detail->bahanBakuSupplier->riwayatHarga->first();
+                                        $hargaBeli = $latestHarga ? $latestHarga->harga_baru : ($detail->bahanBakuSupplier->harga_per_satuan ?? 0);
+                                    }
                                     
                                     // Get harga jual (PO price to client)
                                     $hargaJual = $detail->orderDetail->harga_jual ?? 0;

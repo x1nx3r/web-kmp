@@ -398,14 +398,14 @@
                             </td> --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if($activeTab === 'pending')
-                                    <a href="{{ route('accounting.approval-penagihan.detail', $approval->id) }}"
+                                    <a href="{{ route('accounting.approval-penagihan.approve', $approval->id) }}"
                                        class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                                         <i class="fas fa-eye mr-1"></i>
                                         Detail & Approve
                                     </a>
                                 @else
                                     <div class="flex items-center justify-center space-x-2">
-                                        <a href="{{ route('accounting.approval-penagihan.detail', $approval->id) }}"
+                                        <a href="{{ route('accounting.approval-penagihan.view', $approval->id) }}"
                                            class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                                             <i class="fas fa-eye mr-1"></i>
                                             Detail

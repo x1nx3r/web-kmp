@@ -729,7 +729,7 @@ Route::middleware(["auth"])->group(function () {
                 return view("pages.accounting.approve-penagihan", [
                     "approvalId" => $approvalId,
                 ]);
-            })->name("approval-penagihan.detail");
+            })->name("approval-penagihan.approve");
 
             Route::get("/approval-penagihan/{approvalId}/detail", function (
                 $approvalId,

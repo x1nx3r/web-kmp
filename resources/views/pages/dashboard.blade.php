@@ -579,8 +579,9 @@ function showPengirimanModal(type) {
             const row = document.createElement('tr');
             row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
             
-            // Format tanggal
-            const tanggal = new Date(item.tanggal_kirim).toLocaleDateString('id-ID', {
+            // Format tanggal - untuk pengiriman gagal tanpa tanggal_kirim, gunakan tanggal_gagal
+            const tanggalDisplay = item.tanggal_kirim || item.tanggal_gagal || new Date();
+            const tanggal = new Date(tanggalDisplay).toLocaleDateString('id-ID', {
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'
@@ -713,7 +714,9 @@ function downloadPDF() {
         : [['No. PO', 'Tanggal', 'Klien', 'PIC', 'QTY Kirim', 'Persentase', 'Status']];
     
     const tableData = currentModalData.map(item => {
-        const tanggal = new Date(item.tanggal_kirim).toLocaleDateString('id-ID', {
+        // Untuk pengiriman gagal tanpa tanggal_kirim, gunakan tanggal_gagal (updated_at)
+        const tanggalDisplay = item.tanggal_kirim || item.tanggal_gagal || new Date();
+        const tanggal = new Date(tanggalDisplay).toLocaleDateString('id-ID', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'

@@ -487,12 +487,28 @@
                         </td>
                             
                             <div class="text-xs text-gray-500 sm:hidden">
-                                {{ $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('d/m/Y') : '-' }}
+                                @php
+                                    // Display logic: prioritas tanggal_kirim, fallback ke updated_at untuk pengiriman gagal
+                                    $displayTanggal = $pengiriman->tanggal_kirim 
+                                        ? $pengiriman->tanggal_kirim->format('d/m/Y') 
+                                        : ($pengiriman->status === 'gagal' && $pengiriman->updated_at 
+                                            ? $pengiriman->updated_at->format('d/m/Y')
+                                            : '-');
+                                @endphp
+                                {{ $displayTanggal }}
                             </div>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                             <div class="flex items-center">
                                 <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>
-                                {{ $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('d/m/Y') : '-' }}
+                                @php
+                                    // Display logic: prioritas tanggal_kirim, fallback ke updated_at untuk pengiriman gagal
+                                    $displayTanggal = $pengiriman->tanggal_kirim 
+                                        ? $pengiriman->tanggal_kirim->format('d/m/Y') 
+                                        : ($pengiriman->status === 'gagal' && $pengiriman->updated_at 
+                                            ? $pengiriman->updated_at->format('d/m/Y') 
+                                            : '-');
+                                @endphp
+                                {{ $displayTanggal }}
                             </div>
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">

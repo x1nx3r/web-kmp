@@ -170,10 +170,21 @@ class PengirimanExport implements
                 default => ucfirst($pengiriman->status ?? 'N/A')
             };
 
+            // Untuk tanggal: jika pengiriman gagal dan tanggal_kirim NULL, pakai updated_at
+            $displayTanggal = 'N/A';
+            $displayHari = $pengiriman->hari_kirim ?? 'N/A';
+            
+            if ($pengiriman->tanggal_kirim) {
+                $displayTanggal = \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d/m/Y');
+            } elseif ($pengiriman->status === 'gagal' && $pengiriman->updated_at) {
+                $displayTanggal = \Carbon\Carbon::parse($pengiriman->updated_at)->format('d/m/Y');
+                // Ambil nama hari dari updated_at
+                $displayHari = \Carbon\Carbon::parse($pengiriman->updated_at)->locale('id')->isoFormat('dddd');
+            }
+
             $data[] = [
-                $pengiriman->tanggal_kirim ? 
-                    \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d/m/Y') : 'N/A',
-                $pengiriman->hari_kirim ?? 'N/A',
+                $displayTanggal,
+                $displayHari,
                 $picSuppliers ?: 'N/A',
                 $suppliers ?: 'N/A',
                 $bahanBakuPO ?: 'Tidak ada detail',
@@ -322,7 +333,23 @@ class PengirimanExport implements
             'pengirimanDetails.bahanBakuSupplier.supplier.picPurchasing',
             'pengirimanDetails.orderDetail',  // Tambahkan relasi order detail untuk harga jual
             'invoicePenagihan'  // Tambahkan relasi invoice penagihan
-        ])->whereBetween('tanggal_kirim', [$this->startDate, $this->endDate]);
+        ])->where(function($q) {
+            $q->where(function($subq) {
+                // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
+                $subq->where('status', '!=', 'gagal')
+                     ->whereBetween('tanggal_kirim', [$this->startDate, $this->endDate]);
+            })->orWhere(function($subq) {
+                // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
+                $subq->where('status', 'gagal')
+                     ->whereNotNull('tanggal_kirim')
+                     ->whereBetween('tanggal_kirim', [$this->startDate, $this->endDate]);
+            })->orWhere(function($subq) {
+                // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
+                $subq->where('status', 'gagal')
+                     ->whereNull('tanggal_kirim')
+                     ->whereBetween('updated_at', [$this->startDate, $this->endDate]);
+            });
+        });
 
         // Apply filters
         if ($this->status) {

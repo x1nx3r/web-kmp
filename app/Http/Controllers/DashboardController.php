@@ -349,15 +349,27 @@ class DashboardController extends Controller
             ->sum(DB::raw('COALESCE(invoice_penagihan.qty_after_refraksi, pengiriman.total_qty_kirim)'));
         
         // ========== PENGIRIMAN GAGAL MINGGU INI ==========
+        // Gunakan logic smart: prioritaskan tanggal_kirim, fallback ke updated_at untuk yang NULL
         $pengirimanGagalList = Pengiriman::with(['order.klien', 'purchasing'])
-            ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()])
             ->where('status', 'gagal')
+            ->where(function($query) use ($weekStartPengiriman, $weekEndPengiriman) {
+                $query->where(function($q) use ($weekStartPengiriman, $weekEndPengiriman) {
+                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
+                    $q->whereNotNull('tanggal_kirim')
+                      ->whereBetween('tanggal_kirim', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()]);
+                })->orWhere(function($q) use ($weekStartPengiriman, $weekEndPengiriman) {
+                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
+                    $q->whereNull('tanggal_kirim')
+                      ->whereBetween('updated_at', [$weekStartPengiriman->startOfDay(), $weekEndPengiriman->endOfDay()]);
+                });
+            })
             ->get()
             ->map(function($pengiriman) {
                 return [
                     'id' => $pengiriman->id,
                     'po_number' => $pengiriman->order->po_number ?? 'N/A',
                     'tanggal_kirim' => $pengiriman->tanggal_kirim,
+                    'tanggal_gagal' => $pengiriman->updated_at, // Tambahkan tanggal pembatalan
                     'klien' => $pengiriman->order->klien->nama ?? 'N/A',
                     'cabang' => $pengiriman->order->klien->cabang ?? null,
                     'total_qty_kirim' => $pengiriman->total_qty_kirim,

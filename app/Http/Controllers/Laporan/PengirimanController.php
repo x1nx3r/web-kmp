@@ -111,7 +111,24 @@ class PengirimanController extends Controller
                     ELSE pengiriman.total_harga_kirim 
                 END as display_harga')
             )
-            ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+            // Filter tanggal: logic smart untuk pengiriman gagal
+            ->where(function($query) use ($startDate, $endDate) {
+                $query->where(function($q) use ($startDate, $endDate) {
+                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
+                    $q->where('pengiriman.status', '!=', 'gagal')
+                      ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+                })->orWhere(function($q) use ($startDate, $endDate) {
+                    // Pengiriman gagal yang PUNYA tanggal_kirim - tetap pakai tanggal_kirim
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNotNull('pengiriman.tanggal_kirim')
+                      ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+                })->orWhere(function($q) use ($startDate, $endDate) {
+                    // Pengiriman gagal yang TIDAK punya tanggal_kirim - pakai updated_at
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNull('pengiriman.tanggal_kirim')
+                      ->whereBetween('pengiriman.updated_at', [$startDate, $endDate]);
+                });
+            });
         
         // Apply filters
         if ($status) {
@@ -206,19 +223,13 @@ class PengirimanController extends Controller
     
     private function getPieChartData($filter, $startDate, $endDate)
     {
-        $dateField = 'pengiriman.tanggal_kirim';
-        $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
-        if (!$testQuery) {
-            $dateField = 'pengiriman.created_at';
-        }
-        
         // Build base query for status berhasil, menunggu_fisik, menunggu_verifikasi
         $query = Pengiriman::with('forecast')
             ->whereIn('pengiriman.status', ['berhasil', 'menunggu_fisik', 'menunggu_verifikasi']);
         
-        // Apply date filter if not 'semua'
+        // Apply date filter if not 'semua' - gunakan tanggal_kirim untuk pengiriman normal
         if ($filter !== 'semua' && $startDate && $endDate) {
-            $query->whereBetween($dateField, [$startDate, $endDate]);
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
         
         $pengirimanData = $query->get();
@@ -251,11 +262,21 @@ class PengirimanController extends Controller
             }
         }
         
-        // Count gagal (cancelled/failed pengiriman)
+        // Count gagal (cancelled/failed pengiriman) - logic smart
         $gagalQuery = Pengiriman::where('pengiriman.status', 'gagal');
         
         if ($filter !== 'semua' && $startDate && $endDate) {
-            $gagalQuery->whereBetween($dateField, [$startDate, $endDate]);
+            $gagalQuery->where(function($q) use ($startDate, $endDate) {
+                $q->where(function($subq) use ($startDate, $endDate) {
+                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
+                    $subq->whereNotNull('pengiriman.tanggal_kirim')
+                         ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+                })->orWhere(function($subq) use ($startDate, $endDate) {
+                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
+                    $subq->whereNull('pengiriman.tanggal_kirim')
+                         ->whereBetween('pengiriman.updated_at', [$startDate, $endDate]);
+                });
+            });
         }
         
         $gagal = $gagalQuery->count();
@@ -275,21 +296,34 @@ class PengirimanController extends Controller
     
     private function getWeeklyStats($weekStart, $weekEnd)
     {
-        $dateField = 'pengiriman.tanggal_kirim';
-        $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
-        if (!$testQuery) {
-            $dateField = 'pengiriman.created_at';
-        }
-        
-        // Untuk pengiriman: menunggu_fisik, menunggu_verifikasi, berhasil, gagal
-        $countData = Pengiriman::whereBetween($dateField, [$weekStart, $weekEnd])
-            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil', 'gagal'])
+        // Untuk pengiriman: logic smart untuk gagal
+        $countData = Pengiriman::where(function($query) use ($weekStart, $weekEnd) {
+                $query->where(function($q) use ($weekStart, $weekEnd) {
+                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
+                    $q->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                      ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
+                })->orWhere(function($q) use ($weekStart, $weekEnd) {
+                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNotNull('pengiriman.tanggal_kirim')
+                      ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
+                })->orWhere(function($q) use ($weekStart, $weekEnd) {
+                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNull('pengiriman.tanggal_kirim')
+                      ->whereBetween('pengiriman.updated_at', [$weekStart, $weekEnd]);
+                });
+            })
             ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
             ->first();
         
+        
         // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
-        $tonaseData = Pengiriman::whereBetween($dateField, [$weekStart, $weekEnd])
-            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        $tonaseData = Pengiriman::where(function($query) use ($weekStart, $weekEnd) {
+                // Hanya pengiriman berhasil/menunggu yang punya tonase (bukan gagal)
+                $query->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                      ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
+            })
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
                 COALESCE(SUM(
@@ -312,20 +346,29 @@ class PengirimanController extends Controller
     
     private function getYearlyStats($year)
     {
-        $dateField = 'pengiriman.tanggal_kirim';
-        $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
-        if (!$testQuery) {
-            $dateField = 'pengiriman.created_at';
-        }
-        
-        // Untuk pengiriman: menunggu_fisik, menunggu_verifikasi, berhasil, gagal
-        $countData = Pengiriman::whereYear($dateField, $year)
-            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil', 'gagal'])
+        // Untuk pengiriman: count all status dengan filter tanggal yang smart
+        $countData = Pengiriman::where(function($query) use ($year) {
+                $query->where(function($q) use ($year) {
+                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
+                    $q->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                      ->whereYear('pengiriman.tanggal_kirim', $year);
+                })->orWhere(function($q) use ($year) {
+                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNotNull('pengiriman.tanggal_kirim')
+                      ->whereYear('pengiriman.tanggal_kirim', $year);
+                })->orWhere(function($q) use ($year) {
+                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNull('pengiriman.tanggal_kirim')
+                      ->whereYear('pengiriman.updated_at', $year);
+                });
+            })
             ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
             ->first();
         
         // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
-        $tonaseData = Pengiriman::whereYear($dateField, $year)
+        $tonaseData = Pengiriman::whereYear('pengiriman.tanggal_kirim', $year)
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw('
@@ -378,20 +421,31 @@ class PengirimanController extends Controller
     {
         $totalPengiriman = Pengiriman::count();
         
-        $dateField = 'pengiriman.tanggal_kirim';
-        
-        $testQuery = Pengiriman::whereNotNull('tanggal_kirim')->first();
-        if (!$testQuery) {
-            $dateField = 'pengiriman.created_at';
-        }
-        
-        // Get monthly data for the specified year - status menunggu_fisik, menunggu_verifikasi, berhasil, gagal
-        // Untuk status berhasil, ambil qty dan harga dari invoice_penagihan
-        $monthlyData = Pengiriman::whereYear($dateField, $year)
-            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil', 'gagal'])
+        // Get monthly data for the specified year - logic smart untuk pengiriman gagal
+        $monthlyData = Pengiriman::where(function($query) use ($year) {
+                $query->where(function($q) use ($year) {
+                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
+                    $q->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                      ->whereYear('pengiriman.tanggal_kirim', $year);
+                })->orWhere(function($q) use ($year) {
+                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNotNull('pengiriman.tanggal_kirim')
+                      ->whereYear('pengiriman.tanggal_kirim', $year);
+                })->orWhere(function($q) use ($year) {
+                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
+                    $q->where('pengiriman.status', 'gagal')
+                      ->whereNull('pengiriman.tanggal_kirim')
+                      ->whereYear('pengiriman.updated_at', $year);
+                });
+            })
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw("
-                MONTH({$dateField}) as month,
+                CASE 
+                    WHEN pengiriman.status = 'gagal' AND pengiriman.tanggal_kirim IS NULL 
+                    THEN MONTH(pengiriman.updated_at)
+                    ELSE MONTH(pengiriman.tanggal_kirim)
+                END as month,
                 pengiriman.purchasing_id,
                 COUNT(DISTINCT pengiriman.id) as total_pengiriman,
                 COALESCE(SUM(
@@ -504,8 +558,6 @@ class PengirimanController extends Controller
             $startDate = $request->get('start_date');
             $endDate = $request->get('end_date');
             
-            $dateField = 'pengiriman.tanggal_kirim';
-            
             // Determine date range based on filter
             if ($filter !== 'semua') {
                 switch ($filter) {
@@ -534,6 +586,7 @@ class PengirimanController extends Controller
                     'pengiriman.status',
                     'pengiriman.total_qty_kirim',
                     'pengiriman.tanggal_kirim',
+                    'pengiriman.updated_at',
                     'orders.po_number',
                     DB::raw('GROUP_CONCAT(DISTINCT suppliers.nama SEPARATOR ", ") as supplier_nama'),
                     'forecasts.total_qty_forecast'
@@ -543,12 +596,30 @@ class PengirimanController extends Controller
                     'pengiriman.status',
                     'pengiriman.total_qty_kirim',
                     'pengiriman.tanggal_kirim',
+                    'pengiriman.updated_at',
                     'orders.po_number',
                     'forecasts.total_qty_forecast'
                 );
             
+            // Apply date filter dengan logic smart untuk pengiriman gagal
             if ($filter !== 'semua' && $startDate && $endDate) {
-                $query->whereBetween($dateField, [$startDate, $endDate]);
+                $query->where(function($q) use ($startDate, $endDate) {
+                    $q->where(function($subq) use ($startDate, $endDate) {
+                        // Pengiriman normal (bukan gagal) - gunakan tanggal_kirim
+                        $subq->where('pengiriman.status', '!=', 'gagal')
+                             ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+                    })->orWhere(function($subq) use ($startDate, $endDate) {
+                        // Pengiriman gagal dengan tanggal_kirim - gunakan tanggal_kirim
+                        $subq->where('pengiriman.status', 'gagal')
+                             ->whereNotNull('pengiriman.tanggal_kirim')
+                             ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+                    })->orWhere(function($subq) use ($startDate, $endDate) {
+                        // Pengiriman gagal tanpa tanggal_kirim - gunakan updated_at
+                        $subq->where('pengiriman.status', 'gagal')
+                             ->whereNull('pengiriman.tanggal_kirim')
+                             ->whereBetween('pengiriman.updated_at', [$startDate, $endDate]);
+                    });
+                });
             }
             
             $pengirimanData = $query->get();
@@ -588,11 +659,24 @@ class PengirimanController extends Controller
                     continue;
                 }
                 
+                // Gunakan logic smart untuk display tanggal
+                $displayDate = null;
+                if ($pengiriman->status === 'gagal') {
+                    // Pengiriman gagal: prioritaskan tanggal_kirim, fallback ke updated_at
+                    if ($pengiriman->tanggal_kirim) {
+                        $displayDate = $pengiriman->tanggal_kirim->format('Y-m-d');
+                    } else {
+                        $displayDate = $pengiriman->updated_at ? \Carbon\Carbon::parse($pengiriman->updated_at)->format('Y-m-d') : null;
+                    }
+                } else {
+                    $displayDate = $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('Y-m-d') : null;
+                }
+                
                 $details[] = [
                     'id' => $pengiriman->id,
                     'po_number' => $pengiriman->po_number ?? '-',
                     'supplier' => $pengiriman->supplier_nama ?? '-',
-                    'tanggal_kirim' => $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('Y-m-d') : null,
+                    'tanggal_kirim' => $displayDate,
                     'qty_forecast' => $pengiriman->total_qty_forecast ? (float) $pengiriman->total_qty_forecast : 0,
                     'qty_pengiriman' => (float) $pengiriman->total_qty_kirim,
                     'status_label' => $statusLabel,

@@ -773,9 +773,35 @@
                             Invoice Details
                         </h4>
                         <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <p class="text-xs text-gray-500">Invoice Number</p>
-                                <p class="font-semibold text-gray-900">{{ $selectedData->invoice->invoice_number }}</p>
+                            <div class="col-span-2">
+                                <p class="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                @if($canManage && ($selectedData->status !== 'completed' || $editMode))
+                                    <div class="flex gap-2">
+                                        <input
+                                            type="text"
+                                            wire:model.defer="invoiceNumberForm"
+                                            placeholder="Masukkan nomor invoice"
+                                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        >
+                                        <button
+                                            wire:click="updateInvoiceNumber"
+                                            wire:loading.attr="disabled"
+                                            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                                        >
+                                            <span wire:loading.remove wire:target="updateInvoiceNumber">
+                                                <i class="fas fa-save mr-1"></i> Update
+                                            </span>
+                                            <span wire:loading wire:target="updateInvoiceNumber">
+                                                <i class="fas fa-spinner fa-spin mr-1"></i> Updating...
+                                            </span>
+                                        </button>
+                                    </div>
+                                    @error('invoiceNumberForm')
+                                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
+                                @else
+                                    <p class="font-semibold text-gray-900">{{ $selectedData->invoice->invoice_number }}</p>
+                                @endif
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500">Invoice Date</p>

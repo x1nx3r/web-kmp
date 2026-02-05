@@ -62,6 +62,7 @@ class ApprovalPenagihan extends Component
     ];
 
     public $invoiceNotesForm = '';
+    public $invoiceNumberForm = '';
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -87,6 +88,7 @@ class ApprovalPenagihan extends Component
         'bankForm.bank_name' => 'required|string|max:255',
         'bankForm.bank_account_number' => 'required|string|max:50',
         'bankForm.bank_account_name' => 'required|string|max:255',
+        'invoiceNumberForm' => 'required|string|max:191',
     ];
 
     public function mount($approvalId = null, $editMode = false)
@@ -466,6 +468,9 @@ class ApprovalPenagihan extends Component
         // Populate invoice notes
         $this->invoiceNotesForm = $approval->invoice->notes ?? '';
 
+        // Populate invoice number
+        $this->invoiceNumberForm = $approval->invoice->invoice_number ?? '';
+
         // Load approval history
         $this->approvalHistory = ApprovalHistory::where('approval_type', 'penagihan')
             ->where('approval_id', $approvalId)
@@ -692,6 +697,73 @@ class ApprovalPenagihan extends Component
         }
     }
 
+    public function updateInvoiceNumber()
+    {
+        $this->validate([
+            'invoiceNumberForm' => 'required|string|max:191',
+        ], [
+            'invoiceNumberForm.required' => 'Nomor invoice harus diisi',
+            'invoiceNumberForm.max' => 'Nomor invoice maksimal 191 karakter',
+        ]);
+
+        if (!$this->selectedData || !$this->selectedData->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        // Check if invoice number already exists (excluding current invoice)
+        $exists = InvoicePenagihan::where('invoice_number', $this->invoiceNumberForm)
+            ->where('id', '!=', $this->selectedData->invoice->id)
+            ->exists();
+
+        if ($exists) {
+            session()->flash('error', 'Nomor invoice "' . $this->invoiceNumberForm . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $invoice = $this->selectedData->invoice;
+            $user = Auth::user();
+
+            // Collect changes
+            $changes = [
+                'before' => [
+                    'invoice_number' => $invoice->invoice_number,
+                ],
+                'after' => [
+                    'invoice_number' => $this->invoiceNumberForm,
+                ],
+            ];
+
+            // Update invoice
+            $invoice->invoice_number = $this->invoiceNumberForm;
+            $invoice->save();
+
+            // Save history
+            ApprovalHistory::create([
+                'approval_type' => 'penagihan',
+                'approval_id' => $this->selectedData->id,
+                'pengiriman_id' => $this->selectedData->pengiriman_id,
+                'invoice_id' => $invoice->id,
+                'role' => $this->getUserRole($user),
+                'user_id' => $user->id,
+                'action' => 'edited',
+                'changes' => $changes,
+                'notes' => 'Update nomor invoice dari "' . $changes['before']['invoice_number'] . '" menjadi "' . $this->invoiceNumberForm . '"',
+            ]);
+
+            DB::commit();
+            session()->flash('message', 'Nomor invoice berhasil diupdate');
+
+            // Reload data
+            $this->showDetail($this->selectedData->id);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal update nomor invoice: ' . $e->getMessage());
+        }
+    }
+
     public function updateDiscount()
     {
         if (!$this->selectedData || !$this->selectedData->invoice) {
@@ -888,6 +960,7 @@ class ApprovalPenagihan extends Component
             'bank_account_name' => '',
         ];
         $this->invoiceNotesForm = '';
+        $this->invoiceNumberForm = '';
         $this->approvalHistory = [];
     }
 }

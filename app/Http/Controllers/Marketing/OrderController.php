@@ -409,13 +409,13 @@ class OrderController extends Controller
             "orderDetails.orderSuppliers.bahanBakuSupplier",
         ])->findOrFail($id);
 
-        // Allow editing for draft and confirmed orders
-        if (!in_array($order->status, ["draft", "dikonfirmasi"])) {
+        // Allow editing for draft, confirmed, and processing orders
+        if (!in_array($order->status, ["draft", "dikonfirmasi", "diproses"])) {
             return redirect()
                 ->route("orders.show", $order->id)
                 ->with(
                     "error",
-                    "Hanya order dengan status draft atau dikonfirmasi yang dapat diedit.",
+                    "Hanya order dengan status draft, dikonfirmasi, atau diproses yang dapat diedit.",
                 );
         }
 
@@ -429,13 +429,13 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        // Allow updating for draft and confirmed orders
-        if (!in_array($order->status, ["draft", "dikonfirmasi"])) {
+        // Allow updating for draft, confirmed, and processing orders
+        if (!in_array($order->status, ["draft", "dikonfirmasi", "diproses"])) {
             return redirect()
                 ->route("orders.show", $order->id)
                 ->with(
                     "error",
-                    "Hanya order dengan status draft atau dikonfirmasi yang dapat diupdate.",
+                    "Hanya order dengan status draft, dikonfirmasi, atau diproses yang dapat diupdate.",
                 );
         }
 

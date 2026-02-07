@@ -630,7 +630,7 @@
                                     <i class="fas fa-eye mr-1"></i>
                                     Lihat Detail
                                 </a>
-                                @if(in_array($order->status, ['draft', 'dikonfirmasi']) && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
+                                @if(in_array($order->status, ['draft', 'dikonfirmasi', 'diproses']) && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
                                     <a href="{{ route('orders.edit', $order) }}" class="text-green-600 hover:text-green-800 text-sm font-medium">
                                         <i class="fas fa-edit mr-1"></i>
                                         Edit

@@ -866,8 +866,9 @@ class PengirimanController extends Controller
                     "details.*.bahan_baku_supplier_id" =>
                         "required|exists:bahan_baku_supplier,id",
                     "details.*.qty_kirim" => "required|numeric|min:0",
-                    "details.*.harga_satuan" => "required|numeric|min:0",
-                    "details.*.total_harga" => "required|numeric|min:0",
+                    // ❌ JANGAN validasi harga dari request - harga sudah frozen di database
+                    // "details.*.harga_satuan" => "nullable|numeric|min:0", // Optional for display only
+                    // "details.*.total_harga" => "nullable|numeric|min:0", // Will be calculated
                 ],
                 [
                     "pengiriman_id.required" => "ID pengiriman diperlukan",
@@ -884,18 +885,15 @@ class PengirimanController extends Controller
                     "details.*.bahan_baku_supplier_id.required" =>
                         "Bahan baku harus dipilih",
                     "details.*.qty_kirim.required" => "Qty kirim harus diisi",
-                    "details.*.harga_satuan.required" =>
-                        "Harga satuan harus diisi",
                 ],
             );
 
             // Begin transaction
             DB::beginTransaction();
 
-            // Update pengiriman
-            $pengiriman = Pengiriman::findOrFail(
-                $validatedData["pengiriman_id"],
-            );
+            // Update pengiriman - with eager loading
+            $pengiriman = Pengiriman::with(['order', 'pengirimanDetails'])
+                ->findOrFail($validatedData["pengiriman_id"]);
 
             // Generate nomor pengiriman jika belum ada
             if (empty($pengiriman->no_pengiriman)) {
@@ -980,17 +978,38 @@ class PengirimanController extends Controller
                 $existingDetail = $pengiriman->pengirimanDetails->get($index);
 
                 if ($existingDetail) {
-                    // ✅ PENTING: Jangan update harga_satuan!
-                    // Harga yang tersimpan adalah harga FROZEN saat pengiriman dibuat
-                    // Tidak boleh berubah meskipun harga supplier naik/turun
+                    // Get frozen price from bahan_baku_supplier_klien (client-specific price)
+                    $klienId = $pengiriman->order->klien_id ?? null;
+                    $bahanBakuSupplier = \App\Models\BahanBakuSupplier::find($detail["bahan_baku_supplier_id"]);
+                    
+                    $hargaSatuan = 0;
+                    
+                    if ($bahanBakuSupplier && $klienId) {
+                        // Try to get client-specific price from bahan_baku_supplier_klien
+                        $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
+                            ->where('klien_id', $klienId)
+                            ->first();
+                        
+                        if ($bahanBakuSupplierKlien) {
+                            $hargaSatuan = $bahanBakuSupplierKlien->harga_per_satuan;
+                        }
+                    }
+                    
+                    // Fallback to default supplier price if client-specific price not found
+                    if ($hargaSatuan == 0 && $bahanBakuSupplier) {
+                        $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
+                    }
+                    
+                    // Update detail dengan harga yang didapat
+                    $totalHarga = $detail["qty_kirim"] * $hargaSatuan;
                     $existingDetail->update([
                         "qty_kirim" => $detail["qty_kirim"],
-                        // ❌ JANGAN update harga_satuan: "harga_satuan" => $detail["harga_satuan"],
-                        // Recalculate total_harga based on EXISTING harga_satuan
-                        "total_harga" => $detail["qty_kirim"] * $existingDetail->harga_satuan,
+                        "harga_satuan" => $hargaSatuan,
+                        "total_harga" => $totalHarga,
                     ]);
                 } else {
-                    // If detail doesn't exist (shouldn't happen in this case), create new
+                    // If detail doesn't exist (shouldn't happen in submit flow), create new
+                    // This is fallback - normally all details should exist from forecast creation
                     $bahanBakuSupplier = \App\Models\BahanBakuSupplier::find(
                         $detail["bahan_baku_supplier_id"],
                     );
@@ -1004,7 +1023,7 @@ class PengirimanController extends Controller
                             ->whereHas("bahanBakuKlien", function ($query) use (
                                 $bahanBakuSupplier,
                             ) {
-                                $query->where("nama", $bahanBakuSupplier->nama);
+                                $query->where("nama", $bahanBakuSupplier->nama ?? '');
                             })
                             ->first();
 
@@ -1016,6 +1035,23 @@ class PengirimanController extends Controller
                         }
                     }
 
+                    // Get frozen harga from bahan_baku_supplier_klien (client-specific price)
+                    $hargaSatuan = 0;
+                    $klienId = $pengiriman->order->klien_id ?? null;
+                    
+                    if ($bahanBakuSupplier && $klienId) {
+                        // Try to get client-specific price from bahan_baku_supplier_klien
+                        $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
+                            ->where('klien_id', $klienId)
+                            ->first();
+                        $hargaSatuan = $bahanBakuSupplierKlien ? $bahanBakuSupplierKlien->harga_per_satuan : 0;
+                    }
+                    
+                    // Fallback to default supplier price if client-specific price not found
+                    if ($hargaSatuan == 0 && $bahanBakuSupplier) {
+                        $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
+                    }
+
                     PengirimanDetail::create([
                         "pengiriman_id" => $pengiriman->id,
                         "purchase_order_bahan_baku_id" => $poDetail
@@ -1024,14 +1060,13 @@ class PengirimanController extends Controller
                         "bahan_baku_supplier_id" =>
                             $detail["bahan_baku_supplier_id"],
                         "qty_kirim" => $detail["qty_kirim"],
-                        "harga_satuan" => $detail["harga_satuan"],
-                        "total_harga" => $detail["total_harga"],
+                        "harga_satuan" => $hargaSatuan, // Use frozen harga (client-specific or default)
+                        "total_harga" => $detail["qty_kirim"] * $hargaSatuan,
                     ]);
                 }
             }
 
-            // IMPORTANT: Reduce qty from order_detail when status becomes menunggu_fisik
-            // This ensures qty is reduced only once, regardless of future status changes
+      
             $this->reduceOrderDetailQty($pengiriman);
 
             // Commit transaction

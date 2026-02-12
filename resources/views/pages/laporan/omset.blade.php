@@ -3,32 +3,7 @@
 @section('report-content')
 
 {{-- Summary Cards --}}
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    {{-- Total Omset Sampai Saat Ini --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-        <div class="flex items-start space-x-4">
-            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-chart-line text-purple-600 text-xl"></i>
-            </div>
-            <div class="flex-1">
-                <p class="text-sm text-gray-600 mb-2 flex items-center">
-                    Total Omset Sampai Saat Ini
-                    <span class="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded" 
-                          title="Termasuk Omset Sistem dan Omset Manual">
-                        <i class="fas fa-layer-group"></i>
-                    </span>
-                </p>
-                <h3 class="text-2xl font-bold text-purple-600">
-                    @if($totalOmset >= 1000000000)
-                        Rp {{ number_format($totalOmset / 1000000000, 2, ',', '.') }} Miliar
-                    @else
-                        Rp {{ number_format($totalOmset / 1000000, 2, ',', '.') }} Juta
-                    @endif
-                </h3>
-            </div>
-        </div>
-    </div>
-
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
     {{-- Omset Tahun Ini --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <div class="flex items-start space-x-4">

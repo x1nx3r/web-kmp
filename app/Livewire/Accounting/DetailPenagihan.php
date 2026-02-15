@@ -47,6 +47,8 @@ class DetailPenagihan extends Component
         'refraksi_value' => 0,
     ];
 
+    public $invoiceNumberForm = '';
+
     public $invoiceNotesForm = '';
 
     protected $rules = [
@@ -116,6 +118,8 @@ class DetailPenagihan extends Component
                 'refraksi_type' => $this->invoice->refraksi_type ?? 'qty',
                 'refraksi_value' => $this->invoice->refraksi_value ?? 0,
             ];
+
+            $this->invoiceNumberForm = $this->invoice->invoice_number ?? '';
 
             $this->invoiceNotesForm = $this->invoice->notes ?? '';
         }
@@ -291,6 +295,49 @@ class DetailPenagihan extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update catatan invoice: ' . $e->getMessage());
+        }
+    }
+
+    public function updateInvoiceNumber()
+    {
+        $this->validate([
+            'invoiceNumberForm' => 'required|string|max:50|unique:invoice_penagihan,invoice_number,' . $this->invoice->id,
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $user = Auth::user();
+
+            $changes = [
+                'before' => [
+                    'invoice_number' => $this->invoice->invoice_number,
+                ],
+                'after' => [
+                    'invoice_number' => $this->invoiceNumberForm,
+                ],
+            ];
+
+            $this->invoice->invoice_number = $this->invoiceNumberForm;
+            $this->invoice->save();
+
+            ApprovalHistory::create([
+                'approval_type' => 'penagihan',
+                'approval_id' => $this->approval->id,
+                'pengiriman_id' => $this->approval->pengiriman_id,
+                'invoice_id' => $this->invoice->id,
+                'role' => $this->getUserRole($user),
+                'user_id' => $user->id,
+                'action' => 'edited',
+                'changes' => $changes,
+                'notes' => 'Update nomor invoice',
+            ]);
+
+            DB::commit();
+            session()->flash('message', 'Nomor invoice berhasil diupdate');
+            $this->loadDetail();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal update nomor invoice: ' . $e->getMessage());
         }
     }
 

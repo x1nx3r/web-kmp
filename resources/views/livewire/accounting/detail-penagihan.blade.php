@@ -100,6 +100,42 @@
                             </div>
                         </div>
 
+                        {{-- Edit Invoice Number Section --}}
+                        @if($canManage && $editMode)
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                    <i class="fas fa-hashtag mr-1"></i>
+                                    Edit Nomor Invoice
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Nomor Invoice *</label>
+                                    <input
+                                        type="text"
+                                        wire:model="invoiceNumberForm"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                        placeholder="Contoh: INV-2024-001"
+                                    />
+                                    @error('invoiceNumberForm') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+
+                                <button
+                                    wire:click="updateInvoiceNumber"
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400"
+                                >
+                                    <span wire:loading.remove wire:target="updateInvoiceNumber">
+                                        <i class="fas fa-save mr-1"></i>
+                                        Update Nomor Invoice
+                                    </span>
+                                    <span wire:loading wire:target="updateInvoiceNumber">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>
+                                        Menyimpan...
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
+
                         {{-- Edit Customer Info Section --}}
                         @if($canManage && $editMode)
                             <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">

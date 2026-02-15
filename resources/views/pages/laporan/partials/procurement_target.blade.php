@@ -407,7 +407,7 @@ function renderProcurementProgress(data, period) {
                 <div class="flex items-start justify-between mb-2">
                     <div>
                         <h5 class="font-semibold text-gray-900">${item.nama}</h5>
-                        <p class="text-xs text-gray-500">${item.role === 'manager_purchasing' ? 'Manager' : 'Staff'} Purchasing</p>
+                        <p class="text-xs text-gray-500">${item.role === 'manager_purchasing' ? 'Manager' : 'Staff'} Procurement</p>
                     </div>
                     <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold">
                         ${item.persentase_target}%

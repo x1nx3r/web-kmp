@@ -706,6 +706,8 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
+                "order.orderDetails",
+                "order.orderDetails.bahanBakuKlien", // Load bahanBakuKlien to match by name
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
@@ -891,8 +893,8 @@ class PengirimanController extends Controller
             // Begin transaction
             DB::beginTransaction();
 
-            // Update pengiriman - with eager loading
-            $pengiriman = Pengiriman::with(['order', 'pengirimanDetails'])
+            // Update pengiriman - with eager loading including order details for matching
+            $pengiriman = Pengiriman::with(['order.orderDetails.bahanBakuKlien', 'pengirimanDetails.bahanBakuSupplier'])
                 ->findOrFail($validatedData["pengiriman_id"]);
 
             // Generate nomor pengiriman jika belum ada
@@ -978,13 +980,27 @@ class PengirimanController extends Controller
                 $existingDetail = $pengiriman->pengirimanDetails->get($index);
 
                 if ($existingDetail) {
-                    // Get frozen price from bahan_baku_supplier_klien (client-specific price)
-                    $klienId = $pengiriman->order->klien_id ?? null;
+                    // Get supplier info
                     $bahanBakuSupplier = \App\Models\BahanBakuSupplier::find($detail["bahan_baku_supplier_id"]);
                     
+                    if (!$bahanBakuSupplier) {
+                        continue; // Skip if supplier not found
+                    }
+                    
+                    // ✅ CRITICAL FIX: Find CORRECT OrderDetail by matching bahan baku name
+                    $namaBahanBaku = $bahanBakuSupplier->nama;
+                    $correctOrderDetail = $pengiriman->order->orderDetails->first(function($od) use ($namaBahanBaku) {
+                        return $od->bahanBakuKlien && $od->bahanBakuKlien->nama === $namaBahanBaku;
+                    });
+                    
+                    // Get correct purchase_order_bahan_baku_id
+                    $poDetailId = $correctOrderDetail ? $correctOrderDetail->id : null;
+                    
+                    // Get frozen price from bahan_baku_supplier_klien (client-specific price)
+                    $klienId = $pengiriman->order->klien_id ?? null;
                     $hargaSatuan = 0;
                     
-                    if ($bahanBakuSupplier && $klienId) {
+                    if ($klienId) {
                         // Try to get client-specific price from bahan_baku_supplier_klien
                         $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
                             ->where('klien_id', $klienId)
@@ -996,16 +1012,24 @@ class PengirimanController extends Controller
                     }
                     
                     // Fallback to default supplier price if client-specific price not found
-                    if ($hargaSatuan == 0 && $bahanBakuSupplier) {
+                    if ($hargaSatuan == 0) {
                         $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
                     }
                     
-                    // Update detail dengan harga yang didapat
+                    // ✅ Update detail with CORRECT purchase_order_bahan_baku_id
                     $totalHarga = $detail["qty_kirim"] * $hargaSatuan;
                     $existingDetail->update([
+                        "purchase_order_bahan_baku_id" => $poDetailId, // ✅ CORRECT ID by name matching!
                         "qty_kirim" => $detail["qty_kirim"],
                         "harga_satuan" => $hargaSatuan,
                         "total_harga" => $totalHarga,
+                    ]);
+                    
+                    // ✅ LOG for tracking
+                    Log::info("Updated PengirimanDetail ID: {$existingDetail->id}", [
+                        'bahan_baku' => $namaBahanBaku,
+                        'purchase_order_bahan_baku_id' => $poDetailId,
+                        'order_detail_found' => $correctOrderDetail ? 'YES' : 'NO'
                     ]);
                 } else {
                     // If detail doesn't exist (shouldn't happen in submit flow), create new
@@ -1014,25 +1038,13 @@ class PengirimanController extends Controller
                         $detail["bahan_baku_supplier_id"],
                     );
 
+                    // ✅ CRITICAL FIX: Find CORRECT OrderDetail by matching bahan baku name
                     $poDetail = null;
                     if ($bahanBakuSupplier) {
-                        $poDetail = \App\Models\OrderDetail::where(
-                            "order_id",
-                            $pengiriman->purchase_order_id,
-                        )
-                            ->whereHas("bahanBakuKlien", function ($query) use (
-                                $bahanBakuSupplier,
-                            ) {
-                                $query->where("nama", $bahanBakuSupplier->nama ?? '');
-                            })
-                            ->first();
-
-                        if (!$poDetail) {
-                            $poDetail = \App\Models\OrderDetail::where(
-                                "order_id",
-                                $pengiriman->purchase_order_id,
-                            )->first();
-                        }
+                        $namaBahanBaku = $bahanBakuSupplier->nama;
+                        $poDetail = $pengiriman->order->orderDetails->first(function($od) use ($namaBahanBaku) {
+                            return $od->bahanBakuKlien && $od->bahanBakuKlien->nama === $namaBahanBaku;
+                        });
                     }
 
                     // Get frozen harga from bahan_baku_supplier_klien (client-specific price)
@@ -1056,12 +1068,19 @@ class PengirimanController extends Controller
                         "pengiriman_id" => $pengiriman->id,
                         "purchase_order_bahan_baku_id" => $poDetail
                             ? $poDetail->id
-                            : null,
+                            : null, // ✅ CORRECT ID by name matching!
                         "bahan_baku_supplier_id" =>
                             $detail["bahan_baku_supplier_id"],
                         "qty_kirim" => $detail["qty_kirim"],
                         "harga_satuan" => $hargaSatuan, // Use frozen harga (client-specific or default)
                         "total_harga" => $detail["qty_kirim"] * $hargaSatuan,
+                    ]);
+                    
+                    // ✅ LOG for tracking
+                    Log::info("Created PengirimanDetail for pengiriman ID: {$pengiriman->id}", [
+                        'bahan_baku' => $bahanBakuSupplier ? $bahanBakuSupplier->nama : 'Unknown',
+                        'purchase_order_bahan_baku_id' => $poDetail ? $poDetail->id : null,
+                        'order_detail_found' => $poDetail ? 'YES' : 'NO'
                     ]);
                 }
             }
@@ -1285,6 +1304,8 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
+                "order.orderDetails", // ✅ Load orderDetails
+                "order.orderDetails.bahanBakuKlien", // ✅ Load bahanBakuKlien for fallback matching
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
@@ -1325,6 +1346,8 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
+                "order.orderDetails", // ✅ Load orderDetails
+                "order.orderDetails.bahanBakuKlien", // ✅ Load bahanBakuKlien for fallback matching
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
@@ -1365,6 +1388,8 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
+                "order.orderDetails", // ✅ Load orderDetails
+                "order.orderDetails.bahanBakuKlien", // ✅ Load bahanBakuKlien for fallback matching
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
@@ -1450,6 +1475,8 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
+                "order.orderDetails", // ✅ Load orderDetails
+                "order.orderDetails.bahanBakuKlien", // ✅ Load bahanBakuKlien for fallback matching
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",

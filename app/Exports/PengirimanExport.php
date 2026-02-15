@@ -129,17 +129,46 @@ class PengirimanExport implements
                 return optional(optional($detail->bahanBakuSupplier)->supplier)->nama ?? 'N/A';
             })->unique()->implode(', ');
 
-            // Harga jual dari order details
-            $hargaJual = $pengirimanDetails->map(function($detail) {
-                return (float)(optional($detail->orderDetail)->harga_jual ?? 0);
+            // ✅ Hitung Harga Jual per unit (average dari semua detail)
+            $totalQtyPengiriman = $pengirimanDetails->sum('qty_kirim');
+            $hargaJualPerUnit = 0;
+            
+            // Hitung total harga jual dari semua details
+            $totalHargaJualDetails = $pengirimanDetails->map(function($detail) use ($pengiriman) {
+                $hargaJual = 0;
+                
+                // Try to get harga_jual from orderDetail relation
+                if ($detail->orderDetail) {
+                    $hargaJual = $detail->orderDetail->harga_jual ?? 0;
+                }
+                
+                // ✅ FALLBACK: If orderDetail is null or harga_jual is 0, find matching order_detail by bahan baku name
+                if ($hargaJual == 0 && $pengiriman->order && $detail->bahanBakuSupplier) {
+                    $namaBahanBaku = $detail->bahanBakuSupplier->nama;
+                    $matchingOrderDetail = $pengiriman->order->orderDetails->first(function($od) use ($namaBahanBaku) {
+                        return $od->bahanBakuKlien && $od->bahanBakuKlien->nama === $namaBahanBaku;
+                    });
+                    
+                    if ($matchingOrderDetail) {
+                        $hargaJual = $matchingOrderDetail->harga_jual ?? 0;
+                    }
+                }
+                
+                // Return total harga jual untuk detail ini
+                return ($detail->qty_kirim ?? 0) * $hargaJual;
             })->sum();
+            
+            // Hitung average harga jual per unit
+            if ($totalQtyPengiriman > 0) {
+                $hargaJualPerUnit = $totalHargaJualDetails / $totalQtyPengiriman;
+            }
 
             // QTY Forecasting
             $qtyForecasting = (float)(($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast) ? 
                 $pengiriman->forecast->total_qty_forecast : 0);
             
-            // Total Harga Forecasting = QTY Forecasting x Harga Jual
-            $totalHargaForecasting = $qtyForecasting * $hargaJual;
+            // Total Harga Forecasting = QTY Forecasting x Harga Jual per unit
+            $totalHargaForecasting = $qtyForecasting * $hargaJualPerUnit;
 
             // Untuk status 'berhasil', tidak tampilkan catatan
             $keterangan = '-';
@@ -147,10 +176,11 @@ class PengirimanExport implements
                 $keterangan = $pengiriman->catatan;
             }
 
-            // Untuk status 'berhasil', gunakan qty dan amount dari invoice_penagihan jika ada
+            // ✅ DEFAULT: Total Harga Pengiriman = Total Harga Jual dari semua details
             $displayQty = $pengiriman->total_qty_kirim ?? 0;
-            $displayHarga = $pengiriman->total_harga_kirim ?? 0;
+            $displayHarga = $totalHargaJualDetails; // ✅ Harga Jual × Qty, bukan harga beli!
             
+            // ✅ OVERRIDE: Jika status 'berhasil' dan ada invoice_penagihan, gunakan data invoice
             if ($pengiriman->status === 'berhasil' && $pengiriman->invoicePenagihan) {
                 if ($pengiriman->invoicePenagihan->qty_after_refraksi !== null) {
                     $displayQty = $pengiriman->invoicePenagihan->qty_after_refraksi;
@@ -190,7 +220,7 @@ class PengirimanExport implements
                 $bahanBakuPO ?: 'Tidak ada detail',
                 (optional(optional($pengiriman->order)->klien)->nama ?? 'N/A') . ' - ' . (optional(optional($pengiriman->order)->klien)->cabang ?? 'N/A'),
                 number_format($qtyForecasting, 2),
-                (float)$hargaJual,
+                (float)$hargaJualPerUnit,
                 (float)$totalHargaForecasting,
                 number_format((float)$displayQty, 2),
                 (float)$displayHarga,
@@ -328,7 +358,8 @@ class PengirimanExport implements
     {
         $query = Pengiriman::with([
             'purchasing', 
-            'order.klien', 
+            'order.klien',
+            'order.orderDetails.bahanBakuKlien', // ✅ Tambahkan untuk fallback matching
             'forecast.forecastDetails.bahanBakuSupplier.supplier',
             'pengirimanDetails.bahanBakuSupplier.supplier.picPurchasing',
             'pengirimanDetails.orderDetail',  // Tambahkan relasi order detail untuk harga jual

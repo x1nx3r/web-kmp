@@ -357,7 +357,24 @@
                                     }
                                     
                                     // Get harga jual (PO price to client)
-                                    $hargaJual = $detail->orderDetail->harga_jual ?? 0;
+                                    $hargaJual = 0;
+                                    
+                                    // ✅ Try to get harga_jual from orderDetail relation
+                                    if ($detail->orderDetail) {
+                                        $hargaJual = $detail->orderDetail->harga_jual ?? 0;
+                                    }
+                                    
+                                    // ✅ FALLBACK: If orderDetail is null or harga_jual is 0, find matching order_detail by bahan baku name
+                                    if ($hargaJual == 0 && $pengiriman->order && $detail->bahanBakuSupplier) {
+                                        $namaBahanBaku = $detail->bahanBakuSupplier->nama;
+                                        $matchingOrderDetail = $pengiriman->order->orderDetails->first(function($od) use ($namaBahanBaku) {
+                                            return $od->bahanBakuKlien && $od->bahanBakuKlien->nama === $namaBahanBaku;
+                                        });
+                                        
+                                        if ($matchingOrderDetail) {
+                                            $hargaJual = $matchingOrderDetail->harga_jual ?? 0;
+                                        }
+                                    }
                                     
                                     // Calculate margin - Profit Margin: (margin / harga jual) * 100
                                     $marginPerUnit = $hargaJual - $hargaBeli;

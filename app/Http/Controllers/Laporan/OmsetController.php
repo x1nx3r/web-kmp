@@ -89,14 +89,14 @@ class OmsetController extends Controller
         
         $totalOmset = $totalOmsetSistem + $totalOmsetManual;
         
-        // ========== SUMMARY CARDS (ALWAYS CURRENT/NOW) ==========
-        // Calculate Omset Tahun Ini (NOW - untuk summary card atas) - Sistem + Manual
+        // ========== SUMMARY CARDS (SELECTED YEAR TARGET) ==========
+        // Calculate Omset Tahun Ini (SELECTED YEAR - untuk summary card atas) - Sistem + Manual
         $omsetTahunIniSistemSummary = DB::table('pengiriman')
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-            ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
+            ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
             ->whereNull('pengiriman.deleted_at')
             ->select(
                 'pengiriman.id',
@@ -109,7 +109,7 @@ class OmsetController extends Controller
             ->get()
             ->sum('omset_pengiriman');
         
-        $omsetTahunIniManualSummary = OmsetManual::where('tahun', Carbon::now()->year)
+        $omsetTahunIniManualSummary = OmsetManual::where('tahun', $selectedYearTarget)
             ->sum('omset_manual') ?? 0;
         
         $omsetTahunIniSummary = $omsetTahunIniSistemSummary + $omsetTahunIniManualSummary;

@@ -4,7 +4,7 @@
 
 {{-- Summary Cards --}}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-    {{-- Omset Tahun Ini --}}
+    {{-- Omset Tahun Ini - Mengikuti tahun yang dipilih di Analisis Target --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <div class="flex items-start space-x-4">
             <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -12,17 +12,22 @@
             </div>
             <div class="flex-1">
                 <p class="text-sm text-gray-600 mb-2 flex items-center">
-                    Omset Tahun Ini ({{ date('Y') }})
+                    Omset Tahun <span id="omsetYearDisplay" class="font-semibold mx-1">{{ $selectedYearTarget }}</span>
                     <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded" 
                           title="Termasuk Omset Sistem dan Omset Manual">
                         <i class="fas fa-layer-group"></i>
                     </span>
                 </p>
-                <h3 class="text-2xl font-bold text-blue-600">
-                    @if($omsetTahunIniSummary >= 1000000000)
-                        Rp {{ number_format($omsetTahunIniSummary / 1000000000, 2, ',', '.') }} Miliar
+                <h3 id="omsetYearValue" class="text-2xl font-bold text-blue-600">
+                    @php
+                        $omsetInJuta = $omsetTahunIniSummary / 1000000;
+                        $omsetInMiliar = $omsetTahunIniSummary / 1000000000;
+                    @endphp
+                    
+                    @if($omsetInMiliar >= 1)
+                        Rp {{ number_format($omsetInMiliar, 2, ',', '.') }} Miliar
                     @else
-                        Rp {{ number_format($omsetTahunIniSummary / 1000000, 2, ',', '.') }} Juta
+                        Rp {{ number_format($omsetInJuta, 2, ',', '.') }} Juta
                     @endif
                 </h3>
             </div>
@@ -44,7 +49,16 @@
                     </span>
                 </p>
                 <h3 class="text-2xl font-bold text-green-600">
-                    Rp {{ number_format($omsetBulanIniSummary / 1000000, 2, ',', '.') }} Juta
+                    @php
+                        $omsetBulanInJuta = $omsetBulanIniSummary / 1000000;
+                        $omsetBulanInMiliar = $omsetBulanIniSummary / 1000000000;
+                    @endphp
+                    
+                    @if($omsetBulanInMiliar >= 1)
+                        Rp {{ number_format($omsetBulanInMiliar, 2, ',', '.') }} Miliar
+                    @else
+                        Rp {{ number_format($omsetBulanInJuta, 2, ',', '.') }} Juta
+                    @endif
                 </h3>
             </div>
         </div>
@@ -661,7 +675,23 @@ document.addEventListener('DOMContentLoaded', function() {
 // Initialize Omset per Klien Chart
 document.addEventListener('DOMContentLoaded', function() {
     loadOmsetPerKlienChart(currentYearKlien);
+    
+    // ✅ Sync card "Omset Tahun Ini" dengan tahun yang dipilih di Analisis Target
+    updateOmsetYearCard();
 });
+
+// ✅ Function to update "Omset Tahun Ini" card based on selected year in Analisis Target
+function updateOmsetYearCard() {
+    const selectedYear = {{ $selectedYearTarget }};
+    const omsetYearDisplay = document.getElementById('omsetYearDisplay');
+    
+    if (omsetYearDisplay) {
+        omsetYearDisplay.textContent = selectedYear;
+    }
+    
+    // Note: Value is already calculated by controller based on $selectedYearTarget
+    // So no need to fetch via AJAX - just update the display year
+}
 
 // Marketing Modal Functions
 function openMarketingModal() {

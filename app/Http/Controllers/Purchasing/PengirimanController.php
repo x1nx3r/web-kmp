@@ -868,9 +868,9 @@ class PengirimanController extends Controller
                     "details.*.bahan_baku_supplier_id" =>
                         "required|exists:bahan_baku_supplier,id",
                     "details.*.qty_kirim" => "required|numeric|min:0",
-                    // ❌ JANGAN validasi harga dari request - harga sudah frozen di database
-                    // "details.*.harga_satuan" => "nullable|numeric|min:0", // Optional for display only
-                    // "details.*.total_harga" => "nullable|numeric|min:0", // Will be calculated
+                    // ✅ ALLOW user-edited prices (nullable - will use DB if not provided)
+                    "details.*.harga_satuan" => "nullable|numeric|min:0", // User can edit
+                    "details.*.total_harga" => "nullable|numeric|min:0", // Auto calculated
                 ],
                 [
                     "pengiriman_id.required" => "ID pengiriman diperlukan",
@@ -976,6 +976,14 @@ class PengirimanController extends Controller
 
             // Update existing details (don't delete and recreate)
             foreach ($validatedData["details"] as $index => $detail) {
+                // ✅ DEBUG: Log incoming data
+                Log::info("Processing detail index {$index}", [
+                    'bahan_baku_supplier_id' => $detail["bahan_baku_supplier_id"] ?? 'NULL',
+                    'qty_kirim' => $detail["qty_kirim"] ?? 'NULL',
+                    'harga_satuan_from_request' => $detail["harga_satuan"] ?? 'NULL',
+                    'total_harga_from_request' => $detail["total_harga"] ?? 'NULL',
+                ]);
+                
                 // Find existing detail by index (assuming index matches existing detail order)
                 $existingDetail = $pengiriman->pengirimanDetails->get($index);
 
@@ -1043,33 +1051,56 @@ class PengirimanController extends Controller
                         throw new \Exception("Tidak dapat menemukan order detail untuk bahan baku '" . $namaBahanBaku . "'. Pastikan bahan baku ini ada di PO.");
                     }
                     
-                    // Get frozen price from bahan_baku_supplier_klien (client-specific price)
-                    $klienId = $pengiriman->order->klien_id ?? null;
+                    // ✅✅ CRITICAL: Prioritas harga dari USER INPUT (jika diedit manual)
+                    // Jika user edit harga manual di FE, gunakan nilai tersebut
+                    // Jika tidak ada (null), baru ambil dari database
                     $hargaSatuan = 0;
                     
-                    if ($klienId) {
-                        // Try to get client-specific price from bahan_baku_supplier_klien
-                        $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
-                            ->where('klien_id', $klienId)
-                            ->first();
+                    if (isset($detail["harga_satuan"]) && $detail["harga_satuan"] > 0) {
+                        // ✅ Priority 1: User manually edited price in form
+                        $hargaSatuan = $detail["harga_satuan"];
+                        Log::info("Using user-edited price for '{$namaBahanBaku}': Rp " . number_format($hargaSatuan, 2));
+                    } else {
+                        // ✅ Priority 2: Get frozen price from bahan_baku_supplier_klien (client-specific price)
+                        $klienId = $pengiriman->order->klien_id ?? null;
                         
-                        if ($bahanBakuSupplierKlien) {
-                            $hargaSatuan = $bahanBakuSupplierKlien->harga_per_satuan;
+                        if ($klienId) {
+                            // Try to get client-specific price from bahan_baku_supplier_klien
+                            $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
+                                ->where('klien_id', $klienId)
+                                ->first();
+                            
+                            if ($bahanBakuSupplierKlien) {
+                                $hargaSatuan = $bahanBakuSupplierKlien->harga_per_satuan;
+                            }
                         }
+                        
+                        // ✅ Priority 3: Fallback to default supplier price if client-specific price not found
+                        if ($hargaSatuan == 0) {
+                            $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
+                        }
+                        
+                        Log::info("Using database price for '{$namaBahanBaku}': Rp " . number_format($hargaSatuan, 2));
                     }
                     
-                    // Fallback to default supplier price if client-specific price not found
-                    if ($hargaSatuan == 0) {
-                        $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
+                    // ✅✅ Calculate total from USER INPUT or calculated qty
+                    // If user provided total_harga, validate it matches calculation
+                    $calculatedTotal = $detail["qty_kirim"] * $hargaSatuan;
+                    
+                    if (isset($detail["total_harga"]) && abs($detail["total_harga"] - $calculatedTotal) < 0.01) {
+                        // Use user's calculated total (already correct)
+                        $totalHarga = $detail["total_harga"];
+                    } else {
+                        // Recalculate to ensure accuracy
+                        $totalHarga = $calculatedTotal;
                     }
                     
-                    // ✅ Update detail with CORRECT purchase_order_bahan_baku_id
-                    $totalHarga = $detail["qty_kirim"] * $hargaSatuan;
+                    // ✅ Update detail with CORRECT purchase_order_bahan_baku_id and USER-EDITED prices
                     $existingDetail->update([
                         "purchase_order_bahan_baku_id" => $poDetailId, // ✅ CORRECT ID by name matching!
                         "qty_kirim" => $detail["qty_kirim"],
-                        "harga_satuan" => $hargaSatuan,
-                        "total_harga" => $totalHarga,
+                        "harga_satuan" => $hargaSatuan, // ✅ From user input OR database
+                        "total_harga" => $totalHarga, // ✅ Calculated or from user
                     ]);
                     
                     // ✅ LOG for tracking
@@ -1134,21 +1165,41 @@ class PengirimanController extends Controller
                         throw new \Exception("Tidak dapat menemukan order detail untuk bahan baku '" . $namaBahanBaku . "'. Pastikan bahan baku ini ada di PO.");
                     }
 
-                    // Get frozen harga from bahan_baku_supplier_klien (client-specific price)
+                    // ✅✅ CRITICAL: Prioritas harga dari USER INPUT (jika diedit manual)
+                    // Sama seperti logic update di atas
                     $hargaSatuan = 0;
-                    $klienId = $pengiriman->order->klien_id ?? null;
                     
-                    if ($klienId) {
-                        // Try to get client-specific price from bahan_baku_supplier_klien
-                        $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
-                            ->where('klien_id', $klienId)
-                            ->first();
-                        $hargaSatuan = $bahanBakuSupplierKlien ? $bahanBakuSupplierKlien->harga_per_satuan : 0;
+                    if (isset($detail["harga_satuan"]) && $detail["harga_satuan"] > 0) {
+                        // ✅ Priority 1: User manually edited price in form
+                        $hargaSatuan = $detail["harga_satuan"];
+                        Log::info("Using user-edited price for new detail '{$namaBahanBaku}': Rp " . number_format($hargaSatuan, 2));
+                    } else {
+                        // ✅ Priority 2: Get frozen harga from bahan_baku_supplier_klien (client-specific price)
+                        $klienId = $pengiriman->order->klien_id ?? null;
+                        
+                        if ($klienId) {
+                            // Try to get client-specific price from bahan_baku_supplier_klien
+                            $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
+                                ->where('klien_id', $klienId)
+                                ->first();
+                            $hargaSatuan = $bahanBakuSupplierKlien ? $bahanBakuSupplierKlien->harga_per_satuan : 0;
+                        }
+                        
+                        // ✅ Priority 3: Fallback to default supplier price if client-specific price not found
+                        if ($hargaSatuan == 0) {
+                            $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
+                        }
+                        
+                        Log::info("Using database price for new detail '{$namaBahanBaku}': Rp " . number_format($hargaSatuan, 2));
                     }
                     
-                    // Fallback to default supplier price if client-specific price not found
-                    if ($hargaSatuan == 0) {
-                        $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
+                    // ✅✅ Calculate total from USER INPUT or calculated
+                    $calculatedTotal = $detail["qty_kirim"] * $hargaSatuan;
+                    
+                    if (isset($detail["total_harga"]) && abs($detail["total_harga"] - $calculatedTotal) < 0.01) {
+                        $totalHarga = $detail["total_harga"];
+                    } else {
+                        $totalHarga = $calculatedTotal;
                     }
 
                     PengirimanDetail::create([
@@ -1156,8 +1207,8 @@ class PengirimanController extends Controller
                         "purchase_order_bahan_baku_id" => $poDetail->id, // ✅ GUARANTEED non-null
                         "bahan_baku_supplier_id" => $detail["bahan_baku_supplier_id"],
                         "qty_kirim" => $detail["qty_kirim"],
-                        "harga_satuan" => $hargaSatuan,
-                        "total_harga" => $detail["qty_kirim"] * $hargaSatuan,
+                        "harga_satuan" => $hargaSatuan, // ✅ From user input OR database
+                        "total_harga" => $totalHarga, // ✅ Calculated or from user
                     ]);
                     
                     // ✅ LOG for tracking
@@ -1165,7 +1216,8 @@ class PengirimanController extends Controller
                         'bahan_baku' => $namaBahanBaku,
                         'purchase_order_bahan_baku_id' => $poDetail->id,
                         'qty_kirim' => $detail["qty_kirim"],
-                        'harga_satuan' => $hargaSatuan
+                        'harga_satuan' => $hargaSatuan,
+                        'total_harga' => $totalHarga
                     ]);
                 }
             }

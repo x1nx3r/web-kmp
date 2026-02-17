@@ -1529,6 +1529,24 @@ function submitPengiriman() {
     // Create FormData
     const formData = new FormData(form);
     
+    // ✅ IMPORTANT: Ensure all harga_satuan values are included from edited inputs
+    // This handles both desktop and mobile inputs
+    detailItems.forEach((item, index) => {
+        const hargaBeliInput = item.querySelector('.harga-beli-input');
+        const totalHargaInput = item.querySelector('.total-harga-input');
+        
+        if (hargaBeliInput && totalHargaInput) {
+            const hargaBeli = parseFloat(hargaBeliInput.value) || 0;
+            const totalHarga = parseFloat(totalHargaInput.value) || 0;
+            
+            // Ensure values are in FormData (in case sync didn't work)
+            formData.set(`details[${index}][harga_satuan]`, hargaBeli.toFixed(2));
+            formData.set(`details[${index}][total_harga]`, totalHarga.toFixed(2));
+            
+            console.log(`Detail ${index}: harga_satuan=${hargaBeli}, total_harga=${totalHarga}`);
+        }
+    });
+    
     // Add totals to form data
     const totalQty = Array.from(detailItems).reduce((sum, item) => {
         const qtyInput = item.querySelector('input[name*="[qty_kirim]"]');

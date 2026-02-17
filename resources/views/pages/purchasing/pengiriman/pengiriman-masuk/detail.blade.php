@@ -423,6 +423,7 @@
                                     
                                     <!-- Harga Beli - hidden on mobile - EDITABLE -->
                                     <td class="px-3 sm:px-4 py-2 sm:py-3 border-b hidden md:table-cell">
+                                        {{-- ✅ NAME: details[index][harga_satuan] - Akan di-submit ke controller --}}
                                         <input type="number" 
                                                name="details[{{ $index }}][harga_satuan]" 
                                                value="{{ $hargaBeli }}"
@@ -458,16 +459,17 @@
                                     
                                     <!-- Total Harga Beli -->
                                     <td class="px-3 sm:px-4 py-2 sm:py-3 border-b">
-                                        <!-- Harga Beli Mobile - Editable -->
+                                        <!-- Harga Beli Mobile - Editable (hidden duplicate for sync) -->
                                         <div class="md:hidden mb-2">
                                             <label class="block text-xs font-medium text-gray-500 mb-1">Harga Beli/{{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}:</label>
                                             <div class="flex items-center space-x-2">
+                                                {{-- ✅ Hidden input with correct name for submission --}}
+                                                {{-- Desktop & mobile sync ke input ini --}}
                                                 <input type="number" 
-                                                       name="details_mobile[{{ $index }}][harga_satuan]" 
-                                                       value="{{ $hargaBeli }}"
                                                        class="harga-beli-input-mobile flex-1 px-2 py-1.5 border rounded-lg text-xs focus:ring-2 {{ !$canEdit ? 'bg-gray-50 border-gray-300 cursor-not-allowed' : 'bg-white border-orange-300 focus:ring-orange-500 focus:border-orange-500' }}" 
                                                        step="0.01" 
                                                        min="0"
+                                                       value="{{ $hargaBeli }}"
                                                        data-original-price="{{ $hargaBeli }}"
                                                        onchange="handleHargaBeliChange({{ $index }}, 'mobile')"
                                                        oninput="syncHargaBeli({{ $index }}, 'mobile'); calculateSubtotal({{ $index }})"
@@ -484,6 +486,7 @@
                                         </div>
                                         
                                         <!-- Total Harga (Auto Calculated) -->
+                                        {{-- ✅ NAME: details[index][total_harga] - Auto calculated, akan di-submit --}}
                                         <input type="number" 
                                                name="details[{{ $index }}][total_harga]" 
                                                value="{{ $totalHargaBeli }}"

@@ -312,7 +312,9 @@
                         <i class="fas fa-boxes text-orange-600 mr-2 text-sm"></i>
                         <span class="text-sm sm:text-base">Detail Barang Pengiriman</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1 ml-6">Atur qty kirim untuk setiap barang (harga otomatis dari supplier)</p>
+                    <p class="text-xs text-gray-500 mt-1 ml-6">Atur qty kirim dan harga beli untuk setiap barang</p>
+                    
+                    
                 </div>
                 
                 <div class="overflow-x-auto -mx-4 sm:mx-0">
@@ -419,15 +421,28 @@
                                                {{ !$canEdit ? 'readonly' : 'required' }}>
                                     </td>
                                     
-                                    <!-- Harga Beli - hidden on mobile -->
+                                    <!-- Harga Beli - hidden on mobile - EDITABLE -->
                                     <td class="px-3 sm:px-4 py-2 sm:py-3 border-b hidden md:table-cell">
                                         <input type="number" 
                                                name="details[{{ $index }}][harga_satuan]" 
                                                value="{{ $hargaBeli }}"
-                                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm cursor-not-allowed" 
-                                               readonly>
-                                        <div class="text-xs text-gray-500 mt-1">
-                                            Rp {{ number_format($hargaBeli, 2, ',', '.') }}/{{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}
+                                               class="harga-beli-input w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg text-xs sm:text-sm focus:ring-2 {{ !$canEdit ? 'bg-gray-50 border-gray-300 cursor-not-allowed' : 'bg-white border-orange-300 focus:ring-orange-500 focus:border-orange-500' }}" 
+                                               step="0.01" 
+                                               min="0"
+                                               data-original-price="{{ $hargaBeli }}"
+                                               onchange="handleHargaBeliChange({{ $index }}, 'desktop')"
+                                               oninput="calculateSubtotal({{ $index }})"
+                                               {{ !$canEdit ? 'readonly' : '' }}>
+                                        <div class="text-xs text-gray-500 mt-1 flex items-center justify-between">
+                                            <span class="harga-beli-display">Rp {{ number_format($hargaBeli, 2, ',', '.') }}/{{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}</span>
+                                            @if($canEdit)
+                                            <button type="button" 
+                                                    onclick="resetHargaBeli({{ $index }})"
+                                                    class="text-blue-500 hover:text-blue-700 text-xs font-medium"
+                                                    title="Reset ke harga asli">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                            @endif
                                         </div>
                                     </td>
                                     
@@ -443,17 +458,38 @@
                                     
                                     <!-- Total Harga Beli -->
                                     <td class="px-3 sm:px-4 py-2 sm:py-3 border-b">
-                                        <input type="number" 
-                                               name="details[{{ $index }}][harga_satuan]" 
-                                               value="{{ $hargaBeli }}"
-                                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm cursor-not-allowed md:hidden mb-1" 
-                                               readonly>
+                                        <!-- Harga Beli Mobile - Editable -->
+                                        <div class="md:hidden mb-2">
+                                            <label class="block text-xs font-medium text-gray-500 mb-1">Harga Beli/{{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}:</label>
+                                            <div class="flex items-center space-x-2">
+                                                <input type="number" 
+                                                       name="details_mobile[{{ $index }}][harga_satuan]" 
+                                                       value="{{ $hargaBeli }}"
+                                                       class="harga-beli-input-mobile flex-1 px-2 py-1.5 border rounded-lg text-xs focus:ring-2 {{ !$canEdit ? 'bg-gray-50 border-gray-300 cursor-not-allowed' : 'bg-white border-orange-300 focus:ring-orange-500 focus:border-orange-500' }}" 
+                                                       step="0.01" 
+                                                       min="0"
+                                                       data-original-price="{{ $hargaBeli }}"
+                                                       onchange="handleHargaBeliChange({{ $index }}, 'mobile')"
+                                                       oninput="syncHargaBeli({{ $index }}, 'mobile'); calculateSubtotal({{ $index }})"
+                                                       {{ !$canEdit ? 'readonly' : '' }}>
+                                                @if($canEdit)
+                                                <button type="button" 
+                                                        onclick="resetHargaBeli({{ $index }})"
+                                                        class="px-2 py-1.5 text-blue-500 hover:text-blue-700 text-xs"
+                                                        title="Reset">
+                                                    <i class="fas fa-undo"></i>
+                                                </button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Total Harga (Auto Calculated) -->
                                         <input type="number" 
                                                name="details[{{ $index }}][total_harga]" 
                                                value="{{ $totalHargaBeli }}"
-                                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm cursor-not-allowed" 
+                                               class="total-harga-input w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 border border-blue-300 rounded-lg text-xs sm:text-sm cursor-not-allowed font-semibold text-blue-700" 
                                                readonly>
-                                        <div class="text-xs text-gray-500 mt-1">
+                                        <div class="text-xs text-blue-600 mt-1 font-medium total-harga-display">
                                             Rp {{ number_format($totalHargaBeli, 2, ',', '.') }}
                                         </div>
                                     </td>
@@ -607,7 +643,315 @@
 
 {{-- JavaScript khusus untuk modal aksi --}}
 <script>
-// NOTE: All calculation functions (calculateSubtotal, updateTotals, etc.) 
+/**
+ * Sync harga beli between mobile and desktop views
+ * Ensures both inputs always have the same value
+ */
+function syncHargaBeli(index, source) {
+    const row = document.querySelector(`.detail-item[data-index="${index}"]`);
+    if (!row) return;
+    
+    const desktopInput = row.querySelector('.harga-beli-input');
+    const mobileInput = row.querySelector('.harga-beli-input-mobile');
+    
+    if (!desktopInput || !mobileInput) return;
+    
+    if (source === 'mobile') {
+        // Sync from mobile to desktop
+        desktopInput.value = mobileInput.value;
+    } else {
+        // Sync from desktop to mobile
+        mobileInput.value = desktopInput.value;
+    }
+    
+    // Update data attribute for reference
+    row.setAttribute('data-harga-beli', desktopInput.value);
+}
+
+/**
+ * Handle harga beli change with validation
+ * Shows warning if user changes from original price
+ */
+function handleHargaBeliChange(index, source) {
+    const row = document.querySelector(`.detail-item[data-index="${index}"]`);
+    if (!row) return;
+    
+    const input = source === 'mobile' 
+        ? row.querySelector('.harga-beli-input-mobile')
+        : row.querySelector('.harga-beli-input');
+    
+    if (!input) return;
+    
+    const currentValue = parseFloat(input.value) || 0;
+    const originalPrice = parseFloat(input.getAttribute('data-original-price')) || 0;
+    
+    // Validate minimum value
+    if (currentValue < 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Nilai Tidak Valid',
+            text: 'Harga beli tidak boleh negatif!',
+            confirmButtonColor: '#3085d6'
+        });
+        input.value = originalPrice;
+        syncHargaBeli(index, source);
+        calculateSubtotal(index);
+        return;
+    }
+    
+    // Show warning if price changed significantly (more than 20%)
+    const priceDiff = Math.abs(currentValue - originalPrice);
+    const percentDiff = originalPrice > 0 ? (priceDiff / originalPrice) * 100 : 0;
+    
+    if (percentDiff > 20 && currentValue !== originalPrice) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Perubahan Harga Signifikan',
+            html: `
+                <div class="text-left">
+                    <p class="mb-2">Anda mengubah harga beli dengan perbedaan <strong>${percentDiff.toFixed(2)}%</strong></p>
+                    <ul class="list-disc list-inside space-y-1 text-sm">
+                        <li>Harga Asli: <span class="font-bold text-blue-600">Rp ${formatNumber(originalPrice)}</span></li>
+                        <li>Harga Baru: <span class="font-bold text-orange-600">Rp ${formatNumber(currentValue)}</span></li>
+                        <li>Selisih: <span class="font-bold ${currentValue > originalPrice ? 'text-red-600' : 'text-green-600'}">Rp ${formatNumber(priceDiff)}</span></li>
+                    </ul>
+                    <p class="mt-3 text-xs text-gray-600">Pastikan harga yang Anda masukkan sudah benar.</p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Lanjutkan',
+            cancelButtonText: 'Reset ke Harga Asli',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280'
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                // Reset to original price
+                input.value = originalPrice;
+                syncHargaBeli(index, source);
+                calculateSubtotal(index);
+            } else {
+                // Continue with new price
+                syncHargaBeli(index, source);
+                calculateSubtotal(index);
+            }
+        });
+    } else {
+        // Small change or no change, just sync and calculate
+        syncHargaBeli(index, source);
+        calculateSubtotal(index);
+    }
+    
+    // Update border color indicator
+    updatePriceIndicator(index);
+}
+
+/**
+ * Reset harga beli to original price from database
+ */
+function resetHargaBeli(index) {
+    const row = document.querySelector(`.detail-item[data-index="${index}"]`);
+    if (!row) return;
+    
+    const desktopInput = row.querySelector('.harga-beli-input');
+    const mobileInput = row.querySelector('.harga-beli-input-mobile');
+    
+    if (!desktopInput) return;
+    
+    const originalPrice = parseFloat(desktopInput.getAttribute('data-original-price')) || 0;
+    
+    Swal.fire({
+        icon: 'question',
+        title: 'Reset Harga',
+        text: `Reset harga beli ke nilai asli: Rp ${formatNumber(originalPrice)}?`,
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Reset',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6b7280'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            desktopInput.value = originalPrice;
+            if (mobileInput) mobileInput.value = originalPrice;
+            
+            calculateSubtotal(index);
+            updatePriceIndicator(index);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Harga beli telah direset ke nilai asli',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+    });
+}
+
+/**
+ * Update visual indicator for price changes
+ */
+function updatePriceIndicator(index) {
+    const row = document.querySelector(`.detail-item[data-index="${index}"]`);
+    if (!row) return;
+    
+    const desktopInput = row.querySelector('.harga-beli-input');
+    const mobileInput = row.querySelector('.harga-beli-input-mobile');
+    
+    if (!desktopInput) return;
+    
+    const currentValue = parseFloat(desktopInput.value) || 0;
+    const originalPrice = parseFloat(desktopInput.getAttribute('data-original-price')) || 0;
+    
+    const inputs = [desktopInput, mobileInput].filter(i => i);
+    
+    inputs.forEach(input => {
+        if (Math.abs(currentValue - originalPrice) > 0.01) {
+            // Price changed - show orange border
+            input.classList.remove('border-orange-300', 'border-green-300');
+            input.classList.add('border-yellow-400', 'ring-2', 'ring-yellow-200');
+        } else {
+            // Price same as original - normal border
+            input.classList.remove('border-yellow-400', 'ring-2', 'ring-yellow-200', 'border-green-300');
+            input.classList.add('border-orange-300');
+        }
+    });
+}
+
+/**
+ * Calculate subtotal for a specific row
+ * Updates: total harga, display text, and grand totals
+ */
+function calculateSubtotal(index) {
+    const row = document.querySelector(`.detail-item[data-index="${index}"]`);
+    if (!row) return;
+    
+    // Get inputs
+    const qtyInput = row.querySelector('.qty-input');
+    const hargaBeliInput = row.querySelector('.harga-beli-input') || row.querySelector('.harga-beli-input-mobile');
+    const totalHargaInput = row.querySelector('.total-harga-input');
+    
+    if (!qtyInput || !hargaBeliInput || !totalHargaInput) return;
+    
+    // Parse values with validation
+    const qty = Math.max(0, parseFloat(qtyInput.value) || 0);
+    const hargaBeli = Math.max(0, parseFloat(hargaBeliInput.value) || 0);
+    
+    // Calculate total
+    const totalHarga = qty * hargaBeli;
+    
+    // Update total input
+    totalHargaInput.value = totalHarga.toFixed(2);
+    
+    // Update data attribute
+    row.setAttribute('data-harga-beli', hargaBeli.toFixed(2));
+    
+    // Update display text
+    const hargaBeliDisplay = row.querySelector('.harga-beli-display');
+    if (hargaBeliDisplay) {
+        const satuan = hargaBeliDisplay.textContent.split('/')[1] || 'kg';
+        hargaBeliDisplay.textContent = `Rp ${formatNumber(hargaBeli)}/${satuan}`;
+    }
+    
+    const totalDisplay = row.querySelector('.total-harga-display');
+    if (totalDisplay) {
+        totalDisplay.textContent = `Rp ${formatNumber(totalHarga)}`;
+    }
+    
+    // Update grand totals
+    updateTotals();
+}
+
+/**
+ * Update all grand totals (qty, harga beli, harga jual, margin)
+ * Reads from actual input values, not data attributes
+ */
+function updateTotals() {
+    let totalQty = 0;
+    let totalHargaBeli = 0;
+    let totalHargaJual = 0;
+    
+    document.querySelectorAll('.detail-item').forEach(row => {
+        // Get qty
+        const qtyInput = row.querySelector('.qty-input');
+        const qty = Math.max(0, parseFloat(qtyInput?.value) || 0);
+        
+        // Get harga beli from input (current value, may be edited)
+        const hargaBeliInput = row.querySelector('.harga-beli-input') || row.querySelector('.harga-beli-input-mobile');
+        const hargaBeli = Math.max(0, parseFloat(hargaBeliInput?.value) || 0);
+        
+        // Get harga jual from data attribute (readonly, from database)
+        const hargaJual = Math.max(0, parseFloat(row.getAttribute('data-harga-jual')) || 0);
+        
+        // Calculate totals
+        totalQty += qty;
+        totalHargaBeli += (qty * hargaBeli);
+        totalHargaJual += (qty * hargaJual);
+    });
+    
+    const totalMargin = totalHargaJual - totalHargaBeli;
+    const marginPercentage = totalHargaJual > 0 ? ((totalMargin / totalHargaJual) * 100) : 0;
+    
+    // Update display elements
+    const totalQtyElem = document.getElementById('totalQtyKirim');
+    const totalHargaBeliElem = document.getElementById('totalHargaBeli');
+    const totalHargaJualElem = document.getElementById('totalHargaJual');
+    const totalMarginElem = document.getElementById('totalMargin');
+    const marginPercentageElem = document.getElementById('marginPercentage');
+    
+    if (totalQtyElem) totalQtyElem.textContent = `${formatNumber(totalQty)} kg`;
+    if (totalHargaBeliElem) totalHargaBeliElem.textContent = `Rp ${formatNumber(totalHargaBeli)}`;
+    if (totalHargaJualElem) totalHargaJualElem.textContent = `Rp ${formatNumber(totalHargaJual)}`;
+    
+    if (totalMarginElem) {
+        totalMarginElem.textContent = `Rp ${formatNumber(totalMargin)}`;
+        // Dynamic color based on profit/loss
+        totalMarginElem.classList.remove('text-green-600', 'text-red-600');
+        totalMarginElem.classList.add(totalMargin >= 0 ? 'text-green-600' : 'text-red-600');
+    }
+    
+    if (marginPercentageElem) {
+        marginPercentageElem.textContent = `${marginPercentage.toFixed(2)}%`;
+        // Dynamic color based on percentage
+        marginPercentageElem.classList.remove('text-green-500', 'text-red-500', 'text-yellow-500');
+        if (marginPercentage < 0) {
+            marginPercentageElem.classList.add('text-red-500');
+        } else if (marginPercentage < 10) {
+            marginPercentageElem.classList.add('text-yellow-500');
+        } else {
+            marginPercentageElem.classList.add('text-green-500');
+        }
+    }
+    
+    // Update hidden form inputs for submission
+    const totalQtyInput = document.getElementById('total_qty_kirim');
+    const totalHargaInput = document.getElementById('total_harga_kirim');
+    const totalQtyDisplay = document.getElementById('total_qty_kirim_display');
+    const totalHargaDisplay = document.getElementById('total_harga_kirim_display');
+    
+    if (totalQtyInput) totalQtyInput.value = totalQty.toFixed(2);
+    if (totalHargaInput) totalHargaInput.value = totalHargaBeli.toFixed(2);
+    if (totalQtyDisplay) totalQtyDisplay.value = `${formatNumber(totalQty)} kg`;
+    if (totalHargaDisplay) totalHargaDisplay.value = `Rp ${formatNumber(totalHargaBeli)}`;
+}
+
+/**
+ * Format number to Indonesian currency format
+ * Example: 1234567.89 => 1.234.567,89
+ */
+function formatNumber(num) {
+    if (isNaN(num) || num === null || num === undefined) return '0,00';
+    
+    const fixed = parseFloat(num).toFixed(2);
+    const parts = fixed.split('.');
+    
+    // Format integer part with thousand separator
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    // Join with comma as decimal separator
+    return parts.join(',');
+}
+
+// NOTE: All other functions (submitPengiriman, openBatalModal, etc.) 
 // are defined in the parent file: pengiriman-masuk.blade.php
 // This keeps the code DRY and easier to maintain
 
@@ -617,11 +961,25 @@ if (document.readyState === 'loading') {
         if (typeof window.initializePengirimanModal === 'function') {
             window.initializePengirimanModal();
         }
+        // Initial calculation and indicator update
+        setTimeout(() => {
+            updateTotals();
+            document.querySelectorAll('.detail-item').forEach((row, index) => {
+                updatePriceIndicator(index);
+            });
+        }, 100);
     });
 } else {
     // DOM already loaded (untuk AJAX loaded content)
     if (typeof window.initializePengirimanModal === 'function') {
         window.initializePengirimanModal();
     }
+    // Initial calculation and indicator update
+    setTimeout(() => {
+        updateTotals();
+        document.querySelectorAll('.detail-item').forEach((row, index) => {
+            updatePriceIndicator(index);
+        });
+    }, 100);
 }
 </script>

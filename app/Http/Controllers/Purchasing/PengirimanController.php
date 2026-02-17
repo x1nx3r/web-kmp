@@ -984,6 +984,7 @@ class PengirimanController extends Controller
                     $bahanBakuSupplier = \App\Models\BahanBakuSupplier::find($detail["bahan_baku_supplier_id"]);
                     
                     if (!$bahanBakuSupplier) {
+                        Log::warning("BahanBakuSupplier not found: " . $detail["bahan_baku_supplier_id"]);
                         continue; // Skip if supplier not found
                     }
                     
@@ -995,6 +996,52 @@ class PengirimanController extends Controller
                     
                     // Get correct purchase_order_bahan_baku_id
                     $poDetailId = $correctOrderDetail ? $correctOrderDetail->id : null;
+                    
+                    // ✅ CRITICAL: Jika tidak ditemukan, coba cari yang sudah ada di detail lama
+                    if (!$poDetailId && $existingDetail->purchase_order_bahan_baku_id) {
+                        // Gunakan ID yang sudah ada jika tidak ketemu dari matching
+                        $poDetailId = $existingDetail->purchase_order_bahan_baku_id;
+                        Log::warning("OrderDetail not found by name matching for '" . $namaBahanBaku . "', using existing ID: " . $poDetailId);
+                    }
+                    
+                    // ✅ Jika masih NULL, coba fallback ke order detail pertama yang belum dipakai
+                    if (!$poDetailId) {
+                        // Get all used order detail IDs
+                        $usedOrderDetailIds = $pengiriman->pengirimanDetails
+                            ->pluck('purchase_order_bahan_baku_id')
+                            ->filter()
+                            ->unique()
+                            ->toArray();
+                        
+                        // Find unused order detail
+                        $unusedOrderDetail = $pengiriman->order->orderDetails
+                            ->whereNotIn('id', $usedOrderDetailIds)
+                            ->first();
+                        
+                        if ($unusedOrderDetail) {
+                            $poDetailId = $unusedOrderDetail->id;
+                            Log::warning("Using unused OrderDetail as fallback: " . $poDetailId . " for '" . $namaBahanBaku . "'");
+                        }
+                    }
+                    
+                    // ✅ Final check - jika masih NULL, throw error dengan detail lengkap
+                    if (!$poDetailId) {
+                        $availableOrderDetails = $pengiriman->order->orderDetails->map(function($od) {
+                            return [
+                                'id' => $od->id,
+                                'bahan_baku' => $od->bahanBakuKlien ? $od->bahanBakuKlien->nama : 'NULL'
+                            ];
+                        })->toArray();
+                        
+                        Log::error("Cannot find purchase_order_bahan_baku_id for '" . $namaBahanBaku . "'", [
+                            'pengiriman_id' => $pengiriman->id,
+                            'order_id' => $pengiriman->order_id,
+                            'available_order_details' => $availableOrderDetails,
+                            'looking_for' => $namaBahanBaku
+                        ]);
+                        
+                        throw new \Exception("Tidak dapat menemukan order detail untuk bahan baku '" . $namaBahanBaku . "'. Pastikan bahan baku ini ada di PO.");
+                    }
                     
                     // Get frozen price from bahan_baku_supplier_klien (client-specific price)
                     $klienId = $pengiriman->order->klien_id ?? null;
@@ -1029,7 +1076,9 @@ class PengirimanController extends Controller
                     Log::info("Updated PengirimanDetail ID: {$existingDetail->id}", [
                         'bahan_baku' => $namaBahanBaku,
                         'purchase_order_bahan_baku_id' => $poDetailId,
-                        'order_detail_found' => $correctOrderDetail ? 'YES' : 'NO'
+                        'order_detail_found' => $correctOrderDetail ? 'YES' : 'FALLBACK',
+                        'qty_kirim' => $detail["qty_kirim"],
+                        'harga_satuan' => $hargaSatuan
                     ]);
                 } else {
                     // If detail doesn't exist (shouldn't happen in submit flow), create new
@@ -1038,20 +1087,58 @@ class PengirimanController extends Controller
                         $detail["bahan_baku_supplier_id"],
                     );
 
+                    if (!$bahanBakuSupplier) {
+                        Log::warning("BahanBakuSupplier not found (create): " . $detail["bahan_baku_supplier_id"]);
+                        continue;
+                    }
+
                     // ✅ CRITICAL FIX: Find CORRECT OrderDetail by matching bahan baku name
-                    $poDetail = null;
-                    if ($bahanBakuSupplier) {
-                        $namaBahanBaku = $bahanBakuSupplier->nama;
-                        $poDetail = $pengiriman->order->orderDetails->first(function($od) use ($namaBahanBaku) {
-                            return $od->bahanBakuKlien && $od->bahanBakuKlien->nama === $namaBahanBaku;
-                        });
+                    $namaBahanBaku = $bahanBakuSupplier->nama;
+                    $poDetail = $pengiriman->order->orderDetails->first(function($od) use ($namaBahanBaku) {
+                        return $od->bahanBakuKlien && $od->bahanBakuKlien->nama === $namaBahanBaku;
+                    });
+                    
+                    // ✅ Jika tidak ketemu, coba fallback ke unused order detail
+                    if (!$poDetail) {
+                        $usedOrderDetailIds = $pengiriman->pengirimanDetails
+                            ->pluck('purchase_order_bahan_baku_id')
+                            ->filter()
+                            ->unique()
+                            ->toArray();
+                        
+                        $poDetail = $pengiriman->order->orderDetails
+                            ->whereNotIn('id', $usedOrderDetailIds)
+                            ->first();
+                        
+                        if ($poDetail) {
+                            Log::warning("Using unused OrderDetail for new detail: " . $poDetail->id . " for '" . $namaBahanBaku . "'");
+                        }
+                    }
+                    
+                    // ✅ Final check
+                    if (!$poDetail) {
+                        $availableOrderDetails = $pengiriman->order->orderDetails->map(function($od) {
+                            return [
+                                'id' => $od->id,
+                                'bahan_baku' => $od->bahanBakuKlien ? $od->bahanBakuKlien->nama : 'NULL'
+                            ];
+                        })->toArray();
+                        
+                        Log::error("Cannot find purchase_order_bahan_baku_id for new detail '" . $namaBahanBaku . "'", [
+                            'pengiriman_id' => $pengiriman->id,
+                            'order_id' => $pengiriman->order_id,
+                            'available_order_details' => $availableOrderDetails,
+                            'looking_for' => $namaBahanBaku
+                        ]);
+                        
+                        throw new \Exception("Tidak dapat menemukan order detail untuk bahan baku '" . $namaBahanBaku . "'. Pastikan bahan baku ini ada di PO.");
                     }
 
                     // Get frozen harga from bahan_baku_supplier_klien (client-specific price)
                     $hargaSatuan = 0;
                     $klienId = $pengiriman->order->klien_id ?? null;
                     
-                    if ($bahanBakuSupplier && $klienId) {
+                    if ($klienId) {
                         // Try to get client-specific price from bahan_baku_supplier_klien
                         $bahanBakuSupplierKlien = \App\Models\BahanBakuSupplierKlien::where('bahan_baku_supplier_id', $bahanBakuSupplier->id)
                             ->where('klien_id', $klienId)
@@ -1060,27 +1147,25 @@ class PengirimanController extends Controller
                     }
                     
                     // Fallback to default supplier price if client-specific price not found
-                    if ($hargaSatuan == 0 && $bahanBakuSupplier) {
+                    if ($hargaSatuan == 0) {
                         $hargaSatuan = $bahanBakuSupplier->harga_per_satuan ?? 0;
                     }
 
                     PengirimanDetail::create([
                         "pengiriman_id" => $pengiriman->id,
-                        "purchase_order_bahan_baku_id" => $poDetail
-                            ? $poDetail->id
-                            : null, // ✅ CORRECT ID by name matching!
-                        "bahan_baku_supplier_id" =>
-                            $detail["bahan_baku_supplier_id"],
+                        "purchase_order_bahan_baku_id" => $poDetail->id, // ✅ GUARANTEED non-null
+                        "bahan_baku_supplier_id" => $detail["bahan_baku_supplier_id"],
                         "qty_kirim" => $detail["qty_kirim"],
-                        "harga_satuan" => $hargaSatuan, // Use frozen harga (client-specific or default)
+                        "harga_satuan" => $hargaSatuan,
                         "total_harga" => $detail["qty_kirim"] * $hargaSatuan,
                     ]);
                     
                     // ✅ LOG for tracking
-                    Log::info("Created PengirimanDetail for pengiriman ID: {$pengiriman->id}", [
-                        'bahan_baku' => $bahanBakuSupplier ? $bahanBakuSupplier->nama : 'Unknown',
-                        'purchase_order_bahan_baku_id' => $poDetail ? $poDetail->id : null,
-                        'order_detail_found' => $poDetail ? 'YES' : 'NO'
+                    Log::info("Created PengirimanDetail for pengiriman ID: " . $pengiriman->id, [
+                        'bahan_baku' => $namaBahanBaku,
+                        'purchase_order_bahan_baku_id' => $poDetail->id,
+                        'qty_kirim' => $detail["qty_kirim"],
+                        'harga_satuan' => $hargaSatuan
                     ]);
                 }
             }

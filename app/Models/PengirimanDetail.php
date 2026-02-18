@@ -52,7 +52,7 @@ class PengirimanDetail extends Model
      */
     public function purchaseOrderBahanBaku()
     {
-        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id');
+        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id')->withTrashed();
     }
 
     /**
@@ -60,7 +60,7 @@ class PengirimanDetail extends Model
      */
     public function orderDetail()
     {
-        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id');
+        return $this->belongsTo(OrderDetail::class, 'purchase_order_bahan_baku_id')->withTrashed();
     }
 
     /**

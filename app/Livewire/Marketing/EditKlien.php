@@ -8,6 +8,7 @@ use App\Models\BahanBakuKlien;
 use App\Models\RiwayatHargaKlien;
 use App\Services\AuthFallbackService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
 class EditKlien extends Component
@@ -167,9 +168,37 @@ class EditKlien extends Component
 
             $this->klien->update($this->klienForm);
 
+            // Update related invoices with fresh client data
+            $this->updateRelatedInvoices();
+
             session()->flash("message", "Plant berhasil diperbarui");
         } catch (\Exception $e) {
             $this->addError("klienForm.cabang", $e->getMessage());
+        }
+    }
+
+    /**
+     * Update all related invoices when client information changes
+     */
+    protected function updateRelatedInvoices()
+    {
+        try {
+            // Find all invoices related to this client through orders
+            $invoices = \App\Models\InvoicePenagihan::whereHas('pengiriman.purchaseOrder', function($query) {
+                $query->where('klien_id', $this->klien->id);
+            })->get();
+
+            foreach ($invoices as $invoice) {
+                $invoice->update([
+                    'customer_name' => $this->klien->nama,
+                    'customer_address' => $this->klien->alamat_lengkap,
+                    'customer_phone' => $this->klien->contactPerson->nomor_hp ?? null,
+                    'customer_email' => $this->klien->contactPerson->email ?? null,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Log error but don't break the update flow
+            Log::warning('Failed to update related invoices: ' . $e->getMessage());
         }
     }
 

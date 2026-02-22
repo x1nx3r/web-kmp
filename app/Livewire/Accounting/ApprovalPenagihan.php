@@ -63,6 +63,7 @@ class ApprovalPenagihan extends Component
 
     public $invoiceNotesForm = '';
     public $invoiceNumberForm = '';
+    public $totalHargaJualForm = 0;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -470,6 +471,9 @@ class ApprovalPenagihan extends Component
 
         // Populate invoice number
         $this->invoiceNumberForm = $approval->invoice->invoice_number ?? '';
+
+        // Populate total harga jual form
+        $this->totalHargaJualForm = $approval->invoice->subtotal ?? 0;
 
         // Load approval history
         $this->approvalHistory = ApprovalHistory::where('approval_type', 'penagihan')
@@ -961,6 +965,76 @@ class ApprovalPenagihan extends Component
         ];
         $this->invoiceNotesForm = '';
         $this->invoiceNumberForm = '';
+        $this->totalHargaJualForm = 0;
         $this->approvalHistory = [];
+    }
+
+    public function updateTotalHargaJual()
+    {
+        $this->validate([
+            'totalHargaJualForm' => 'required|numeric|min:0',
+        ], [
+            'totalHargaJualForm.required' => 'Total harga jual harus diisi',
+            'totalHargaJualForm.numeric' => 'Total harga jual harus berupa angka',
+            'totalHargaJualForm.min' => 'Total harga jual tidak boleh negatif',
+        ]);
+
+        if (!$this->selectedData || !$this->selectedData->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $invoice = $this->selectedData->invoice;
+            $user = Auth::user();
+
+            // Store old values for history
+            $oldSubtotal = $invoice->subtotal;
+            $oldTotal = $invoice->total_amount;
+
+            // Update subtotal
+            $invoice->subtotal = floatval($this->totalHargaJualForm);
+            
+            // Recalculate total with tax
+            $invoice->tax_amount = $invoice->subtotal * ($invoice->tax_percentage / 100);
+            $invoice->total_amount = $invoice->subtotal + $invoice->tax_amount - $invoice->discount_amount;
+            $invoice->save();
+
+            // Collect changes
+            $changes = [
+                'before' => [
+                    'subtotal' => number_format($oldSubtotal, 2, ',', '.'),
+                    'total_amount' => number_format($oldTotal, 2, ',', '.'),
+                ],
+                'after' => [
+                    'subtotal' => number_format($invoice->subtotal, 2, ',', '.'),
+                    'total_amount' => number_format($invoice->total_amount, 2, ',', '.'),
+                ],
+            ];
+
+            // Save history
+            ApprovalHistory::create([
+                'approval_type' => 'penagihan',
+                'approval_id' => $this->selectedData->id,
+                'pengiriman_id' => $this->selectedData->pengiriman_id,
+                'invoice_id' => $invoice->id,
+                'role' => $this->getUserRole($user),
+                'user_id' => $user->id,
+                'action' => 'edited',
+                'changes' => $changes,
+                'notes' => 'Update total harga jual dari Rp ' . number_format($oldSubtotal, 0, ',', '.') . 
+                          ' menjadi Rp ' . number_format($invoice->subtotal, 0, ',', '.'),
+            ]);
+
+            DB::commit();
+            session()->flash('message', 'Total harga jual berhasil diupdate');
+
+            // Reload data
+            $this->showDetail($this->selectedData->id);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal update total harga jual: ' . $e->getMessage());
+        }
     }
 }

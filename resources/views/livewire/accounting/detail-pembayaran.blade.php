@@ -555,6 +555,70 @@
                         </button>
                     </div>
 
+                    {{-- Edit Total Harga Beli --}}
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-money-bill-wave text-indigo-600 mr-2"></i>
+                            Edit Total Harga Beli
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Edit langsung total harga beli (setelah refraksi) yang akan dibayarkan ke supplier.
+                        </p>
+
+                        @if(session()->has('message'))
+                            <div class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                                <div class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <p class="text-green-700 text-sm font-medium">{{ session('message') }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if(session()->has('error'))
+                            <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                                <div class="flex items-center">
+                                    <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                                    <p class="text-red-700 text-sm font-medium">{{ session('error') }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-tags mr-1"></i>
+                                Total Harga Beli (Rp)
+                            </label>
+                            <input
+                                type="number"
+                                wire:model="totalHargaBeliForm"
+                                min="0"
+                                step="0.01"
+                                class="block w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="Masukkan total harga beli"
+                            />
+                            <p class="mt-2 text-xs text-gray-500">
+                                <i class="fas fa-calculator mr-1"></i>
+                                Nilai saat ini: <strong>Rp {{ number_format($approval->amount_after_refraksi ?? $pengiriman->total_harga_kirim, 0, ',', '.') }}</strong>
+                            </p>
+                        </div>
+
+                        <button
+                            wire:click="updateTotalHargaBeli"
+                            wire:loading.attr="disabled"
+                            class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
+                        >
+                            <span wire:loading.remove wire:target="updateTotalHargaBeli">
+                                <i class="fas fa-save mr-1"></i>
+                                Update Total Harga Beli
+                            </span>
+                            <span wire:loading wire:target="updateTotalHargaBeli">
+                                <i class="fas fa-spinner fa-spin mr-1"></i>
+                                Menyimpan...
+                            </span>
+                        </button>
+                    </div>
+
                     {{-- Edit Bukti Pembayaran --}}
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">

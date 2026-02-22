@@ -948,6 +948,73 @@
                         @endif
                     </div>
 
+                    {{-- Edit Total Harga Jual Section --}}
+                    @if($canManage && $editMode)
+                        <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-edit mr-1"></i>
+                                Edit Total Harga Jual
+                            </h5>
+                            <p class="text-xs text-gray-600 mb-3">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Edit langsung subtotal invoice (sebelum pajak). Total akan dihitung ulang dengan pajak.
+                            </p>
+
+                            @if(session()->has('message'))
+                                <div class="mb-3 bg-green-50 border-l-4 border-green-500 p-3 rounded">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-check-circle text-green-500 mr-2 text-sm"></i>
+                                        <p class="text-green-700 text-xs font-medium">{{ session('message') }}</p>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if(session()->has('error'))
+                                <div class="mb-3 bg-red-50 border-l-4 border-red-500 p-3 rounded">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-exclamation-circle text-red-500 mr-2 text-sm"></i>
+                                        <p class="text-red-700 text-xs font-medium">{{ session('error') }}</p>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">
+                                    <i class="fas fa-money-bill-wave mr-1"></i>
+                                    Total Harga Jual / Subtotal (Rp) *
+                                </label>
+                                <input
+                                    type="number"
+                                    wire:model="totalHargaJualForm"
+                                    min="0"
+                                    step="0.01"
+                                    class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    placeholder="Masukkan total harga jual"
+                                />
+                                <p class="mt-1 text-xs text-gray-500">
+                                    <i class="fas fa-calculator mr-1"></i>
+                                    Nilai saat ini: <strong>Rp {{ number_format($selectedData->invoice->subtotal ?? 0, 0, ',', '.') }}</strong>
+                                </p>
+                                @error('totalHargaJualForm') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                            </div>
+
+                            <button
+                                wire:click="updateTotalHargaJual"
+                                wire:loading.attr="disabled"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400"
+                            >
+                                <span wire:loading.remove wire:target="updateTotalHargaJual">
+                                    <i class="fas fa-save mr-1"></i>
+                                    Update Total Harga Jual
+                                </span>
+                                <span wire:loading wire:target="updateTotalHargaJual">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    Menyimpan...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
+
                     {{-- Edit Customer Info Section --}}
                     @if($canManage && $editMode)
                         <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">

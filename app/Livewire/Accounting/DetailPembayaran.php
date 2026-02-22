@@ -28,6 +28,7 @@ class DetailPembayaran extends Component
         'type' => 'qty',
         'value' => 0,
     ];
+    public $totalHargaBeliForm = 0;
     public $buktiPembayaran = [];
     public $existingBuktiPembayaran = [];
     public $filesToRemove = [];
@@ -72,6 +73,7 @@ class DetailPembayaran extends Component
         // Load form values
         $this->refraksiForm['type'] = $this->approval->refraksi_type ?? 'qty';
         $this->refraksiForm['value'] = $this->approval->refraksi_value ?? 0;
+        $this->totalHargaBeliForm = $this->approval->amount_after_refraksi ?? $this->pengiriman->total_harga_kirim;
         $this->buktiPembayaran = []; // Reset for new uploads
         $this->filesToRemove = [];
 
@@ -351,6 +353,63 @@ class DetailPembayaran extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update piutang: ' . $e->getMessage());
+        }
+    }
+
+    public function updateTotalHargaBeli()
+    {
+        if (!$this->canManage) {
+            session()->flash('error', 'Anda tidak memiliki akses untuk mengedit');
+            return;
+        }
+
+        $this->validate([
+            'totalHargaBeliForm' => 'required|numeric|min:0',
+        ], [
+            'totalHargaBeliForm.required' => 'Total harga beli harus diisi',
+            'totalHargaBeliForm.numeric' => 'Total harga beli harus berupa angka',
+            'totalHargaBeliForm.min' => 'Total harga beli tidak boleh negatif',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Store old value for history
+            $oldValue = $this->approval->amount_after_refraksi;
+
+            // Update the total harga beli (amount_after_refraksi)
+            $this->approval->amount_after_refraksi = floatval($this->totalHargaBeliForm);
+            $this->approval->save();
+
+            // Log history if in edit mode
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                $changes = [
+                    'field' => 'total_harga_beli',
+                    'old' => number_format($oldValue, 2, ',', '.'),
+                    'new' => number_format($this->approval->amount_after_refraksi, 2, ',', '.'),
+                ];
+
+                ApprovalHistory::create([
+                    'approval_type' => 'pembayaran',
+                    'approval_id' => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'role' => $role,
+                    'user_id' => $user->id,
+                    'action' => 'edited',
+                    'notes' => 'Updated total harga beli dari Rp ' . number_format($oldValue, 0, ',', '.') . 
+                              ' menjadi Rp ' . number_format($this->approval->amount_after_refraksi, 0, ',', '.'),
+                    'changes' => $changes,
+                ]);
+            }
+
+            DB::commit();
+            session()->flash('message', 'Total harga beli berhasil diupdate');
+            $this->loadApproval();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal update total harga beli: ' . $e->getMessage());
         }
     }
 

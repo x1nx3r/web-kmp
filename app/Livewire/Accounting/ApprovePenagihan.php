@@ -293,6 +293,18 @@ class ApprovePenagihan extends Component
             return;
         }
 
+        // Validate customer information
+        $this->validate([
+            'customerName' => 'required|string|max:255',
+            'customerAddress' => 'required|string',
+            'customerPhone' => 'nullable|string|max:20',
+            'customerEmail' => 'nullable|email|max:255',
+        ], [
+            'customerName.required' => 'Nama customer harus diisi',
+            'customerAddress.required' => 'Alamat customer harus diisi',
+            'customerEmail.email' => 'Format email tidak valid',
+        ]);
+
         DB::beginTransaction();
         try {
             $role = $this->getUserRole($user);
@@ -305,6 +317,15 @@ class ApprovePenagihan extends Component
             if ($this->approval->status !== 'pending') {
                 throw new \Exception('Approval ini sudah diproses atau tidak dapat diapprove');
             }
+
+            // Save customer information changes BEFORE approving
+            $this->invoice->update([
+                'customer_name' => $this->customerName,
+                'customer_address' => $this->customerAddress,
+                'customer_phone' => $this->customerPhone,
+                'customer_email' => $this->customerEmail,
+                'notes' => $this->invoiceNotes,
+            ]);
 
             // Langsung complete untuk semua anggota keuangan
             $updateData = [
@@ -368,6 +389,18 @@ class ApprovePenagihan extends Component
             return;
         }
 
+        // Validate customer information
+        $this->validate([
+            'customerName' => 'required|string|max:255',
+            'customerAddress' => 'required|string',
+            'customerPhone' => 'nullable|string|max:20',
+            'customerEmail' => 'nullable|email|max:255',
+        ], [
+            'customerName.required' => 'Nama customer harus diisi',
+            'customerAddress.required' => 'Alamat customer harus diisi',
+            'customerEmail.email' => 'Format email tidak valid',
+        ]);
+
         DB::beginTransaction();
         try {
             $role = $this->getUserRole($user);
@@ -375,6 +408,15 @@ class ApprovePenagihan extends Component
             if (!$role) {
                 throw new \Exception('Anda tidak memiliki akses untuk melakukan update');
             }
+
+            // Save customer information changes
+            $this->invoice->update([
+                'customer_name' => $this->customerName,
+                'customer_address' => $this->customerAddress,
+                'customer_phone' => $this->customerPhone,
+                'customer_email' => $this->customerEmail,
+                'notes' => $this->invoiceNotes,
+            ]);
 
             // Log the edit to history
             ApprovalHistory::create([

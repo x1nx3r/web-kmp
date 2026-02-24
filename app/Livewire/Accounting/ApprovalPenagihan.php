@@ -866,6 +866,18 @@ class ApprovalPenagihan extends Component
             return;
         }
 
+        // Validate customer information from customerForm
+        $this->validate([
+            'customerForm.customer_name' => 'required|string|max:255',
+            'customerForm.customer_address' => 'required|string',
+            'customerForm.customer_phone' => 'nullable|string|max:20',
+            'customerForm.customer_email' => 'nullable|email|max:255',
+        ], [
+            'customerForm.customer_name.required' => 'Nama customer harus diisi',
+            'customerForm.customer_address.required' => 'Alamat customer harus diisi',
+            'customerForm.customer_email.email' => 'Format email tidak valid',
+        ]);
+
         DB::beginTransaction();
         try {
             $role = $this->getUserRole($user);
@@ -877,6 +889,11 @@ class ApprovalPenagihan extends Component
             // Check if approval can be processed
             if ($approval->status !== 'pending') {
                 throw new \Exception('Approval ini sudah diproses atau tidak dapat diapprove');
+            }
+
+            // Save customer information changes BEFORE approving
+            if ($approval->invoice) {
+                $approval->invoice->update($this->customerForm);
             }
 
             // Langsung complete untuk semua anggota keuangan
@@ -995,7 +1012,7 @@ class ApprovalPenagihan extends Component
 
             // Update subtotal
             $invoice->subtotal = floatval($this->totalHargaJualForm);
-            
+
             // Recalculate total with tax
             $invoice->tax_amount = $invoice->subtotal * ($invoice->tax_percentage / 100);
             $invoice->total_amount = $invoice->subtotal + $invoice->tax_amount - $invoice->discount_amount;
@@ -1023,7 +1040,7 @@ class ApprovalPenagihan extends Component
                 'user_id' => $user->id,
                 'action' => 'edited',
                 'changes' => $changes,
-                'notes' => 'Update total harga jual dari Rp ' . number_format($oldSubtotal, 0, ',', '.') . 
+                'notes' => 'Update total harga jual dari Rp ' . number_format($oldSubtotal, 0, ',', '.') .
                           ' menjadi Rp ' . number_format($invoice->subtotal, 0, ',', '.'),
             ]);
 

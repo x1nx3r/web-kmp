@@ -722,6 +722,10 @@ class OrderCreate extends Component
                 "catatan" => $this->catatan,
             ]);
 
+            // Capture old order detail IDs before soft-deleting
+            // so we can re-point pengiriman_details FKs to the new detail
+            $oldDetailIds = $order->orderDetails->pluck('id')->toArray();
+
             // Clear existing order details and suppliers
             foreach ($order->orderDetails as $detail) {
                 $detail->orderSuppliers()->delete();
@@ -752,6 +756,16 @@ class OrderCreate extends Component
 
             $orderDetail->populateSupplierOptions();
             $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
+
+            // Re-point all pengiriman_details and forecast_details that referenced old order_detail(s)
+            // to the newly created one, so downstream data (invoices, approvals, forecasts) stays linked
+            if (!empty($oldDetailIds)) {
+                \App\Models\PengirimanDetail::whereIn('purchase_order_bahan_baku_id', $oldDetailIds)
+                    ->update(['purchase_order_bahan_baku_id' => $orderDetail->id]);
+
+                \App\Models\ForecastDetail::whereIn('purchase_order_bahan_baku_id', $oldDetailIds)
+                    ->update(['purchase_order_bahan_baku_id' => $orderDetail->id]);
+            }
 
             $order->calculateTotals();
 

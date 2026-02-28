@@ -610,7 +610,7 @@
                                         @foreach($pengiriman->details as $detail)
                                             <tr>
                                                 <td class="px-4 py-3 text-sm text-gray-900">
-                                                    {{ $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
+                                                    {{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 text-sm text-gray-900 text-right">
                                                     {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg

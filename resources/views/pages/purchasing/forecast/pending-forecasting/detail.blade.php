@@ -299,6 +299,9 @@ function checkForecastAuthorization(forecastData) {
                       currentUser.role === 'manager_purchasing' ||
                       (forecastData.pic_purchasing_id && forecastData.pic_purchasing_id == currentUser.id);
     
+    // Store canModify globally so populateForecastDetails can use it
+    window.currentForecastCanModify = canModify;
+
     if (canModify) {
         // Show action buttons
         if (btnPengiriman) btnPengiriman.style.display = 'flex';
@@ -315,36 +318,69 @@ function checkForecastAuthorization(forecastData) {
 // Global variable to store current forecast data
 let currentForecastData = null;
 
-// Open forecast detail modal
+// Open forecast detail modal — always fetches fresh data from API
 function openForecastDetailModal(forecastData) {
     console.log('Opening forecast modal with data:', forecastData);
-    
-    const modal = document.getElementById('forecastDetailModal');
+
+    const modal   = document.getElementById('forecastDetailModal');
     const loading = document.getElementById('forecastModalLoading');
     const content = document.getElementById('forecastModalContent');
-    const error = document.getElementById('forecastModalError');
-    
-    // Ensure modal is attached to body to avoid container issues
+    const error   = document.getElementById('forecastModalError');
+
+    // Ensure modal is attached to body to avoid z-index issues
     if (modal.parentElement !== document.body) {
         document.body.appendChild(modal);
     }
-    
-    // Show modal and loading state
+
+    // Show modal in loading state
     modal.classList.remove('hidden');
     loading.classList.remove('hidden');
     content.classList.add('hidden');
     error.classList.add('hidden');
-    
-    // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
-    
-    // Store forecast data
+
+    // Store basic data immediately (so id is available early)
     currentForecastData = forecastData;
-    
-    // Simulate loading and populate data
-    setTimeout(() => {
-        populateForecastModal(forecastData);
-    }, 500);
+
+    // Fetch fresh full data (including detail IDs) from the API
+    fetchForecastDetail(forecastData.id);
+}
+
+// Fetch full forecast detail from API and populate modal
+function fetchForecastDetail(forecastId) {
+    const loading = document.getElementById('forecastModalLoading');
+    const content = document.getElementById('forecastModalContent');
+    const error   = document.getElementById('forecastModalError');
+
+    loading.classList.remove('hidden');
+    content.classList.add('hidden');
+    error.classList.add('hidden');
+
+    fetch(`/procurement/forecasting/${forecastId}/detail`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                         || document.querySelector('input[name="_token"]')?.value
+                         || '{{ csrf_token() }}'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.forecast) {
+            currentForecastData = data.forecast;
+            populateForecastModal(data.forecast);
+        } else {
+            console.error('API error:', data.message);
+            loading.classList.add('hidden');
+            error.classList.remove('hidden');
+        }
+    })
+    .catch(err => {
+        console.error('fetchForecastDetail network error:', err);
+        loading.classList.add('hidden');
+        error.classList.remove('hidden');
+    });
 }
 
 // Populate modal with forecast data
@@ -360,14 +396,24 @@ function populateForecastModal(data) {
         document.getElementById('forecastStatus').value = data.status || 'Pending';
         document.getElementById('picPurchasing').value = data.pic_purchasing || 'Tidak ada PIC';
         
-        // Convert date format from d/m/Y to Y-m-d for date input
+        // Convert date to Y-m-d for the date input
+        // API returns "d M Y" (e.g. "28 Feb 2026"), blade passes "d/m/Y" (e.g. "28/02/2026")
         let dateForInput = '';
         if (data.tanggal_forecast && data.tanggal_forecast !== 'N/A') {
             try {
-                // Assuming the date comes in d/m/Y format like "15/10/2024"
-                const dateParts = data.tanggal_forecast.split('/');
-                if (dateParts.length === 3) {
-                    dateForInput = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+                const parsed = new Date(data.tanggal_forecast);
+                if (!isNaN(parsed)) {
+                    // new Date() handles "28 Feb 2026" natively
+                    const y = parsed.getFullYear();
+                    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                    const d = String(parsed.getDate()).padStart(2, '0');
+                    dateForInput = `${y}-${m}-${d}`;
+                } else {
+                    // Fallback: try d/m/Y split
+                    const parts = data.tanggal_forecast.split('/');
+                    if (parts.length === 3) {
+                        dateForInput = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
                 }
             } catch (e) {
                 console.warn('Date conversion failed:', e);
@@ -383,11 +429,11 @@ function populateForecastModal(data) {
         // Update modal subtitle
         document.getElementById('forecastModalSubtitle').textContent = `No. Forecast: ${data.no_forecast || 'N/A'}`;
         
+        // Check authorization first (sets window.currentForecastCanModify used by populateForecastDetails)
+        checkForecastAuthorization(data);
+        
         // Populate forecast details if available
         populateForecastDetails(data.details || []);
-        
-        // Check authorization and show/hide action buttons
-        checkForecastAuthorization(data);
         
         // Show content and hide loading
         document.getElementById('forecastModalLoading').classList.add('hidden');
@@ -408,6 +454,9 @@ function populateForecastDetails(details) {
         return;
     }
     
+    const canModify = window.currentForecastCanModify || false;
+    const showDeleteBtn = canModify && details.length > 1;
+    
     let tableHTML = `
         <div class="overflow-hidden">
             <table class="min-w-full bg-white">
@@ -419,6 +468,7 @@ function populateForecastDetails(details) {
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Qty</th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Harga Satuan</th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Total Harga</th>
+                        ${showDeleteBtn ? '<th class="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Aksi</th>' : ''}
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -436,8 +486,19 @@ function populateForecastDetails(details) {
         totalQty += qty;
         totalAmount += totalHarga;
         
+        const deleteBtn = showDeleteBtn
+            ? `<td class="px-6 py-4 text-center">
+                <button type="button"
+                    onclick="confirmDeleteForecastDetail(${currentForecastData.id}, ${detail.id}, '${(detail.bahan_baku || 'bahan baku ini').replace(/'/g, "\\'")}')"
+                    class="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-semibold transition-colors duration-200"
+                    title="Hapus detail ini">
+                    <i class="fas fa-trash-alt mr-1"></i> Hapus
+                </button>
+              </td>`
+            : '';
+
         tableHTML += `
-            <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 transition-colors duration-200">
+            <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 transition-colors duration-200" id="forecast-detail-row-${detail.id}">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-semibold text-gray-900">${detail.bahan_baku || 'N/A'}</div>
@@ -450,14 +511,17 @@ function populateForecastDetails(details) {
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="text-sm font-bold text-green-600">${detail.total_harga || 'Rp 0'}</span>
                 </td>
+                ${deleteBtn}
             </tr>
         `;
     });
     
+    const colspanTotal = showDeleteBtn ? 3 : 3;
+
     // Add total row
     tableHTML += `
         <tr class="bg-gray-100 border-t-2 border-gray-300">
-            <td class="px-6 py-4 text-sm font-bold text-gray-900" colspan="3">
+            <td class="px-6 py-4 text-sm font-bold text-gray-900" colspan="${colspanTotal}">
                 <div class="flex items-center">
                     <i class="fas fa-calculator text-gray-600 mr-3"></i>
                     <span class="text-lg">TOTAL</span>
@@ -474,6 +538,7 @@ function populateForecastDetails(details) {
                     Rp ${totalAmount.toLocaleString('id-ID')}
                 </span>
             </td>
+            ${showDeleteBtn ? '<td></td>' : ''}
         </tr>
     `;
     
@@ -490,6 +555,55 @@ function populateForecastDetails(details) {
     `;
     
     container.innerHTML = tableHTML;
+}
+
+// Show confirmation dialog before deleting a forecast detail
+function confirmDeleteForecastDetail(forecastId, detailId, bahanBakuName) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus detail bahan baku "${bahanBakuName}" dari forecast ini?\n\nTotal qty dan harga forecast akan diperbarui otomatis.`)) {
+        return;
+    }
+    deleteForecastDetail(forecastId, detailId);
+}
+
+// Delete a single forecast detail via AJAX
+function deleteForecastDetail(forecastId, detailId) {
+    const row = document.getElementById('forecast-detail-row-' + detailId);
+    if (row) {
+        row.style.opacity = '0.5';
+        row.style.pointerEvents = 'none';
+    }
+
+    fetch(`/procurement/forecasting/${forecastId}/detail/${detailId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                         || document.querySelector('input[name="_token"]')?.value
+                         || '{{ csrf_token() }}'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Re-fetch fresh data from API so detail IDs and totals are always accurate
+            fetchForecastDetail(forecastId);
+        } else {
+            showToast(data.message || 'Gagal menghapus detail.', 'error');
+            if (row) {
+                row.style.opacity = '';
+                row.style.pointerEvents = '';
+            }
+        }
+    })
+    .catch(err => {
+        console.error('deleteForecastDetail error:', err);
+        showToast('Terjadi kesalahan jaringan. Silakan coba lagi.', 'error');
+        if (row) {
+            row.style.opacity = '';
+            row.style.pointerEvents = '';
+        }
+    });
 }
 
 // Close forecast detail modal
@@ -513,8 +627,8 @@ function showModalError() {
 
 // Retry loading forecast
 function retryLoadForecast() {
-    if (currentForecastData) {
-        openForecastDetailModal(currentForecastData);
+    if (currentForecastData && currentForecastData.id) {
+        fetchForecastDetail(currentForecastData.id);
     }
 }
 

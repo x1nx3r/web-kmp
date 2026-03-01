@@ -300,7 +300,8 @@
                                                         'catatan' => $forecast->catatan ?? '',
                                                         'details' => $forecast->forecastDetails->map(function($detail) {
                                                             return [
-                                                                'bahan_baku' => optional($detail->bahanBakuSupplier)->nama ?? 'N/A',
+                                                                'id' => $detail->id,
+                                                                'bahan_baku' => optional($detail->purchaseOrderBahanBaku->bahanBakuKlien)->nama ?? optional($detail->bahanBakuSupplier)->nama ?? 'N/A',
                                                                 'supplier' => optional($detail->bahanBakuSupplier->supplier)->nama ?? 'N/A',
                                                                 'qty' => number_format($detail->qty_forecast ?? 0, 0, ',', '.'),
                                                                 'harga_satuan' => 'Rp ' . number_format($detail->harga_satuan_forecast ?? 0, 0, ',', '.'),

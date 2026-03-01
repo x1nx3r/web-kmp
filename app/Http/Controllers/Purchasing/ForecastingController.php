@@ -58,7 +58,12 @@ class ForecastingController extends Controller
         ->withQueryString();
 
         // Ambil forecast berdasarkan status dengan eager loading dan pagination
-        $pendingForecasts = Forecast::with(['order.klien', 'purchasing'])
+        $pendingForecasts = Forecast::with([
+            'order.klien',
+            'purchasing',
+            'forecastDetails.bahanBakuSupplier.supplier',
+            'forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien',
+        ])
             ->pending()
             ->when(request('search_pending'), function($query) {
                 $searchTerm = request('search_pending');
@@ -1180,6 +1185,7 @@ class ForecastingController extends Controller
                 'klien' => $forecast->order && $forecast->order->klien ? $forecast->order->klien->nama : 'N/A',
                 'po_number' => $forecast->order ? $forecast->order->po_number : 'N/A',
                 'pic_purchasing' => $forecast->purchasing ? $forecast->purchasing->nama : 'N/A',
+                'pic_purchasing_id' => $forecast->purchasing_id,
                 'tanggal_forecast' => $forecast->tanggal_forecast ? \Carbon\Carbon::parse($forecast->tanggal_forecast)->format('d M Y') : 'N/A',
                 'hari_kirim' => $forecast->hari_kirim_forecast ?: 'N/A',
                 'total_qty' => $forecast->total_qty_forecast ? number_format((float)$forecast->total_qty_forecast, 0, ',', '.') : '0',
@@ -1553,6 +1559,115 @@ class ForecastingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat menghapus forecast: ' . $e->getMessage(),
+                'debug_info' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a single forecast detail (only allowed when forecast has more than 1 detail).
+     * Recalculates forecast totals after deletion.
+     */
+    public function deleteForecastDetail(Request $request, $forecastId, $detailId)
+    {
+        Log::info("deleteForecastDetail called - forecast ID: {$forecastId}, detail ID: {$detailId}");
+
+        $user = Auth::user();
+
+        // Load forecast to check authorization and detail count
+        $forecast = Forecast::select('id', 'purchasing_id', 'status', 'no_forecast', 'total_qty_forecast', 'total_harga_forecast')
+            ->find($forecastId);
+
+        if (!$forecast) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forecast tidak ditemukan'
+            ], 404);
+        }
+
+        // Authorization: direktur, manager_purchasing, or the PIC Purchasing of this forecast
+        $canDelete = $user->role === 'direktur' ||
+                     $user->role === 'manager_purchasing' ||
+                     ($user->id == $forecast->purchasing_id);
+
+        if (!$canDelete) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus detail forecast ini.'
+            ], 403);
+        }
+
+        // Only pending forecasts can be edited
+        if ($forecast->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya detail forecast dengan status pending yang dapat dihapus.'
+            ], 400);
+        }
+
+        // Count active (non-deleted) details
+        $totalDetails = ForecastDetail::where('forecast_id', $forecastId)->count();
+
+        if ($totalDetails <= 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak dapat menghapus detail terakhir. Gunakan fitur hapus forecast untuk menghapus seluruh forecast.'
+            ], 400);
+        }
+
+        // Find the target detail
+        $detail = ForecastDetail::where('id', $detailId)
+            ->where('forecast_id', $forecastId)
+            ->first();
+
+        if (!$detail) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Detail forecast tidak ditemukan'
+            ], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Recalculate totals: subtract this detail's contribution
+            $qtyToSubtract    = (float) $detail->qty_forecast;
+            $hargaToSubtract  = (float) $detail->total_harga_forecast;
+
+            $newTotalQty   = max(0, (float) $forecast->total_qty_forecast - $qtyToSubtract);
+            $newTotalHarga = max(0, (float) $forecast->total_harga_forecast - $hargaToSubtract);
+
+            // Soft-delete the detail
+            $detail->delete();
+
+            // Update forecast totals
+            DB::table('forecasts')
+                ->where('id', $forecastId)
+                ->update([
+                    'total_qty_forecast'   => $newTotalQty,
+                    'total_harga_forecast' => $newTotalHarga,
+                    'updated_at'           => now(),
+                ]);
+
+            DB::commit();
+
+            Log::info("Detail ID {$detailId} deleted from forecast {$forecast->no_forecast}. New totals: qty={$newTotalQty}, harga={$newTotalHarga}");
+
+            return response()->json([
+                'success'         => true,
+                'message'         => 'Detail bahan baku berhasil dihapus',
+                'new_total_qty'   => number_format($newTotalQty, 0, ',', '.'),
+                'new_total_harga' => 'Rp ' . number_format($newTotalHarga, 0, ',', '.'),
+                'remaining_count' => $totalDetails - 1,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error deleteForecastDetail: ' . $e->getMessage());
+
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Terjadi kesalahan saat menghapus detail forecast.',
                 'debug_info' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }

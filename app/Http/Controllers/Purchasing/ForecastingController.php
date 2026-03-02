@@ -100,6 +100,9 @@ class ForecastingController extends Controller
                     $query->orderBy('total_qty_forecast', 'asc');
                 }
             })
+            ->when(request('filter_purchasing_pending'), function($query) {
+                $query->where('purchasing_id', request('filter_purchasing_pending'));
+            })
             ->when(request('sort_date_pending'), function($query) {
                 if (request('sort_date_pending') == 'newest') {
                     $query->orderBy('created_at', 'desc');
@@ -129,6 +132,9 @@ class ForecastingController extends Controller
             ->when(request('date_range_sukses'), function($query) {
                 $query->whereDate('tanggal_forecast', request('date_range_sukses'));
             })
+            ->when(request('filter_purchasing_sukses'), function($query) {
+                $query->where('purchasing_id', request('filter_purchasing_sukses'));
+            })
             ->when(request('sort_order_sukses'), function($query) {
                 if (request('sort_order_sukses') == 'oldest') {
                     $query->oldest('created_at');
@@ -157,6 +163,9 @@ class ForecastingController extends Controller
             })
             ->when(request('date_range_gagal'), function($query) {
                 $query->whereDate('tanggal_forecast', request('date_range_gagal'));
+            })
+            ->when(request('filter_purchasing_gagal'), function($query) {
+                $query->where('purchasing_id', request('filter_purchasing_gagal'));
             })
             ->when(request('sort_order_gagal'), function($query) {
                 if (request('sort_order_gagal') == 'oldest') {

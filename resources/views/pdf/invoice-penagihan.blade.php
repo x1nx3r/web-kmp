@@ -284,26 +284,28 @@
             <td style="width: 50%; vertical-align: top;">
                 <div class="customer-section" style="margin: 0;">
                     <div class="customer-label">Kepada Yth:</div>
-                    <div class="customer-name">{{ $freshKlien->nama ?? $invoice->customer_name ?? '-' }}</div>
-                    @if($freshKlien && $freshKlien->alamat_lengkap)
-                        <div style="font-size: 9pt; margin-top: 3px; line-height: 1.4;">
-                            {{ $freshKlien->alamat_lengkap }}
-                        </div>
-                    @elseif($invoice->customer_address)
+                    <div class="customer-name">{{ $invoice->customer_name ?? $freshKlien->nama ?? '-' }}</div>
+                    
+                    @if($invoice->customer_address)
                         <div style="font-size: 9pt; margin-top: 3px; line-height: 1.4;">
                             {{ $invoice->customer_address }}
                         </div>
+                    @elseif($freshKlien && $freshKlien->alamat_lengkap)
+                        <div style="font-size: 9pt; margin-top: 3px; line-height: 1.4;">
+                            {{ $freshKlien->alamat_lengkap }}
+                        </div>
                     @endif
-                    @if($freshKlien && $freshKlien->contactPerson)
-                        <div class="customer-phone" style="margin-top: 5px;">Contact: {{ $freshKlien->contactPerson->nama }}</div>
-                        <div class="customer-phone">Telp: {{ $freshKlien->contactPerson->nomor_hp }}</div>
-                    @elseif($invoice->customer_phone || $invoice->customer_email)
+                    
+                    @if($invoice->customer_phone || $invoice->customer_email)
                         @if($invoice->customer_phone)
                             <div class="customer-phone" style="margin-top: 5px;">Telp: {{ $invoice->customer_phone }}</div>
                         @endif
                         @if($invoice->customer_email)
                             <div class="customer-phone">Email: {{ $invoice->customer_email }}</div>
                         @endif
+                    @elseif($freshKlien && $freshKlien->contactPerson)
+                        <div class="customer-phone" style="margin-top: 5px;">Contact: {{ $freshKlien->contactPerson->nama }}</div>
+                        <div class="customer-phone">Telp: {{ $freshKlien->contactPerson->nomor_hp }}</div>
                     @endif
                 </div>
             </td>

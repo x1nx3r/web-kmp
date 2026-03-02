@@ -791,18 +791,26 @@ class ApprovalPenagihan extends Component
             $invoice->refraksi_type = $this->invoiceForm['refraksi_type'];
             $invoice->refraksi_value = floatval($this->invoiceForm['refraksi_value']);
 
-            // Recalculate refraksi
+            // Recalculate base using harga JUAL (same as createInvoice)
+            $pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail');
+            $totalSellingPrice = 0;
+            foreach ($pengiriman->pengirimanDetails as $detail) {
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                $totalSellingPrice += floatval($detail->qty_kirim) * $hargaJual;
+            }
+
             $qtyBeforeRefraksi = $pengiriman->total_qty_kirim;
             $qtyAfterRefraksi = $qtyBeforeRefraksi;
             $refraksiAmount = 0;
-            $subtotal = $pengiriman->total_harga_kirim;
+            $subtotal = $totalSellingPrice; // ← harga JUAL, bukan harga beli
 
             if ($invoice->refraksi_type === 'qty') {
                 // Refraksi Qty
                 $refraksiQty = $qtyBeforeRefraksi * ($invoice->refraksi_value / 100);
                 $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
 
-                $hargaPerKg = $subtotal / $qtyBeforeRefraksi;
+                $hargaPerKg = $qtyBeforeRefraksi > 0 ? $subtotal / $qtyBeforeRefraksi : 0;
                 $refraksiAmount = $refraksiQty * $hargaPerKg;
                 $subtotal = $subtotal - $refraksiAmount;
             } elseif ($invoice->refraksi_type === 'rupiah') {

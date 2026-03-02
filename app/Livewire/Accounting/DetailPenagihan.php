@@ -356,30 +356,59 @@ class DetailPenagihan extends Component
             $this->invoice->refraksi_type = $this->invoiceForm['refraksi_type'];
             $this->invoice->refraksi_value = floatval($this->invoiceForm['refraksi_value']);
 
-            // Recalculate refraksi
+            // Recalculate refraksi — gunakan harga JUAL, bukan harga beli
             $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
             $qtyAfterRefraksi = $qtyBeforeRefraksi;
             $refraksiAmount = 0;
-            $subtotal = $this->pengiriman->total_harga_kirim;
 
-            if ($this->invoice->refraksi_type === 'qty') {
-                $refraksiQty = $qtyBeforeRefraksi * ($this->invoice->refraksi_value / 100);
-                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
-                $hargaPerKg = $subtotal / $qtyBeforeRefraksi;
-                $refraksiAmount = $refraksiQty * $hargaPerKg;
-                $subtotal = $subtotal - $refraksiAmount;
-            } elseif ($this->invoice->refraksi_type === 'rupiah') {
-                $refraksiAmount = $this->invoice->refraksi_value * $qtyBeforeRefraksi;
-                $subtotal = $subtotal - $refraksiAmount;
-            } elseif ($this->invoice->refraksi_type === 'lainnya') {
-                $refraksiAmount = $this->invoice->refraksi_value;
-                $subtotal = $subtotal - $refraksiAmount;
+            // Hitung total harga jual dari detail (sama seperti render())
+            $totalSelling = 0;
+            $this->pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku');
+            foreach ($this->pengiriman->pengirimanDetails as $detail) {
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                if ($orderDetail && $orderDetail->harga_jual) {
+                    $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+                }
             }
 
-            $this->invoice->refraksi_amount = $refraksiAmount;
-            $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
-            $this->invoice->qty_after_refraksi = $qtyAfterRefraksi;
-            $this->invoice->subtotal = $subtotal;
+            $amountBeforeRefraksi = $totalSelling;
+            $subtotal = $totalSelling;
+            $refraksiValue = floatval($this->invoiceForm['refraksi_value'] ?? 0);
+
+            if ($refraksiValue <= 0) {
+                // Tidak ada refraksi — reset semua field ke harga jual penuh
+                $this->invoice->refraksi_type = null;
+                $this->invoice->refraksi_value = 0; // 0, bukan null (kolom NOT NULL di DB)
+                $this->invoice->refraksi_amount = 0;
+                $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
+                $this->invoice->qty_after_refraksi = $qtyBeforeRefraksi;
+                $this->invoice->amount_before_refraksi = $amountBeforeRefraksi;
+                $this->invoice->amount_after_refraksi = $amountBeforeRefraksi;
+                $this->invoice->subtotal = $amountBeforeRefraksi;
+            } else {
+                if ($this->invoice->refraksi_type === 'qty') {
+                    $refraksiQty = $qtyBeforeRefraksi * ($this->invoice->refraksi_value / 100);
+                    $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
+                    $hargaPerKg = $qtyBeforeRefraksi > 0 ? $subtotal / $qtyBeforeRefraksi : 0;
+                    $refraksiAmount = $refraksiQty * $hargaPerKg;
+                    $subtotal = $subtotal - $refraksiAmount;
+                } elseif ($this->invoice->refraksi_type === 'rupiah') {
+                    $refraksiAmount = $this->invoice->refraksi_value * $qtyBeforeRefraksi;
+                    $subtotal = $subtotal - $refraksiAmount;
+                } elseif ($this->invoice->refraksi_type === 'lainnya') {
+                    $refraksiAmount = $this->invoice->refraksi_value;
+                    $subtotal = $subtotal - $refraksiAmount;
+                }
+
+                $this->invoice->refraksi_amount = $refraksiAmount;
+                $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
+                $this->invoice->qty_after_refraksi = $qtyAfterRefraksi;
+                $this->invoice->amount_before_refraksi = $amountBeforeRefraksi; // harga jual sebelum refraksi
+                $this->invoice->amount_after_refraksi = $subtotal;              // harga jual setelah refraksi
+                $this->invoice->subtotal = $subtotal;
+            }
+
+            // Recalculate total (pajak, dll) menggunakan model method
             $this->invoice->recalculateTotal();
 
             $changes = [

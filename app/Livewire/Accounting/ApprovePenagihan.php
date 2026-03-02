@@ -550,7 +550,7 @@ class ApprovePenagihan extends Component
                     $refraksiQty = $qtyBeforeRefraksi * ($this->invoice->refraksi_value / 100);
                     $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
 
-                    $hargaPerKg = $subtotal / $qtyBeforeRefraksi;
+                    $hargaPerKg = $qtyBeforeRefraksi > 0 ? $subtotal / $qtyBeforeRefraksi : 0;
                     $refraksiAmount = $refraksiQty * $hargaPerKg;
                     $subtotal = $subtotal - $refraksiAmount;
                 } elseif ($this->invoice->refraksi_type === 'rupiah') {

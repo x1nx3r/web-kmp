@@ -179,11 +179,27 @@ class ForecastingController extends Controller
             ->paginate(10, ['*'], 'page_gagal')
             ->withQueryString();
 
+        // Ambil semua PIC unik per status dari seluruh data (bukan hanya halaman saat ini)
+        $pendingPurchasingOptions = \App\Models\User::whereIn('id',
+                Forecast::pending()->whereNotNull('purchasing_id')->pluck('purchasing_id')->unique()
+            )->orderBy('nama')->pluck('nama', 'id');
+
+        $suksesPurchasingOptions = \App\Models\User::whereIn('id',
+                Forecast::sukses()->whereNotNull('purchasing_id')->pluck('purchasing_id')->unique()
+            )->orderBy('nama')->pluck('nama', 'id');
+
+        $gagalPurchasingOptions = \App\Models\User::whereIn('id',
+                Forecast::gagal()->whereNotNull('purchasing_id')->pluck('purchasing_id')->unique()
+            )->orderBy('nama')->pluck('nama', 'id');
+
         return view('pages.purchasing.forecast', compact(
             'orders',
             'pendingForecasts',
             'suksesForecasts',
-            'gagalForecasts'
+            'gagalForecasts',
+            'pendingPurchasingOptions',
+            'suksesPurchasingOptions',
+            'gagalPurchasingOptions'
         ));
     }
 

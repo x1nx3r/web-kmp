@@ -64,10 +64,7 @@
                         </label>
                         <select id="filterPurchasingGagal" name="filter_purchasing_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersGagal()">
                             <option value="">Semua PIC</option>
-                            @php
-                                $purchasingOptions = collect($gagalForecasts->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
-                            @endphp
-                            @foreach($purchasingOptions as $id => $nama)
+                            @foreach($gagalPurchasingOptions as $id => $nama)
                                 <option value="{{ $id }}" {{ request('filter_purchasing_gagal') == $id ? 'selected' : '' }}>{{ $nama }}</option>
                             @endforeach
                         </select>

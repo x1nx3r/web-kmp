@@ -64,10 +64,7 @@
                         </label>
                         <select id="filterPurchasingPending" name="filter_purchasing_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
                             <option value="">Semua PIC</option>
-                            @php
-                                $purchasingOptions = collect($pendingForecasts->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
-                            @endphp
-                            @foreach($purchasingOptions as $id => $nama)
+                            @foreach($pendingPurchasingOptions as $id => $nama)
                                 <option value="{{ $id }}" {{ request('filter_purchasing_pending') == $id ? 'selected' : '' }}>{{ $nama }}</option>
                             @endforeach
                         </select>

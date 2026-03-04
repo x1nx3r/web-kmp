@@ -2004,7 +2004,7 @@ document.addEventListener('click', function(event) {
                             </div>
                             <div class="text-right">
                                 <p class="text-sm opacity-90">Total Nilai</p>
-                                <p class="font-bold text-xl">Rp {{ number_format($priority->nilai / 1000000, 2, ',', '.') }} Jt</p>
+                                <p class="font-bold text-xl">Rp {{ number_format($priority->nilai, 2, ',', '.') }}</p>
                                 <p class="text-xs opacity-75">{{ number_format($percentage, 1, ',', '.') }}% dari total</p>
                             </div>
                         </div>
@@ -2022,13 +2022,16 @@ document.addEventListener('click', function(event) {
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cabang</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bahan Baku</th>
-                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
-                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Nilai</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty (kg)</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Harga (Rp/kg)</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total (Rp)</th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
+                                @php $priorityTotalQty = 0; $priorityTotalAmount = 0; @endphp
                                 @foreach($poDetailsByPriority[$priority->priority] as $index => $po)
+                                @php $priorityTotalQty += $po['total_qty']; $priorityTotalAmount += $po['total_amount']; @endphp
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900">{{ $index + 1 }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs font-medium text-blue-600">
@@ -2038,8 +2041,11 @@ document.addEventListener('click', function(event) {
                                     <td class="px-3 py-2 text-xs text-gray-600">{{ $po['cabang'] }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-700">{{ $po['tanggal_order'] }}</td>
                                     <td class="px-3 py-2 text-xs text-gray-700">{{ $po['bahan_baku'] }}</td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-center">
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-right">
                                         {{ number_format($po['total_qty'], 2, ',', '.') }}
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-right">
+                                        {{ number_format($po['harga_jual'], 2, ',', '.') }}
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs font-semibold text-gray-900 text-right">
                                         Rp {{ number_format($po['total_amount'], 2, ',', '.') }}
@@ -2053,6 +2059,15 @@ document.addEventListener('click', function(event) {
                                 </tr>
                                 @endforeach
                             </tbody>
+                            <tfoot class="bg-gray-50">
+                                <tr class="font-bold">
+                                    <td colspan="6" class="px-3 py-2 text-xs text-gray-900 text-right">TOTAL:</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900 text-right">{{ number_format($priorityTotalQty, 2, ',', '.') }}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900 text-right">-</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900 text-right">Rp {{ number_format($priorityTotalAmount, 2, ',', '.') }}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                     @else

@@ -344,13 +344,14 @@
                     <tr>
                         <th style="width: 3%">No</th>
                         <th style="width: 11%">No. PO</th>
-                        <th style="width: 18%">Klien</th>
-                        <th style="width: 11%">Cabang</th>
+                        <th style="width: 16%">Klien</th>
+                        <th style="width: 9%">Cabang</th>
                         <th style="width: 8%">Tanggal</th>
-                        <th style="width: 20%">Bahan Baku</th>
-                        <th style="width: 7%" class="text-center">Qty</th>
-                        <th style="width: 14%" class="text-right">Nilai</th>
-                        <th style="width: 8%" class="text-center">Status</th>
+                        <th style="width: 18%">Bahan Baku</th>
+                        <th style="width: 7%" class="text-right">Qty (kg)</th>
+                        <th style="width: 12%" class="text-right">Harga (Rp/kg)</th>
+                        <th style="width: 11%" class="text-right">Total (Rp)</th>
+                        <th style="width: 7%" class="text-center">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -362,10 +363,11 @@
                         <td>{{ $po['cabang'] }}</td>
                         <td class="text-center">{{ $po['tanggal_order'] }}</td>
                         <td style="font-size: 9px;">{{ $po['bahan_baku'] }}</td>
-                        <td class="text-center">{{ number_format($po['total_qty'], 0, ',', '.') }}</td>
-                        <td class="text-right font-bold">Rp {{ number_format($po['total_amount'], 0, ',', '.') }}</td>
+                        <td class="text-right">{{ number_format($po['total_qty'], 2, ',', '.') }}</td>
+                        <td class="text-right">{{ number_format($po['harga_jual'], 2, ',', '.') }}</td>
+                        <td class="text-right font-bold">Rp {{ number_format($po['total_amount'], 2, ',', '.') }}</td>
                         <td class="text-center">
-                            <span class="badge {{ $po['status'] == 'dikonfirmasi' ? 'badge-tinggi' : 'badge-sedang' }}" style="font-size: 8px;">
+                            <span class="badge {{ $po['status'] == 'dikonfirmasi' ? 'badge-dikonfirmasi' : 'badge-diproses' }}" style="font-size: 8px;">
                                 {{ ucfirst($po['status']) }}
                             </span>
                         </td>
@@ -375,11 +377,12 @@
                 <tfoot>
                     <tr>
                         <td colspan="6" class="text-right font-bold">Subtotal {{ ucfirst($priority->priority) }}:</td>
-                        <td class="text-center font-bold">
-                            {{ number_format(collect($poDetailsByPriority[$priority->priority])->sum('total_qty'), 0, ',', '.') }}
-                        </td>
                         <td class="text-right font-bold">
-                            Rp {{ number_format(collect($poDetailsByPriority[$priority->priority])->sum('total_amount'), 0, ',', '.') }}
+                            {{ number_format(collect($poDetailsByPriority[$priority->priority])->sum('total_qty'), 2, ',', '.') }}
+                        </td>
+                        <td class="text-right font-bold">-</td>
+                        <td class="text-right font-bold">
+                            Rp {{ number_format(collect($poDetailsByPriority[$priority->priority])->sum('total_amount'), 2, ',', '.') }}
                         </td>
                         <td></td>
                     </tr>

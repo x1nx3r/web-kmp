@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Laporan;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderDetail;
-use App\Models\Klien;
 use App\Exports\ClientPOExport;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -94,33 +93,60 @@ class PurchaseOrderController extends Controller
             ->groupBy('priority')
             ->get();
         
-        // Get PO details for each priority
+        // Get PO details for each priority — per item (matching outstanding detail logic)
         $poDetailsByPriority = [];
         foreach ($poByPriority as $priorityData) {
-            $poDetails = Order::with(['klien', 'orderDetails'])
-                ->where('priority', $priorityData->priority)
-                ->whereIn('status', ['dikonfirmasi', 'diproses'])
-                ->orderBy('po_number')
+            $itemRows = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
+                ->where('orders.priority', $priorityData->priority)
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->whereNotIn('order_details.status', ['selesai'])
+                ->whereNull('order_details.deleted_at')
+                ->select(
+                    'orders.id as order_id',
+                    DB::raw("COALESCE(orders.po_number, orders.no_order) as po_number"),
+                    'kliens.nama as klien_nama',
+                    'kliens.cabang',
+                    'orders.tanggal_order',
+                    'orders.status',
+                    DB::raw("COALESCE(bahan_baku_klien.nama, order_details.nama_material_po, '-') as bahan_baku"),
+                    'order_details.qty as total_qty',
+                    'order_details.harga_jual',
+                    DB::raw("COALESCE(NULLIF(order_details.total_harga, 0), order_details.qty * order_details.harga_jual) as total_amount")
+                )
+                ->orderBy('orders.po_number')
+                ->orderBy('kliens.nama')
                 ->get()
-                ->map(function($order) {
-                    // Get list of materials from order details
-                    $materials = $order->orderDetails->pluck('nama_material_po')->filter()->unique()->values()->toArray();
-                    $materialsText = !empty($materials) ? implode(', ', $materials) : '-';
-                    
+                ->map(function($row) {
                     return [
-                        'po_number' => $order->po_number ?: $order->no_order,
-                        'klien_nama' => $order->klien->nama ?? '-',
-                        'cabang' => $order->klien->cabang ?? '-',
-                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
-                        'bahan_baku' => $materialsText,
-                        'total_amount' => $order->total_amount,
-                        'total_qty' => $order->total_qty,
-                        'status' => $order->status
+                        'po_number'    => $row->po_number,
+                        'klien_nama'   => $row->klien_nama,
+                        'cabang'       => $row->cabang ?? '-',
+                        'tanggal_order'=> $row->tanggal_order ? Carbon::parse($row->tanggal_order)->format('d/m/Y') : '-',
+                        'bahan_baku'   => $row->bahan_baku,
+                        'total_qty'    => (float) $row->total_qty,
+                        'harga_jual'   => (float) $row->harga_jual,
+                        'total_amount' => (float) $row->total_amount,
+                        'status'       => $row->status,
                     ];
                 })
                 ->toArray();
-            
-            $poDetailsByPriority[$priorityData->priority] = $poDetails;
+
+            $poDetailsByPriority[$priorityData->priority] = $itemRows;
+        }
+
+        // Recalculate poByPriority->nilai from order_details (to match detail rows total)
+        foreach ($poByPriority as $priorityData) {
+            $nilaiFromDetails = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->where('orders.priority', $priorityData->priority)
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->whereNotIn('order_details.status', ['selesai'])
+                ->whereNull('order_details.deleted_at')
+                ->sum(DB::raw("COALESCE(NULLIF(order_details.total_harga, 0), order_details.qty * order_details.harga_jual)"));
+            $priorityData->nilai = (float) $nilaiFromDetails;
         }
         
         // ========== PO BY CLIENT (dikonfirmasi, diproses, selesai) - WITH FILTER ==========
@@ -906,35 +932,61 @@ class PurchaseOrderController extends Controller
             ->groupBy('priority')
             ->get();
         
-        // Get PO details for each priority
+        // Get PO details for each priority — per item (matching outstanding detail logic)
         $poDetailsByPriority = [];
         foreach ($poByPriority as $priorityData) {
-            $poDetails = Order::with(['klien', 'orderDetails'])
-                ->where('priority', $priorityData->priority)
-                ->whereIn('status', ['dikonfirmasi', 'diproses'])
-                ->orderBy('po_number')
+            $itemRows = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
+                ->where('orders.priority', $priorityData->priority)
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->whereNotIn('order_details.status', ['selesai'])
+                ->whereNull('order_details.deleted_at')
+                ->select(
+                    DB::raw("COALESCE(orders.po_number, orders.no_order) as po_number"),
+                    'kliens.nama as klien_nama',
+                    'kliens.cabang',
+                    'orders.tanggal_order',
+                    'orders.status',
+                    DB::raw("COALESCE(bahan_baku_klien.nama, order_details.nama_material_po, '-') as bahan_baku"),
+                    'order_details.qty as total_qty',
+                    'order_details.harga_jual',
+                    DB::raw("COALESCE(NULLIF(order_details.total_harga, 0), order_details.qty * order_details.harga_jual) as total_amount")
+                )
+                ->orderBy('orders.po_number')
+                ->orderBy('kliens.nama')
                 ->get()
-                ->map(function($order) {
-                    // Get list of materials from order details
-                    $materials = $order->orderDetails->pluck('nama_material_po')->filter()->unique()->values()->toArray();
-                    $materialsText = !empty($materials) ? implode(', ', $materials) : '-';
-                    
+                ->map(function($row) {
                     return [
-                        'po_number' => $order->po_number ?: $order->no_order,
-                        'klien_nama' => $order->klien->nama ?? '-',
-                        'cabang' => $order->klien->cabang ?? '-',
-                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
-                        'bahan_baku' => $materialsText,
-                        'total_amount' => $order->total_amount,
-                        'total_qty' => $order->total_qty,
-                        'status' => $order->status
+                        'po_number'    => $row->po_number,
+                        'klien_nama'   => $row->klien_nama,
+                        'cabang'       => $row->cabang ?? '-',
+                        'tanggal_order'=> $row->tanggal_order ? Carbon::parse($row->tanggal_order)->format('d/m/Y') : '-',
+                        'bahan_baku'   => $row->bahan_baku,
+                        'total_qty'    => (float) $row->total_qty,
+                        'harga_jual'   => (float) $row->harga_jual,
+                        'total_amount' => (float) $row->total_amount,
+                        'status'       => $row->status,
                     ];
                 })
                 ->toArray();
-            
-            $poDetailsByPriority[$priorityData->priority] = $poDetails;
+
+            $poDetailsByPriority[$priorityData->priority] = $itemRows;
         }
-        
+
+        // Recalculate poByPriority->nilai from order_details (to match detail rows total)
+        foreach ($poByPriority as $priorityData) {
+            $nilaiFromDetails = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->where('orders.priority', $priorityData->priority)
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->whereNotIn('order_details.status', ['selesai'])
+                ->whereNull('order_details.deleted_at')
+                ->sum(DB::raw("COALESCE(NULLIF(order_details.total_harga, 0), order_details.qty * order_details.harga_jual)"));
+            $priorityData->nilai = (float) $nilaiFromDetails;
+        }
+
         // Calculate totals
         $totalPO = $poByPriority->sum('total');
         $totalNilai = $poByPriority->sum('nilai');

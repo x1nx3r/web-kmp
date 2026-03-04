@@ -37,9 +37,9 @@ class PurchaseOrderController extends Controller
             // 'all' = no date filter
         };
         
-        // ========== SUMMARY STATISTICS (Untuk status dikonfirmasi dan diproses) - NO FILTER ==========
+        // ========== SUMMARY STATISTICS - NO FILTER ==========
         
-        // Total Outstanding (nilai dari order details dengan status dikonfirmasi & diproses)
+        // Total Outstanding (dikonfirmasi & diproses — termasuk yg closed internal)
         $totalOutstanding = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
             ->sum('order_details.total_harga');
@@ -49,7 +49,7 @@ class PurchaseOrderController extends Controller
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
             ->sum('order_details.qty');
         
-        // PO Berjalan (jumlah PO dengan status dikonfirmasi & diproses)
+        // PO Berjalan (dikonfirmasi & diproses — termasuk yg closed internal)
         $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])
             ->count();
         
@@ -281,12 +281,13 @@ class PurchaseOrderController extends Controller
                 return $item;
             });
         
-        // ========== OUTSTANDING (dikonfirmasi & diproses only) - NO FILTER ==========
+        // ========== OUTSTANDING CHART (dikonfirmasi & diproses only — untuk chart) - NO FILTER ==========
         $outstandingChartData = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
             ->whereNotIn('order_details.status', ['selesai'])
+            ->whereNull('order_details.deleted_at')
             ->select(
                 'orders.po_number',
                 'orders.no_order',
@@ -340,15 +341,26 @@ class PurchaseOrderController extends Controller
     
     public function exportOutstandingPdf()
     {
-        // Get outstanding order details
+        $flag = self::CLOSED_INTERNAL_FLAG;
+
+        // Get outstanding order details (dikonfirmasi, diproses, dan selesai-closed-internal)
         $outstandingDetails = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+            ->where(function($q) use ($flag) {
+                $q->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                  ->orWhere(function($q2) use ($flag) {
+                      $q2->where('orders.status', 'selesai')
+                         ->where('orders.alasan_pembatalan', $flag);
+                  });
+            })
             ->whereNotIn('order_details.status', ['selesai'])
+            ->whereNull('order_details.deleted_at')
             ->select(
+                'orders.id as order_id',
                 'orders.po_number',
                 'orders.no_order',
+                'orders.alasan_pembatalan',
                 'kliens.nama as klien_nama',
                 'kliens.cabang as klien_cabang',
                 'bahan_baku_klien.nama as material_nama',
@@ -357,9 +369,14 @@ class PurchaseOrderController extends Controller
                 'order_details.total_harga',
                 'order_details.status as detail_status'
             )
+            ->orderByRaw("CASE WHEN orders.alasan_pembatalan = ? THEN 1 ELSE 0 END", [$flag])
             ->orderBy('orders.po_number')
             ->orderBy('kliens.nama')
-            ->get();
+            ->get()
+            ->map(function ($item) use ($flag) {
+                $item->is_closed_internal = ($item->alasan_pembatalan === $flag);
+                return $item;
+            });
         
         // Calculate totals
         $totalQty = $outstandingDetails->sum('qty');
@@ -1066,5 +1083,90 @@ class PurchaseOrderController extends Controller
         
         // Return PDF download
         return $pdf->download($filename);
+    }
+
+    // Penanda close internal (disimpan di kolom alasan_pembatalan, tanpa ubah ENUM status)
+    const CLOSED_INTERNAL_FLAG = '[CLOSED_INTERNAL]';
+
+    /**
+     * Close Pabrik: set order status to 'selesai' → removed from outstanding permanently
+     */
+    public function closePabrik(Request $request, Order $order)
+    {
+        if (!in_array($order->status, ['dikonfirmasi', 'diproses'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order tidak dapat di-close karena statusnya bukan dikonfirmasi/diproses.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($order) {
+            $order->status    = 'selesai';
+            $order->selesai_at = now();
+            // Hapus flag internal jika ada
+            if ($order->alasan_pembatalan === self::CLOSED_INTERNAL_FLAG) {
+                $order->alasan_pembatalan = null;
+            }
+            $order->save();
+        });
+
+        $poLabel = $order->po_number ?: $order->no_order;
+        return response()->json([
+            'success' => true,
+            'message' => "Order {$poLabel} berhasil di-close (Closed Pabrik). Status diubah menjadi Selesai."
+        ]);
+    }
+
+    /**
+     * Close Internal: tandai order dengan flag di alasan_pembatalan.
+     * Status tetap 'diproses', order masih tampil di outstanding dengan badge "Internal".
+     */
+    public function closeInternal(Request $request, Order $order)
+    {
+        if (!in_array($order->status, ['dikonfirmasi', 'diproses'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order tidak dapat di-close karena statusnya bukan dikonfirmasi/diproses.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($order) {
+            $order->status            = 'selesai';
+            $order->selesai_at        = now();
+            $order->alasan_pembatalan = self::CLOSED_INTERNAL_FLAG;
+            $order->save();
+        });
+
+        $poLabel = $order->po_number ?: $order->no_order;
+        return response()->json([
+            'success' => true,
+            'message' => "Order {$poLabel} berhasil di-close secara internal. Order masih tampil di outstanding dan dapat dikembalikan."
+        ]);
+    }
+
+    /**
+     * Reopen: hapus flag closed internal, kembalikan ke diproses
+     */
+    public function reopenOrder(Request $request, Order $order)
+    {
+        if ($order->alasan_pembatalan !== self::CLOSED_INTERNAL_FLAG) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order ini tidak sedang dalam status Closed Internal.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($order) {
+            $order->status            = 'diproses';
+            $order->selesai_at        = null;
+            $order->alasan_pembatalan = null;
+            $order->save();
+        });
+
+        $poLabel = $order->po_number ?: $order->no_order;
+        return response()->json([
+            'success' => true,
+            'message' => "Order {$poLabel} berhasil dikembalikan ke status aktif."
+        ]);
     }
 }

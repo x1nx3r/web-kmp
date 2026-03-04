@@ -122,8 +122,8 @@
             background-color: #f9fafb;
         }
         
-        tbody tr:hover {
-            background-color: #f3f4f6;
+        tbody tr.closed-internal {
+            background-color: #fefce8;
         }
         
         td {
@@ -160,6 +160,18 @@
             font-size: 8px;
             color: #666;
             text-align: center;
+        }
+        
+        .badge-internal {
+            display: inline-block;
+            background-color: #fef08a;
+            color: #854d0e;
+            font-size: 7px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 3px;
+            text-transform: uppercase;
         }
         
         .page-break {
@@ -219,9 +231,14 @@
         <tbody>
             @php $no = 1; @endphp
             @foreach($outstandingDetails as $detail)
-                <tr>
+                <tr class="{{ $detail->is_closed_internal ? 'closed-internal' : '' }}">
                     <td class="text-center">{{ $no++ }}</td>
-                    <td class="po-number">{{ $detail->po_number ?: $detail->no_order }}</td>
+                    <td class="po-number">
+                        {{ $detail->po_number ?: $detail->no_order }}
+                        @if($detail->is_closed_internal)
+                            <span class="badge-internal">Internal</span>
+                        @endif
+                    </td>
                     <td>
                         {{ $detail->klien_nama }}
                         @if($detail->klien_cabang)

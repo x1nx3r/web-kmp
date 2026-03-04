@@ -705,6 +705,90 @@ function closeOutstandingModal() {
     document.body.style.overflow = 'auto';
 }
 
+// ===== Outstanding Close Actions =====
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+function showOutstandingToast(message, type = 'success') {
+    const colors = type === 'success'
+        ? 'bg-green-600 text-white'
+        : 'bg-red-600 text-white';
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-6 right-6 z-[9999] px-5 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${colors}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+}
+
+function closePabrik(orderId, poNumber) {
+    if (!confirm(`Yakin ingin melakukan CLOSED PABRIK pada order "${poNumber}"?\n\nStatus order akan diubah menjadi Selesai dan tidak akan muncul lagi di tabel outstanding.`)) return;
+
+    fetch(`/laporan/purchase-order/close-pabrik/${orderId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showOutstandingToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showOutstandingToast(data.message, 'error');
+        }
+    })
+    .catch(() => showOutstandingToast('Terjadi kesalahan. Coba lagi.', 'error'));
+}
+
+function closeInternal(orderId, poNumber) {
+    if (!confirm(`Yakin ingin melakukan CLOSED INTERNAL pada order "${poNumber}"?\n\nOrder akan tetap tampil di outstanding (ditandai Internal) dan dapat dikembalikan ke status Diproses.`)) return;
+
+    fetch(`/laporan/purchase-order/close-internal/${orderId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showOutstandingToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showOutstandingToast(data.message, 'error');
+        }
+    })
+    .catch(() => showOutstandingToast('Terjadi kesalahan. Coba lagi.', 'error'));
+}
+
+function reopenOrder(orderId, poNumber) {
+    if (!confirm(`Yakin ingin mengembalikan order "${poNumber}" ke status Diproses?`)) return;
+
+    fetch(`/laporan/purchase-order/reopen/${orderId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showOutstandingToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showOutstandingToast(data.message, 'error');
+        }
+    })
+    .catch(() => showOutstandingToast('Terjadi kesalahan. Coba lagi.', 'error'));
+}
+// ===== End Outstanding Close Actions =====
+
 function openStatusModal() {
     document.getElementById('statusModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1091,7 +1175,7 @@ document.addEventListener('click', function(event) {
 </script>
 
 {{-- Outstanding Details Modal --}}
-<div id="outstandingModal" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
+<div id="outstandingModal" x-data="{}" class="hidden fixed inset-0 bg-white/20 backdrop-blur-xs bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-xl bg-white">
         {{-- Header --}}
         <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
@@ -1157,7 +1241,7 @@ document.addEventListener('click', function(event) {
         {{-- Table --}}
         <div class="overflow-x-auto max-h-96 overflow-y-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50 sticky top-0">
+                <thead class="bg-gray-50 sticky top-0 z-20">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO</th>
@@ -1166,19 +1250,30 @@ document.addEventListener('click', function(event) {
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty (kg)</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga (Rp/kg)</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total (Rp)</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @php
                         $no = 1;
+                        $CLOSED_FLAG = '[CLOSED_INTERNAL]';
                         $outstandingDetails = \App\Models\OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
                             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
                             ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
-                            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                            ->where(function($q) use ($CLOSED_FLAG) {
+                                $q->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                                  ->orWhere(function($q2) use ($CLOSED_FLAG) {
+                                      $q2->where('orders.status', 'selesai')
+                                         ->where('orders.alasan_pembatalan', $CLOSED_FLAG);
+                                  });
+                            })
                             ->whereNotIn('order_details.status', ['selesai'])
+                            ->whereNull('order_details.deleted_at')
                             ->select(
+                                'orders.id as order_id',
                                 'orders.po_number',
                                 'orders.no_order',
+                                'orders.alasan_pembatalan',
                                 'kliens.nama as klien_nama',
                                 'kliens.cabang as klien_cabang',
                                 'bahan_baku_klien.nama as material_nama',
@@ -1187,16 +1282,24 @@ document.addEventListener('click', function(event) {
                                 'order_details.total_harga',
                                 'order_details.status as detail_status'
                             )
+                            ->orderByRaw("CASE WHEN orders.alasan_pembatalan = '[CLOSED_INTERNAL]' THEN 1 ELSE 0 END")
                             ->orderBy('orders.po_number')
                             ->orderBy('kliens.nama')
-                            ->get();
+                            ->get()
+                            ->map(function($d) use ($CLOSED_FLAG) {
+                                $d->is_closed_internal = ($d->alasan_pembatalan === $CLOSED_FLAG);
+                                return $d;
+                            });
                     @endphp
 
                     @forelse($outstandingDetails as $detail)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50 {{ $detail->is_closed_internal ? 'bg-red-50' : '' }}">
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $no++ }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {{ $detail->po_number ?: $detail->no_order }}
+                                @if($detail->is_closed_internal)
+                                    <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Internal</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">
                                 {{ $detail->klien_nama }}
@@ -1216,10 +1319,38 @@ document.addEventListener('click', function(event) {
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
                                 {{ number_format($detail->total_harga, 2, ',', '.') }}
                             </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-center z-10">
+                                <div class="relative inline-block text-left" x-data="{ open: false }">
+                                    <button @click="open = !open" @click.outside="open = false"
+                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">
+                                        <i class="fas fa-ellipsis-v text-xs"></i>
+                                    </button>
+                                    <div x-show="open" x-transition
+                                        class="absolute right-0 mt-1 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 origin-top-right">
+                                        <div class="py-1">
+                                            @if($detail->is_closed_internal)
+                                                <button onclick="reopenOrder({{ $detail->order_id }}, '{{ $detail->po_number ?: $detail->no_order }}')"
+                                                    class="w-full text-left px-4 py-2 text-xs text-green-700 hover:bg-green-50 flex items-center gap-2">
+                                                    <i class="fas fa-undo"></i> Kembalikan ke Diproses
+                                                </button>
+                                            @else
+                                                <button onclick="closePabrik({{ $detail->order_id }}, '{{ $detail->po_number ?: $detail->no_order }}')"
+                                                    class="w-full text-left px-4 py-2 text-xs text-red-700 hover:bg-red-50 flex items-center gap-2">
+                                                    <i class="fas fa-times-circle"></i> Closed Pabrik
+                                                </button>
+                                                <button onclick="closeInternal({{ $detail->order_id }}, '{{ $detail->po_number ?: $detail->no_order }}')"
+                                                    class="w-full text-left px-4 py-2 text-xs text-yellow-700 hover:bg-yellow-50 flex items-center gap-2">
+                                                    <i class="fas fa-lock"></i> Closed Internal
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="8" class="px-4 py-8 text-center text-gray-500">
                                 <i class="fas fa-inbox text-4xl mb-2"></i>
                                 <p>Tidak ada data outstanding</p>
                             </td>
@@ -1236,6 +1367,7 @@ document.addEventListener('click', function(event) {
                         <td class="px-4 py-3 text-sm text-gray-900 text-right">
                             {{ number_format($totalOutstanding, 2, ',', '.') }}
                         </td>
+                        <td class="px-4 py-3"></td>
                     </tr>
                 </tfoot>
             </table>

@@ -207,7 +207,7 @@ class ApprovalPenagihan extends Component
             });
         }
 
-        $approvals = $query->latest()->paginate(10, ['*'], 'page_approval');
+        $approvals = $query->latest('updated_at')->paginate(10, ['*'], 'page_approval');
 
         // Get unique customers and suppliers for filters
         $allApprovals = ApprovalPenagihanModel::with([

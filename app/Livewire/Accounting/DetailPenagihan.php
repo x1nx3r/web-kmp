@@ -164,7 +164,14 @@ class DetailPenagihan extends Component
 
             DB::commit();
             session()->flash('message', 'Informasi customer berhasil diupdate');
-            $this->loadDetail();
+            // Hanya refresh invoice, update form customer saja
+            $this->invoice->refresh();
+            $this->customerForm = [
+                'customer_name' => $this->invoice->customer_name ?? '',
+                'customer_address' => $this->invoice->customer_address ?? '',
+                'customer_phone' => $this->invoice->customer_phone ?? '',
+                'customer_email' => $this->invoice->customer_email ?? '',
+            ];
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update informasi customer: ' . $e->getMessage());
@@ -208,7 +215,12 @@ class DetailPenagihan extends Component
 
             DB::commit();
             session()->flash('message', 'Tanggal invoice berhasil diupdate');
-            $this->loadDetail();
+            // Hanya refresh invoice, update form tanggal saja
+            $this->invoice->refresh();
+            $this->dateForm = [
+                'invoice_date' => $this->invoice->invoice_date ? $this->invoice->invoice_date->format('Y-m-d') : '',
+                'due_date' => $this->invoice->due_date ? $this->invoice->due_date->format('Y-m-d') : '',
+            ];
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update tanggal invoice: ' . $e->getMessage());
@@ -252,7 +264,13 @@ class DetailPenagihan extends Component
 
             DB::commit();
             session()->flash('message', 'Informasi bank berhasil diupdate');
-            $this->loadDetail();
+            // Hanya refresh invoice, update form bank saja
+            $this->invoice->refresh();
+            $this->bankForm = [
+                'bank_name' => $this->invoice->bank_name ?? '',
+                'bank_account_number' => $this->invoice->bank_account_number ?? '',
+                'bank_account_name' => $this->invoice->bank_account_name ?? '',
+            ];
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update informasi bank: ' . $e->getMessage());
@@ -291,7 +309,9 @@ class DetailPenagihan extends Component
 
             DB::commit();
             session()->flash('message', 'Catatan invoice berhasil diupdate');
-            $this->loadDetail();
+            // Hanya refresh invoice, update form notes saja
+            $this->invoice->refresh();
+            $this->invoiceNotesForm = $this->invoice->notes ?? '';
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update catatan invoice: ' . $e->getMessage());
@@ -334,7 +354,9 @@ class DetailPenagihan extends Component
 
             DB::commit();
             session()->flash('message', 'Nomor invoice berhasil diupdate');
-            $this->loadDetail();
+            // Hanya refresh invoice, update form nomor invoice saja
+            $this->invoice->refresh();
+            $this->invoiceNumberForm = $this->invoice->invoice_number ?? '';
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update nomor invoice: ' . $e->getMessage());
@@ -434,7 +456,12 @@ class DetailPenagihan extends Component
 
             DB::commit();
             session()->flash('message', 'Refraksi berhasil diupdate');
-            $this->loadDetail();
+            // Hanya refresh invoice, update form refraksi saja
+            $this->invoice->refresh();
+            $this->invoiceForm = [
+                'refraksi_type' => $this->invoice->refraksi_type ?? 'qty',
+                'refraksi_value' => $this->invoice->refraksi_value ?? 0,
+            ];
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update refraksi: ' . $e->getMessage());

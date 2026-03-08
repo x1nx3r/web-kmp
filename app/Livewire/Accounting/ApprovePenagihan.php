@@ -266,7 +266,8 @@ class ApprovePenagihan extends Component
                 ]);
             }
 
-            $this->loadApproval();
+            // Hanya refresh invoice, jangan loadApproval() agar tidak reset form fields
+            $this->invoice->refresh();
 
             session()->flash('message', 'Bank berhasil diupdate');
         } catch (\Exception $e) {
@@ -293,17 +294,30 @@ class ApprovePenagihan extends Component
             return;
         }
 
-        // Validate customer information
+        // Validate customer information and invoice number
         $this->validate([
+            'invoiceNumber' => 'required|string|max:191',
             'customerName' => 'required|string|max:255',
             'customerAddress' => 'required|string',
             'customerPhone' => 'nullable|string|max:20',
             'customerEmail' => 'nullable|email|max:255',
         ], [
+            'invoiceNumber.required' => 'Nomor invoice harus diisi',
+            'invoiceNumber.max' => 'Nomor invoice maksimal 191 karakter',
             'customerName.required' => 'Nama customer harus diisi',
             'customerAddress.required' => 'Alamat customer harus diisi',
             'customerEmail.email' => 'Format email tidak valid',
         ]);
+
+        // Check if invoice number already exists (excluding current invoice)
+        $invoiceNumberExists = InvoicePenagihan::where('invoice_number', $this->invoiceNumber)
+            ->where('id', '!=', $this->invoice->id)
+            ->exists();
+
+        if ($invoiceNumberExists) {
+            session()->flash('error', 'Nomor invoice "' . $this->invoiceNumber . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
+            return;
+        }
 
         DB::beginTransaction();
         try {
@@ -320,6 +334,7 @@ class ApprovePenagihan extends Component
 
             // Save customer information changes BEFORE approving
             $this->invoice->update([
+                'invoice_number' => $this->invoiceNumber,
                 'customer_name' => $this->customerName,
                 'customer_address' => $this->customerAddress,
                 'customer_phone' => $this->customerPhone,
@@ -389,17 +404,30 @@ class ApprovePenagihan extends Component
             return;
         }
 
-        // Validate customer information
+        // Validate customer information and invoice number
         $this->validate([
+            'invoiceNumber' => 'required|string|max:191',
             'customerName' => 'required|string|max:255',
             'customerAddress' => 'required|string',
             'customerPhone' => 'nullable|string|max:20',
             'customerEmail' => 'nullable|email|max:255',
         ], [
+            'invoiceNumber.required' => 'Nomor invoice harus diisi',
+            'invoiceNumber.max' => 'Nomor invoice maksimal 191 karakter',
             'customerName.required' => 'Nama customer harus diisi',
             'customerAddress.required' => 'Alamat customer harus diisi',
             'customerEmail.email' => 'Format email tidak valid',
         ]);
+
+        // Check if invoice number already exists (excluding current invoice)
+        $invoiceNumberExists = InvoicePenagihan::where('invoice_number', $this->invoiceNumber)
+            ->where('id', '!=', $this->invoice->id)
+            ->exists();
+
+        if ($invoiceNumberExists) {
+            session()->flash('error', 'Nomor invoice "' . $this->invoiceNumber . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
+            return;
+        }
 
         DB::beginTransaction();
         try {
@@ -411,6 +439,7 @@ class ApprovePenagihan extends Component
 
             // Save customer information changes
             $this->invoice->update([
+                'invoice_number' => $this->invoiceNumber,
                 'customer_name' => $this->customerName,
                 'customer_address' => $this->customerAddress,
                 'customer_phone' => $this->customerPhone,
@@ -524,10 +553,10 @@ class ApprovePenagihan extends Component
             // Update refraksi values - bisa null/0 untuk tidak ada refraksi
             $refraksiValue = floatval($this->refraksiForm['value'] ?? 0);
 
-            // Jika value 0 atau kosong, set refraksi menjadi null
+            // Jika value 0 atau kosong, set refraksi menjadi 0
             if ($refraksiValue <= 0) {
                 $this->invoice->refraksi_type = null;
-                $this->invoice->refraksi_value = null;
+                $this->invoice->refraksi_value = 0;
                 $this->invoice->refraksi_amount = 0;
                 $this->invoice->qty_before_refraksi = $this->pengiriman->total_qty_kirim;
                 $this->invoice->qty_after_refraksi = $this->pengiriman->total_qty_kirim;
@@ -594,7 +623,7 @@ class ApprovePenagihan extends Component
             DB::commit();
 
             session()->flash('message', 'Refraksi berhasil diupdate');
-            $this->loadApproval();
+            $this->invoice->refresh();
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -656,7 +685,7 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Nomor invoice berhasil diperbarui');
-            $this->loadApproval();
+            $this->invoice->refresh();
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->errorInfo[1] == 1062) {
                 session()->flash('error', 'Nomor invoice "' . $this->invoiceNumber . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
@@ -714,7 +743,7 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Tanggal invoice berhasil diupdate');
-            $this->loadApproval();
+            $this->invoice->refresh();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengupdate tanggal: ' . $e->getMessage());
@@ -769,7 +798,7 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Informasi customer berhasil diupdate');
-            $this->loadApproval();
+            $this->invoice->refresh();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengupdate informasi customer: ' . $e->getMessage());
@@ -810,7 +839,7 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Catatan invoice berhasil diupdate');
-            $this->loadApproval();
+            $this->invoice->refresh();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengupdate catatan: ' . $e->getMessage());

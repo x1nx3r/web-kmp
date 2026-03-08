@@ -69,45 +69,45 @@ class EscalateOrderPrioritiesTest extends TestCase
     }
 
     /** @test */
-    public function it_escalates_rendah_to_tinggi_for_14_days()
+    public function it_escalates_tinggi_to_rendah_for_14_days()
     {
-        // 14 days <= 30 days => tinggi (urgent!)
-        $order = $this->createOrderWithPriority("rendah", 14);
+        // 14 days <= 30 days => rendah (deadline soon, low remaining value)
+        $order = $this->createOrderWithPriority("tinggi", 14);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("tinggi", $order->priority);
+        $this->assertEquals("rendah", $order->priority);
     }
 
     /** @test */
-    public function it_escalates_rendah_to_tinggi_for_7_days()
+    public function it_escalates_tinggi_to_rendah_for_7_days()
     {
-        // 7 days <= 30 days => tinggi (urgent!)
-        $order = $this->createOrderWithPriority("rendah", 7);
+        // 7 days <= 30 days => rendah (deadline soon)
+        $order = $this->createOrderWithPriority("tinggi", 7);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("tinggi", $order->priority);
+        $this->assertEquals("rendah", $order->priority);
     }
 
     /** @test */
-    public function it_escalates_rendah_to_tinggi_for_3_days()
+    public function it_escalates_tinggi_to_rendah_for_3_days()
     {
-        // 3 days <= 30 days => tinggi (urgent!)
-        $order = $this->createOrderWithPriority("rendah", 3);
+        // 3 days <= 30 days => rendah (deadline soon)
+        $order = $this->createOrderWithPriority("tinggi", 3);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("tinggi", $order->priority);
+        $this->assertEquals("rendah", $order->priority);
     }
 
     /** @test */
-    public function it_escalates_rendah_to_sedang_when_45_days_remaining()
+    public function it_escalates_tinggi_to_sedang_when_45_days_remaining()
     {
-        $order = $this->createOrderWithPriority("rendah", 45);
+        $order = $this->createOrderWithPriority("tinggi", 45);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
@@ -116,36 +116,47 @@ class EscalateOrderPrioritiesTest extends TestCase
     }
 
     /** @test */
-    public function it_does_not_deescalate_tinggi_when_deadline_far()
+    public function it_does_not_deescalate_rendah_when_deadline_far()
     {
-        // 90 days > 60 => rendah by calculation, but command never de-escalates
-        $order = $this->createOrderWithPriority("tinggi", 90);
+        // 90 days > 60 => tinggi by calculation, but command never de-escalates
+        $order = $this->createOrderWithPriority("rendah", 90);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("tinggi", $order->priority);
+        $this->assertEquals("rendah", $order->priority);
     }
 
     /** @test */
     public function it_does_not_deescalate_priority()
     {
-        // A high-priority order should not be de-escalated by the command
-        // because the command only escalates (never reduces) priority levels.
-        // 90 days > 60 => rendah by calculation, but stays tinggi
-        $order = $this->createOrderWithPriority("tinggi", 90);
+        // A rendah-priority order should not be de-escalated by the command
+        // because the command only escalates (never raises) priority levels.
+        // 90 days > 60 => tinggi by calculation, but stays rendah
+        $order = $this->createOrderWithPriority("rendah", 90);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("tinggi", $order->priority); // Should remain tinggi
+        $this->assertEquals("rendah", $order->priority); // Should remain rendah
     }
 
     /** @test */
     public function it_does_not_escalate_when_priority_already_matches()
     {
-        // 5 days <= 30 => tinggi (matches current priority)
-        $order = $this->createOrderWithPriority("tinggi", 5);
+        // 5 days <= 30 => rendah (matches current priority)
+        $order = $this->createOrderWithPriority("rendah", 5);
+
+        $this->artisan("orders:escalate-priorities")->assertSuccessful();
+
+        $order->refresh();
+        $this->assertEquals("rendah", $order->priority);
+    }
+
+    /** @test */
+    public function it_ignores_completed_orders()
+    {
+        $order = $this->createOrderWithPriority("tinggi", 2, "selesai");
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
@@ -154,25 +165,14 @@ class EscalateOrderPrioritiesTest extends TestCase
     }
 
     /** @test */
-    public function it_ignores_completed_orders()
-    {
-        $order = $this->createOrderWithPriority("rendah", 2, "selesai");
-
-        $this->artisan("orders:escalate-priorities")->assertSuccessful();
-
-        $order->refresh();
-        $this->assertEquals("rendah", $order->priority);
-    }
-
-    /** @test */
     public function it_ignores_cancelled_orders()
     {
-        $order = $this->createOrderWithPriority("rendah", 2, "dibatalkan");
+        $order = $this->createOrderWithPriority("tinggi", 2, "dibatalkan");
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("rendah", $order->priority);
+        $this->assertEquals("tinggi", $order->priority);
     }
 
     /** @test */
@@ -188,35 +188,35 @@ class EscalateOrderPrioritiesTest extends TestCase
         \DB::table("orders")
             ->where("id", $order->id)
             ->update([
-                "priority" => "rendah",
+                "priority" => "tinggi",
             ]);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("rendah", $order->priority);
+        $this->assertEquals("tinggi", $order->priority);
     }
 
     /** @test */
     public function dry_run_does_not_update_orders()
     {
-        // 2 days => tinggi by calculation, but dry-run should not change
-        $order = $this->createOrderWithPriority("rendah", 2);
+        // 2 days => rendah by calculation, but dry-run should not change
+        $order = $this->createOrderWithPriority("tinggi", 2);
 
         $this->artisan(
             "orders:escalate-priorities --dry-run",
         )->assertSuccessful();
 
         $order->refresh();
-        $this->assertEquals("rendah", $order->priority); // Should NOT change in dry-run
+        $this->assertEquals("tinggi", $order->priority); // Should NOT change in dry-run
     }
 
     /** @test */
     public function it_sends_notification_when_notify_flag_is_set()
     {
-        // To trigger notification the command must escalate to 'tinggi'.
-        // Use a case that will compute to 'tinggi' (few days remaining = urgent!).
-        $order = $this->createOrderWithPriority("sedang", 10); // 10 days => tinggi
+        // To trigger notification the command must escalate to 'rendah'.
+        // Use a case that will compute to 'rendah' (few days remaining = deadline soon)
+        $order = $this->createOrderWithPriority("sedang", 10); // 10 days => rendah
 
         $this->artisan(
             "orders:escalate-priorities --notify",
@@ -233,8 +233,8 @@ class EscalateOrderPrioritiesTest extends TestCase
     /** @test */
     public function it_does_not_send_notification_without_notify_flag()
     {
-        // 5 days => tinggi, but no notify flag so no notification
-        $order = $this->createOrderWithPriority("rendah", 5);
+        // 5 days => rendah, but no notify flag so no notification
+        $order = $this->createOrderWithPriority("tinggi", 5);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
@@ -247,8 +247,8 @@ class EscalateOrderPrioritiesTest extends TestCase
     /** @test */
     public function it_updates_priority_calculated_at_timestamp()
     {
-        // 5 days => tinggi, escalation should update timestamp
-        $order = $this->createOrderWithPriority("rendah", 5);
+        // 5 days => rendah, escalation should update timestamp
+        $order = $this->createOrderWithPriority("tinggi", 5);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
@@ -259,14 +259,14 @@ class EscalateOrderPrioritiesTest extends TestCase
     /** @test */
     public function it_handles_multiple_orders()
     {
-        // Order 1: Should escalate to tinggi (10 days <= 30 => urgent!)
-        $order1 = $this->createOrderWithPriority("rendah", 10);
+        // Order 1: Should escalate to rendah (10 days <= 30 => deadline soon)
+        $order1 = $this->createOrderWithPriority("tinggi", 10);
 
         // Order 2: Should escalate to sedang (45 days => 31-60 range)
-        $order2 = $this->createOrderWithPriority("rendah", 45, "dikonfirmasi");
+        $order2 = $this->createOrderWithPriority("tinggi", 45, "dikonfirmasi");
 
-        // Order 3: Should not de-escalate (already tinggi, 90 days would be rendah)
-        $order3 = $this->createOrderWithPriority("tinggi", 90);
+        // Order 3: Should not de-escalate (already rendah, 90 days would be tinggi)
+        $order3 = $this->createOrderWithPriority("rendah", 90);
 
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
@@ -274,15 +274,15 @@ class EscalateOrderPrioritiesTest extends TestCase
         $order2->refresh();
         $order3->refresh();
 
-        $this->assertEquals("tinggi", $order1->priority);
+        $this->assertEquals("rendah", $order1->priority);
         $this->assertEquals("sedang", $order2->priority);
-        $this->assertEquals("tinggi", $order3->priority); // never de-escalates
+        $this->assertEquals("rendah", $order3->priority); // never de-escalates
     }
 
     /** @test */
-    public function it_handles_past_deadline_as_tinggi()
+    public function it_handles_past_deadline_as_rendah()
     {
-        // Past deadline = negative days = very urgent, should be tinggi
+        // Past deadline = negative days = deadline passed, should be rendah
         $order = Order::factory()->create([
             "klien_id" => $this->klien->id,
             "created_by" => $this->marketingUser->id,
@@ -299,15 +299,15 @@ class EscalateOrderPrioritiesTest extends TestCase
         $this->artisan("orders:escalate-priorities")->assertSuccessful();
 
         $order->refresh();
-        // Past deadline = negative days <= 30, should escalate to tinggi
-        $this->assertEquals("tinggi", $order->priority);
+        // Past deadline = negative days <= 30, should escalate to rendah
+        $this->assertEquals("rendah", $order->priority);
     }
 
     /** @test */
     public function notification_includes_days_remaining_in_message()
     {
-        // Use a case that will escalate to 'tinggi' so a notification is sent.
-        // 10 days <= 30 => tinggi (urgent!)
+        // Use a case that will escalate to 'rendah' so a notification is sent.
+        // 10 days <= 30 => rendah (deadline soon)
         $order = $this->createOrderWithPriority("sedang", 10);
 
         $this->artisan(
@@ -334,7 +334,7 @@ class EscalateOrderPrioritiesTest extends TestCase
     public function notification_sent_for_1_day_remaining_escalation()
     {
         // Create order with exactly 1 day remaining using a specific date
-        // 1 day <= 30 => tinggi (urgent!)
+        // 1 day <= 30 => rendah (deadline soon)
         $order = Order::factory()->create([
             "klien_id" => $this->klien->id,
             "created_by" => $this->marketingUser->id,
@@ -345,24 +345,24 @@ class EscalateOrderPrioritiesTest extends TestCase
         \DB::table("orders")
             ->where("id", $order->id)
             ->update([
-                "priority" => "sedang", // Will escalate to tinggi
+                "priority" => "sedang", // Will escalate to rendah
             ]);
 
         $this->artisan(
             "orders:escalate-priorities --notify",
         )->assertSuccessful();
 
-        // 1 day remaining = tinggi, escalated from sedang => notification sent
+        // 1 day remaining = rendah, escalated from sedang => notification sent
         $this->assertDatabaseHas("notifications", [
             "type" => OrderNotificationService::TYPE_PRIORITY_ESCALATED,
         ]);
     }
 
     /** @test */
-    public function it_only_notifies_for_escalation_to_tinggi()
+    public function it_only_notifies_for_escalation_to_rendah()
     {
-        // 45 days => sedang, escalation from rendah to sedang should not trigger notification
-        $order = $this->createOrderWithPriority("rendah", 45);
+        // 45 days => sedang, escalation from tinggi to sedang should not trigger notification
+        $order = $this->createOrderWithPriority("tinggi", 45);
 
         $this->artisan(
             "orders:escalate-priorities --notify",
@@ -371,7 +371,7 @@ class EscalateOrderPrioritiesTest extends TestCase
         $order->refresh();
         $this->assertEquals("sedang", $order->priority);
 
-        // No notification should be sent for escalation that is not to 'tinggi'
+        // No notification should be sent for escalation that is not to 'rendah'
         $this->assertDatabaseMissing("notifications", [
             "type" => OrderNotificationService::TYPE_PRIORITY_ESCALATED,
         ]);

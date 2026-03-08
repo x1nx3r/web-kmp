@@ -354,17 +354,16 @@ class OrderNotificationService extends BaseNotificationService
         ?User $changedBy = null,
         ?int $daysRemaining = null,
     ): int {
-        // Only notify if priority actually increased
+        // Only notify if priority actually decreased (escalation = approaching deadline)
         $oldLevel = self::PRIORITY_LEVELS[$oldPriority] ?? 0;
         $newLevel = self::PRIORITY_LEVELS[$newPriority] ?? 0;
 
-        if ($newLevel <= $oldLevel) {
+        if ($newLevel >= $oldLevel) {
             return 0;
         }
 
-        // Only notify for escalation to the top-level priority 'tinggi'
-        // (legacy 'mendesak' was removed in the zero-downtime migration)
-        if ($newPriority !== "tinggi") {
+        // Only notify for escalation to 'rendah' (deadline soon)
+        if ($newPriority !== "rendah") {
             return 0;
         }
 
@@ -460,7 +459,8 @@ class OrderNotificationService extends BaseNotificationService
     }
 
     /**
-     * Check if a priority change is an escalation.
+     * Check if a priority change is an escalation (approaching deadline).
+     * Escalation means moving toward rendah (closer to deadline).
      *
      * @param string $oldPriority
      * @param string $newPriority
@@ -473,6 +473,6 @@ class OrderNotificationService extends BaseNotificationService
         $oldLevel = self::PRIORITY_LEVELS[$oldPriority] ?? 0;
         $newLevel = self::PRIORITY_LEVELS[$newPriority] ?? 0;
 
-        return $newLevel > $oldLevel;
+        return $newLevel < $oldLevel;
     }
 }

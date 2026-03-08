@@ -26,17 +26,17 @@ class EscalateOrderPriorities extends Command
     protected $description = "Automatically escalate order priorities based on PO end date proximity";
 
     /**
-     * Priority thresholds using inverted logic (deadline urgency):
-     * - tinggi: remaining days <= 30 (urgent, deadline soon!)
+     * Priority thresholds using time-remaining logic (per client):
+     * - tinggi: remaining days > 60 (plenty of time, high-value PO)
      * - sedang: remaining days > 30 and <= 60
-     * - rendah: remaining days > 60 (plenty of time)
+     * - rendah: remaining days <= 30 (deadline soon, low remaining value)
      *
      * Keep a minimal constant map for clarity / future use.
      */
     protected const PRIORITY_THRESHOLDS = [
-        "tinggi" => 30,
+        "rendah" => 30,
         "sedang" => 60,
-        "rendah" => PHP_INT_MAX,
+        "tinggi" => PHP_INT_MAX,
     ];
 
     /**
@@ -124,13 +124,13 @@ class EscalateOrderPriorities extends Command
     {
         $days = $this->getDaysRemaining($poEndDate);
 
-        // Inverted priority mapping (deadline urgency):
-        // - tinggi: remaining days <= 30 (urgent, deadline soon!)
+        // Priority mapping (time-remaining based, per client):
+        // - tinggi: remaining days > 60 (plenty of time, high-value PO)
         // - sedang: remaining days > 30 and <= 60
-        // - rendah: remaining days > 60 (plenty of time)
-        if ($days <= 30) {
+        // - rendah: remaining days <= 30 (deadline soon, low remaining value)
+        if ($days > 60) {
             return "tinggi";
-        } elseif ($days <= 60) {
+        } elseif ($days > 30) {
             return "sedang";
         }
 
@@ -147,8 +147,9 @@ class EscalateOrderPriorities extends Command
     }
 
     /**
-     * Check if priority should be escalated.
-     * Only returns true if new priority is higher than old priority.
+     * Check if priority should be escalated (toward deadline).
+     * Escalation means moving toward rendah (closer to deadline).
+     * Only returns true if new priority is lower than old priority.
      */
     protected function shouldEscalate(
         string $oldPriority,
@@ -159,7 +160,7 @@ class EscalateOrderPriorities extends Command
         $oldLevel = $priorityLevels[$oldPriority] ?? 0;
         $newLevel = $priorityLevels[$newPriority] ?? 0;
 
-        return $newLevel > $oldLevel;
+        return $newLevel < $oldLevel;
     }
 
     /**

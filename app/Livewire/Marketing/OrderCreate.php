@@ -475,13 +475,13 @@ class OrderCreate extends Component
         $end = Carbon::parse($this->poEndDate);
         $days = now()->diffInDays($end, false);
 
-        // Inverted priority mapping (deadline urgency):
-        // - tinggi: remaining days <= 30 (urgent, deadline soon!)
+        // Priority mapping (time-remaining based, per client):
+        // - tinggi: remaining days > 60 (plenty of time, high-value PO)
         // - sedang: remaining days > 30 and <= 60
-        // - rendah: remaining days > 60 (plenty of time)
-        if ($days <= 30) {
+        // - rendah: remaining days <= 30 (deadline soon, low remaining value)
+        if ($days > 60) {
             $this->priority = "tinggi";
-        } elseif ($days <= 60) {
+        } elseif ($days > 30) {
             $this->priority = "sedang";
         } else {
             $this->priority = "rendah";

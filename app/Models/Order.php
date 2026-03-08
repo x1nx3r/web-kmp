@@ -205,7 +205,8 @@ class Order extends Model
     public function scopeUrgent($query)
     {
         // Use the legacy `priority` column.
-        return $query->where("priority", "tinggi");
+        // rendah = close to deadline = urgent
+        return $query->where("priority", "rendah");
     }
 
     /**
@@ -214,7 +215,8 @@ class Order extends Model
     public function getIsUrgentAttribute(): bool
     {
         // Use the legacy `priority` column.
-        return $this->priority === "tinggi";
+        // rendah = close to deadline = urgent
+        return $this->priority === "rendah";
     }
 
     public function getCompletionPercentageAttribute(): float
@@ -441,15 +443,15 @@ class Order extends Model
         $baseDate = $baseDate ?? now();
         $daysUntilDue = $baseDate->diffInDays($this->po_end_date, false);
 
-        // Inverted priority mapping (deadline urgency):
-        // - tinggi when remaining days <= 30 (urgent, deadline soon!)
+        // Priority mapping (time-remaining based, per client requirements):
+        // - tinggi when remaining days > 60 (plenty of time, high-value PO)
         // - sedang when remaining days > 30 and <= 60
-        // - rendah when remaining days > 60 (plenty of time)
-        if ($daysUntilDue <= 30) {
+        // - rendah when remaining days <= 30 (deadline soon, low remaining value)
+        if ($daysUntilDue > 60) {
             return "tinggi";
         }
 
-        if ($daysUntilDue <= 60) {
+        if ($daysUntilDue > 30) {
             return "sedang";
         }
 

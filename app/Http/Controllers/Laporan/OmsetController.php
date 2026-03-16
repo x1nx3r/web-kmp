@@ -822,7 +822,7 @@ class OmsetController extends Controller
         if ($request->ajax() && $request->get('ajax') === 'omset_per_bahan_baku') {
             $tahun = $request->get('tahun', Carbon::now()->year);
             $search = $request->get('search', '');
-            
+
             // Query total omset per bahan baku - GROUP BY nama (bukan id) untuk menggabungkan yang namanya sama
             $topBahanBakuQuery = DB::table('bahan_baku_klien')
                 ->select(
@@ -849,7 +849,7 @@ class OmsetController extends Controller
                     'invoice_data.bahan_baku_klien_id'
                 )
                 ->whereNull('bahan_baku_klien.deleted_at');
-            
+
             // Apply search filter if provided
             if (!empty($search)) {
                 $topBahanBakuQuery->where(function($q) use ($search) {
@@ -857,33 +857,59 @@ class OmsetController extends Controller
                       ->orWhere('bahan_baku_klien.spesifikasi', 'like', '%' . $search . '%');
                 });
             }
-            
-            $topBahanBaku = $topBahanBakuQuery
-                ->groupBy('bahan_baku_klien.nama')  // Group by nama saja
+
+            // Ambil dulu per-nama (raw), nanti kita re-group lagi berdasarkan nama yang sudah dinormalisasi
+            $topBahanBakuRaw = $topBahanBakuQuery
+                ->groupBy('bahan_baku_klien.nama')
                 ->having('total', '>', 0)
                 ->orderBy('total', 'desc')
                 ->get();
-            
+
+            // Re-group berdasarkan nama yang sudah dinormalisasi (alias)
+            $topBahanBaku = $topBahanBakuRaw
+                ->map(function($row) {
+                    $row->nama_normalized = $this->normalizeBahanBakuName($row->nama);
+                    return $row;
+                })
+                ->groupBy('nama_normalized')
+                ->map(function($items, $normalizedName) {
+                    $ids = $items
+                        ->flatMap(function($r) {
+                            return array_filter(array_map('trim', explode(',', (string) $r->bahan_baku_ids)));
+                        })
+                        ->unique()
+                        ->values()
+                        ->all();
+
+                    return (object) [
+                        'nama' => $normalizedName,
+                        'bahan_baku_ids' => implode(',', $ids),
+                        'total' => $items->sum('total'),
+                    ];
+                })
+                ->sortByDesc('total')
+                ->values();
+
             $bahanBakuNames = [];
             $datasets = [];
-            
+
             // Warna untuk setiap bulan
             $monthColors = [
                 '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
                 '#06B6D4', '#F97316', '#14B8A6', '#F43F5E', '#8B5CF6', '#6366F1'
             ];
-            
+
             $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-            
+
             // Prepare datasets per month
             for ($bulan = 1; $bulan <= 12; $bulan++) {
                 $monthData = [];
-                
+
                 foreach ($topBahanBaku as $bahanBaku) {
-                    // Get all IDs yang memiliki nama yang sama
-                    $bahanBakuIds = explode(',', $bahanBaku->bahan_baku_ids);
-                    
-                    // Get omset untuk semua bahan baku dengan nama yang sama di bulan ini
+                    // Get all IDs yang sudah digabung (hasil normalisasi)
+                    $bahanBakuIds = array_filter(array_map('trim', explode(',', (string) $bahanBaku->bahan_baku_ids)));
+
+                    // Get omset untuk semua bahan baku (gabungan) di bulan ini
                     $omsetBulan = DB::table('pengiriman')
                         ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                         ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
@@ -903,10 +929,10 @@ class OmsetController extends Controller
                         ->groupBy('pengiriman.id')
                         ->get()
                         ->sum('omset_pengiriman');
-                    
+
                     $monthData[] = floatval($omsetBulan);
                 }
-                
+
                 $datasets[] = [
                     'label' => $monthNames[$bulan - 1],
                     'data' => $monthData,
@@ -915,8 +941,8 @@ class OmsetController extends Controller
                     'borderWidth' => 1
                 ];
             }
-            
-            // Get bahan baku names
+
+            // Get bahan baku names (sudah dinormalisasi)
             foreach ($topBahanBaku as $bahanBaku) {
                 $bahanBakuNames[] = $bahanBaku->nama;
             }
@@ -1891,5 +1917,46 @@ class OmsetController extends Controller
             ->get();
 
         return $result->sum('omset_pengiriman');
+    }
+
+    /**
+     * Normalisasi nama bahan baku agar variasi penulisan digabung dalam 1 kategori.
+     */
+    private function normalizeBahanBakuName(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '';
+        }
+
+        $lower = mb_strtolower($name, 'UTF-8');
+
+        // Alias mapping (keyword matching)
+        $aliases = [
+            'Tepung biskuit' => [
+                'tepung biskuit',
+                'biscuit meal',
+                'biskuit meal',
+                'biscuit mill', // common typo
+                'tepung roti',
+            ],
+            'Mie kuning' => [
+                'mie kuning',
+                'mi kuning',
+                'noodle broken',
+                'tepung mie',
+            ],
+        ];
+
+        foreach ($aliases as $canonical => $keywords) {
+            foreach ($keywords as $kw) {
+                if ($lower === $kw || str_contains($lower, $kw)) {
+                    return $canonical;
+                }
+            }
+        }
+
+        // Default: keep original
+        return $name;
     }
 }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderDetail;
-use App\Models\InvoicePenagihan;
 use App\Models\Pengiriman;
 use App\Models\TargetOmset;
 use App\Models\OmsetManual;
@@ -17,6 +16,43 @@ use App\Exports\MarginExport;
 
 class DashboardController extends Controller
 {
+    /**
+     * Normalisasi nama bahan baku agar variasi penulisan/alias tergabung dalam 1 kategori.
+     */
+    private function normalizeBahanBakuName(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '-';
+        }
+
+        // Lowercase + rapikan spasi
+        $key = mb_strtolower($name);
+        $key = preg_replace('/\s+/', ' ', $key);
+
+        // Mapping alias -> nama group (silakan tambah kalau ada varian lain)
+        $synonyms = [
+            // Tepung biskuit
+            'tepung biskuit' => 'Tepung biskuit',
+            'biscuit meal' => 'Tepung biskuit',
+            'biskuit meal' => 'Tepung biskuit',
+            'biskuit  meal' => 'Tepung biskuit',
+            'tepung roti' => 'Tepung biskuit',
+
+            // Mie kuning
+            'mie kuning' => 'Mie kuning',
+            'noodle broken' => 'Mie kuning',
+            'tepung mie' => 'Mie kuning',
+        ];
+
+        if (isset($synonyms[$key])) {
+            return $synonyms[$key];
+        }
+
+        // Default: title case sederhana (biar rapi di chart)
+        return ucwords($name);
+    }
+
     public function index()
     {
         // ========== OMSET MINGGUAN (Paling Penting) ==========
@@ -832,8 +868,9 @@ class DashboardController extends Controller
     {
         $tahun = $request->get('tahun', Carbon::now()->year);
         $search = $request->get('search', '');
-        
-        // Query total omset per bahan baku dengan fallback logic - GROUP BY nama (bukan id)
+
+        // Query total omset per bahan baku dengan fallback logic
+        // NOTE: tetap group by pengiriman + bahan baku id, nanti kita gabungkan lagi pakai normalisasi nama
         $topBahanBakuRaw = DB::table('pengiriman')
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
@@ -853,7 +890,7 @@ class DashboardController extends Controller
             ->whereNull('pengiriman.deleted_at')
             ->whereNull('bahan_baku_klien.deleted_at')
             ->groupBy('pengiriman.id', 'bahan_baku_klien.id', 'bahan_baku_klien.nama');
-        
+
         // Apply search filter if provided
         if (!empty($search)) {
             $topBahanBakuRaw->where(function($q) use ($search) {
@@ -863,24 +900,29 @@ class DashboardController extends Controller
         }
         
         $topBahanBakuData = $topBahanBakuRaw->get();
-        
-        // Group by nama (bukan id) dan sum omset
-        $topBahanBakuGrouped = $topBahanBakuData->groupBy('nama')->map(function($items) {
-            $bahanBakuIds = $items->pluck('bahan_baku_id')->unique()->implode(',');
-            return (object)[
-                'nama' => $items->first()->nama,
-                'bahan_baku_ids' => $bahanBakuIds,
-                'total' => $items->sum('omset_pengiriman')
-            ];
-        })->filter(function($item) {
-            return $item->total > 0;
-        })->sortByDesc('total');
-        
+
+        // Group by nama normalisasi (alias digabung), kumpulkan ID-ID untuk query per bulan
+        $topBahanBakuGrouped = $topBahanBakuData
+            ->groupBy(function ($row) {
+                return $this->normalizeBahanBakuName($row->nama);
+            })
+            ->map(function($items, $normalizedName) {
+                $bahanBakuIds = $items->pluck('bahan_baku_id')->unique()->values()->all();
+                return (object)[
+                    'nama' => $normalizedName,
+                    'bahan_baku_ids' => $bahanBakuIds,
+                    'total' => $items->sum('omset_pengiriman')
+                ];
+            })
+            ->filter(fn($item) => $item->total > 0)
+            ->sortByDesc('total')
+            ->values();
+
         $topBahanBaku = $topBahanBakuGrouped;
-        
+
         $bahanBakuNames = [];
         $datasets = [];
-        
+
         // Warna untuk setiap bulan
         $monthColors = [
             '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899',
@@ -894,10 +936,9 @@ class DashboardController extends Controller
             $monthData = [];
             
             foreach ($topBahanBaku as $bahanBaku) {
-                // Get all IDs yang memiliki nama yang sama
-                $bahanBakuIds = explode(',', $bahanBaku->bahan_baku_ids);
-                
-                // Get omset untuk semua bahan baku dengan nama yang sama di bulan ini (dengan fallback logic)
+                $bahanBakuIds = $bahanBaku->bahan_baku_ids;
+
+                // Get omset untuk semua bahan baku (id-id) yang sudah digabung di bulan ini
                 $omsetBulan = DB::table('pengiriman')
                     ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                     ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
@@ -917,7 +958,7 @@ class DashboardController extends Controller
                     ->groupBy('pengiriman.id')
                     ->get()
                     ->sum('omset_pengiriman');
-                
+
                 $monthData[] = floatval($omsetBulan);
             }
             
@@ -930,7 +971,7 @@ class DashboardController extends Controller
             ];
         }
         
-        // Get bahan baku names
+        // Get bahan baku names (yang sudah dinormalisasi)
         foreach ($topBahanBaku as $bahanBaku) {
             $bahanBakuNames[] = $bahanBaku->nama;
         }
@@ -960,7 +1001,7 @@ class DashboardController extends Controller
         } else {
             $currentWeekOfMonth = 4;
         }
-        
+
         // Hitung range tanggal untuk minggu ini
         $startOfMonth = Carbon::now()->startOfMonth();
         
@@ -1186,7 +1227,7 @@ class DashboardController extends Controller
         } else {
             $currentWeekOfMonth = 4;
         }
-        
+
         // Hitung range tanggal untuk minggu ini
         $startOfMonth = Carbon::now()->startOfMonth();
         

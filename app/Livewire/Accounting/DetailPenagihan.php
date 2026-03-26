@@ -4,13 +4,12 @@ namespace App\Livewire\Accounting;
 
 use App\Models\ApprovalPenagihan;
 use App\Models\ApprovalHistory;
-use App\Models\InvoicePenagihan;
-use App\Models\Pengiriman;
 use App\Models\CompanySetting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class DetailPenagihan extends Component
 {
@@ -45,6 +44,7 @@ class DetailPenagihan extends Component
     public $invoiceForm = [
         'refraksi_type' => 'qty',
         'refraksi_value' => 0,
+        'amount_before_refraksi' => null,
     ];
 
     public $invoiceNumberForm = '';
@@ -104,8 +104,8 @@ class DetailPenagihan extends Component
             ];
 
             $this->dateForm = [
-                'invoice_date' => $this->invoice->invoice_date ? $this->invoice->invoice_date->format('Y-m-d') : '',
-                'due_date' => $this->invoice->due_date ? $this->invoice->due_date->format('Y-m-d') : '',
+                'invoice_date' => $this->invoice->invoice_date ? Carbon::parse($this->invoice->invoice_date)->format('Y-m-d') : '',
+                'due_date' => $this->invoice->due_date ? Carbon::parse($this->invoice->due_date)->format('Y-m-d') : '',
             ];
 
             $this->bankForm = [
@@ -117,6 +117,7 @@ class DetailPenagihan extends Component
             $this->invoiceForm = [
                 'refraksi_type' => $this->invoice->refraksi_type ?? 'qty',
                 'refraksi_value' => $this->invoice->refraksi_value ?? 0,
+                'amount_before_refraksi' => $this->invoice->amount_before_refraksi,
             ];
 
             $this->invoiceNumberForm = $this->invoice->invoice_number ?? '';
@@ -191,14 +192,16 @@ class DetailPenagihan extends Component
 
             $changes = [
                 'before' => [
-                    'invoice_date' => $this->invoice->invoice_date ? $this->invoice->invoice_date->format('Y-m-d') : null,
-                    'due_date' => $this->invoice->due_date ? $this->invoice->due_date->format('Y-m-d') : null,
+                    'invoice_date' => $this->invoice->invoice_date ? Carbon::parse($this->invoice->invoice_date)->format('Y-m-d') : null,
+                    'due_date' => $this->invoice->due_date ? Carbon::parse($this->invoice->due_date)->format('Y-m-d') : null,
                 ],
                 'after' => $this->dateForm,
             ];
 
-            $this->invoice->invoice_date = $this->dateForm['invoice_date'];
-            $this->invoice->due_date = $this->dateForm['due_date'];
+            /** @phpstan-ignore-next-line */
+            $this->invoice->invoice_date = Carbon::parse($this->dateForm['invoice_date'])->format('Y-m-d'); // @phpstan-ignore-line
+            /** @phpstan-ignore-next-line */
+            $this->invoice->due_date = Carbon::parse($this->dateForm['due_date'])->format('Y-m-d'); // @phpstan-ignore-line
             $this->invoice->save();
 
             ApprovalHistory::create([
@@ -218,8 +221,8 @@ class DetailPenagihan extends Component
             // Hanya refresh invoice, update form tanggal saja
             $this->invoice->refresh();
             $this->dateForm = [
-                'invoice_date' => $this->invoice->invoice_date ? $this->invoice->invoice_date->format('Y-m-d') : '',
-                'due_date' => $this->invoice->due_date ? $this->invoice->due_date->format('Y-m-d') : '',
+                'invoice_date' => $this->invoice->invoice_date ? Carbon::parse($this->invoice->invoice_date)->format('Y-m-d') : '',
+                'due_date' => $this->invoice->due_date ? Carbon::parse($this->invoice->due_date)->format('Y-m-d') : '',
             ];
         } catch (\Exception $e) {
             DB::rollBack();
@@ -369,23 +372,30 @@ class DetailPenagihan extends Component
         try {
             $user = Auth::user();
 
+            $this->validate([
+                'invoiceForm.refraksi_type' => 'nullable|in:qty,rupiah,lainnya',
+                'invoiceForm.refraksi_value' => 'nullable|numeric|min:0',
+                'invoiceForm.amount_before_refraksi' => 'nullable|numeric|min:0',
+            ]);
+
             $oldValues = [
                 'refraksi_type' => $this->invoice->refraksi_type,
                 'refraksi_value' => $this->invoice->refraksi_value,
                 'refraksi_amount' => $this->invoice->refraksi_amount,
+                'amount_before_refraksi' => $this->invoice->amount_before_refraksi,
+                'amount_after_refraksi' => $this->invoice->amount_after_refraksi,
+                'subtotal' => $this->invoice->subtotal,
+                'total_amount' => $this->invoice->total_amount,
             ];
 
-            $this->invoice->refraksi_type = $this->invoiceForm['refraksi_type'];
-            $this->invoice->refraksi_value = floatval($this->invoiceForm['refraksi_value']);
-
-            // Recalculate refraksi — gunakan harga JUAL, bukan harga beli
-            $qtyBeforeRefraksi = $this->pengiriman->total_qty_kirim;
+            // Recalculate refraksi — gunakan harga JUAL, tapi boleh dioverride manual
+            $qtyBeforeRefraksi = floatval($this->pengiriman->total_qty_kirim ?? 0);
             $qtyAfterRefraksi = $qtyBeforeRefraksi;
             $refraksiAmount = 0;
 
-            // Hitung total harga jual dari detail (sama seperti render())
+            // Hitung total harga jual default dari detail (fallback)
             $totalSelling = 0;
-            $this->pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku');
+            $this->pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail');
             foreach ($this->pengiriman->pengirimanDetails as $detail) {
                 $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
                 if ($orderDetail && $orderDetail->harga_jual) {
@@ -393,41 +403,60 @@ class DetailPenagihan extends Component
                 }
             }
 
-            $amountBeforeRefraksi = $totalSelling;
-            $subtotal = $totalSelling;
+            $manualAmountBefore = $this->invoiceForm['amount_before_refraksi'] ?? null;
+            $amountBeforeRefraksi = ($manualAmountBefore !== null && $manualAmountBefore !== '')
+                ? floatval($manualAmountBefore)
+                : floatval($totalSelling);
+
+            $refraksiType = $this->invoiceForm['refraksi_type'] ?? null;
             $refraksiValue = floatval($this->invoiceForm['refraksi_value'] ?? 0);
 
+            // Jika refraksi 0, selalu reset refraksi; amount_before tetap mengikuti input/manual
             if ($refraksiValue <= 0) {
-                // Tidak ada refraksi — reset semua field ke harga jual penuh
                 $this->invoice->refraksi_type = null;
-                $this->invoice->refraksi_value = 0; // 0, bukan null (kolom NOT NULL di DB)
-                $this->invoice->refraksi_amount = 0;
-                $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
-                $this->invoice->qty_after_refraksi = $qtyBeforeRefraksi;
-                $this->invoice->amount_before_refraksi = $amountBeforeRefraksi;
-                $this->invoice->amount_after_refraksi = $amountBeforeRefraksi;
-                $this->invoice->subtotal = $amountBeforeRefraksi;
+
+                $this->invoice->refraksi_value = 0.0; // @phpstan-ignore-line
+                $this->invoice->refraksi_amount = 0.0; // @phpstan-ignore-line
+
+                $this->invoice->qty_before_refraksi = (float) $qtyBeforeRefraksi; // @phpstan-ignore-line
+                $this->invoice->qty_after_refraksi = (float) $qtyBeforeRefraksi; // @phpstan-ignore-line
+
+                $this->invoice->amount_before_refraksi = (float) $amountBeforeRefraksi; // @phpstan-ignore-line
+                $this->invoice->amount_after_refraksi = (float) $amountBeforeRefraksi; // @phpstan-ignore-line
+                $this->invoice->subtotal = (float) $amountBeforeRefraksi; // @phpstan-ignore-line
             } else {
-                if ($this->invoice->refraksi_type === 'qty') {
-                    $refraksiQty = $qtyBeforeRefraksi * ($this->invoice->refraksi_value / 100);
+                $this->invoice->refraksi_type = $refraksiType;
+
+                $this->invoice->refraksi_value = (float) $refraksiValue; // @phpstan-ignore-line
+
+                $subtotal = (float) $amountBeforeRefraksi;
+
+                if ($refraksiType === 'qty') {
+                    $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
                     $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
                     $hargaPerKg = $qtyBeforeRefraksi > 0 ? $subtotal / $qtyBeforeRefraksi : 0;
                     $refraksiAmount = $refraksiQty * $hargaPerKg;
                     $subtotal = $subtotal - $refraksiAmount;
-                } elseif ($this->invoice->refraksi_type === 'rupiah') {
-                    $refraksiAmount = $this->invoice->refraksi_value * $qtyBeforeRefraksi;
+                } elseif ($refraksiType === 'rupiah') {
+                    $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
                     $subtotal = $subtotal - $refraksiAmount;
-                } elseif ($this->invoice->refraksi_type === 'lainnya') {
-                    $refraksiAmount = $this->invoice->refraksi_value;
+                } elseif ($refraksiType === 'lainnya') {
+                    $refraksiAmount = $refraksiValue;
                     $subtotal = $subtotal - $refraksiAmount;
                 }
 
-                $this->invoice->refraksi_amount = $refraksiAmount;
-                $this->invoice->qty_before_refraksi = $qtyBeforeRefraksi;
-                $this->invoice->qty_after_refraksi = $qtyAfterRefraksi;
-                $this->invoice->amount_before_refraksi = $amountBeforeRefraksi; // harga jual sebelum refraksi
-                $this->invoice->amount_after_refraksi = $subtotal;              // harga jual setelah refraksi
-                $this->invoice->subtotal = $subtotal;
+                // Guard: subtotal jangan negatif
+                if ($subtotal < 0) {
+                    $subtotal = 0;
+                }
+
+                $this->invoice->refraksi_amount = (float) $refraksiAmount; // @phpstan-ignore-line
+                $this->invoice->qty_before_refraksi = (float) $qtyBeforeRefraksi; // @phpstan-ignore-line
+                $this->invoice->qty_after_refraksi = (float) $qtyAfterRefraksi; // @phpstan-ignore-line
+
+                $this->invoice->amount_before_refraksi = (float) $amountBeforeRefraksi; // @phpstan-ignore-line
+                $this->invoice->amount_after_refraksi = (float) $subtotal; // @phpstan-ignore-line
+                $this->invoice->subtotal = (float) $subtotal; // @phpstan-ignore-line
             }
 
             // Recalculate total (pajak, dll) menggunakan model method
@@ -439,6 +468,10 @@ class DetailPenagihan extends Component
                     'refraksi_type' => $this->invoice->refraksi_type,
                     'refraksi_value' => $this->invoice->refraksi_value,
                     'refraksi_amount' => $this->invoice->refraksi_amount,
+                    'amount_before_refraksi' => $this->invoice->amount_before_refraksi,
+                    'amount_after_refraksi' => $this->invoice->amount_after_refraksi,
+                    'subtotal' => $this->invoice->subtotal,
+                    'total_amount' => $this->invoice->total_amount,
                 ],
             ];
 
@@ -451,16 +484,17 @@ class DetailPenagihan extends Component
                 'user_id' => $user->id,
                 'action' => 'edited',
                 'changes' => $changes,
-                'notes' => 'Update refraksi invoice',
+                'notes' => 'Update harga jual dan refraksi invoice',
             ]);
 
             DB::commit();
-            session()->flash('message', 'Refraksi berhasil diupdate');
-            // Hanya refresh invoice, update form refraksi saja
+            session()->flash('message', 'Harga jual / refraksi berhasil diupdate');
+
             $this->invoice->refresh();
             $this->invoiceForm = [
                 'refraksi_type' => $this->invoice->refraksi_type ?? 'qty',
                 'refraksi_value' => $this->invoice->refraksi_value ?? 0,
+                'amount_before_refraksi' => $this->invoice->amount_before_refraksi,
             ];
         } catch (\Exception $e) {
             DB::rollBack();

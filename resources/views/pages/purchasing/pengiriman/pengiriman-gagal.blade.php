@@ -201,6 +201,10 @@
             
             {{-- Pagination --}}
             @if($pengirimanGagal->hasPages())
+                @php
+                    // Controller memakai pageName: gagal_page
+                    $pengirimanGagal->setPageName('gagal_page');
+                @endphp
                 <div class="px-6 py-4 border-t border-gray-200">
                     <div class="flex items-center justify-between">
                         <div class="flex-1 flex justify-between sm:hidden">
@@ -209,13 +213,13 @@
                                     Sebelumnya
                                 </span>
                             @else
-                                <a href="{{ $pengirimanGagal->previousPageUrl() }}&tab=pengiriman-gagal&search_gagal={{ request('search_gagal') }}&date_range_gagal={{ request('date_range_gagal') }}&filter_purchasing_gagal={{ request('filter_purchasing_gagal') }}&sort_order_gagal={{ request('sort_order_gagal') }}" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
+                                <a href="{{ $pengirimanGagal->appends(array_merge(request()->except('gagal_page'), ['tab' => 'pengiriman-gagal']))->previousPageUrl() }}" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
                                     Sebelumnya
                                 </a>
                             @endif
 
                             @if($pengirimanGagal->hasMorePages())
-                                <a href="{{ $pengirimanGagal->nextPageUrl() }}&tab=pengiriman-gagal&search_gagal={{ request('search_gagal') }}&date_range_gagal={{ request('date_range_gagal') }}&filter_purchasing_gagal={{ request('filter_purchasing_gagal') }}&sort_order_gagal={{ request('sort_order_gagal') }}" class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
+                                <a href="{{ $pengirimanGagal->appends(array_merge(request()->except('gagal_page'), ['tab' => 'pengiriman-gagal']))->nextPageUrl() }}" class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
                                     Selanjutnya
                                 </a>
                             @else
@@ -239,48 +243,7 @@
                             </div>
 
                             <div>
-                                <span class="relative z-0 inline-flex shadow-sm rounded-md">
-                                    @if($pengirimanGagal->onFirstPage())
-                                        <span aria-disabled="true" aria-label="Previous">
-                                            <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default rounded-l-md leading-5" aria-hidden="true">
-                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </span>
-                                        </span>
-                                    @else
-                                        <a href="{{ $pengirimanGagal->previousPageUrl() }}&tab=pengiriman-gagal&search_gagal={{ request('search_gagal') }}&date_range_gagal={{ request('date_range_gagal') }}&filter_purchasing_gagal={{ request('filter_purchasing_gagal') }}&sort_order_gagal={{ request('sort_order_gagal') }}" rel="prev" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150" aria-label="Previous">
-                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                            </svg>
-                                        </a>
-                                    @endif
-
-                                    @foreach($pengirimanGagal->getUrlRange(1, $pengirimanGagal->lastPage()) as $page => $url)
-                                        @if($page == $pengirimanGagal->currentPage())
-                                            <span aria-current="page">
-                                                <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-white bg-red-600 border border-red-600 cursor-default leading-5">{{ $page }}</span>
-                                            </span>
-                                        @else
-                                            <a href="{{ $url }}&tab=pengiriman-gagal&search_gagal={{ request('search_gagal') }}&date_range_gagal={{ request('date_range_gagal') }}&filter_purchasing_gagal={{ request('filter_purchasing_gagal') }}&sort_order_gagal={{ request('sort_order_gagal') }}" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
-                                        @endif
-                                    @endforeach
-
-                                    @if($pengirimanGagal->hasMorePages())
-                                        <a href="{{ $pengirimanGagal->nextPageUrl() }}&tab=pengiriman-gagal&search_gagal={{ request('search_gagal') }}&date_range_gagal={{ request('date_range_gagal') }}&filter_purchasing_gagal={{ request('filter_purchasing_gagal') }}&sort_order_gagal={{ request('sort_order_gagal') }}" rel="next" class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150" aria-label="Next">
-                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                            </svg>
-                                        </a>
-                                    @else
-                                        <span aria-disabled="true" aria-label="Next">
-                                            <span class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default rounded-r-md leading-5" aria-hidden="true">
-                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                            </span>
-                                        </span>
-                                    @endif
-                                </span>
+                                {{ $pengirimanGagal->appends(array_merge(request()->except('gagal_page'), ['tab' => 'pengiriman-gagal']))->links() }}
                             </div>
                         </div>
                     </div>
@@ -291,7 +254,7 @@
 </div>
 
 {{-- Modal Detail Pengiriman --}}
-<div id="detailPengirimanModalGagal" class="fixed inset-0 backdrop-blur-xs  bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+<div id="detailPengirimanModalGagal" class="fixed inset-0 backdrop-blur-xs bg-opacity-50 items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         
         {{-- Header Modal --}}

@@ -313,35 +313,50 @@
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
                                 <h5 class="text-sm font-semibold text-gray-700 mb-3">
                                     <i class="fas fa-edit mr-1"></i>
-                                    Edit Refraksi
+                                    Edit Harga Jual & Refraksi
                                 </h5>
 
-                                <div class="grid grid-cols-2 gap-3 mb-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">
-                                            Tipe Refraksi
-                                        </label>
-                                        <select
-                                            wire:model="invoiceForm.refraksi_type"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                        >
-                                            <option value="qty">Refraksi Qty (%)</option>
-                                            <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
-                                            <option value="lainnya">Refraksi Lainnya (Manual)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">
-                                            Nilai Refraksi
-                                        </label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Harga Jual Total</label>
                                         <input
                                             type="number"
-                                            wire:model="invoiceForm.refraksi_value"
-                                            min="0"
                                             step="0.01"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : (($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah' ? '40 untuk Rp 40/kg' : '500000 untuk Rp 500.000') }}"
+                                            min="0"
+                                            wire:model="invoiceForm.amount_before_refraksi"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                            placeholder="Kosongkan untuk pakai hasil hitung otomatis"
                                         />
+                                        @error('invoiceForm.amount_before_refraksi') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                        <p class="mt-1 text-[11px] text-gray-500">
+                                            Jika diisi, nilai ini akan dipakai sebagai dasar perhitungan refraksi dan subtotal.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Tipe Refraksi</label>
+                                        <select
+                                            wire:model="invoiceForm.refraksi_type"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                        >
+                                            <option value="qty">Qty (%)</option>
+                                            <option value="rupiah">Rupiah (Rp/Kg)</option>
+                                            <option value="lainnya">Lainnya (Nominal)</option>
+                                        </select>
+                                        @error('invoiceForm.refraksi_type') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nilai Refraksi</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            wire:model="invoiceForm.refraksi_value"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                            placeholder="0 untuk nonaktif"
+                                        />
+                                        @error('invoiceForm.refraksi_value') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
 
@@ -352,7 +367,7 @@
                                 >
                                     <span wire:loading.remove wire:target="updateRefraksi">
                                         <i class="fas fa-save mr-1"></i>
-                                        Update Refraksi
+                                        Update Harga Jual dan Refraksi
                                     </span>
                                     <span wire:loading wire:target="updateRefraksi">
                                         <i class="fas fa-spinner fa-spin mr-1"></i>
@@ -399,6 +414,14 @@
 
                         {{-- Financial Summary from Order --}}
                         @if($order)
+                            @php
+                                // Gunakan harga jual total dari invoice jika dioverride, agar margin konsisten
+                                $displayTotalSelling = $invoice->amount_before_refraksi ?? $totalSelling;
+                                $displayTotalMargin = $displayTotalSelling - ($pengiriman->total_harga_kirim ?? 0);
+                                $displayMarginPercentage = $displayTotalSelling > 0
+                                    ? ($displayTotalMargin / $displayTotalSelling) * 100
+                                    : 0;
+                            @endphp
                             <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                                 <div class="px-6 py-4 border-b border-gray-200">
                                     <h3 class="text-lg font-semibold text-gray-900 flex items-center">
@@ -418,19 +441,21 @@
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600">Total Harga Jual:</span>
-                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($totalSelling, 2, ',', '.') }}</span>
+                                        <span class="text-sm font-semibold text-gray-900">
+                                            Rp {{ number_format($displayTotalSelling, 2, ',', '.') }}
+                                        </span>
                                     </div>
                                     <hr class="border-gray-200">
                                     <div class="flex justify-between">
                                         <span class="text-sm font-medium text-gray-700">Total Margin:</span>
-                                        <span class="text-sm font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                            Rp {{ number_format($totalMargin, 2, ',', '.') }}
+                                        <span class="text-sm font-bold {{ $displayTotalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            Rp {{ number_format($displayTotalMargin, 2, ',', '.') }}
                                         </span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm font-medium text-gray-700">Persentase Margin:</span>
-                                        <span class="text-sm font-bold {{ $marginPercentage >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ number_format($marginPercentage, 2, ',', '.') }}%
+                                        <span class="text-sm font-bold {{ $displayMarginPercentage >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ number_format($displayMarginPercentage, 2, ',', '.') }}%
                                         </span>
                                     </div>
                                 </div>
@@ -439,6 +464,13 @@
 
                         {{-- Pengiriman Information --}}
                         <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+                            @php
+                                $displayTotalSelling2 = $invoice->amount_before_refraksi ?? $totalSelling;
+                                $displayTotalMargin2 = $displayTotalSelling2 - ($pengiriman->total_harga_kirim ?? 0);
+                                $displayMarginPercentage2 = $displayTotalSelling2 > 0
+                                    ? ($displayTotalMargin2 / $displayTotalSelling2) * 100
+                                    : 0;
+                            @endphp
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <i class="fas fa-truck text-purple-600 mr-2"></i>
                                 Informasi Pengiriman
@@ -462,13 +494,15 @@
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Total Harga Jual</p>
-                                    <p class="font-semibold text-gray-900">Rp {{ number_format($totalSelling, 2, ',', '.') }}</p>
+                                    <p class="font-semibold text-gray-900">
+                                        Rp {{ number_format($displayTotalSelling2, 2, ',', '.') }}
+                                    </p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Margin</p>
-                                    <p class="font-semibold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                        Rp {{ number_format($totalMargin, 2, ',', '.') }}
-                                        <span class="text-xs">({{ number_format($marginPercentage, 2, ',', '.') }}%)</span>
+                                    <p class="font-semibold {{ $displayTotalMargin2 >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        Rp {{ number_format($displayTotalMargin2, 2, ',', '.') }}
+                                        <span class="text-xs">({{ number_format($displayMarginPercentage2, 2, ',', '.') }}%)</span>
                                     </p>
                                 </div>
                             </div>

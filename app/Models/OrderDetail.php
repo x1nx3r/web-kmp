@@ -551,5 +551,15 @@ class OrderDetail extends Model
             // Update parent order totals when detail changes
             $orderDetail->order->calculateTotals();
         });
+
+        static::deleted(function ($orderDetail) {
+            // Update parent order totals when detail is deleted (soft-delete)
+            $orderDetail->order->calculateTotals();
+        });
+
+        static::restored(function ($orderDetail) {
+            // Update parent order totals when detail is restored
+            $orderDetail->order->calculateTotals();
+        });
     }
 }

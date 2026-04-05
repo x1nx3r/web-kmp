@@ -34,6 +34,12 @@ class ApprovePenagihan extends Component
             'account_number' => '429-3468888',
             'account_name' => 'PT KAMIL MAJU PERSADA',
         ],
+        'mandiri2' => [
+            'name' => 'Bank Mandiri',
+            'account_number' => '141-0008899098',
+            'account_name' => 'PT KAMIL MAJU PERSADA',
+        ],
+        
     ];
 
     // Refraksi form
@@ -237,8 +243,14 @@ class ApprovePenagihan extends Component
         }
 
         $this->validate([
-            'selectedBank' => 'required|in:mandiri,bca',
+            // accept any key that exists in bankOptions (so adding a new bank option will work)
+            'selectedBank' => 'required',
         ]);
+
+        if (!array_key_exists($this->selectedBank, $this->bankOptions)) {
+            session()->flash('error', 'Bank tidak valid');
+            return;
+        }
 
         try {
             $bankInfo = $this->bankOptions[$this->selectedBank];

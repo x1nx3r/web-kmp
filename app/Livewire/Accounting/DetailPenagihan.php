@@ -70,7 +70,7 @@ class DetailPenagihan extends Component
 
         // Check permissions
         $user = Auth::user();
-        $this->canManage = in_array($user->role, ['manager_accounting', 'direktur', 'superadmin']);
+        $this->canManage = in_array($user->role, ['manager_accounting', 'direktur', 'superadmin','staff_accounting']);
 
         $this->loadDetail();
     }
@@ -512,6 +512,8 @@ class DetailPenagihan extends Component
             return 'direktur';
         } elseif ($user->role === 'superadmin') {
             return 'superadmin';
+        } elseif ($user->role === 'staff_accounting') {
+             return 'staff_accounting';
         }
         return null;
     }

@@ -99,7 +99,7 @@ class ApprovalPenagihan extends Component
 
         // Check permissions - manager_accounting, direktur, or superadmin can manage
         $user = Auth::user();
-        $this->canManage = in_array($user->role, ['manager_accounting', 'direktur', 'superadmin']);
+        $this->canManage = in_array($user->role, ['manager_accounting', 'direktur', 'superadmin','staff_accounting']);
 
         // If we have approvalId, auto-open detail modal
         if ($approvalId) {
@@ -954,6 +954,8 @@ class ApprovalPenagihan extends Component
             return 'direktur';
         } elseif ($user->role === 'superadmin') {
             return 'superadmin';
+        } elseif ($user->role === 'staff_accounting') {
+            return 'staff_accounting';
         }
 
         return null;

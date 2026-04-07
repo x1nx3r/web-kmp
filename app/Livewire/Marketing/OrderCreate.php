@@ -494,19 +494,13 @@ class OrderCreate extends Component
             return (bool) ($this->selectedKlienId &&
                 $this->selectedMaterial &&
                 $this->quantity > 0 &&
-                $this->hargaJual > 0 &&
-                !empty($this->poNumber) &&
-                !empty($this->poStartDate) &&
-                !empty($this->poEndDate));
+                $this->hargaJual > 0);
         }
 
         return (bool) ($this->selectedKlienId &&
             $this->selectedMaterial &&
             $this->quantity > 0 &&
-            $this->hargaJual > 0 &&
-            !empty($this->poNumber) &&
-            !empty($this->poStartDate) &&
-            !empty($this->poEndDate));
+            $this->hargaJual > 0);
     }
 
     // Removed unused multi-item methods - now focusing on single material orders
@@ -520,9 +514,9 @@ class OrderCreate extends Component
             "quantity" => "required|numeric|min:0.01",
             "hargaJual" => "required|numeric|min:0",
             "tanggalOrder" => "required|date",
-            "poNumber" => "required|string|max:50",
-            "poStartDate" => "required|date",
-            "poEndDate" => "required|date|after_or_equal:poStartDate",
+            "poNumber" => "nullable|string|max:50",
+            "poStartDate" => "nullable|date",
+            "poEndDate" => "nullable|date|after_or_equal:poStartDate",
             "poDocument" => "nullable|file|mimes:jpg,jpeg,png,pdf|max:5120",
             // Use new allowed values for the UI-level priority field
             "priority" => "required|in:rendah,sedang,tinggi",
@@ -566,9 +560,9 @@ class OrderCreate extends Component
                 "klien_id" => $this->selectedKlienId,
                 "created_by" => $userId, // Use created_by instead of user_id
                 "tanggal_order" => $this->tanggalOrder,
-                "po_number" => $this->poNumber,
-                "po_start_date" => $this->poStartDate,
-                "po_end_date" => $this->poEndDate,
+                "po_number" => $this->poNumber ?: null,
+                "po_start_date" => $this->poStartDate ?: null,
+                "po_end_date" => $this->poEndDate ?: null,
                 "po_document_path" => $poDocumentPath,
                 "po_document_original_name" => $poOriginalName,
                 // Write into the legacy `priority` column (surgical migration path).
@@ -650,9 +644,9 @@ class OrderCreate extends Component
             "selectedKlienId" => "required",
             "namaMaterialPO" => "nullable|string|max:255",
             "tanggalOrder" => "required|date",
-            "poNumber" => "required|string|max:50",
-            "poStartDate" => "required|date",
-            "poEndDate" => "required|date|after_or_equal:poStartDate",
+            "poNumber" => "nullable|string|max:50",
+            "poStartDate" => "nullable|date",
+            "poEndDate" => "nullable|date|after_or_equal:poStartDate",
             "poDocument" => "nullable|file|mimes:jpg,jpeg,png|max:5120",
             // validation updated to accept new priority values
             "priority" => "required|in:rendah,sedang,tinggi",
@@ -712,9 +706,9 @@ class OrderCreate extends Component
             $order->update([
                 "klien_id" => $this->selectedKlienId,
                 "tanggal_order" => $this->tanggalOrder,
-                "po_number" => $this->poNumber,
-                "po_start_date" => $this->poStartDate,
-                "po_end_date" => $this->poEndDate,
+                "po_number" => $this->poNumber ?: null,
+                "po_start_date" => $this->poStartDate ?: null,
+                "po_end_date" => $this->poEndDate ?: null,
                 "po_document_path" => $poDocumentPath,
                 "po_document_original_name" => $poOriginalName,
                 // Update the legacy `priority` enum column directly (surgical migration path).

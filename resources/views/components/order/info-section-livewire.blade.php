@@ -52,7 +52,7 @@
         {{-- PO Number --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                Nomor PO <span class="text-red-500">*</span>
+                Nomor PO <span class="text-xs text-gray-500 font-normal ml-1">(opsional)</span>
             </label>
             <input type="text" wire:model.lazy="poNumber"
                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -66,7 +66,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                    PO Mulai <span class="text-red-500">*</span>
+                    PO Mulai <span class="text-xs text-gray-500 font-normal ml-1">(opsional)</span>
                 </label>
                 <input type="date" wire:model="poStartDate"
                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
@@ -76,7 +76,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                    PO Berakhir / Jatuh Tempo <span class="text-red-500">*</span>
+                    PO Berakhir / Jatuh Tempo <span class="text-xs text-gray-500 font-normal ml-1">(opsional)</span>
                 </label>
                 <input type="date" wire:model="poEndDate"
                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">

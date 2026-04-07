@@ -83,6 +83,13 @@
                             </div>
                         @endif
 
+                        @if(!$this->canSubmit)
+                            <div class="bg-yellow-50 text-yellow-700 p-3 rounded-lg text-sm border border-yellow-200">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                Silakan lengkapi Klien, Material, Qty, dan Harga Jual untuk menyimpan.
+                            </div>
+                        @endif
+
                         <div class="flex flex-col space-y-3">
                             @if($isEditing)
                                 <button

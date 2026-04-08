@@ -258,38 +258,50 @@
                                     Edit Informasi Bank
                                 </h5>
 
-                                <div class="grid grid-cols-1 gap-3 mb-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Bank *</label>
-                                        <input
-                                            type="text"
-                                            wire:model="bankForm.bank_name"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="Contoh: Bank BCA"
-                                        />
-                                        @error('bankForm.bank_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nomor Rekening *</label>
-                                        <input
-                                            type="text"
-                                            wire:model="bankForm.bank_account_number"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="Nomor rekening"
-                                        />
-                                        @error('bankForm.bank_account_number') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Pemilik Rekening *</label>
-                                        <input
-                                            type="text"
-                                            wire:model="bankForm.bank_account_name"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="Nama pemilik rekening"
-                                        />
-                                        @error('bankForm.bank_account_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                    </div>
+                                {{-- Bank Selection (no auto-save; saved by button below) --}}
+                                <div class="space-y-3 mb-3">
+                                    @foreach($bankOptions as $key => $bank)
+                                        <label class="flex items-start p-3 border-2 rounded-lg cursor-pointer transition-all {{ $selectedBank === $key ? 'border-green-600 bg-green-100 shadow-md' : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50' }}">
+                                            <input
+                                                type="radio"
+                                                name="bank_selection"
+                                                wire:model.live="selectedBank"
+                                                value="{{ $key }}"
+                                                class="mt-1 w-4 h-4 text-green-600 focus:ring-green-500"
+                                            >
+                                            <div class="ml-3 flex-1">
+                                                <div class="flex items-center justify-between">
+                                                    <p class="font-semibold {{ $selectedBank === $key ? 'text-green-900' : 'text-gray-900' }}">
+                                                        {{ $bank['name'] }}
+                                                    </p>
+                                                    @if($selectedBank === $key)
+                                                        <span class="ml-2 px-2 py-0.5 bg-green-600 text-white text-xs font-semibold rounded-full">
+                                                            <i class="fas fa-check mr-1"></i>Dipilih
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <p class="text-sm {{ $selectedBank === $key ? 'text-green-800' : 'text-gray-600' }}">{{ $bank['account_number'] }}</p>
+                                                <p class="text-xs {{ $selectedBank === $key ? 'text-green-700' : 'text-gray-500' }}">a/n {{ $bank['account_name'] }}</p>
+                                            </div>
+                                        </label>
+                                    @endforeach
                                 </div>
+
+                                <div class="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg mb-3">
+                                    <p class="text-xs text-yellow-800 flex items-center">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        <span>Pilih bank, lalu klik tombol Update untuk menyimpan.</span>
+                                    </p>
+                                </div>
+
+                                {{-- Keep bankForm values bound for validation & saving --}}
+                                <input type="hidden" wire:model="bankForm.bank_name">
+                                <input type="hidden" wire:model="bankForm.bank_account_number">
+                                <input type="hidden" wire:model="bankForm.bank_account_name">
+
+                                @error('bankForm.bank_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                @error('bankForm.bank_account_number') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                @error('bankForm.bank_account_name') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
 
                                 <button
                                     wire:click="updateBankInfo"

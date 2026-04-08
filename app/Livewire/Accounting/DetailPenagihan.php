@@ -51,6 +51,30 @@ class DetailPenagihan extends Component
 
     public $invoiceNotesForm = '';
 
+    /**
+     * Bank selection (same options as ApprovePenagihan).
+     * IMPORTANT: changing this only updates the form state; saving stays in updateBankInfo().
+     */
+    public $selectedBank = null;
+
+    public $bankOptions = [
+        'mandiri' => [
+            'name' => 'Bank Mandiri',
+            'account_number' => '141-0080998883',
+            'account_name' => 'PT. KAMIL MAJU PERSADA',
+        ],
+        'bca' => [
+            'name' => 'BCA',
+            'account_number' => '429-3468888',
+            'account_name' => 'PT KAMIL MAJU PERSADA',
+        ],
+        'mandiri2' => [
+            'name' => 'Bank Mandiri',
+            'account_number' => '141-0008899098',
+            'account_name' => 'PT KAMIL MAJU PERSADA',
+        ],
+    ];
+
     protected $rules = [
         'customerForm.customer_name' => 'required|string|max:255',
         'customerForm.customer_address' => 'required|string',
@@ -113,6 +137,27 @@ class DetailPenagihan extends Component
                 'bank_account_number' => $this->invoice->bank_account_number ?? '',
                 'bank_account_name' => $this->invoice->bank_account_name ?? '',
             ];
+
+            // Preselect bank option based on currently saved invoice bank.
+            // Prefer account_number (unique), fallback to name.
+            $this->selectedBank = null;
+            if (!empty($this->invoice->bank_account_number)) {
+                foreach ($this->bankOptions as $key => $bank) {
+                    if ($bank['account_number'] === $this->invoice->bank_account_number) {
+                        $this->selectedBank = $key;
+                        break;
+                    }
+                }
+            }
+
+            if ($this->selectedBank === null && !empty($this->invoice->bank_name)) {
+                foreach ($this->bankOptions as $key => $bank) {
+                    if ($bank['name'] === $this->invoice->bank_name) {
+                        $this->selectedBank = $key;
+                        break;
+                    }
+                }
+            }
 
             $this->invoiceForm = [
                 'refraksi_type' => $this->invoice->refraksi_type ?? 'qty',
@@ -555,6 +600,29 @@ class DetailPenagihan extends Component
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal generate PDF: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Update bank form fields when selection changes.
+     * Does NOT save to DB; saving is done by updateBankInfo().
+     */
+    public function updatedSelectedBank($value)
+    {
+        if (!$value) {
+            return;
+        }
+
+        if (!array_key_exists($value, $this->bankOptions)) {
+            return;
+        }
+
+        $bank = $this->bankOptions[$value];
+
+        $this->bankForm = [
+            'bank_name' => $bank['name'],
+            'bank_account_number' => $bank['account_number'],
+            'bank_account_name' => $bank['account_name'],
+        ];
     }
 
     public function render()

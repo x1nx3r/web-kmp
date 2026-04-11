@@ -698,15 +698,18 @@ class OmsetController extends Controller
                 ];
             }
             
-            // Get klien names with cabang
+            // Get klien names with cabang (tanpa alamat)
             foreach ($topKlien as $klien) {
-                $namaLengkap = $klien->nama;
-                if (!empty($klien->cabang)) {
-                    $namaLengkap .= ' - ' . $klien->cabang . '';
+                $namaLengkap = (string) $klien->nama;
+                $cabang = trim((string) ($klien->cabang ?? ''));
+
+                if ($cabang !== '') {
+                    $namaLengkap .= ' - ' . $cabang;
                 }
+
                 $klienNames[] = $namaLengkap;
             }
-            
+
             return response()->json([
                 'klien_names' => $klienNames,
                 'datasets' => $datasets

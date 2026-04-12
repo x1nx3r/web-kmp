@@ -441,21 +441,27 @@ class Order extends Model
         }
 
         $baseDate = $baseDate ?? now();
-        $daysUntilDue = $baseDate->diffInDays($this->po_end_date, false);
 
-        // Priority mapping (time-remaining based, per client requirements):
-        // - tinggi when remaining days > 60 (plenty of time, high-value PO)
-        // - sedang when remaining days > 30 and <= 60
-        // - rendah when remaining days <= 30 (deadline soon, low remaining value)
-        if ($daysUntilDue > 60) {
-            return "tinggi";
+        // Overdue-age based priority anchored on contractual PO end date (inclusive, calendar months).
+        // - rendah: before po_end_date + 1 month
+        // - sedang: between po_end_date + 1 month (inclusive) and po_end_date + 2 months (exclusive)
+        // - tinggi: on/after po_end_date + 2 months
+        $poEnd = $this->po_end_date instanceof Carbon
+            ? $this->po_end_date
+            : Carbon::parse($this->po_end_date);
+
+        $t1 = $poEnd->copy()->addMonthsNoOverflow(1);
+        $t2 = $poEnd->copy()->addMonthsNoOverflow(2);
+
+        if ($baseDate->lt($t1)) {
+            return "rendah";
         }
 
-        if ($daysUntilDue > 30) {
+        if ($baseDate->lt($t2)) {
             return "sedang";
         }
 
-        return "rendah";
+        return "tinggi";
     }
 
     public function syncPriorityFromSchedule(): void

@@ -27,6 +27,7 @@ class OrderNotificationService extends BaseNotificationService
     public const TYPE_COMPLETED = "order_completed";
     public const TYPE_CANCELLED = "order_cancelled";
     public const TYPE_PRIORITY_ESCALATED = "order_priority_escalated";
+    public const TYPE_PRIORITY_CHANGED = "order_priority_changed";
 
     /**
      * Priority levels in order of urgency (highest to lowest)
@@ -421,6 +422,81 @@ class OrderNotificationService extends BaseNotificationService
         return static::sendToMany(
             $marketingUsers,
             self::TYPE_PRIORITY_ESCALATED,
+            $notificationData,
+        );
+    }
+
+    /**
+     * Notify marketing team when order priority changes.
+     * Fires on any change (rendah/sedang/tinggi). Use for console recalculation runs.
+     */
+    public static function notifyPriorityChanged(
+        Order $order,
+        string $oldPriority,
+        string $newPriority,
+        ?User $changedBy = null,
+        ?int $daysOverdue = null,
+    ): int {
+        if ($oldPriority === $newPriority) {
+            return 0;
+        }
+
+        $poNumber = $order->po_number ?? $order->no_order;
+        $klienName = $order->klien ? $order->klien->nama : "Klien";
+        $oldLabel = self::PRIORITY_LABELS[$oldPriority] ?? $oldPriority;
+        $newLabel = self::PRIORITY_LABELS[$newPriority] ?? $newPriority;
+        $changedByName = $changedBy ? $changedBy->nama : "Sistem";
+
+        $iconConfig = self::getPriorityIconConfig($newPriority);
+
+        $overdueText = null;
+        if ($daysOverdue !== null) {
+            if ($daysOverdue <= 0) {
+                $overdueText = "belum melewati PO end date";
+            } elseif ($daysOverdue === 1) {
+                $overdueText = "telat 1 hari";
+            } else {
+                $overdueText = "telat {$daysOverdue} hari";
+            }
+        }
+
+        $message = "Prioritas order {$poNumber} ({$klienName}) berubah dari {$oldLabel} → {$newLabel} oleh {$changedByName}.";
+        if ($overdueText) {
+            $message .= " ({$overdueText})";
+        }
+
+        $notificationData = [
+            "title" => "Perubahan Prioritas: {$poNumber}",
+            "message" => $message,
+            "icon" => $iconConfig["icon"],
+            "icon_bg" => $iconConfig["icon_bg"],
+            "icon_color" => $iconConfig["icon_color"],
+            "url" => "/orders/{$order->id}",
+            "order_id" => $order->id,
+            "no_order" => $order->no_order,
+            "po_number" => $order->po_number,
+            "old_priority" => $oldPriority,
+            "new_priority" => $newPriority,
+            "old_priority_label" => $oldLabel,
+            "new_priority_label" => $newLabel,
+            "changed_by_id" => $changedBy?->id,
+            "changed_by_name" => $changedByName,
+            "days_overdue" => $daysOverdue,
+            "is_automatic" => $changedBy === null,
+            "po_end_date" => $order->po_end_date,
+        ];
+
+        $changedById = $changedBy?->id;
+        $marketingUsers = \App\Models\User::where("role", "marketing")
+            ->where("status", "aktif")
+            ->when($changedById, function ($query) use ($changedById) {
+                $query->where("id", "!=", $changedById);
+            })
+            ->get();
+
+        return static::sendToMany(
+            $marketingUsers,
+            self::TYPE_PRIORITY_CHANGED,
             $notificationData,
         );
     }

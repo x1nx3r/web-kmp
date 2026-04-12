@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Models\ApprovalPembayaran;
 use App\Models\ApprovalPenagihan;
-use App\Models\CatatanPiutang;
-use App\Models\InvoicePenagihan;
 use App\Models\Order;
 use App\Models\OrderConsultation;
 use App\Models\Penawaran;
@@ -49,6 +47,7 @@ class NotificationService
     public const TYPE_ORDER_DIREKTUR_CONSULTATION = OrderNotificationService::TYPE_DIREKTUR_CONSULTATION;
     public const TYPE_ORDER_CONSULTATION_RESPONDED = OrderNotificationService::TYPE_CONSULTATION_RESPONDED;
     public const TYPE_ORDER_PRIORITY_ESCALATED = OrderNotificationService::TYPE_PRIORITY_ESCALATED;
+    public const TYPE_ORDER_PRIORITY_CHANGED = OrderNotificationService::TYPE_PRIORITY_CHANGED;
 
     // Approval Pembayaran types
     public const TYPE_APPROVAL_PEMBAYARAN_PENDING = ApprovalPembayaranNotificationService::TYPE_PENDING_APPROVAL;
@@ -245,6 +244,25 @@ class NotificationService
             $newPriority,
             $changedBy,
             $daysRemaining,
+        );
+    }
+
+    /**
+     * Notify marketing team when order priority changes.
+     */
+    public static function notifyOrderPriorityChanged(
+        Order $order,
+        string $oldPriority,
+        string $newPriority,
+        ?User $changedBy = null,
+        ?int $daysOverdue = null,
+    ): int {
+        return OrderNotificationService::notifyPriorityChanged(
+            $order,
+            $oldPriority,
+            $newPriority,
+            $changedBy,
+            $daysOverdue,
         );
     }
 

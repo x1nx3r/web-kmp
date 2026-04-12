@@ -16,28 +16,14 @@ class EscalateOrderPriorities extends Command
      */
     protected $signature = 'orders:escalate-priorities
                             {--dry-run : Run without making changes}
-                            {--notify : Send notifications for escalated orders}';
+                            {--notify : Send notifications for priority changes}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = "Automatically escalate order priorities based on PO end date proximity";
-
-    /**
-     * Priority thresholds using time-remaining logic (per client):
-     * - tinggi: remaining days > 60 (plenty of time, high-value PO)
-     * - sedang: remaining days > 30 and <= 60
-     * - rendah: remaining days <= 30 (deadline soon, low remaining value)
-     *
-     * Keep a minimal constant map for clarity / future use.
-     */
-    protected const PRIORITY_THRESHOLDS = [
-        "rendah" => 30,
-        "sedang" => 60,
-        "tinggi" => PHP_INT_MAX,
-    ];
+    protected $description = "Recalculate order priorities based on PO end date overdue-age (contractual)";
 
     /**
      * Execute the console command.
@@ -51,139 +37,85 @@ class EscalateOrderPriorities extends Command
             $this->info("Running in dry-run mode - no changes will be made.");
         }
 
-        // Get all active orders (not selesai or dibatalkan) with a PO end date
-        $orders = Order::with(["klien", "creator"])
-            ->whereNotIn("status", ["selesai", "dibatalkan"])
+        /** @var \Illuminate\Support\Carbon $now */
+        $now = \Illuminate\Support\Carbon::now();
+
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\Order> $orders */
+        $orders = Order::query()
+            ->with(["klien", "creator"])
             ->whereNotNull("po_end_date")
             ->get();
 
-        $this->info("Found {$orders->count()} active orders to check.");
+        $this->info("Found {$orders->count()} orders to check.");
 
-        $escalatedCount = 0;
-        $escalatedOrders = [];
+        $changedCount = 0;
+        $changedOrders = [];
 
+        /** @var \App\Models\Order $order */
         foreach ($orders as $order) {
-            // Use the legacy `priority` column exclusively (priority_v2 removed).
-            $oldPriority = $order->priority;
-            $newPriority = $this->calculatePriority($order->po_end_date);
+            $oldPriority = (string) $order->priority;
+            $newPriority = $order->determinePriority($now);
 
-            // Check if priority should be escalated (only escalate, never de-escalate)
-            if ($this->shouldEscalate($oldPriority, $newPriority)) {
-                $escalatedCount++;
-                $daysRemaining = $this->getDaysRemaining($order->po_end_date);
+            if (!$newPriority || $oldPriority === $newPriority) {
+                continue;
+            }
 
-                $escalatedOrders[] = [
-                    "order" => $order,
-                    "old_priority" => $oldPriority,
-                    "new_priority" => $newPriority,
-                    "days_remaining" => $daysRemaining,
-                ];
+            $changedCount++;
 
-                $this->line(
-                    sprintf(
-                        "  [%s] %s: %s → %s (%d days remaining)",
-                        $order->id,
-                        $order->po_number ?? $order->no_order,
-                        $oldPriority,
-                        $newPriority,
-                        $daysRemaining,
-                    ),
-                );
+            // daysOverdue: <= 0 means not overdue yet (or exactly at end date)
+            $poEnd = $order->po_end_date instanceof Carbon
+                ? $order->po_end_date
+                : Carbon::parse($order->po_end_date);
+            $daysOverdue = (int) $poEnd->diffInDays($now, false);
 
-                if (!$isDryRun) {
-                    // Write into the legacy enum column `priority`. Surgical migration path expects writes to `priority`.
-                    $order->update([
-                        "priority" => $newPriority,
-                        "priority_calculated_at" => now(),
-                    ]);
-                }
+            $changedOrders[] = [
+                "order" => $order,
+                "old_priority" => $oldPriority,
+                "new_priority" => $newPriority,
+                "days_overdue" => $daysOverdue,
+            ];
+
+            $this->line(
+                sprintf(
+                    "  [%s] %s: %s → %s (%d days overdue)",
+                    $order->id,
+                    $order->po_number ?? $order->no_order,
+                    $oldPriority,
+                    $newPriority,
+                    $daysOverdue,
+                ),
+            );
+
+            if (!$isDryRun) {
+                $order->update([
+                    "priority" => $newPriority,
+                    "priority_calculated_at" => $now,
+                ]);
             }
         }
 
-        // Send notifications for escalated orders
-        if ($shouldNotify && !$isDryRun && count($escalatedOrders) > 0) {
+        if ($shouldNotify && !$isDryRun && count($changedOrders) > 0) {
             $this->info("Sending notifications...");
-            $notificationCount = $this->sendEscalationNotifications(
-                $escalatedOrders,
-            );
+            $notificationCount = 0;
+
+            foreach ($changedOrders as $data) {
+                $notificationCount += OrderNotificationService::notifyPriorityChanged(
+                    $data["order"],
+                    $data["old_priority"],
+                    $data["new_priority"],
+                    null,
+                    $data["days_overdue"],
+                );
+            }
+
             $this->info("Sent {$notificationCount} notifications.");
         }
 
         $this->newLine();
         $this->info(
-            "Summary: {$escalatedCount} orders escalated out of {$orders->count()} checked.",
+            "Summary: {$changedCount} orders changed out of {$orders->count()} checked.",
         );
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Calculate priority based on days remaining until PO end date.
-     */
-    protected function calculatePriority(string $poEndDate): string
-    {
-        $days = $this->getDaysRemaining($poEndDate);
-
-        // Priority mapping (time-remaining based, per client):
-        // - tinggi: remaining days > 60 (plenty of time, high-value PO)
-        // - sedang: remaining days > 30 and <= 60
-        // - rendah: remaining days <= 30 (deadline soon, low remaining value)
-        if ($days > 60) {
-            return "tinggi";
-        } elseif ($days > 30) {
-            return "sedang";
-        }
-
-        return "rendah";
-    }
-
-    /**
-     * Get remaining days until PO end date.
-     */
-    protected function getDaysRemaining(string $poEndDate): int
-    {
-        $end = Carbon::parse($poEndDate);
-        return (int) now()->diffInDays($end, false);
-    }
-
-    /**
-     * Check if priority should be escalated (toward deadline).
-     * Escalation means moving toward rendah (closer to deadline).
-     * Only returns true if new priority is lower than old priority.
-     */
-    protected function shouldEscalate(
-        string $oldPriority,
-        string $newPriority,
-    ): bool {
-        $priorityLevels = OrderNotificationService::PRIORITY_LEVELS;
-
-        $oldLevel = $priorityLevels[$oldPriority] ?? 0;
-        $newLevel = $priorityLevels[$newPriority] ?? 0;
-
-        return $newLevel < $oldLevel;
-    }
-
-    /**
-     * Send notifications for escalated orders.
-     *
-     * @param array $escalatedOrders
-     * @return int Number of notifications sent
-     */
-    protected function sendEscalationNotifications(array $escalatedOrders): int
-    {
-        $totalSent = 0;
-
-        foreach ($escalatedOrders as $data) {
-            $count = OrderNotificationService::notifyPriorityEscalated(
-                $data["order"],
-                $data["old_priority"],
-                $data["new_priority"],
-                null, // System-triggered, no user
-                $data["days_remaining"],
-            );
-            $totalSent += $count;
-        }
-
-        return $totalSent;
     }
 }

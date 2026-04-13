@@ -12,40 +12,43 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">Omset Minggu Ini</h2>
-                @php
-                    // Calculate week number within the month (1-4) - same as laporan
-                    $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
-                    $today = \Carbon\Carbon::now();
-                    $dayOfMonth = $today->day;
-                    $currentWeekOfMonth = 1;
-                    
-                    if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
-                        $currentWeekOfMonth = 1;
-                    } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
-                        $currentWeekOfMonth = 2;
-                    } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
-                        $currentWeekOfMonth = 3;
-                    } else {
-                        $currentWeekOfMonth = 4;
-                    }
-                    
-                    // Calculate date range for this week based on month divisions
-                    if ($currentWeekOfMonth == 1) {
-                        $weekStart = $startOfMonth->copy();
-                    } else {
-                        $weekStart = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
-                    }
-                    
-                    if ($currentWeekOfMonth == 4) {
-                        $weekEnd = $startOfMonth->copy()->endOfMonth();
-                    } else {
-                        $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
-                    }
-                @endphp
                 <p class="text-sm text-gray-500 mt-1">
-                    {{ $weekStart->format('d M') }} - {{ $weekEnd->format('d M Y') }}
+                    {{ $rangeStartLabel }} &ndash; {{ $rangeEndLabel }}
+                    @if($useCustomRange)
+                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                            <i class="fas fa-filter mr-1"></i> Filter Aktif
+                        </span>
+                    @endif
                 </p>
             </div>
+
+            {{-- Date Range Filter Form --}}
+            <form method="GET" action="{{ route('dashboard') }}" class="flex items-center gap-2">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-500 whitespace-nowrap">Dari</label>
+                    <input type="date"
+                           name="start_date"
+                           value="{{ $startDateParam }}"
+                           class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <label class="text-xs text-gray-500 whitespace-nowrap">s/d</label>
+                    <input type="date"
+                           name="end_date"
+                           value="{{ $endDateParam }}"
+                           class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit"
+                        class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition flex items-center gap-1">
+                    <i class="fas fa-search text-xs"></i>
+                    Terapkan
+                </button>
+                @if($useCustomRange)
+                    <a href="{{ route('dashboard') }}"
+                       class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition flex items-center gap-1">
+                        <i class="fas fa-times text-xs"></i>
+                        Reset
+                    </a>
+                @endif
+            </form>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -61,11 +64,11 @@
                         Rp {{ number_format($omsetMingguIni, 2, ',', '.') }}
                     @endif
                 </h3>
-                
+
                 {{-- Breakdown Sistem & Manual --}}
                 <div class="mt-3 pt-3 border-t border-gray-200 space-y-1.5">
                     <div class="flex items-center justify-between text-xs">
-                        <span class="text-gray-600 flex items-center">(Sistem) 
+                        <span class="text-gray-600 flex items-center">(Sistem)
                         </span>
                         <span class="font-semibold text-gray-700">
                            Rp {{ number_format($omsetSistemMingguIni / 1000000, 2, ',', '.') }}Jt
@@ -79,7 +82,7 @@
                         </span>
                     </div>
                 </div>
-                
+
                 <div class="mt-3">
                     @if($progressMinggu >= 100)
                         <span class="inline-flex items-center gap-1 text-sm text-green-600">
@@ -169,7 +172,7 @@
                     Rp {{ number_format($omsetBulanIni, 2, ',', '.') }}
                 @endif
             </p>
-            
+
             {{-- Breakdown Sistem & Manual --}}
             <div class="flex items-center gap-2 mt-2 mb-1 text-xs text-gray-600">
                 <span class="inline-flex items-center gap-1" title="Omset dari sistem">
@@ -180,7 +183,7 @@
                     (Manual) {{ number_format($omsetManualBulanIni / 1000000, 2, ',', '.') }}Jt
                 </span>
             </div>
-            
+
             <p class="text-sm text-gray-500">{{ number_format($progressBulan, 2, ',', '.') }}% dari target</p>
         </div>
             {{-- Order Bulan Ini --}}
@@ -207,7 +210,7 @@
     {{-- Informasi Pengiriman Minggu Ini --}}
     <div class="grid grid-cols-3 md:grid-cols-3 gap-4">
         {{-- Pengiriman Normal Minggu Ini --}}
-        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer" 
+        <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer"
              onclick="showPengirimanModal('normal')">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
@@ -216,7 +219,9 @@
                 <h3 class="text-sm text-gray-500">Pengiriman Normal</h3>
             </div>
             <p class="text-2xl font-bold text-green-600 mb-1">{{ number_format($pengirimanNormalMingguIni, 0, ',', '.') }}</p>
-            <p class="text-sm text-gray-500">Minggu Ini (>70%)</p>
+            <p class="text-sm text-gray-500">
+                {{ $rangeStartLabel }} &ndash; {{ $rangeEndLabel }} (>70%)
+            </p>
         </div>
 
         {{-- Bongkar Sebagian (<=70%) Minggu Ini --}}
@@ -229,7 +234,9 @@
                 <h3 class="text-sm text-gray-500">Bongkar Sebagian</h3>
             </div>
             <p class="text-2xl font-bold text-yellow-600 mb-1">{{ number_format($pengirimanBongkarSebagianMingguIni, 0, ',', '.') }}</p>
-            <p class="text-sm text-gray-500">Minggu Ini (≤70%)</p>
+            <p class="text-sm text-gray-500">
+                {{ $rangeStartLabel }} &ndash; {{ $rangeEndLabel }} (≤70%)
+            </p>
         </div>
 
         {{-- Pengiriman Gagal Minggu Ini --}}
@@ -242,7 +249,9 @@
                 <h3 class="text-sm text-gray-500">Pengiriman Ditolak</h3>
             </div>
             <p class="text-2xl font-bold text-red-600 mb-1">{{ number_format(count($pengirimanGagalList), 0, ',', '.') }}</p>
-            <p class="text-sm text-gray-500">Minggu Ini</p>
+            <p class="text-sm text-gray-500">
+                {{ $rangeStartLabel }} &ndash; {{ $rangeEndLabel }}
+            </p>
         </div>
     </div>
 
@@ -257,7 +266,7 @@
                 </span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
-                <div class="h-full rounded-full {{ $progressMinggu >= 100 ? 'bg-green-500' : 'bg-blue-500' }}" 
+                <div class="h-full rounded-full {{ $progressMinggu >= 100 ? 'bg-green-500' : 'bg-blue-500' }}"
                      style="width: {{ min($progressMinggu, 100) }}%"></div>
             </div>
         </div>
@@ -271,7 +280,7 @@
                 </span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
-                <div class="h-full rounded-full {{ $progressBulan >= 100 ? 'bg-green-500' : 'bg-blue-500' }}" 
+                <div class="h-full rounded-full {{ $progressBulan >= 100 ? 'bg-green-500' : 'bg-blue-500' }}"
                      style="width: {{ min($progressBulan, 100) }}%"></div>
             </div>
         </div>
@@ -285,7 +294,7 @@
                 </span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
-                <div class="h-full rounded-full {{ $progressTahun >= 100 ? 'bg-green-500' : 'bg-blue-500' }}" 
+                <div class="h-full rounded-full {{ $progressTahun >= 100 ? 'bg-green-500' : 'bg-blue-500' }}"
                      style="width: {{ min($progressTahun, 100) }}%"></div>
             </div>
         </div>
@@ -299,7 +308,7 @@
         <div class="flex items-center justify-between pb-3 border-b">
             <h3 class="text-xl font-semibold text-gray-900" id="modalTitle">Detail Pengiriman</h3>
             <div class="flex items-center gap-2">
-                <button onclick="downloadPDF()" 
+                <button onclick="downloadPDF()"
                         class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center gap-2">
                     <i class="fas fa-download"></i>
                     <span>Download PDF</span>
@@ -309,7 +318,7 @@
                 </button>
             </div>
         </div>
-        
+
         {{-- Modal Body --}}
         <div class="mt-4 max-h-96 overflow-y-auto">
             <table class="w-full text-sm">
@@ -333,10 +342,10 @@
                 <p>Tidak ada data</p>
             </div>
         </div>
-        
+
         {{-- Modal Footer --}}
         <div class="flex justify-end pt-4 border-t mt-4">
-            <button onclick="closePengirimanModal()" 
+            <button onclick="closePengirimanModal()"
                     class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition">
                 Tutup
             </button>
@@ -360,20 +369,28 @@
                     <i class="fas fa-chart-line text-green-500"></i>
                     Margin Minggu Ini
                 </h2>
-                <p class="text-sm text-gray-500 mt-1">Seluruh pengiriman dengan margin minggu ini ({{ count($topMarginMingguIni) }} pengiriman)</p>
+                <p class="text-sm text-gray-500 mt-1">
+                    {{ $rangeStartLabel }} &ndash; {{ $rangeEndLabel }}
+                    ({{ count($topMarginMingguIni) }} pengiriman)
+                    @if($useCustomRange)
+                        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                            <i class="fas fa-filter mr-1"></i> Filter Aktif
+                        </span>
+                    @endif
+                </p>
             </div>
             <div class="flex gap-2">
-                <a href="{{ route('dashboard.margin-minggu-ini.excel') }}" 
+                <a href="{{ route('dashboard.margin-minggu-ini.excel') }}"
                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2">
                     <i class="fas fa-file-excel"></i>
                     Download Excel
                 </a>
-                <a href="{{ route('dashboard.margin-minggu-ini.pdf') }}" 
+                <a href="{{ route('dashboard.margin-minggu-ini.pdf') }}"
                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm flex items-center gap-2">
                     <i class="fas fa-file-pdf"></i>
                     Download PDF
                 </a>
-                <a href="{{ route('laporan.margin') }}" 
+                <a href="{{ route('laporan.margin') }}"
                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm flex items-center gap-2">
                     <i class="fas fa-eye"></i>
                     Lihat Detail
@@ -431,7 +448,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         @foreach($topMarginMingguIni as $index => $item)
-                            <tr class="hover:bg-gray-100 transition-colors cursor-pointer" 
+                            <tr class="hover:bg-gray-100 transition-colors cursor-pointer"
                                 onclick="window.location.href='{{ route('purchasing.pengiriman.index') }}?tab={{ $item['status'] === 'berhasil' ? 'pengiriman-berhasil' : ($item['status'] === 'menunggu_verifikasi' ? 'menunggu-verifikasi' : 'menunggu-fisik') }}&detail={{ $item['pengiriman_id'] }}'">
                                 <td class="px-4 py-3 text-gray-700">{{ $index + 1 }}</td>
                                 <td class="px-4 py-3 text-gray-900 font-medium">{{ $item['pic_purchasing'] }}</td>
@@ -443,8 +460,8 @@
                                     Rp {{ number_format($item['margin'], 2, ',', '.') }}
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                        {{ $item['margin_percentage'] >= 20 ? 'bg-green-100 text-green-800' : 
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        {{ $item['margin_percentage'] >= 20 ? 'bg-green-100 text-green-800' :
                                            ($item['margin_percentage'] >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                         {{ number_format($item['margin_percentage'], 2, ',', '.') }}%
                                     </span>
@@ -457,7 +474,7 @@
         @else
             <div class="text-center py-8 text-gray-400">
                 <i class="fas fa-inbox text-4xl mb-2"></i>
-                <p>Belum ada data margin untuk minggu ini</p>
+                <p>Belum ada data margin untuk periode ini</p>
             </div>
         @endif
 
@@ -472,7 +489,7 @@
                         <p class="text-3xl font-bold {{ $grossMarginBulanIni >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             {{ number_format($grossMarginBulanIni, 2, ',', '.') }}%
                         </p>
-                        
+
                     </div>
                 </div>
             </div>
@@ -502,14 +519,12 @@ const pengirimanData = {
 let currentModalType = '';
 let currentModalData = [];
 
-// Helper function to get tab name based on modal type and status  
+// Helper function to get tab name based on modal type and status
 function getTabName() {
     if (currentModalType === 'gagal') {
         return 'gagal';
     }
-    // For normal and bongkar, they can be berhasil, menunggu_verifikasi, or menunggu_fisik
-    // We'll use berhasil as default since most will be completed
-    return 'masuk'; // Go to masuk tab to see all pending shipments
+    return 'masuk';
 }
 
 // Helper function to get individual tab based on status
@@ -534,11 +549,10 @@ function showPengirimanModal(type) {
     const modalTableBody = document.getElementById('modalTableBody');
     const emptyState = document.getElementById('emptyState');
     const headerExtra = document.getElementById('headerExtra');
-    
-    // Set title based on type
+
     let title = '';
     let data = [];
-    
+
     switch(type) {
         case 'normal':
             title = 'Pengiriman Normal (>70%)';
@@ -556,38 +570,32 @@ function showPengirimanModal(type) {
             headerExtra.textContent = 'Keterangan';
             break;
     }
-    
-    // Simpan data untuk download PDF
+
     currentModalType = type;
     currentModalData = data;
-    
+
     modalTitle.textContent = title;
-    
-    // Clear previous data
+
     modalTableBody.innerHTML = '';
-    
-    // Check if data is empty
+
     if (data.length === 0) {
         emptyState.classList.remove('hidden');
         modalTableBody.classList.add('hidden');
     } else {
         emptyState.classList.add('hidden');
         modalTableBody.classList.remove('hidden');
-        
-        // Populate table
+
         data.forEach((item, index) => {
             const row = document.createElement('tr');
             row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-            
-            // Format tanggal - untuk pengiriman gagal tanpa tanggal_kirim, gunakan tanggal_gagal
+
             const tanggalDisplay = item.tanggal_kirim || item.tanggal_gagal || new Date();
             const tanggal = new Date(tanggalDisplay).toLocaleDateString('id-ID', {
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'
             });
-            
-            // Format status
+
             let statusBadge = '';
             switch(item.status) {
                 case 'berhasil':
@@ -605,8 +613,7 @@ function showPengirimanModal(type) {
                 default:
                     statusBadge = '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">' + item.status + '</span>';
             }
-            
-            // Extra column content
+
             let extraContent = '';
             if (type === 'gagal') {
                 extraContent = item.catatan || '-';
@@ -617,7 +624,7 @@ function showPengirimanModal(type) {
                 const qtyForecastFormatted = Number(item.total_qty_forecast).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 extraContent = `<span class="font-semibold ${percentageColor}">${percentage}%</span><br><small class="text-gray-500">${qtyKirimFormatted} / ${qtyForecastFormatted}</small>`;
             }
-            
+
             row.innerHTML = `
                 <td class="px-4 py-3">
                     <a href="{{ route('purchasing.pengiriman.index') }}?tab=${getTabByStatus(item.status)}&detail=${item.id}" class="text-blue-600 hover:text-blue-800 hover:underline">
@@ -631,22 +638,19 @@ function showPengirimanModal(type) {
                 <td class="px-4 py-3 text-right">${extraContent}</td>
                 <td class="px-4 py-3 text-center">${statusBadge}</td>
             `;
-            
-            // Add click event to entire row
+
             row.style.cursor = 'pointer';
             row.classList.add('hover:bg-gray-100', 'transition-colors');
             row.addEventListener('click', function(e) {
-                // Don't navigate if clicking on the link itself
                 if (e.target.tagName !== 'A' && !e.target.closest('a')) {
                     window.location.href = `{{ route('purchasing.pengiriman.index') }}?tab=${getTabByStatus(item.status)}&detail=${item.id}`;
                 }
             });
-            
+
             modalTableBody.appendChild(row);
         });
     }
-    
-    // Show modal
+
     modal.classList.remove('hidden');
 }
 
@@ -655,33 +659,28 @@ function closePengirimanModal() {
     modal.classList.add('hidden');
 }
 
-// Close modal when clicking outside
 document.getElementById('pengirimanModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closePengirimanModal();
     }
 });
 
-// Close modal with ESC key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closePengirimanModal();
     }
 });
 
-// Function to download PDF
 function downloadPDF() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
-    
-    // Get current date for filename
+    const doc = new jsPDF('l', 'mm', 'a4');
+
     const now = new Date();
     const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
-    
-    // Determine title and filename based on type
+
     let title = '';
     let filename = '';
-    
+
     switch(currentModalType) {
         case 'normal':
             title = 'Laporan Pengiriman Normal (>70%)';
@@ -696,35 +695,31 @@ function downloadPDF() {
             filename = `Pengiriman_Gagal_${dateStr}.pdf`;
             break;
     }
-    
-    // Add title
+
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
     doc.text(title, 148, 15, { align: 'center' });
-    
-    // Add date info
+
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
-    doc.text(`Tanggal: ${dateStr}`, 148, 22, { align: 'center' });
+    doc.text(`Periode: {{ $rangeStartLabel }} - {{ $rangeEndLabel }}`, 148, 22, { align: 'center' });
     doc.text(`Total: ${currentModalData.length} pengiriman`, 148, 27, { align: 'center' });
-    
-    // Prepare table data
-    const headers = currentModalType === 'gagal' 
+
+    const headers = currentModalType === 'gagal'
         ? [['No. PO', 'Tanggal', 'Klien', 'PIC', 'QTY Kirim', 'Keterangan', 'Status']]
         : [['No. PO', 'Tanggal', 'Klien', 'PIC', 'QTY Kirim', 'Persentase', 'Status']];
-    
+
     const tableData = currentModalData.map(item => {
-        // Untuk pengiriman gagal tanpa tanggal_kirim, gunakan tanggal_gagal (updated_at)
         const tanggalDisplay = item.tanggal_kirim || item.tanggal_gagal || new Date();
         const tanggal = new Date(tanggalDisplay).toLocaleDateString('id-ID', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
         });
-        
+
         const klien = item.klien + (item.cabang ? ' (' + item.cabang + ')' : '');
         const qtyKirim = Number(item.total_qty_kirim).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        
+
         let status = '';
         switch(item.status) {
             case 'berhasil':
@@ -742,7 +737,7 @@ function downloadPDF() {
             default:
                 status = item.status;
         }
-        
+
         if (currentModalType === 'gagal') {
             return [
                 item.po_number || '-',
@@ -767,8 +762,7 @@ function downloadPDF() {
             ];
         }
     });
-    
-    // Add table
+
     doc.autoTable({
         startY: 32,
         head: headers,
@@ -785,16 +779,15 @@ function downloadPDF() {
             halign: 'center'
         },
         columnStyles: {
-            0: { cellWidth: 30 }, // No. PO
-            1: { cellWidth: 25 }, // Tanggal
-            2: { cellWidth: 50 }, // Klien
-            3: { cellWidth: 35 }, // PIC
-            4: { cellWidth: 25, halign: 'right' }, // QTY Kirim
-            5: { cellWidth: currentModalType === 'gagal' ? 60 : 45 }, // Persentase/Keterangan
-            6: { cellWidth: 30, halign: 'center' } // Status
+            0: { cellWidth: 30 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 50 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 25, halign: 'right' },
+            5: { cellWidth: currentModalType === 'gagal' ? 60 : 45 },
+            6: { cellWidth: 30, halign: 'center' }
         },
         didDrawPage: function(data) {
-            // Footer
             doc.setFontSize(8);
             doc.setTextColor(128);
             doc.text(
@@ -809,8 +802,7 @@ function downloadPDF() {
             );
         }
     });
-    
-    // Save PDF
+
     doc.save(filename);
 }
 </script>

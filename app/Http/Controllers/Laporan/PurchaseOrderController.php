@@ -55,16 +55,16 @@ class PurchaseOrderController extends Controller
         
         // Rata-rata Nilai per PO (untuk PO yang berjalan)
         $totalNilaiPOBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])
-            ->sum('total_amount');
+            ->sum(DB::raw('COALESCE(original_total_amount, total_amount)'));
         $avgNilaiPerPO = $poBerjalan > 0 ? $totalNilaiPOBerjalan / $poBerjalan : 0;
         
         // For percentage calculations (dikonfirmasi, diproses, selesai) - WITH FILTER for Client & Winner charts
         $totalNilaiPOForPercentage = Order::whereIn('status', ['dikonfirmasi', 'diproses', 'selesai'])
             ->where($dateFilterQuery)
-            ->sum('total_amount');
+            ->sum(DB::raw('COALESCE(original_total_amount, total_amount)'));
         
         // ========== PO BY STATUS (All statuses) - NO FILTER ==========
-        $poByStatus = Order::select('status', DB::raw('COUNT(*) as total'), DB::raw('SUM(total_amount) as nilai'))
+        $poByStatus = Order::select('status', DB::raw('COUNT(*) as total'), DB::raw('SUM(COALESCE(original_total_amount, total_amount)) as nilai'))
             ->groupBy('status')
             ->get();
         
@@ -88,7 +88,7 @@ class PurchaseOrderController extends Controller
         }
         
         // ========== PO BY PRIORITY (dikonfirmasi & diproses only) - NO FILTER ==========
-        $poByPriority = Order::select('priority', DB::raw('COUNT(*) as total'), DB::raw('SUM(total_amount) as nilai'))
+        $poByPriority = Order::select('priority', DB::raw('COUNT(*) as total'), DB::raw('SUM(COALESCE(original_total_amount, total_amount)) as nilai'))
             ->whereIn('status', ['dikonfirmasi', 'diproses'])
             ->groupBy('priority')
             ->get();
@@ -155,14 +155,14 @@ class PurchaseOrderController extends Controller
                 'kliens.nama as klien_nama',
                 'kliens.cabang',
                 DB::raw('COUNT(orders.id) as total_po'),
-                DB::raw('SUM(orders.total_amount) as total_nilai'),
-                DB::raw('SUM(orders.total_qty) as total_qty'),
+                DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
+                DB::raw('SUM((SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL)) as total_qty'),
                 DB::raw('MAX(orders.tanggal_order) as last_order_date'),
                 DB::raw('MIN(orders.tanggal_order) as first_order_date'),
                 DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
                 DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
                 DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_amount ELSE 0 END) as outstanding_amount"),
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN COALESCE(orders.original_total_amount, orders.total_amount) ELSE 0 END) as outstanding_amount"),
                 DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_qty ELSE 0 END) as outstanding_qty")
             )
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
@@ -201,8 +201,8 @@ class PurchaseOrderController extends Controller
                         'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
                         'status' => $order->status,
                         'priority' => $order->priority,
-                        'total_amount' => $order->total_amount,
-                        'total_qty' => $order->total_qty,
+                        'total_amount' => $order->contract_amount,
+                        'total_qty' => $order->original_qty_sum,
                         'materials' => implode(', ', $materials) ?: '-',
                         'materials_count' => count($materials),
                     ];
@@ -227,19 +227,22 @@ class PurchaseOrderController extends Controller
             ];
         }
         
-        // ========== PO TREND BY MONTH (dikonfirmasi & diproses only) - NO FILTER ==========
+        // ========== PO TREND BY MONTH (dikonfirmasi, diproses & selesai) - NO FILTER ==========
+        // Uses the new original_total_amount field which is immutable during shipments.
         $poTrendByMonth = [];
         $monthLabels = [];
         for ($i = 11; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
             $monthLabels[] = $date->format('M Y');
             
-            $data = Order::whereYear('tanggal_order', $date->year)
-                ->whereMonth('tanggal_order', $date->month)
-                ->whereIn('status', ['dikonfirmasi', 'diproses'])
+            $data = DB::table('orders')
+                ->whereNull('orders.deleted_at')
+                ->whereYear('orders.tanggal_order', $date->year)
+                ->whereMonth('orders.tanggal_order', $date->month)
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
                 ->select(
-                    DB::raw('COUNT(*) as total_po'),
-                    DB::raw('SUM(total_amount) as total_nilai')
+                    DB::raw('COUNT(DISTINCT orders.id) as total_po'),
+                    DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai')
                 )
                 ->first();
             
@@ -269,8 +272,8 @@ class PurchaseOrderController extends Controller
                 'users.id as user_id',
                 'users.nama as marketing_nama',
                 DB::raw('COUNT(DISTINCT orders.id) as total_po'),
-                DB::raw('SUM(orders.total_amount) as total_nilai'),
-                DB::raw('AVG(orders.total_amount) as avg_nilai')
+                DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
+                DB::raw('AVG(COALESCE(orders.original_total_amount, orders.total_amount)) as avg_nilai')
             )
             ->groupBy('users.id', 'users.nama')
             ->orderBy('total_nilai', 'desc')
@@ -428,13 +431,13 @@ class PurchaseOrderController extends Controller
                 'kliens.nama as klien_nama',
                 'kliens.cabang',
                 DB::raw('COUNT(orders.id) as total_po'),
-                DB::raw('SUM(orders.total_amount) as total_nilai'),
-                DB::raw('SUM(orders.total_qty) as total_qty'),
+                DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
+                DB::raw('SUM((SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL)) as total_qty'),
                 DB::raw('MAX(orders.tanggal_order) as last_order_date'),
                 DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
                 DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
                 DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_amount ELSE 0 END) as outstanding_amount")
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN COALESCE(orders.original_total_amount, orders.total_amount) ELSE 0 END) as outstanding_amount")
             )
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
@@ -479,8 +482,8 @@ class PurchaseOrderController extends Controller
                         'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
                         'status' => $order->status,
                         'priority' => $order->priority,
-                        'total_amount' => $order->total_amount,
-                        'total_qty' => $order->total_qty,
+                        'total_amount' => $order->contract_amount,
+                        'total_qty' => $order->original_qty_sum,
                         'materials' => implode(', ', $materials) ?: '-',
                     ];
                 })
@@ -552,13 +555,13 @@ class PurchaseOrderController extends Controller
                 'kliens.nama as klien_nama',
                 'kliens.cabang',
                 DB::raw('COUNT(orders.id) as total_po'),
-                DB::raw('SUM(orders.total_amount) as total_nilai'),
-                DB::raw('SUM(orders.total_qty) as total_qty'),
+                DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
+                DB::raw('SUM((SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL)) as total_qty'),
                 DB::raw('MAX(orders.tanggal_order) as last_order_date'),
                 DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
                 DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
                 DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_amount ELSE 0 END) as outstanding_amount")
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN COALESCE(orders.original_total_amount, orders.total_amount) ELSE 0 END) as outstanding_amount")
             )
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
@@ -603,8 +606,8 @@ class PurchaseOrderController extends Controller
                         'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-',
                         'status' => $order->status,
                         'priority' => $order->priority,
-                        'total_amount' => $order->total_amount,
-                        'total_qty' => $order->total_qty,
+                        'total_amount' => $order->contract_amount,
+                        'total_qty' => $order->original_qty_sum,
                         'materials' => implode(', ', $materials) ?: '-',
                     ];
                 })
@@ -663,8 +666,8 @@ class PurchaseOrderController extends Controller
                 'orders.po_number',
                 'orders.tanggal_order',
                 'orders.status as order_status',
-                'orders.total_amount as total_nilai',
-                'orders.total_qty'
+                DB::raw('COALESCE(orders.original_total_amount, orders.total_amount) as total_nilai'),
+                DB::raw('(SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL) as total_qty')
             )
             ->orderBy('users.nama')
             ->orderBy('kliens.nama')
@@ -775,8 +778,8 @@ class PurchaseOrderController extends Controller
                 'orders.po_number',
                 'orders.tanggal_order',
                 'orders.status as order_status',
-                'orders.total_amount as total_nilai',
-                'orders.total_qty'
+                DB::raw('COALESCE(orders.original_total_amount, orders.total_amount) as total_nilai'),
+                DB::raw('(SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL) as total_qty')
             )
             ->orderBy('users.nama')
             ->orderBy('kliens.nama')
@@ -891,6 +894,7 @@ class PurchaseOrderController extends Controller
     public function exportTrendPdf()
     {
         // Get trend data (12 months)
+        // Uses SUM(order_details.total_harga) for accuracy (see index() comment)
         $poTrendByMonth = [];
         $monthLabels = [];
         
@@ -898,12 +902,18 @@ class PurchaseOrderController extends Controller
             $date = Carbon::now()->subMonths($i);
             $monthLabels[] = $date->format('M Y');
             
-            $data = Order::whereYear('tanggal_order', $date->year)
-                ->whereMonth('tanggal_order', $date->month)
-                ->whereIn('status', ['dikonfirmasi', 'diproses'])
+            $data = DB::table('orders')
+                ->leftJoin('order_details', function ($join) {
+                    $join->on('order_details.order_id', '=', 'orders.id')
+                         ->whereNull('order_details.deleted_at');
+                })
+                ->whereNull('orders.deleted_at')
+                ->whereYear('orders.tanggal_order', $date->year)
+                ->whereMonth('orders.tanggal_order', $date->month)
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
                 ->select(
-                    DB::raw('COUNT(*) as total_po'),
-                    DB::raw('SUM(total_amount) as total_nilai')
+                    DB::raw('COUNT(DISTINCT orders.id) as total_po'),
+                    DB::raw('SUM(order_details.total_harga) as total_nilai')
                 )
                 ->first();
             

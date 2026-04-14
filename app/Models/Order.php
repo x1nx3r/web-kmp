@@ -37,6 +37,7 @@ class Order extends Model
         "po_document_path",
         "po_document_original_name",
         "priority_calculated_at",
+        "original_total_amount",
     ];
 
     protected $casts = [
@@ -49,6 +50,7 @@ class Order extends Model
         "po_start_date" => "date",
         "po_end_date" => "date",
         "priority_calculated_at" => "datetime",
+        "original_total_amount" => "decimal:2",
     ];
 
     /**
@@ -212,11 +214,36 @@ class Order extends Model
     /**
      * Computed Properties
      */
-    public function getIsUrgentAttribute(): bool
+    public function getContractAmountAttribute(): float
     {
-        // Use the legacy `priority` column.
-        // rendah = close to deadline = urgent
-        return $this->priority === "rendah";
+        return (float) ($this->original_total_amount ?? $this->total_amount);
+    }
+
+    public function getIsShrunkAttribute(): bool
+    {
+        return $this->original_total_amount && $this->original_total_amount > $this->total_amount;
+    }
+
+    public function getIsExpandedAttribute(): bool
+    {
+        return $this->original_total_amount && $this->original_total_amount < $this->total_amount;
+    }
+
+    public function getIsContractModifiedAttribute(): bool
+    {
+        return $this->original_total_amount && (float)$this->original_total_amount !== (float)$this->total_amount;
+    }
+
+    public function getIsQtyShrunkAttribute(): bool
+    {
+        return $this->original_qty_sum > $this->total_qty;
+    }
+
+    public function getOriginalQtySumAttribute(): float
+    {
+        return $this->orderDetails->sum(function($detail) {
+            return $detail->original_qty ?? $detail->qty;
+        });
     }
 
     public function getCompletionPercentageAttribute(): float
@@ -491,6 +518,11 @@ class Order extends Model
 
         static::saving(function ($order) {
             $order->syncPriorityFromSchedule();
+
+            // Lock in original total amount at creation
+            if (is_null($order->original_total_amount) && $order->total_amount > 0) {
+                $order->original_total_amount = $order->total_amount;
+            }
         });
 
         // Cascade soft-delete to related records

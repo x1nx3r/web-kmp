@@ -34,9 +34,16 @@ class MetricService
             ->whereDate('created_at', Carbon::today())
             ->count();
 
+        // Uses SUM(order_details.total_harga) instead of orders.total_amount
+        // because total_amount is unreliable (see total_amount_audit.md)
         $pendingValue = DB::table('orders')
-            ->whereIn('status', ['draft', 'dikonfirmasi', 'diproses', 'sebagian_dikirim'])
-            ->sum('total_amount');
+            ->leftJoin('order_details', function ($join) {
+                $join->on('order_details.order_id', '=', 'orders.id')
+                     ->whereNull('order_details.deleted_at');
+            })
+            ->whereNull('orders.deleted_at')
+            ->whereIn('orders.status', ['draft', 'dikonfirmasi', 'diproses', 'sebagian_dikirim'])
+            ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
 
         // System Metrics
         $failedJobs = 0;

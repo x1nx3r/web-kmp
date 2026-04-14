@@ -432,10 +432,17 @@ class DashboardController extends Controller
         $orderBulanIni = Order::whereYear('tanggal_order', Carbon::now()->year)
             ->whereMonth('tanggal_order', Carbon::now()->month)
             ->count();
-
-        $nilaiOrderBulanIni = Order::whereYear('tanggal_order', Carbon::now()->year)
-            ->whereMonth('tanggal_order', Carbon::now()->month)
-            ->sum('total_amount');
+        // Nilai Order uses contractual baseline (COALESCE) from order_details
+        // to ensure historical/audited POs show their full original value.
+        $nilaiOrderBulanIni = DB::table('orders')
+            ->leftJoin('order_details', function ($join) {
+                $join->on('order_details.order_id', '=', 'orders.id')
+                     ->whereNull('order_details.deleted_at');
+            })
+            ->whereNull('orders.deleted_at')
+            ->whereYear('orders.tanggal_order', Carbon::now()->year)
+            ->whereMonth('orders.tanggal_order', Carbon::now()->month)
+            ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
 
         // ========== MARGIN MINGGU INI (ikut filter range) ==========
         $pengirimanMarginMingguIni = Pengiriman::with([

@@ -37,6 +37,7 @@ class OrderDetail extends Model
         "suppliers_used_count",
         "supplier_options_populated",
         "options_populated_at",
+        "original_qty",
     ];
 
     protected $casts = [
@@ -55,6 +56,7 @@ class OrderDetail extends Model
         "remaining_quantity" => "decimal:2",
         "supplier_options_populated" => "boolean",
         "options_populated_at" => "datetime",
+        "original_qty" => "decimal:2",
     ];
 
     /**
@@ -168,6 +170,26 @@ class OrderDetail extends Model
     /**
      * Computed Properties
      */
+    public function getContractQtyAttribute(): float
+    {
+        return (float) ($this->original_qty ?? $this->qty);
+    }
+
+    public function getContractTotalAttribute(): float
+    {
+        return $this->contract_qty * $this->harga_jual;
+    }
+    
+    public function getIsShrunkAttribute(): bool
+    {
+        return $this->original_qty && $this->original_qty > $this->qty;
+    }
+
+    public function getIsContractModifiedAttribute(): bool
+    {
+        return $this->original_qty && (float)$this->original_qty !== (float)$this->qty;
+    }
+
     public function getCompletionPercentageAttribute(): float
     {
         if ($this->qty == 0) {
@@ -544,6 +566,18 @@ class OrderDetail extends Model
             // Recalculate totals when pricing changes
             if ($orderDetail->isDirty(["qty", "harga_jual"])) {
                 $orderDetail->calculateTotals(false);
+            }
+
+            // Lock in original qty if not set
+            if (is_null($orderDetail->original_qty) && $orderDetail->qty > 0) {
+                $orderDetail->original_qty = $orderDetail->qty;
+            }
+        });
+
+        static::saving(function ($orderDetail) {
+            // Lock in original qty at creation
+            if (is_null($orderDetail->original_qty) && $orderDetail->qty > 0) {
+                $orderDetail->original_qty = $orderDetail->qty;
             }
         });
 

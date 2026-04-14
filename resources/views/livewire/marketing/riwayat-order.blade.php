@@ -406,19 +406,29 @@
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="text-sm text-gray-600">Total Order</div>
+                                <div class="text-sm text-gray-600 font-medium whitespace-nowrap">Total Nilai Kontrak</div>
                                 <div class="text-xl font-bold text-green-600">
-                                    Rp {{ number_format($order->total_amount, 0, ',', '.') }}
+                                    Rp {{ number_format($order->contract_amount, 0, ',', '.') }}
                                 </div>
-                                <div class="text-xs text-gray-500 mt-1">
-                                    {{ $order->total_items }} item{{ $order->total_items > 1 ? 's' : '' }} |
-                                    {{ number_format($order->total_qty, 0) }} total qty
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1">
-                                    Outstanding Qty: {{ $outstandingDisplay ?: '0' }}
-                                </div>
-                                <div class="text-xs text-gray-500">
-                                    Outstanding Amount: Rp {{ number_format($outstandingAmount, 0, ',', '.') }}
+                                <div class="flex flex-col items-end mt-1">
+                                    @if($order->is_qty_shrunk)
+                                        <div class="text-xs text-gray-500">
+                                            Kontrak: {{ number_format($order->original_qty_sum, 0) }} {{ $order->orderDetails->first()->bahanBakuKlien->satuan ?? 'kg' }}
+                                        </div>
+                                        <div class="text-xs text-orange-600 font-medium">
+                                            Qty Tersisa: {{ number_format($order->total_qty, 0) }}
+                                        </div>
+                                    @else
+                                        <div class="text-xs text-gray-500">
+                                            {{ number_format($order->total_qty, 0) }} total qty
+                                        </div>
+                                    @endif
+
+                                    @if($order->is_shrunk)
+                                        <div class="text-[10px] text-orange-500 font-bold mt-1 px-2 py-0.5 bg-orange-50 rounded-md border border-orange-100">
+                                            Nilai Kontrak Tersisa : Rp {{ number_format($order->total_amount, 0, ',', '.') }}
+                                        </div>
+                                    @endif
                                 </div>
                                 @if($order->po_document_url)
                                     <div class="mt-2">
@@ -457,7 +467,7 @@
                                 </div>
                                 @if($order->status !== 'draft' && $order->total_qty > 0)
                                     <div class="text-xs text-gray-500">
-                                        Progress: {{ number_format($order->getFulfillmentPercentage(), 1) }}%
+                                        Progress: {{ number_format($order->completion_percentage, 1) }}%
                                     </div>
                                 @endif
                             </div>
@@ -497,19 +507,31 @@
                                             <div>
                                                 <div class="font-medium text-gray-900">{{ $detail->bahanBakuKlien->nama }}</div>
                                                 <div class="text-sm text-gray-600">
-                                                    {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
+                                                    <span class="font-semibold text-gray-900">{{ number_format($detail->contract_qty, 0) }}</span>
+                                                    {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
                                                     Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}
+                                                    
+                                                    @if($detail->is_shrunk)
+                                                        <div class="text-[10px] text-orange-600 font-medium">
+                                                            Tersisa: {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }}
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <div class="text-sm font-semibold text-gray-900">
-                                                Rp {{ number_format($detail->total_harga, 0, ',', '.') }}
+                                            <div class="text-sm font-bold text-gray-900">
+                                                Rp {{ number_format($detail->contract_total, 0, ',', '.') }}
                                             </div>
-                                            <div class="text-xs text-gray-500">
-                                                {{ $detail->orderSuppliers->count() }} supplier{{ $detail->orderSuppliers->count() > 1 ? 's' : '' }}
+                                            @if($detail->is_shrunk)
+                                                <div class="text-[10px] text-orange-600 font-medium whitespace-nowrap">
+                                                    Tersisa: Rp {{ number_format($detail->total_harga, 0, ',', '.') }}
+                                                </div>
+                                            @endif
+                                            <div class="text-[10px] text-gray-500 mt-1">
+                                                {{ $detail->orderSuppliers->count() }} suppliers
                                                 @if($detail->orderSuppliers->count() > 0)
-                                                    | Best margin: {{ number_format($detail->orderSuppliers->first()->calculated_margin ?? 0, 1) }}%
+                                                    | Best margin: {{ number_format($detail->orderSuppliers->first()->margin_percentage ?? 0, 1) }}%
                                                 @endif
                                             </div>
                                         </div>
@@ -533,9 +555,15 @@
                                                     <div>
                                                         <h5 class="font-semibold text-gray-900">{{ $detail->bahanBakuKlien->nama }}</h5>
                                                         <div class="text-sm text-gray-600">
-                                                            {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
-                                                            Rp {{ number_format($detail->harga_jual, 0, ',', '.') }} =
-                                                            <span class="font-semibold text-gray-900">Rp {{ number_format($detail->total_amount, 0, ',', '.') }}</span>
+                                                            <span class="font-semibold text-gray-900">{{ number_format($detail->contract_qty, 0) }}</span>
+                                                            {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
+                                                            Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}
+                                                            
+                                                            @if($detail->is_shrunk)
+                                                                <span class="ml-2 text-[11px] px-1.5 py-0.5 bg-orange-50 text-orange-600 border border-orange-100 rounded font-medium">
+                                                                    Tersisa: {{ number_format($detail->qty, 0) }}
+                                                                </span>
+                                                            @endif
                                                         </div>
                                                     </div>
                                                 </div>
@@ -545,7 +573,7 @@
                                                     </div>
                                                     @if($detail->qty_shipped > 0)
                                                         <div class="text-xs text-green-600">
-                                                            Shipped: {{ number_format($detail->qty_shipped, 0) }} / {{ number_format($detail->qty, 0) }}
+                                                            Shipped: {{ number_format($detail->qty_shipped, 0) }} / {{ number_format($detail->contract_qty, 0) }}
                                                         </div>
                                                     @endif
                                                 </div>

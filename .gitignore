@@ -26,3 +26,11 @@ public
 composer.lock
 storage
 config
+# PO investigation data (temporary)
+/po-investigation/*.csv
+/po-investigation/*.xlsx
+/po-investigation/*.sql
+/po-investigation/scans/
+/po-investigation/dumps/
+/po-investigation/audits/
+/po-investigation/verification/

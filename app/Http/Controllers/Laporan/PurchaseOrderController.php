@@ -53,19 +53,30 @@ class PurchaseOrderController extends Controller
         $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])
             ->count();
         
-        // Rata-rata Nilai per PO (untuk PO yang berjalan)
-        $totalNilaiPOBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])
-            ->sum(DB::raw('COALESCE(original_total_amount, total_amount)'));
+        // Rata-rata Nilai per PO (untuk PO yang berjalan) - Balanced Contractual Math
+        $totalNilaiPOBerjalan = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+            ->whereNull('order_details.deleted_at')
+            ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
         $avgNilaiPerPO = $poBerjalan > 0 ? $totalNilaiPOBerjalan / $poBerjalan : 0;
         
-        // For percentage calculations (dikonfirmasi, diproses, selesai) - WITH FILTER for Client & Winner charts
-        $totalNilaiPOForPercentage = Order::whereIn('status', ['dikonfirmasi', 'diproses', 'selesai'])
+        // For percentage calculations (dikonfirmasi, diproses, selesai) - Dynamic Alignment
+        $totalNilaiPOForPercentage = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
             ->where($dateFilterQuery)
-            ->sum(DB::raw('COALESCE(original_total_amount, total_amount)'));
+            ->whereNull('order_details.deleted_at')
+            ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
         
         // ========== PO BY STATUS (All statuses) - NO FILTER ==========
-        $poByStatus = Order::select('status', DB::raw('COUNT(*) as total'), DB::raw('SUM(COALESCE(original_total_amount, total_amount)) as nilai'))
-            ->groupBy('status')
+        $poByStatus = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->select('orders.status', 
+                DB::raw('COUNT(DISTINCT orders.id) as total'), 
+                DB::raw('SUM(COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual) as nilai'))
+            ->whereNull('order_details.deleted_at')
+            ->groupBy('orders.status')
             ->get();
         
         // Get PO details for each status (for modal) - hanya nomor PO, klien, dan tanggal
@@ -88,9 +99,14 @@ class PurchaseOrderController extends Controller
         }
         
         // ========== PO BY PRIORITY (dikonfirmasi & diproses only) - NO FILTER ==========
-        $poByPriority = Order::select('priority', DB::raw('COUNT(*) as total'), DB::raw('SUM(COALESCE(original_total_amount, total_amount)) as nilai'))
-            ->whereIn('status', ['dikonfirmasi', 'diproses'])
-            ->groupBy('priority')
+        $poByPriority = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->select('orders.priority', 
+                DB::raw('COUNT(DISTINCT orders.id) as total'), 
+                DB::raw('SUM(COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual) as nilai'))
+            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+            ->whereNull('order_details.deleted_at')
+            ->groupBy('orders.priority')
             ->get();
         
         // Get PO details for each priority — per item (matching outstanding detail logic)
@@ -162,8 +178,8 @@ class PurchaseOrderController extends Controller
                 DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
                 DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
                 DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN COALESCE(orders.original_total_amount, orders.total_amount) ELSE 0 END) as outstanding_amount"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN orders.total_qty ELSE 0 END) as outstanding_qty")
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN (SELECT SUM(COALESCE(od.original_qty, od.qty) * od.harga_jual) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL) ELSE 0 END) as outstanding_amount"),
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN (SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL) ELSE 0 END) as outstanding_qty")
             )
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
@@ -431,13 +447,13 @@ class PurchaseOrderController extends Controller
                 'kliens.nama as klien_nama',
                 'kliens.cabang',
                 DB::raw('COUNT(orders.id) as total_po'),
-                DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
+                DB::raw('SUM((SELECT SUM(COALESCE(od.original_qty, od.qty) * od.harga_jual) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL)) as total_nilai'),
                 DB::raw('SUM((SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL)) as total_qty'),
                 DB::raw('MAX(orders.tanggal_order) as last_order_date'),
                 DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
                 DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
                 DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN COALESCE(orders.original_total_amount, orders.total_amount) ELSE 0 END) as outstanding_amount")
+                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN (SELECT SUM(COALESCE(od.original_qty, od.qty) * od.harga_jual) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL) ELSE 0 END) as outstanding_amount")
             )
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])

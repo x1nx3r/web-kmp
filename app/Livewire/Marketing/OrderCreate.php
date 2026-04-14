@@ -719,6 +719,10 @@ class OrderCreate extends Component
             // Capture old order detail IDs before soft-deleting
             // so we can re-point pengiriman_details FKs to the new detail
             $oldDetailIds = $order->orderDetails->pluck('id')->toArray();
+            
+            // CRITICAL: Capture the existing contractual baseline (original_qty)
+            // if it exists, so we can carry it over to the new detail.
+            $stashedOriginalQty = $order->orderDetails->first()->original_qty ?? null;
 
             // Clear existing order details and suppliers
             foreach ($order->orderDetails as $detail) {
@@ -735,6 +739,8 @@ class OrderCreate extends Component
                     : null);
 
             // Create single updated order detail
+            // Carry over the original_qty from the stashed value if it exists,
+            // otherwise the model boot hook will set it to current qty.
             $orderDetail = OrderDetail::create([
                 "order_id" => $order->id,
                 "bahan_baku_klien_id" => $this->selectedMaterial,
@@ -746,6 +752,7 @@ class OrderCreate extends Component
                 "spesifikasi_khusus" => $this->spesifikasiKhusus ?: null,
                 "catatan" => $this->catatanMaterial ?: null,
                 "status" => "menunggu",
+                "original_qty" => $stashedOriginalQty, // Carry over!
             ]);
 
             $orderDetail->populateSupplierOptions();

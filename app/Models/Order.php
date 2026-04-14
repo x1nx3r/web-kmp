@@ -216,12 +216,25 @@ class Order extends Model
      */
     public function getContractAmountAttribute(): float
     {
-        return (float) ($this->original_total_amount ?? $this->total_amount);
+        // Calculate the contractual baseline: Original Qty @ Current Price
+        // This ensures the baseline is accurate even if the price is corrected later.
+        return (float) $this->orderDetails->sum(function($detail) {
+            return ($detail->original_qty ?? $detail->qty) * $detail->harga_jual;
+        });
+    }
+
+    public function getTotalAmountAttribute(): float
+    {
+        // Calculate the current operational total accurately from details
+        // Foregoing the buggy orders.total_amount database column.
+        return (float) $this->orderDetails->sum(function($detail) {
+            return $detail->qty * $detail->harga_jual;
+        });
     }
 
     public function getIsShrunkAttribute(): bool
     {
-        return $this->original_total_amount && $this->original_total_amount > $this->total_amount;
+        return $this->contract_amount > $this->total_amount;
     }
 
     public function getIsExpandedAttribute(): bool
@@ -231,7 +244,7 @@ class Order extends Model
 
     public function getIsContractModifiedAttribute(): bool
     {
-        return $this->original_total_amount && (float)$this->original_total_amount !== (float)$this->total_amount;
+        return (float)$this->contract_amount !== (float)$this->total_amount;
     }
 
     public function getIsQtyShrunkAttribute(): bool
@@ -519,8 +532,14 @@ class Order extends Model
         static::saving(function ($order) {
             $order->syncPriorityFromSchedule();
 
-            // Lock in original total amount at creation
+            // Set the baseline if it's empty
             if (is_null($order->original_total_amount) && $order->total_amount > 0) {
+                $order->original_total_amount = $order->total_amount;
+            }
+            
+            // Allow the baseline to be updated ONLY IF the order is still in draft.
+            // Once it moves to 'dikonfirmasi' or 'diproses', the baseline is frozen.
+            if ($order->status === 'draft' && $order->isDirty('total_amount')) {
                 $order->original_total_amount = $order->total_amount;
             }
         });

@@ -456,7 +456,7 @@ class ApprovePembayaran extends Component
             'invoice_date' => now(),
             'due_date' => now()->addDays(30),
             'customer_name' => $klien->nama ?? 'Customer',
-            'customer_address' => $klien->cabang ?? '-',
+            'customer_address' => $klien->alamat_lengkap ?? '-',
             'customer_phone' => $klien->no_hp ?? null,
             'customer_email' => null,
             'items' => $items,

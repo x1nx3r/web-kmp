@@ -273,7 +273,7 @@ class ApprovalPenagihan extends Component
 
         $this->invoiceForm = [
             'customer_name' => $klien->nama ?? '',
-            'customer_address' => $klien->cabang ?? '',
+            'customer_address' => $klien->alamat_lengkap ?? '',
             'customer_phone' => $klien->no_hp ?? '',
             'customer_email' => '',
             'refraksi_type' => $refraksiType,

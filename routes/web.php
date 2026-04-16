@@ -86,6 +86,10 @@ Route::middleware(["auth"])->group(function () {
             Route::get('/pengiriman/pie-chart-details', [LaporanPengirimanController::class, 'getPieChartDetails'])->name('pengiriman.pieChartDetails');
             Route::get('/pengiriman/pie-chart-pdf', [LaporanPengirimanController::class, 'exportPieChartPDF'])->name('pengiriman.pieChartPDF');
 
+            // Laporan Evaluasi Procurement
+            Route::get('/evaluasi-procurement', [\App\Http\Controllers\Laporan\EvaluasiProcurementController::class, 'index'])->name('evaluasiProcurement');
+            Route::match(['GET', 'POST'], '/evaluasi-procurement/export', [\App\Http\Controllers\Laporan\EvaluasiProcurementController::class, 'export'])->name('evaluasiProcurement.export');
+
             Route::get('/pembayaran', [LaporanPembayaranController::class, 'index'])->name('pembayaran');
             Route::post('/pembayaran/export', [LaporanPembayaranController::class, 'export'])->name('pembayaran.export');
 

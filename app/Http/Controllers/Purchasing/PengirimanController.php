@@ -1385,10 +1385,10 @@ class PengirimanController extends Controller
 
             // Combine existing catatan with cancellation reason
             $newCatatan =
-                $validatedData["catatan"] .
-                "\n\n[PEMBATALAN]\n" .
+            
                 $validatedData["alasan_batal"] .
                 "\n[Dibatalkan pada: " .
+                "\n [Dibatalkan pada: " .
                 now()->format("d M Y H:i") .
                 "]";
 

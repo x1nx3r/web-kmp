@@ -1387,7 +1387,6 @@ class PengirimanController extends Controller
             $newCatatan =
             
                 $validatedData["alasan_batal"] .
-                "\n[Dibatalkan pada: " .
                 "\n [Dibatalkan pada: " .
                 now()->format("d M Y H:i") .
                 "]";

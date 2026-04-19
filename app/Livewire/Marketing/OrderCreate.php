@@ -331,6 +331,10 @@ class OrderCreate extends Component
 
     public function updatedHargaJual()
     {
+        // Recalculate the per-supplier margin display whenever the selling price changes.
+        // Without this, the margin badges in the supplier panel stays frozen at the
+        // value calculated when the material was first selected.
+        $this->recalculateSupplierMargins();
         $this->updateTotals();
     }
 
@@ -368,29 +372,34 @@ class OrderCreate extends Component
                     continue;
                 }
 
-                // Calculate margin with a default selling price (20% markup)
+                // Suggested price is always 20% markup — used only for auto-fill on create.
                 $suggestedPrice = $hargaSupplier * 1.2;
-                $margin =
-                    (($suggestedPrice - $hargaSupplier) /
-                        $suggestedPrice) *
-                    100;
+
+                // Margin display: use the actual negotiated selling price when available
+                // (edit mode has hargaJual loaded from DB before this method runs).
+                // Fall back to the suggested price for new orders where hargaJual is still 0.
+                $effectiveSellingPrice = ($this->hargaJual > 0)
+                    ? (float) $this->hargaJual
+                    : $suggestedPrice;
+                $margin = $effectiveSellingPrice > 0
+                    ? (($effectiveSellingPrice - $hargaSupplier) / $effectiveSellingPrice) * 100
+                    : 0;
 
                 $this->autoSuppliers[] = [
-                    "supplier_id" => $supplier->id,
+                    "supplier_id"           => $supplier->id,
                     "bahan_baku_supplier_id" => $bahanBaku->id,
-                    "supplier_name" => $supplier->nama,
-                    "supplier_location" =>
-                        $supplier->alamat ?? "Address not specified",
-                    "pic_name" => $supplier->picPurchasing
+                    "supplier_name"         => $supplier->nama,
+                    "supplier_location"     => $supplier->alamat ?? "Address not specified",
+                    "pic_name"              => $supplier->picPurchasing
                         ? $supplier->picPurchasing->nama
                         : null,
-                    "material_name" => $bahanBaku->nama,
-                    "harga_supplier" => $hargaSupplier,
-                    "satuan" => $bahanBaku->satuan,
-                    "stok" => $bahanBaku->stok ?? 0,
-                    "suggested_price" => $suggestedPrice,
+                    "material_name"     => $bahanBaku->nama,
+                    "harga_supplier"    => $hargaSupplier,
+                    "satuan"            => $bahanBaku->satuan,
+                    "stok"              => $bahanBaku->stok ?? 0,
+                    "suggested_price"   => $suggestedPrice,
                     "margin_percentage" => $margin,
-                    "is_recommended" => false, // Will set best one later
+                    "is_recommended"    => false, // Will set best one later
                 ];
 
                 if ($hargaSupplier < $bestPrice) {
@@ -411,8 +420,12 @@ class OrderCreate extends Component
                 $this->autoSuppliers[0]["suggested_price"];
             $this->bestMargin = $this->autoSuppliers[0]["margin_percentage"];
 
-            // Set current selling price to recommended price
-            $this->hargaJual = $this->recommendedPrice;
+            // Only auto-fill the selling price when it has not already been set (create mode).
+            // In edit mode, hargaJual is loaded from the DB before this method runs —
+            // overwriting it would replace the real negotiated price with a generic 20% markup.
+            if (!$this->hargaJual || $this->hargaJual == 0) {
+                $this->hargaJual = $this->recommendedPrice;
+            }
         }
     }
 
@@ -445,6 +458,19 @@ class OrderCreate extends Component
     {
         $this->totalAmount = 0;
         $this->totalMargin = 0;
+    }
+
+    protected function recalculateSupplierMargins(): void
+    {
+        if (empty($this->autoSuppliers) || !($this->hargaJual > 0)) {
+            return;
+        }
+
+        foreach ($this->autoSuppliers as &$supplier) {
+            $harga = $supplier['harga_supplier'];
+            $supplier['margin_percentage'] = (($this->hargaJual - $harga) / $this->hargaJual) * 100;
+        }
+        unset($supplier); // clear reference
     }
 
     public function updatedPoStartDate()
@@ -716,56 +742,80 @@ class OrderCreate extends Component
                 "catatan" => $this->catatan,
             ]);
 
-            // Capture old order detail IDs before soft-deleting
-            // so we can re-point pengiriman_details FKs to the new detail
-            $oldDetailIds = $order->orderDetails->pluck('id')->toArray();
-            
-            // CRITICAL: Capture the existing contractual baseline (original_qty)
-            // if it exists, so we can carry it over to the new detail.
-            $stashedOriginalQty = $order->orderDetails->first()->original_qty ?? null;
-
-            // Clear existing order details and suppliers
-            foreach ($order->orderDetails as $detail) {
-                $detail->orderSuppliers()->delete();
-            }
-            $order->orderDetails()->delete();
-
             // Get material name for fallback
             $material = BahanBakuKlien::find($this->selectedMaterial);
             $namaMaterialPO = !empty($this->namaMaterialPO)
                 ? $this->namaMaterialPO
-                : ($material
-                    ? $material->nama
-                    : null);
+                : ($material ? $material->nama : null);
 
-            // Create single updated order detail
-            // Carry over the original_qty from the stashed value if it exists,
-            // otherwise the model boot hook will set it to current qty.
-            $orderDetail = OrderDetail::create([
-                "order_id" => $order->id,
-                "bahan_baku_klien_id" => $this->selectedMaterial,
-                "nama_material_po" => $namaMaterialPO,
-                "qty" => $this->quantity,
-                "satuan" => $this->satuan,
-                "harga_jual" => $this->hargaJual,
-                "total_harga" => $this->totalAmount,
-                "spesifikasi_khusus" => $this->spesifikasiKhusus ?: null,
-                "catatan" => $this->catatanMaterial ?: null,
-                "status" => "menunggu",
-                "original_qty" => $stashedOriginalQty, // Carry over!
-            ]);
+            // UPDATE-IN-PLACE: Rather than soft-deleting the existing detail and creating a new one
+            // (which required a fragile "stash" of original_qty and FK re-pointing for
+            // pengiriman_details / forecast_details), we update the existing row directly.
+            //
+            // This means:
+            //   1. original_qty is NEVER touched — the contractual baseline is preserved naturally.
+            //   2. PengirimanDetail / ForecastDetail FKs remain valid — no re-pointing needed.
+            //   3. If the material itself changes, we explicitly reset original_qty to the new qty
+            //      (a different material = a new contract, so the old baseline is irrelevant).
+            $existingDetail = $order->orderDetails->first();
 
-            $orderDetail->populateSupplierOptions();
-            $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
+            if ($existingDetail) {
+                $materialChanged = (int) $existingDetail->bahan_baku_klien_id !== (int) $this->selectedMaterial;
 
-            // Re-point all pengiriman_details and forecast_details that referenced old order_detail(s)
-            // to the newly created one, so downstream data (invoices, approvals, forecasts) stays linked
-            if (!empty($oldDetailIds)) {
-                \App\Models\PengirimanDetail::whereIn('purchase_order_bahan_baku_id', $oldDetailIds)
-                    ->update(['purchase_order_bahan_baku_id' => $orderDetail->id]);
+                // Hard-delete old supplier options before re-populating.
+                // These rows are recalculated price data, not audit records that need history.
+                // Soft-deleting is intentionally avoided here: the unique index
+                // (order_detail_id, supplier_id) does NOT include deleted_at, so soft-deleted
+                // rows still occupy the key slot and cause a duplicate entry violation on re-insert.
+                $existingDetail->orderSuppliers()->forceDelete();
 
-                \App\Models\ForecastDetail::whereIn('purchase_order_bahan_baku_id', $oldDetailIds)
-                    ->update(['purchase_order_bahan_baku_id' => $orderDetail->id]);
+                // Build the update payload. Do NOT include original_qty unless the material changed.
+                $detailUpdate = [
+                    "bahan_baku_klien_id" => $this->selectedMaterial,
+                    "nama_material_po"    => $namaMaterialPO,
+                    "qty"                 => $this->quantity,
+                    "satuan"              => $this->satuan,
+                    "harga_jual"          => $this->hargaJual,
+                    "total_harga"         => $this->totalAmount,
+                    "spesifikasi_khusus"  => $this->spesifikasiKhusus ?: null,
+                    "catatan"             => $this->catatanMaterial ?: null,
+                    "status"              => $existingDetail->status === "menunggu" ? "menunggu" : $existingDetail->status,
+                    // Reset supplier population flag so populateSupplierOptions() runs again.
+                    "supplier_options_populated" => false,
+                    "options_populated_at"       => null,
+                ];
+
+                if ($materialChanged) {
+                    // New material = new contract. Reset the baseline to the new quantity.
+                    $detailUpdate["original_qty"] = $this->quantity;
+                }
+                // If material is unchanged, original_qty is intentionally omitted —
+                // the existing value (whether set by backfill or first save) is preserved as-is.
+
+                $existingDetail->update($detailUpdate);
+
+                $existingDetail->populateSupplierOptions();
+                $this->setRecommendedSupplierFromAutoSuppliers($existingDetail);
+
+                $orderDetail = $existingDetail;
+            } else {
+                // No existing detail (edge case: order was created without one).
+                // Fall back to creating a fresh detail; boot hook will set original_qty.
+                $orderDetail = OrderDetail::create([
+                    "order_id"           => $order->id,
+                    "bahan_baku_klien_id" => $this->selectedMaterial,
+                    "nama_material_po"   => $namaMaterialPO,
+                    "qty"                => $this->quantity,
+                    "satuan"             => $this->satuan,
+                    "harga_jual"         => $this->hargaJual,
+                    "total_harga"        => $this->totalAmount,
+                    "spesifikasi_khusus" => $this->spesifikasiKhusus ?: null,
+                    "catatan"            => $this->catatanMaterial ?: null,
+                    "status"             => "menunggu",
+                ]);
+
+                $orderDetail->populateSupplierOptions();
+                $this->setRecommendedSupplierFromAutoSuppliers($orderDetail);
             }
 
             $order->calculateTotals();

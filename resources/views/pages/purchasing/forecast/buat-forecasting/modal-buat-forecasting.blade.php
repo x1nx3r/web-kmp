@@ -197,8 +197,6 @@
                                         </p>
                                     </div>
                                 </div>
-                                
-                                
                             </div>
 
                             {{-- Total Harga & Perbandingan --}}
@@ -242,9 +240,24 @@
                                     <i class="fas fa-sticky-note text-green-500 mr-1"></i>
                                     Catatan
                                 </label>
+
+                                {{-- Checkbox Pengiriman Tambahan --}}
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" id="checkbox_tambahan" name="checkbox_tambahan"
+                                           class="w-4 h-4 text-yellow-500 border-gray-300 rounded focus:ring-yellow-400 cursor-pointer"
+                                           onchange="handleTambahanCheckbox(this)">
+                                    <label for="checkbox_tambahan" class="ml-2 text-xs sm:text-sm font-medium text-yellow-700 cursor-pointer select-none flex items-center gap-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
+                                            <i class="fas fa-plus-circle mr-1 text-xs"></i>Pengiriman Tambahan
+                                        </span>
+                                        <span class="text-gray-500 font-normal">(otomatis isi catatan)</span>
+                                    </label>
+                                </div>
+
                                 <textarea id="catatan" name="catatan" rows="3"
                                           class="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"
-                                          placeholder="Tambahkan catatan untuk forecast ini (opsional)..."></textarea>
+                                          placeholder="Tambahkan catatan untuk forecast ini (opsional)..."
+                                          oninput="syncTambahanCheckbox()"></textarea>
                             </div>
 
                             {{-- Hidden Fields --}}
@@ -336,6 +349,53 @@ function formatNumber(num, decimals = 2) {
     return parts.join(',');
 }
 
+// ========================================================
+// CHECKBOX "PENGIRIMAN TAMBAHAN" — logika sederhana
+// ========================================================
+
+/**
+ * Dipanggil saat checkbox diubah.
+ * Centang  → isi textarea catatan dengan "Tambahan"
+ * Uncheck  → hapus textarea hanya jika isinya persis "Tambahan"
+ */
+function handleTambahanCheckbox(checkbox) {
+    const catatanField = document.getElementById('catatan');
+    if (checkbox.checked) {
+        catatanField.value = 'Tambahan';
+    } else {
+        if (catatanField.value === 'Tambahan') {
+            catatanField.value = '';
+        }
+    }
+}
+
+/**
+ * Dipanggil saat textarea catatan diedit manual.
+ * Jika isi textarea tidak lagi persis "Tambahan", uncheck checkbox.
+ */
+function syncTambahanCheckbox() {
+    const catatanField = document.getElementById('catatan');
+    const checkbox = document.getElementById('checkbox_tambahan');
+    checkbox.checked = (catatanField.value === 'Tambahan');
+}
+
+/**
+ * Reset checkbox Tambahan dan textarea catatan ke kondisi awal (kosong, unchecked).
+ */
+function resetTambahanCheckbox() {
+    const checkbox = document.getElementById('checkbox_tambahan');
+    const catatanField = document.getElementById('catatan');
+    checkbox.checked = false;
+    // Hanya kosongkan jika isinya persis "Tambahan" (reset saat modal tutup)
+    if (catatanField.value === 'Tambahan') {
+        catatanField.value = '';
+    }
+}
+
+// ========================================================
+// END CHECKBOX LOGIC
+// ========================================================
+
 // Open forecast modal
 async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseOrderId, noPO) {
     // Check user role authorization
@@ -381,6 +441,9 @@ async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseO
     document.getElementById('forecastForm').reset();
     document.getElementById('purchase_order_id').value = purchaseOrderId;
     document.getElementById('order_detail_id').value = orderDetailId;
+
+    // Reset checkbox tambahan (form.reset() sudah handle, tapi pastikan textarea juga bersih)
+    resetTambahanCheckbox();
     
     // Set default perkiraan tanggal kirim ke hari ini
     const today = new Date();
@@ -433,7 +496,6 @@ async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseO
                 const satuan = supplier.satuan || 'unit';
                 const picPurchasing = supplier.pic_purchasing_nama || 'Belum ditentukan';
                 
-                // Tampilkan semua supplier untuk debugging (nanti bisa dikembalikan filter stok > 0)
                 const optionText = `${bahanBakuNama} - ${supplierNama} (Stok: ${formatRupiah(stok)} ${satuan}) - Rp ${formatRupiah(Math.round(hargaSatuan))}`;
                 const option = new Option(optionText, supplier.id);
                 option.dataset.hargaPerSatuan = hargaSatuan;
@@ -457,7 +519,6 @@ async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseO
                 }
             });
             
-            // Cek apakah ada option yang ditambahkan selain option default
             if (supplierSelect.options.length <= 1) {
                 supplierSelect.innerHTML += '<option value="" disabled>Semua supplier tidak memiliki stok</option>';
                 console.log('All suppliers have no stock');
@@ -468,17 +529,14 @@ async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseO
         
         // Set satuan dan harga PO dari order_detail
         if (data.order_detail) {
-            // Set satuan dari bahan_baku_klien yang sudah di-load
             if (data.order_detail.bahan_baku_klien) {
                 document.getElementById('satuanBahanBaku').textContent = data.order_detail.bahan_baku_klien.satuan || '';
             }
             
-            // Set harga PO - ambil dari harga_jual pada order_detail
             const hargaPO = data.order_detail.harga_jual || 0;
             document.getElementById('harga_satuan_po').value = hargaPO;
             document.getElementById('hargaPO').textContent = 'Rp ' + formatRupiah(Math.round(hargaPO));
             
-            // Calculate total PO
             const qtyPO = data.order_detail.qty || 0;
             const totalPO = hargaPO * qtyPO;
             document.getElementById('totalHargaPO').textContent = 'Rp ' + formatRupiah(Math.round(totalPO));
@@ -498,6 +556,9 @@ async function openForecastModal(orderDetailId, bahanBakuNama, jumlah, purchaseO
 function closeForecastModal() {
     document.getElementById('forecastModal').classList.add('hidden');
     document.getElementById('forecastForm').reset();
+    
+    // Reset checkbox tambahan dan pastikan textarea catatan bersih
+    resetTambahanCheckbox();
     
     // Reset custom price state
     cancelPriceEdit();
@@ -782,25 +843,6 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
     
     // Check if delivery date is filled
     const deliveryDate = document.getElementById('perkiraan_tanggal_kirim').value;
-    if (!deliveryDate) {
-        alert('Silakan pilih tanggal perkiraan kirim');
-        return;
-    }
-    
-    // Additional validations
-    const purchaseOrderId = document.getElementById('purchase_order_id').value;
-    const orderDetailId = document.getElementById('order_detail_id').value;
-    
-    if (!purchaseOrderId) {
-        alert('Order ID tidak ditemukan. Silakan refresh halaman dan coba lagi.');
-        return;
-    }
-    
-    if (!orderDetailId) {
-        alert('Order Detail ID tidak ditemukan. Silakan refresh halaman dan coba lagi.');
-        return;
-    }
-    
     // Validate price data
     const isCustomPrice = document.getElementById('is_custom_price').value === 'true';
     let hargaSupplierRaw;
@@ -808,7 +850,6 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
     if (isCustomPrice) {
         hargaSupplierRaw = parseFloat(document.getElementById('custom_harga_supplier').value);
         
-        // Validate custom price and reason
         if (!hargaSupplierRaw || hargaSupplierRaw <= 0) {
             alert('Harga baru supplier tidak valid. Silakan masukkan harga yang benar.');
             return;
@@ -830,13 +871,11 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
     try {
         const formData = new FormData(this);
         
-        // Get and validate all required data
         const purchaseOrderId = parseInt(formData.get('purchase_order_id'));
         const orderDetailId = parseInt(formData.get('order_detail_id'));
         const bahanBakuSupplierId = parseInt(selectedSupplier);
-        const qtyForecast = parseFloat(formData.get('qty_forecast'));
+        const qtyForecastVal = parseFloat(formData.get('qty_forecast'));
         
-        // Use the correct price - either custom price or original price
         let finalHargaSupplier;
         if (isCustomPrice) {
             finalHargaSupplier = parseFloat(document.getElementById('custom_harga_supplier').value);
@@ -848,36 +887,17 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         const hariForecast = formData.get('hari_kirim_forecast') || document.getElementById('perkiraan_hari_kirim').value;
         const catatan = formData.get('catatan') || '';
         
-        // Validate all data
-        if (isNaN(purchaseOrderId) || purchaseOrderId <= 0) {
-            throw new Error('Order ID tidak valid');
-        }
-        if (isNaN(orderDetailId) || orderDetailId <= 0) {
-            throw new Error('Order Detail ID tidak valid');
-        }
-        if (isNaN(bahanBakuSupplierId) || bahanBakuSupplierId <= 0) {
-            throw new Error('Bahan Baku Supplier ID tidak valid');
-        }
-        if (isNaN(qtyForecast) || qtyForecast <= 0) {
-            throw new Error('Quantity forecast tidak valid');
-        }
-        if (isNaN(finalHargaSupplier) || finalHargaSupplier <= 0) {
-            throw new Error('Harga supplier tidak valid');
-        }
-        if (!tanggalForecast) {
-            throw new Error('Tanggal forecast tidak valid');
-        }
-        if (!hariForecast) {
-            throw new Error('Hari forecast tidak valid');
-        }
+        if (isNaN(purchaseOrderId) || purchaseOrderId <= 0) throw new Error('Order ID tidak valid');
+        if (isNaN(orderDetailId) || orderDetailId <= 0) throw new Error('Order Detail ID tidak valid');
+        if (isNaN(bahanBakuSupplierId) || bahanBakuSupplierId <= 0) throw new Error('Bahan Baku Supplier ID tidak valid');
+        if (isNaN(qtyForecastVal) || qtyForecastVal <= 0) throw new Error('Quantity forecast tidak valid');
+        if (isNaN(finalHargaSupplier) || finalHargaSupplier <= 0) throw new Error('Harga supplier tidak valid');
+        if (!tanggalForecast) throw new Error('Tanggal forecast tidak valid');
+        if (!hariForecast) throw new Error('Hari forecast tidak valid');
         
-        // Get and validate CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (!csrfToken) {
-            throw new Error('CSRF token tidak ditemukan. Silakan refresh halaman.');
-        }
+        if (!csrfToken) throw new Error('CSRF token tidak ditemukan. Silakan refresh halaman.');
         
-        // Prepare data for API
         const data = {
             _token: csrfToken,
             purchase_order_id: purchaseOrderId,
@@ -887,16 +907,14 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
             details: [{
                 purchase_order_bahan_baku_id: orderDetailId,
                 bahan_baku_supplier_id: bahanBakuSupplierId,
-                qty_forecast: qtyForecast,
+                qty_forecast: qtyForecastVal,
                 harga_satuan_forecast: finalHargaSupplier,
                 catatan_detail: null
             }]
         };
         
-        // Add price update data if custom price is used
         if (isCustomPrice) {
             const hargaLama = parseFloat(document.getElementById('harga_lama_supplier').value) || 0;
-            
             data.update_harga_supplier = {
                 bahan_baku_supplier_id: bahanBakuSupplierId,
                 harga_lama: hargaLama,
@@ -906,14 +924,9 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         }
         
         console.log('Data yang akan dikirim:', data);
-        console.log('FormData values:');
-        for (let [key, value] of formData.entries()) {
-            console.log(key, ':', value);
-        }
         
-        // Buat AbortController untuk timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 detik timeout
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
         
         const response = await fetch('/procurement/forecasting/create', {
             method: 'POST',
@@ -925,44 +938,28 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
             signal: controller.signal
         });
         
-        clearTimeout(timeoutId); // Clear timeout jika request berhasil
+        clearTimeout(timeoutId);
         
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        
-        // Try to get response text first
         const responseText = await response.text();
-        console.log('Response text:', responseText);
         
         if (!response.ok) {
-            // Try to parse as JSON if possible
             let errorMessage = `Server Error (${response.status})`;
             try {
                 const errorData = JSON.parse(responseText);
-                if (errorData.message) {
-                    errorMessage += ': ' + errorData.message;
-                }
-                if (errorData.errors) {
-                    errorMessage += '\nDetail: ' + JSON.stringify(errorData.errors);
-                }
+                if (errorData.message) errorMessage += ': ' + errorData.message;
+                if (errorData.errors) errorMessage += '\nDetail: ' + JSON.stringify(errorData.errors);
             } catch (jsonError) {
-                // If not JSON, use raw response text
-                if (responseText && responseText.length > 0) {
-                    errorMessage += ': ' + responseText.substring(0, 200);
-                }
+                if (responseText && responseText.length > 0) errorMessage += ': ' + responseText.substring(0, 200);
             }
             throw new Error(errorMessage);
         }
         
-        // Parse JSON response
         let result;
         try {
             result = JSON.parse(responseText);
         } catch (jsonError) {
             throw new Error('Invalid JSON response from server');
         }
-        
-        console.log('Response data:', result);
         
         if (result.success) {
             closeForecastModal();
@@ -973,7 +970,6 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
     } catch (error) {
         console.error('Error creating forecast:', error);
         
-        // Show more specific error message
         if (error.name === 'AbortError') {
             closeForecastModal();
             showTimeoutModal();
@@ -987,7 +983,7 @@ document.getElementById('forecastForm').addEventListener('submit', async functio
         } else {
             alert('Terjadi kesalahan saat membuat forecast:\n' + error.message);
         }
-        } finally {
+    } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     }
@@ -1017,19 +1013,15 @@ function showSuccessModal(forecast) {
     const description = 'Data forecast telah disimpan ke sistem dengan baik.';
     const additionalInfo = `No. Forecast: ${forecastNumber} • Total Qty: ${totalQty} • Total Harga: ${totalHarga}`;
     
-    // Use universal success modal API with forecast type
     if (window.showSuccessModal) {
-        window.showSuccessModal('forecast', message, description, additionalInfo, false); // Don't auto-close
+        window.showSuccessModal('forecast', message, description, additionalInfo, false);
     } else {
-        // Fallback if universal modal not loaded
         alert(`${message}\n\n${description}\n\n${additionalInfo}`);
         if (window.closeSuccessModal) {
             window.closeSuccessModal();
         }
     }
 }
-
-// Note: closeSuccessModal is now handled by the universal modal component with parameter preservation
 
 // Show timeout modal
 function showTimeoutModal() {
@@ -1040,11 +1032,9 @@ function showTimeoutModal() {
 function closeTimeoutModal() {
     document.getElementById('timeoutModal').classList.add('hidden');
     
-    // Use global refresh function to preserve all parameters
     if (window.refreshWithPreservedParams) {
         window.refreshWithPreservedParams();
     } else {
-        // Fallback to simple refresh
         window.location.reload();
     }
 }

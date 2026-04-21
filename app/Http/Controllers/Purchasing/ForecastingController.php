@@ -54,7 +54,7 @@ class ForecastingController extends Controller
         }, function($query) {
             $query->orderBy('created_at', 'desc');
         })
-        ->paginate(10, ['*'], 'page_buat_forecasting')
+        ->paginate(20, ['*'], 'page_buat_forecasting')
         ->withQueryString();
 
         // Ambil forecast berdasarkan status dengan eager loading dan pagination
@@ -112,7 +112,7 @@ class ForecastingController extends Controller
             }, function($query) {
                 $query->latest('created_at');
             })
-            ->paginate(10, ['*'], 'page_pending')
+            ->paginate(50, ['*'], 'page_pending')
             ->withQueryString();
 
         $suksesForecasts = Forecast::with(['order.klien', 'purchasing'])

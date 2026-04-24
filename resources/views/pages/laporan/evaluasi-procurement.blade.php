@@ -104,7 +104,7 @@
                 </a>
             </div>
 
-            {{-- Tombol Export — submit ke form export terpisah via JS --}}
+            {{-- Tombol Export --}}
             <div class="pb-0.5">
                 <button type="button" onclick="submitExport()"
                         class="h-9 px-4 rounded-lg border border-emerald-300 text-emerald-700 text-sm hover:bg-emerald-50 transition-colors inline-flex items-center gap-1.5">
@@ -173,21 +173,21 @@
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
 
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Target Omset forecasting</p>
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Target Omset Forecasting</p>
         <p class="text-2xl font-semibold text-gray-800">
             Rp {{ number_format((float)$omsetForecasting, 2, ',', '.') }}
         </p>
     </div>
 
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Omset realisasi</p>
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Omset Realisasi</p>
         <p class="text-2xl font-semibold text-gray-800">
             Rp {{ number_format((float)$omsetRealisasi, 2, ',', '.') }}
         </p>
     </div>
 
     <div class="bg-white rounded-xl border border-yellow-100 shadow-sm p-5">
-        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Pengiriman tambahan</p>
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Pengiriman Tambahan</p>
         <p class="text-2xl font-semibold text-yellow-700">
             Rp {{ number_format((float)$omsetTambahan, 2, ',', '.') }}
         </p>
@@ -221,8 +221,12 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
+
+                @php $statusRealisasi = ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil']; @endphp
+
                 @forelse($forecastData as $f)
                     @php
+                        // ── Tanggal & hari ─────────────────────────────────────────
                         $displayTanggal = $f->display_tanggal
                             ? \Carbon\Carbon::parse($f->display_tanggal)->format('d/m/Y')
                             : 'N/A';
@@ -230,44 +234,49 @@
                             ? \Carbon\Carbon::parse($f->display_tanggal)->locale('id')->isoFormat('dddd')
                             : 'N/A';
 
+                        // ── Info detail pertama (untuk supplier, bahan baku, harga jual) ──
                         $details     = $f->forecastDetails ?? collect();
-                        $qtyForecast = $details->sum('qty_forecast');
                         $firstDetail = $details->first();
 
                         $supplierNama  = optional(optional(optional($firstDetail)->bahanBakuSupplier)->supplier)->nama ?? 'N/A';
                         $bahanBakuNama = optional(optional($firstDetail)->bahanBakuSupplier)->nama ?? 'N/A';
+                        $hargaJual     = (float) (optional(optional($firstDetail)->orderDetail)->harga_jual ?? 0);
 
+                        // ── Klien ──────────────────────────────────────────────────
                         $klien       = optional(optional($f->purchaseOrder)->klien);
                         $klienNama   = $klien->nama   ?? 'N/A';
-                        $klienCabang = $klien->cabang ?? 'N/A';
+                        $klienCabang = $klien->cabang ?? null;
 
-                        $hargaJual = (float) (optional(optional($firstDetail)->orderDetail)->harga_jual ?? 0);
+                        // ── Total Forecast (BARU): computed dari subquery ──────────
+                        //    SUM(forecast_details.qty_forecast * order_details.harga_jual)
+                        $qtyForecast        = (float) ($f->computed_qty_forecast   ?? 0);
+                        $totalHargaForecast = (float) ($f->computed_total_forecast ?? 0);
 
-                        $statusRealisasi = ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'];
-                        $pStatus         = $f->pengiriman_status ?? null;
-                        $isRealisasi     = in_array($pStatus, $statusRealisasi);
+                        // ── Status pengiriman ──────────────────────────────────────
+                        $pStatus     = $f->pengiriman_status ?? null;
+                        $isRealisasi = in_array($pStatus, $statusRealisasi);
 
+                        // ── Total Kirim (BARU): computed dari subquery ─────────────
+                        //    COALESCE(invoice.amount_after_refraksi,
+                        //             SUM(pengiriman_details.qty_kirim * order_details.harga_jual))
                         if ($isRealisasi) {
-                            $qtyKirim = ($pStatus === 'berhasil' && ! is_null($f->invoice_qty))
-                                ? (float) $f->invoice_qty
-                                : (float) ($f->pengiriman_total_qty_kirim ?? 0);
-                            $totalHargaKirim = ($pStatus === 'berhasil' && ! is_null($f->invoice_amount))
-                                ? (float) $f->invoice_amount
-                                : (float) ($f->pengiriman_total_harga_kirim ?? 0);
+                            $qtyKirim        = (float) ($f->realisasi_qty    ?? 0);
+                            $totalHargaKirim = (float) ($f->realisasi_amount ?? 0);
                         } else {
                             $qtyKirim        = null;
                             $totalHargaKirim = null;
                         }
 
+                        // ── Keterangan ─────────────────────────────────────────────
                         if ($isRealisasi) {
-                            $keterangan     = 'Done';
                             $keteranganType = 'done';
+                            $keteranganText = null;
                         } elseif ($pStatus === 'gagal') {
-                            $keterangan     = $f->pengiriman_catatan ?? null;
                             $keteranganType = 'gagal';
+                            $keteranganText = $f->pengiriman_catatan ?? null;
                         } else {
-                            $keterangan     = null;
                             $keteranganType = 'kosong';
+                            $keteranganText = null;
                         }
 
                         $isTambahan = trim((string) $f->catatan) === 'Tambahan';
@@ -275,7 +284,7 @@
 
                     <tr class="{{ $isTambahan ? 'bg-yellow-50/60' : 'hover:bg-gray-50/60' }} transition-colors">
 
-                        {{-- Tgl --}}
+                        {{-- Tanggal --}}
                         <td class="px-4 py-3 text-gray-700 whitespace-nowrap">
                             {{ $displayTanggal }}
                             @if($isTambahan)
@@ -302,27 +311,27 @@
                         {{-- Klien - Cabang --}}
                         <td class="px-4 py-3 text-gray-700 whitespace-nowrap">
                             {{ $klienNama }}
-                            @if($klienCabang && $klienCabang !== 'N/A')
+                            @if($klienCabang)
                                 <span class="text-gray-400">· {{ $klienCabang }}</span>
                             @endif
                         </td>
 
-                        {{-- Qty Forecast --}}
+                        {{-- Qty Forecast (dari computed_qty_forecast) --}}
                         <td class="px-4 py-3 text-gray-700 text-right whitespace-nowrap tabular-nums">
-                            {{ number_format((float)$qtyForecast, 2, ',', '.') }}
+                            {{ number_format($qtyForecast, 2, ',', '.') }}
                         </td>
 
-                        {{-- Harga Jual --}}
+                        {{-- Harga Jual (dari firstDetail->orderDetail, untuk referensi) --}}
                         <td class="px-4 py-3 text-gray-700 text-right whitespace-nowrap tabular-nums">
-                            Rp {{ number_format((float)$hargaJual, 2, ',', '.') }}
+                            Rp {{ number_format($hargaJual, 2, ',', '.') }}
                         </td>
 
-                        {{-- Total Harga Forecast --}}
+                        {{-- Total Forecast (BARU: computed_total_forecast = qty_forecast × harga_jual) --}}
                         <td class="px-4 py-3 text-gray-800 text-right whitespace-nowrap font-medium tabular-nums">
-                            Rp {{ number_format((float)$f->total_harga_forecast, 2, ',', '.') }}
+                            Rp {{ number_format($totalHargaForecast, 2, ',', '.') }}
                         </td>
 
-                        {{-- Qty Kirim --}}
+                        {{-- Qty Kirim (BARU: realisasi_qty dari subquery) --}}
                         <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">
                             @if(is_null($qtyKirim))
                                 <span class="text-gray-300">—</span>
@@ -331,7 +340,7 @@
                             @endif
                         </td>
 
-                        {{-- Total Harga Kirim --}}
+                        {{-- Total Kirim (BARU: realisasi_amount = COALESCE invoice / SUM detail) --}}
                         <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">
                             @if(is_null($totalHargaKirim))
                                 <span class="text-gray-300">—</span>
@@ -347,9 +356,9 @@
                                     <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>
                                     Done
                                 </span>
-                            @elseif($keteranganType === 'gagal' && $keterangan)
+                            @elseif($keteranganType === 'gagal' && $keteranganText)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200">
-                                    {{ $keterangan }}
+                                    {{ $keteranganText }}
                                 </span>
                             @else
                                 <span class="text-gray-200">—</span>

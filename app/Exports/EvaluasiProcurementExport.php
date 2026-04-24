@@ -55,7 +55,10 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
         $forecastData    = $this->getForecastData();
         $statusRealisasi = ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'];
 
-        $omsetForecasting = $forecastData->sum('total_harga_forecast');
+        // ---------------------------------------------------------
+        // Summary — identik dengan controller
+        // ---------------------------------------------------------
+        $omsetForecasting = $forecastData->sum('computed_total_forecast');
 
         $omsetRealisasi = $forecastData->sum(function ($f) use ($statusRealisasi) {
             return $this->hitungRealisasi($f, $statusRealisasi);
@@ -71,6 +74,7 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
         $data    = [];
         $colSpan = array_fill(1, 11, '');
 
+        // Judul & metadata
         $data[] = array_merge(['EVALUASI PROCUREMENT'], $colSpan);
         $data[] = array_merge([
             'Periode: ' . date('d/m/Y', strtotime($this->startDate))
@@ -103,17 +107,20 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
         $data[] = array_merge(['Diekspor: ' . now()->format('d/m/Y H:i:s')], $colSpan);
         $data[] = array_fill(0, 12, '');
 
+        // Summary angka
         $data[] = ['OMSET FORECASTING',   'Rp ' . number_format($omsetForecasting, 2, ',', '.')] + array_fill(2, 10, '');
         $data[] = ['OMSET REALISASI',     'Rp ' . number_format($omsetRealisasi,   2, ',', '.')] + array_fill(2, 10, '');
         $data[] = ['PENGIRIMAN TAMBAHAN', 'Rp ' . number_format($omsetTambahan,    2, ',', '.')] + array_fill(2, 10, '');
         $data[] = array_fill(0, 12, '');
 
+        // Header tabel
         $data[] = [
             'Tgl', 'Hari', 'PIC Procurement', 'Nama Supplier', 'Bahan Baku',
             'Klien - Cabang', 'Qty Forecast', 'Harga Jual', 'Total Harga Forecast',
             'Qty Kirim', 'Total Harga Kirim', 'Keterangan',
         ];
 
+        // Baris data
         foreach ($forecastData as $f) {
             $displayTanggal = $f->display_tanggal
                 ? \Carbon\Carbon::parse($f->display_tanggal)->format('d/m/Y')
@@ -123,7 +130,6 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
                 : 'N/A';
 
             $details     = $f->forecastDetails ?? collect();
-            $qtyForecast = $details->sum('qty_forecast');
             $firstDetail = $details->first();
 
             $supplierNama  = optional(optional(optional($firstDetail)->bahanBakuSupplier)->supplier)->nama ?? 'N/A';
@@ -133,18 +139,20 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
             $klienNama   = $klien->nama   ?? 'N/A';
             $klienCabang = $klien->cabang ?? 'N/A';
 
+            // Harga jual dari order_detail (first detail)
             $hargaJual = (float) (optional(optional($firstDetail)->orderDetail)->harga_jual ?? 0);
+
+            // Qty & total forecast — dari computed column subquery
+            $qtyForecast       = (float) ($f->computed_qty_forecast    ?? 0);
+            $totalHargaForecast = (float) ($f->computed_total_forecast  ?? 0);
 
             $pStatus     = $f->pengiriman_status ?? null;
             $isRealisasi = in_array($pStatus, $statusRealisasi);
 
             if ($isRealisasi) {
-                $qtyKirim = ($pStatus === 'berhasil' && ! is_null($f->invoice_qty))
-                    ? (float) $f->invoice_qty
-                    : (float) ($f->pengiriman_total_qty_kirim ?? 0);
-                $totalHargaKirim = ($pStatus === 'berhasil' && ! is_null($f->invoice_amount))
-                    ? (float) $f->invoice_amount
-                    : (float) ($f->pengiriman_total_harga_kirim ?? 0);
+                // Gunakan nilai dari subquery (COALESCE invoice / sum detail) — selaras dengan Laporan Omset
+                $qtyKirim        = (float) ($f->realisasi_qty    ?? 0);
+                $totalHargaKirim = (float) ($f->realisasi_amount ?? 0);
             } else {
                 $qtyKirim        = '-';
                 $totalHargaKirim = '-';
@@ -168,10 +176,10 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
                 $supplierNama,
                 $bahanBakuNama,
                 $klienNama . ' - ' . $klienCabang,
-                (float) $qtyForecast,
+                $qtyForecast,
                 (float) $hargaJual,
-                (float) $f->total_harga_forecast,
-                is_string($qtyKirim) ? $qtyKirim : (float) $qtyKirim,
+                $totalHargaForecast,
+                is_string($qtyKirim)        ? $qtyKirim        : (float) $qtyKirim,
                 is_string($totalHargaKirim) ? $totalHargaKirim : (float) $totalHargaKirim,
                 $keterangan,
             ];
@@ -297,6 +305,9 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
         return 'Evaluasi Procurement';
     }
 
+    // ------------------------------------------------------------------
+    // Data retrieval — reuse buildQuery dari controller lewat static cache
+    // ------------------------------------------------------------------
     private function getForecastData()
     {
         static $cached = null;
@@ -304,57 +315,91 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
             return $cached;
         }
 
-        $displayTanggalExpr = 'COALESCE(pengiriman.tanggal_kirim, forecasts.tanggal_forecast)';
+        // Subquery 1: total forecast per forecast_id
+        $forecastTotalsSub = DB::table('forecast_details as fd')
+            ->join('order_details as od', 'fd.purchase_order_bahan_baku_id', '=', 'od.id')
+            ->select(
+                'fd.forecast_id',
+                DB::raw('SUM(fd.qty_forecast * od.harga_jual) as total_forecast_computed'),
+                DB::raw('SUM(fd.qty_forecast)               as total_qty_forecast')
+            )
+            ->groupBy('fd.forecast_id');
+
+        // Subquery 2: omset realisasi per pengiriman.id (identik dengan Laporan Omset)
+        // Sertakan p_tanggal_kirim agar bisa dipakai COALESCE display_tanggal di query utama.
+        $pengirimanOmsetSub = DB::table('pengiriman as p')
+            ->leftJoin('invoice_penagihan as ip', 'p.id', '=', 'ip.pengiriman_id')
+            ->leftJoin('pengiriman_details as pd', 'p.id', '=', 'pd.pengiriman_id')
+            ->leftJoin('order_details as od', 'pd.purchase_order_bahan_baku_id', '=', 'od.id')
+            ->whereNull('p.deleted_at')
+            ->select(
+                'p.id as pengiriman_id',
+                'p.forecast_id',
+                'p.tanggal_kirim as p_tanggal_kirim',
+                'p.status as p_status',
+                'p.catatan as p_catatan',
+                'p.total_harga_kirim as p_total_harga_kirim',
+                'p.total_qty_kirim as p_total_qty_kirim',
+                DB::raw('COALESCE(
+                    MAX(ip.amount_after_refraksi),
+                    SUM(pd.qty_kirim * od.harga_jual)
+                ) as realisasi_amount'),
+                DB::raw('COALESCE(
+                    MAX(ip.qty_after_refraksi),
+                    SUM(pd.qty_kirim)
+                ) as realisasi_qty')
+            )
+            ->groupBy(
+                'p.id', 'p.forecast_id', 'p.tanggal_kirim', 'p.status',
+                'p.catatan', 'p.total_harga_kirim', 'p.total_qty_kirim'
+            );
 
         $query = Forecast::with([
             'purchasing',
-            'pengiriman.invoicePenagihan',
             'forecastDetails.bahanBakuSupplier.supplier',
             'forecastDetails.orderDetail',
             'purchaseOrder.klien',
         ])
-        ->leftJoin('pengiriman', 'pengiriman.forecast_id', '=', 'forecasts.id')
-        ->leftJoin('invoice_penagihan', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+        ->leftJoinSub($pengirimanOmsetSub, 'po', function ($join) {
+            $join->on('po.forecast_id', '=', 'forecasts.id');
+        })
+        ->leftJoinSub($forecastTotalsSub, 'ft', function ($join) {
+            $join->on('ft.forecast_id', '=', 'forecasts.id');
+        })
         ->leftJoin('orders', 'forecasts.purchase_order_id', '=', 'orders.id')
-        ->leftJoin('kliens', 'kliens.id', '=', 'orders.klien_id') // ← JOIN klien langsung
+        ->leftJoin('kliens', 'kliens.id', '=', 'orders.klien_id')
         ->select(
             'forecasts.*',
-            DB::raw("({$displayTanggalExpr}) as display_tanggal"),
-            'pengiriman.id as pengiriman_id',
-            'pengiriman.status as pengiriman_status',
-            'pengiriman.catatan as pengiriman_catatan',
-            'pengiriman.total_harga_kirim as pengiriman_total_harga_kirim',
-            'pengiriman.total_qty_kirim as pengiriman_total_qty_kirim',
-            'invoice_penagihan.amount_after_refraksi as invoice_amount',
-            'invoice_penagihan.qty_after_refraksi as invoice_qty'
+            DB::raw('COALESCE(po.p_tanggal_kirim, forecasts.tanggal_forecast) as display_tanggal'),
+            'po.pengiriman_id',
+            'po.p_tanggal_kirim as pengiriman_tanggal_kirim',
+            'po.p_status        as pengiriman_status',
+            'po.p_catatan       as pengiriman_catatan',
+            'po.p_total_harga_kirim as pengiriman_total_harga_kirim',
+            'po.p_total_qty_kirim   as pengiriman_total_qty_kirim',
+            'po.realisasi_amount',
+            'po.realisasi_qty',
+            DB::raw('COALESCE(ft.total_forecast_computed, 0) as computed_total_forecast'),
+            DB::raw('COALESCE(ft.total_qty_forecast,      0) as computed_qty_forecast'),
         )
-        ->whereRaw("({$displayTanggalExpr}) between ? and ?", [$this->startDate, $this->endDate]);
+        ->whereRaw('COALESCE(po.p_tanggal_kirim, forecasts.tanggal_forecast) between ? and ?', [$this->startDate, $this->endDate]);
 
-        // Filter status: pastikan pengiriman ada kalau status dipilih
         if ($this->status) {
-            $query->whereNotNull('pengiriman.id')
-                  ->where('pengiriman.status', $this->status);
+            $query->whereNotNull('po.pengiriman_id')
+                  ->where('po.p_status', $this->status);
         }
-
-        // Filter PIC purchasing
         if ($this->purchasing) {
             $query->where('forecasts.purchasing_id', $this->purchasing);
         }
-
-        // Filter search: pakai join yang sudah ada, bukan whereHas
         if ($this->search) {
             $query->where(function ($q) {
                 $q->where('orders.po_number', 'like', "%{$this->search}%")
-                  ->orWhere('kliens.nama', 'like', "%{$this->search}%");
+                  ->orWhere('kliens.nama',    'like', "%{$this->search}%");
             });
         }
-
-        // Filter pabrik: pakai join yang sudah ada, bukan whereHas
         if ($this->pabrik) {
             $query->where('kliens.id', $this->pabrik);
         }
-
-        // Filter supplier: tetap pakai whereHas karena relasinya 3 level dalam
         if ($this->supplier) {
             $query->whereHas('forecastDetails.bahanBakuSupplier', function ($q) {
                 $q->where('supplier_id', $this->supplier);
@@ -369,15 +414,18 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
         return $cached;
     }
 
+    /**
+     * Hitung nilai realisasi — selaras dengan OmsetController & EvaluasiProcurementController.
+     */
     private function hitungRealisasi($forecast, array $statusRealisasi): float
     {
         $pStatus = $forecast->pengiriman_status ?? null;
+
         if (! in_array($pStatus, $statusRealisasi)) {
             return 0.0;
         }
-        if ($pStatus === 'berhasil' && ! is_null($forecast->invoice_amount)) {
-            return (float) $forecast->invoice_amount;
-        }
-        return (float) ($forecast->pengiriman_total_harga_kirim ?? 0);
+
+        // realisasi_amount sudah COALESCE(invoice, SUM detail) dari subquery
+        return (float) ($forecast->realisasi_amount ?? 0);
     }
 }

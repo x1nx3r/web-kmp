@@ -4,6 +4,8 @@ namespace App\Livewire\Marketing;
 
 use App\Models\BahanBakuKlien;
 use App\Models\Klien;
+use App\Models\RiwayatHargaKlien;
+use App\Services\AuthFallbackService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -31,6 +33,7 @@ class Spesifikasi extends Component
         'nama' => '',
         'satuan' => '',
         'spesifikasi' => '',
+        'harga_approved' => '',
         'status' => 'aktif',
     ];
 
@@ -131,6 +134,7 @@ class Spesifikasi extends Component
                 'nama' => $material->nama,
                 'satuan' => $material->satuan,
                 'spesifikasi' => $material->spesifikasi ?? '',
+                'harga_approved' => $material->harga_approved,
                 'status' => $material->status,
             ];
             $this->showEditModal = true;
@@ -154,6 +158,7 @@ class Spesifikasi extends Component
             'nama' => '',
             'satuan' => '',
             'spesifikasi' => '',
+            'harga_approved' => '',
             'status' => 'aktif',
         ];
     }
@@ -164,6 +169,7 @@ class Spesifikasi extends Component
             'editForm.nama' => 'required|string|max:255',
             'editForm.satuan' => 'required|string|max:50',
             'editForm.spesifikasi' => 'nullable|string',
+            'editForm.harga_approved' => 'nullable|numeric|min:0',
             'editForm.status' => 'required|in:aktif,non_aktif,pending',
         ], [
             'editForm.nama.required' => 'Nama material wajib diisi',
@@ -172,13 +178,32 @@ class Spesifikasi extends Component
 
         try {
             $material = BahanBakuKlien::findOrFail($this->editingMaterial);
-            
-            $material->update([
+            $oldPrice = $material->harga_approved;
+            $newPrice = $this->editForm['harga_approved'] ?: null;
+
+            $data = [
                 'nama' => $this->editForm['nama'],
                 'satuan' => $this->editForm['satuan'],
                 'spesifikasi' => $this->editForm['spesifikasi'],
+                'harga_approved' => $newPrice,
                 'status' => $this->editForm['status'],
-            ]);
+            ];
+
+            // Handle price approval changes
+            if ($newPrice && $newPrice != $oldPrice) {
+                $data['approved_at'] = now();
+                $data['approved_by_marketing'] = AuthFallbackService::id();
+
+                // Create price history record
+                RiwayatHargaKlien::createPriceHistory(
+                    $material->id,
+                    $newPrice,
+                    AuthFallbackService::id(),
+                    "Perubahan harga approved melalui manajemen spesifikasi"
+                );
+            }
+
+            $material->update($data);
 
             $this->closeEditModal();
             session()->flash('message', 'Spesifikasi material berhasil diperbarui');
@@ -191,9 +216,10 @@ class Spesifikasi extends Component
     public function confirmDelete($materialId)
     {
         $material = BahanBakuKlien::with('klien')->findOrFail($materialId);
+        $klienNama = $material->klien->nama ?? 'Klien tidak ditemukan';
         $this->deleteModal = [
             'title' => 'Hapus Spesifikasi Material',
-            'message' => "Apakah Anda yakin ingin menghapus spesifikasi untuk material \"{$material->nama}\" dari klien \"{$material->klien->nama}\"?",
+            'message' => "Apakah Anda yakin ingin menghapus spesifikasi untuk material \"{$material->nama}\" dari klien \"{$klienNama}\"?",
             'materialId' => $materialId,
         ];
         $this->showDeleteModal = true;
@@ -298,7 +324,8 @@ class Spesifikasi extends Component
 
     public function render()
     {
-        $materials = $this->getMaterialsQuery()->paginate(15);
+        $query = $this->getMaterialsQuery();
+        $materials = (clone $query)->paginate(15);
         $kliens = Klien::orderBy('nama')->orderBy('cabang')->get();
         
         // Get unique cabangs (locations) for filter dropdown
@@ -316,12 +343,12 @@ class Spesifikasi extends Component
                 ->pluck('cabang');
         }
         
-        // Get status counts for filter badges
+        // Get status counts for filter badges - reflecting active filters
         $statusCounts = [
-            'all' => BahanBakuKlien::count(),
-            'aktif' => BahanBakuKlien::where('status', 'aktif')->count(),
-            'pending' => BahanBakuKlien::where('status', 'pending')->count(),
-            'non_aktif' => BahanBakuKlien::where('status', 'non_aktif')->count(),
+            'all' => $this->getMaterialsQuery()->count(),
+            'aktif' => (clone $query)->where('status', 'aktif')->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'non_aktif' => (clone $query)->where('status', 'non_aktif')->count(),
         ];
 
         return view('livewire.marketing.spesifikasi', [

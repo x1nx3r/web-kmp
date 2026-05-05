@@ -375,9 +375,9 @@
                             </button>
                         </th>
                         <th class="px-6 py-3 text-left">
-                            <button wire:click="sortBy('cabang')" class="flex items-center space-x-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700">
-                                <span>Lokasi</span>
-                                @if($sort === 'cabang')
+                            <button wire:click="sortBy('harga_approved')" class="flex items-center space-x-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700">
+                                <span>Harga Approved</span>
+                                @if($sort === 'harga_approved')
                                     <i class="fas fa-sort-{{ $direction === 'asc' ? 'up' : 'down' }} text-purple-500"></i>
                                 @else
                                     <i class="fas fa-sort text-gray-400"></i>
@@ -433,19 +433,26 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                <div class="text-sm font-medium text-gray-900">{{ $material->klien->nama }}</div>
+                                <div class="text-sm font-medium text-gray-900">{{ $material->klien->nama ?? 'Klien tidak ditemukan' }}</div>
                                 <div class="text-xs text-gray-500">
                                     <i class="fas fa-building mr-1"></i>
-                                    {{ $material->klien->cabang }}
+                                    {{ $material->klien->cabang ?? '-' }}
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                <div class="flex items-center">
-                                    <div class="w-3 h-3 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-                                        <i class="fas fa-map-marker-alt text-blue-600 text-xs"></i>
-                                    </div>
-                                    <span class="text-sm font-medium text-gray-900">{{ $material->klien->cabang }}</span>
+                                <div class="text-sm font-semibold text-gray-900">
+                                    @if($material->harga_approved)
+                                        Rp {{ number_format($material->harga_approved, 0, ',', '.') }}
+                                        <span class="text-xs text-gray-500 font-normal">/ {{ $material->satuan }}</span>
+                                    @else
+                                        <span class="text-red-500 text-xs italic">Belum disetujui</span>
+                                    @endif
                                 </div>
+                                @if($material->approved_at)
+                                    <div class="text-[10px] text-gray-400 mt-0.5">
+                                        Approved: {{ $material->approved_at ? $material->approved_at->format('d/m/y') : '-' }}
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
                                 @if($material->spesifikasi)
@@ -604,6 +611,44 @@
                         @enderror
                     </div>
 
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="edit_harga" class="block text-sm font-medium text-gray-700 mb-2">
+                                Harga Approved (IDR)
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 text-sm">Rp</span>
+                                </div>
+                                <input
+                                    type="number"
+                                    wire:model="editForm.harga_approved"
+                                    id="edit_harga"
+                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="0"
+                                    step="0.01"
+                                >
+                            </div>
+                        </div>
+                        <div>
+                            <label for="edit_status" class="block text-sm font-medium text-gray-700 mb-2">
+                                Status <span class="text-red-500">*</span>
+                            </label>
+                            <select
+                                wire:model="editForm.status"
+                                id="edit_status"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('editForm.status') border-red-500 @enderror"
+                            >
+                                <option value="aktif">Aktif</option>
+                                <option value="pending">Pending</option>
+                                <option value="non_aktif">Non-aktif</option>
+                            </select>
+                            @error('editForm.status')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
                     <div>
                         <label for="edit_spesifikasi" class="block text-sm font-medium text-gray-700 mb-2">
                             Spesifikasi
@@ -618,24 +663,6 @@
                         <p class="mt-1 text-xs text-gray-500">
                             Contoh: Moisture <12%, Protein >8%, Fat >12%, dll.
                         </p>
-                    </div>
-
-                    <div>
-                        <label for="edit_status" class="block text-sm font-medium text-gray-700 mb-2">
-                            Status <span class="text-red-500">*</span>
-                        </label>
-                        <select
-                            wire:model="editForm.status"
-                            id="edit_status"
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('editForm.status') border-red-500 @enderror"
-                        >
-                            <option value="aktif">Aktif</option>
-                            <option value="pending">Pending</option>
-                            <option value="non_aktif">Non-aktif</option>
-                        </select>
-                        @error('editForm.status')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
                     </div>
 
                     <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
@@ -739,16 +766,25 @@
 </div>
 
 <script>
-    // Auto-hide flash messages
-    document.addEventListener('DOMContentLoaded', function() {
-        const flashMessages = document.querySelectorAll('[class*="fixed top-4 right-4"]');
-        flashMessages.forEach(function(message) {
-            setTimeout(function() {
-                message.style.opacity = '0';
+    document.addEventListener('livewire:initialized', () => {
+        // Auto-hide flash messages
+        const setupFlashHide = () => {
+            const flashMessages = document.querySelectorAll('[class*="fixed top-4 right-4"]');
+            flashMessages.forEach(function(message) {
                 setTimeout(function() {
-                    message.remove();
-                }, 300);
-            }, 5000);
+                    message.style.opacity = '0';
+                    setTimeout(function() {
+                        message.remove();
+                    }, 300);
+                }, 5000);
+            });
+        };
+
+        setupFlashHide();
+
+        // Re-run whenever Livewire finishes a request
+        Livewire.hook('request.handled', () => {
+            setupFlashHide();
         });
     });
 </script>

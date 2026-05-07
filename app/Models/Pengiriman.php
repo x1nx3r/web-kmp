@@ -36,8 +36,8 @@ class Pengiriman extends Model
 
     protected $casts = [
         'tanggal_kirim' => 'date',
-        'total_qty_kirim' => 'decimal:2',
-        'total_harga_kirim' => 'decimal:2',
+        'total_qty_kirim' => 'decimal:3',
+        'total_harga_kirim' => 'decimal:3',
         'total_qty_sisa' => 'decimal:2',
         'bukti_foto_bongkar_uploaded_at' => 'datetime',
         'foto_tanda_terima_uploaded_at' => 'datetime',

@@ -23,9 +23,9 @@ class PengirimanDetail extends Model
     ];
 
     protected $casts = [
-        'qty_kirim' => 'decimal:2',
-        'harga_satuan' => 'decimal:2',
-        'total_harga' => 'decimal:2',
+        'qty_kirim' => 'decimal:3',
+        'harga_satuan' => 'decimal:3',
+        'total_harga' => 'decimal:3',
         'qty_sisa' => 'decimal:2',
     ];
 

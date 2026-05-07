@@ -31,12 +31,12 @@
                 <p class="text-sm text-gray-600 mb-1">Total Harga Beli</p>
                 <h3 class="text-2xl font-bold text-red-600">
                     @if($totalHargaBeli >= 1000000000)
-                        Rp {{ number_format($totalHargaBeli / 1000000000, 2, ',', '.') }} M
+                        Rp {{ number_format($totalHargaBeli / 1000000000, 3, ',', '.') }} M
                     @else
-                        Rp {{ number_format($totalHargaBeli / 1000000, 2, ',', '.') }} Jt
+                        Rp {{ number_format($totalHargaBeli / 1000000, 3, ',', '.') }} Jt
                     @endif
                 </h3>
-                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 2, ',', '.') }} kg</p>
+                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 3, ',', '.') }} kg</p>
             </div>
         </div>
     </div>
@@ -51,12 +51,12 @@
                 <p class="text-sm text-gray-600 mb-1">Total Harga Jual</p>
                 <h3 class="text-2xl font-bold text-green-600">
                     @if($totalHargaJual >= 1000000000)
-                        Rp {{ number_format($totalHargaJual / 1000000000, 2, ',', '.') }} M
+                        Rp {{ number_format($totalHargaJual / 1000000000, 3, ',', '.') }} M
                     @else
-                        Rp {{ number_format($totalHargaJual / 1000000, 2, ',', '.') }} Jt
+                        Rp {{ number_format($totalHargaJual / 1000000, 3, ',', '.') }} Jt
                     @endif
                 </h3>
-                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 2, ',', '.') }} kg</p>
+                <p class="text-xs text-gray-500 mt-1">{{ number_format($totalQty, 3, ',', '.') }} kg</p>
             </div>
         </div>
     </div>
@@ -70,10 +70,10 @@
             <div class="flex-1">
                 <p class="text-sm text-gray-600 mb-1">Gross Margin</p>
                 <h3 class="text-2xl font-bold {{ $totalMargin >= 0 ? 'text-purple-600' : 'text-orange-600' }}">
-                    {{ $totalMargin >= 0 ? '+' : '' }}{{ number_format($grossMarginPercentage, 2, ',', '.') }}%
+                    {{ $totalMargin >= 0 ? '+' : '' }}{{ number_format($grossMarginPercentage, 3, ',', '.') }}%
                 </h3>
                 <p class="text-xs {{ $totalMargin >= 0 ? 'text-purple-600' : 'text-orange-600' }} mt-1 font-medium">
-                    {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 2, ',', '.') }}
+                    {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format(abs($totalMargin), 3, ',', '.') }}
                 </p>
             </div>
         </div>
@@ -302,34 +302,34 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['supplier'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['bahan_baku'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-medium">
-                            {{ number_format($item['qty'], 2, ',', '.') }}
+                            {{ number_format($item['qty'], 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
-                            Rp {{ number_format($item['harga_beli_per_kg'], 2, ',', '.') }}
+                            Rp {{ number_format($item['harga_beli_per_kg'], 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-red-700">
-                            Rp {{ number_format($item['harga_beli_total'], 2, ',', '.') }}
+                            Rp {{ number_format($item['harga_beli_total'], 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600">
                             @if($item['harga_jual_per_kg'] > 0)
-                                Rp {{ number_format($item['harga_jual_per_kg'], 2, ',', '.') }}
+                                Rp {{ number_format($item['harga_jual_per_kg'], 3, ',', '.') }}
                             @else
                                 <span class="text-gray-400 text-xs">Belum ada</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-green-700">
                             @if($item['harga_jual_total'] > 0)
-                                Rp {{ number_format($item['harga_jual_total'], 2, ',', '.') }}
+                                Rp {{ number_format($item['harga_jual_total'], 3, ',', '.') }}
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold {{ $item['margin'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
-                            {{ $item['margin'] >= 0 ? '+' : '' }}Rp {{ number_format($item['margin'], 2, ',', '.') }}
+                            {{ $item['margin'] >= 0 ? '+' : '' }}Rp {{ number_format($item['margin'], 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold {{ $item['margin'] >= 0 ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800' }}">
-                                {{ $item['margin'] >= 0 ? '+' : '' }}{{ number_format($item['margin_percentage'], 2, ',', '.') }}%
+                                {{ $item['margin'] >= 0 ? '+' : '' }}{{ number_format($item['margin_percentage'], 3, ',', '.') }}%
                             </span>
                         </td>
                     </tr>
@@ -350,22 +350,22 @@
                     <tr>
                         <td colspan="8" class="px-6 py-4 text-right text-sm text-gray-900">TOTAL:</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                            {{ number_format($totalQty, 2, ',', '.') }}
+                            {{ number_format($totalQty, 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-700">
-                            Rp {{ number_format($totalHargaBeli, 2, ',', '.') }}
+                            Rp {{ number_format($totalHargaBeli, 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-700">
-                            Rp {{ number_format($totalHargaJual, 2, ',', '.') }}
+                            Rp {{ number_format($totalHargaJual, 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold {{ $totalMargin >= 0 ? 'text-blue-600' : 'text-red-600' }}">
-                            {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format($totalMargin, 2, ',', '.') }}
+                            {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format($totalMargin, 3, ',', '.') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold {{ $totalMargin >= 0 ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800' }}">
-                                {{ $totalMargin >= 0 ? '+' : '' }}{{ number_format($grossMarginPercentage, 2, ',', '.') }}%
+                                {{ $totalMargin >= 0 ? '+' : '' }}{{ number_format($grossMarginPercentage, 3, ',', '.') }}%
                             </span>
                         </td>
                     </tr>

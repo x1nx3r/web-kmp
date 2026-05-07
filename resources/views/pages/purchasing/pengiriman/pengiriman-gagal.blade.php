@@ -159,10 +159,10 @@
                                 <td class="px-6 py-4">
                                     <div class="space-y-1">
                                         <div class="text-sm font-medium text-blue-600">
-                                            {{ number_format($pengiriman->total_qty_kirim ?? 0, 2, ',', '.') }} kg
+                                            {{ number_format($pengiriman->total_qty_kirim ?? 0, 3, ',', '.') }} kg
                                         </div>
                                         <div class="text-sm font-medium text-red-600">
-                                            Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 2, ',', '.') }}
+                                            Rp {{ number_format($pengiriman->total_harga_kirim ?? 0, 3, ',', '.') }}
                                         </div>
                                         <div class="text-xs text-gray-500">
                                             {{ $pengiriman->pengirimanDetails->count() }} item

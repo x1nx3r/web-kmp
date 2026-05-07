@@ -62,14 +62,14 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Total Qty PO</label>
                     <input type="text" 
-                           value="{{ $pengiriman->order && $pengiriman->order->orderDetails ? number_format($pengiriman->order->orderDetails->sum('qty'), 2, ',', '.') . ' KG' : '-' }}" 
+                           value="{{ $pengiriman->order && $pengiriman->order->orderDetails ? number_format($pengiriman->order->orderDetails->sum('qty'), 3, ',', '.') . ' KG' : '-' }}" 
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-medium cursor-not-allowed" 
                            readonly>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Total Harga PO (Harga Jual ke Klien)</label>
                     <input type="text" 
-                           value="{{ $pengiriman->order->total_amount ? 'Rp ' . number_format($pengiriman->order->total_amount, 2, ',', '.') : '-' }}" 
+                           value="{{ $pengiriman->order->total_amount ? 'Rp ' . number_format($pengiriman->order->total_amount, 3, ',', '.') : '-' }}" 
                            class="w-full px-3 py-2 text-sm border border-green-300 rounded-lg bg-green-50 text-green-700 font-semibold cursor-not-allowed" 
                            readonly>
                 </div>
@@ -112,14 +112,14 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Total Qty</label>
                     <input type="text" 
-                           value="{{ $pengiriman->forecast ? number_format($pengiriman->forecast->total_qty_forecast, 2, ',', '.') . ' kg' : '-' }}" 
+                           value="{{ $pengiriman->forecast ? number_format($pengiriman->forecast->total_qty_forecast, 3, ',', '.') . ' kg' : '-' }}" 
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-medium cursor-not-allowed" 
                            readonly>
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-500 mb-1">Total Harga Forecast</label>
                     <input type="text" 
-                           value="{{ $pengiriman->forecast ? 'Rp ' . number_format($pengiriman->forecast->total_harga_forecast, 2, ',', '.') : '-' }}" 
+                           value="{{ $pengiriman->forecast ? 'Rp ' . number_format($pengiriman->forecast->total_harga_forecast, 3, ',', '.') : '-' }}" 
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-medium cursor-not-allowed" 
                            readonly>
                 </div>
@@ -415,7 +415,7 @@
                                                name="details[{{ $index }}][qty_kirim]" 
                                                value="{{ old('details.' . $index . '.qty_kirim', $detail->qty_kirim ?? 0) }}"
                                                class="qty-input w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}" 
-                                               step="0.01" min="0" 
+                                               step="0.001" min="0" 
                                                onchange="calculateSubtotal({{ $index }})"
                                                oninput="calculateSubtotal({{ $index }})"
                                                {{ !$canEdit ? 'readonly' : 'required' }}>
@@ -428,14 +428,14 @@
                                                name="details[{{ $index }}][harga_satuan]" 
                                                value="{{ $hargaBeli }}"
                                                class="harga-beli-input w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg text-xs sm:text-sm focus:ring-2 {{ !$canEdit ? 'bg-gray-50 border-gray-300 cursor-not-allowed' : 'bg-white border-orange-300 focus:ring-orange-500 focus:border-orange-500' }}" 
-                                               step="0.01" 
+                                               step="0.001" 
                                                min="0"
                                                data-original-price="{{ $hargaBeli }}"
                                                onchange="handleHargaBeliChange({{ $index }}, 'desktop')"
                                                oninput="calculateSubtotal({{ $index }})"
                                                {{ !$canEdit ? 'readonly' : '' }}>
                                         <div class="text-xs text-gray-500 mt-1 flex items-center justify-between">
-                                            <span class="harga-beli-display">Rp {{ number_format($hargaBeli, 2, ',', '.') }}/{{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}</span>
+                                            <span class="harga-beli-display">Rp {{ number_format($hargaBeli, 3, ',', '.') }}/{{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}</span>
                                             @if($canEdit)
                                             <button type="button" 
                                                     onclick="resetHargaBeli({{ $index }})"
@@ -450,7 +450,7 @@
                                     <!-- Harga Jual - hidden on mobile -->
                                     <td class="px-3 sm:px-4 py-2 sm:py-3 border-b hidden md:table-cell">
                                         <div class="text-xs sm:text-sm font-medium text-gray-900">
-                                            Rp {{ number_format($hargaJual, 2, ',', '.') }}
+                                            Rp {{ number_format($hargaJual, 3, ',', '.') }}
                                         </div>
                                         <div class="text-xs text-gray-500 mt-1">
                                             /{{ $detail->bahanBakuSupplier->satuan ?? 'kg' }}
@@ -467,7 +467,7 @@
                                                 {{-- Desktop & mobile sync ke input ini --}}
                                                 <input type="number" 
                                                        class="harga-beli-input-mobile flex-1 px-2 py-1.5 border rounded-lg text-xs focus:ring-2 {{ !$canEdit ? 'bg-gray-50 border-gray-300 cursor-not-allowed' : 'bg-white border-orange-300 focus:ring-orange-500 focus:border-orange-500' }}" 
-                                                       step="0.01" 
+                                                       step="0.001" 
                                                        min="0"
                                                        value="{{ $hargaBeli }}"
                                                        data-original-price="{{ $hargaBeli }}"
@@ -493,7 +493,7 @@
                                                class="total-harga-input w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 border border-blue-300 rounded-lg text-xs sm:text-sm cursor-not-allowed font-semibold text-blue-700" 
                                                readonly>
                                         <div class="text-xs text-blue-600 mt-1 font-medium total-harga-display">
-                                            Rp {{ number_format($totalHargaBeli, 2, ',', '.') }}
+                                            Rp {{ number_format($totalHargaBeli, 3, ',', '.') }}
                                         </div>
                                     </td>
                                 </tr>
@@ -712,7 +712,7 @@ function handleHargaBeliChange(index, source) {
             title: 'Perubahan Harga Signifikan',
             html: `
                 <div class="text-left">
-                    <p class="mb-2">Anda mengubah harga beli dengan perbedaan <strong>${percentDiff.toFixed(2)}%</strong></p>
+                    <p class="mb-2">Anda mengubah harga beli dengan perbedaan <strong>${percentDiff.toFixed(3)}%</strong></p>
                     <ul class="list-disc list-inside space-y-1 text-sm">
                         <li>Harga Asli: <span class="font-bold text-blue-600">Rp ${formatNumber(originalPrice)}</span></li>
                         <li>Harga Baru: <span class="font-bold text-orange-600">Rp ${formatNumber(currentValue)}</span></li>
@@ -843,10 +843,10 @@ function calculateSubtotal(index) {
     const totalHarga = qty * hargaBeli;
     
     // Update total input
-    totalHargaInput.value = totalHarga.toFixed(2);
+    totalHargaInput.value = totalHarga.toFixed(3);
     
     // Update data attribute
-    row.setAttribute('data-harga-beli', hargaBeli.toFixed(2));
+    row.setAttribute('data-harga-beli', hargaBeli.toFixed(3));
     
     // Update display text
     const hargaBeliDisplay = row.querySelector('.harga-beli-display');
@@ -913,7 +913,7 @@ function updateTotals() {
     }
     
     if (marginPercentageElem) {
-        marginPercentageElem.textContent = `${marginPercentage.toFixed(2)}%`;
+        marginPercentageElem.textContent = `${marginPercentage.toFixed(3)}%`;
         // Dynamic color based on percentage
         marginPercentageElem.classList.remove('text-green-500', 'text-red-500', 'text-yellow-500');
         if (marginPercentage < 0) {
@@ -931,8 +931,8 @@ function updateTotals() {
     const totalQtyDisplay = document.getElementById('total_qty_kirim_display');
     const totalHargaDisplay = document.getElementById('total_harga_kirim_display');
     
-    if (totalQtyInput) totalQtyInput.value = totalQty.toFixed(2);
-    if (totalHargaInput) totalHargaInput.value = totalHargaBeli.toFixed(2);
+    if (totalQtyInput) totalQtyInput.value = totalQty.toFixed(3);
+    if (totalHargaInput) totalHargaInput.value = totalHargaBeli.toFixed(3);
     if (totalQtyDisplay) totalQtyDisplay.value = `${formatNumber(totalQty)} kg`;
     if (totalHargaDisplay) totalHargaDisplay.value = `Rp ${formatNumber(totalHargaBeli)}`;
 }
@@ -944,7 +944,7 @@ function updateTotals() {
 function formatNumber(num) {
     if (isNaN(num) || num === null || num === undefined) return '0,00';
     
-    const fixed = parseFloat(num).toFixed(2);
+    const fixed = parseFloat(num).toFixed(3);
     const parts = fixed.split('.');
     
     // Format integer part with thousand separator

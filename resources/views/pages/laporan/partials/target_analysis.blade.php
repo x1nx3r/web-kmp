@@ -236,11 +236,24 @@
             // Calculate adjusted target with carry forward for current month
             $sisaTargetSebelumnyaCurrent = 0;
             for ($b = 1; $b < $currentMonth; $b++) {
-                $omsetSistemBulanSebelum = \App\Models\InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                    ->whereIn('pengiriman.status', ['menunggu_verifikasi', 'berhasil'])
+                $omsetSistemBulanSebelum = \Illuminate\Support\Facades\DB::table('pengiriman')
+                    ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                    ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                    ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                     ->whereYear('pengiriman.tanggal_kirim', $currentYear)
                     ->whereMonth('pengiriman.tanggal_kirim', $b)
-                    ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
+                    ->whereNull('pengiriman.deleted_at')
+                    ->select(
+                        'pengiriman.id',
+                        \Illuminate\Support\Facades\DB::raw('COALESCE(
+                            MAX(invoice_penagihan.amount_after_refraksi),
+                            SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                        ) as omset_pengiriman')
+                    )
+                    ->groupBy('pengiriman.id')
+                    ->get()
+                    ->sum('omset_pengiriman');
                     
                 $omsetManualBulanSebelum = \App\Models\OmsetManual::where('tahun', $currentYear)
                     ->where('bulan', $b)

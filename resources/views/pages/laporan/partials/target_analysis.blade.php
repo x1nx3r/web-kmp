@@ -234,6 +234,7 @@
             $targetBulananCurrent = $targetOmsetCurrent->target_bulanan ?? 0;
             
             // Calculate adjusted target with carry forward for current month
+            // SAMA PERSIS dengan logika controller (sisaTargetSebelumnya berantai, bukan akumulasi += )
             $sisaTargetSebelumnyaCurrent = 0;
             for ($b = 1; $b < $currentMonth; $b++) {
                 $omsetSistemBulanSebelum = \Illuminate\Support\Facades\DB::table('pengiriman')
@@ -260,10 +261,17 @@
                     ->value('omset_manual') ?? 0;
                     
                 $omsetBulanSebelum = $omsetSistemBulanSebelum + $omsetManualBulanSebelum;
-                $selisihBulanSebelum = $omsetBulanSebelum - $targetBulananCurrent;
+                
+                // Target bulan lalu juga adjusted (carry forward berantai, sama seperti controller)
+                $targetBulanLaluAdjusted = $targetBulananCurrent + $sisaTargetSebelumnyaCurrent;
+                $selisihBulanSebelum = $omsetBulanSebelum - $targetBulanLaluAdjusted;
                 
                 if ($selisihBulanSebelum < 0) {
-                    $sisaTargetSebelumnyaCurrent += abs($selisihBulanSebelum);
+                    // Target tidak tercapai, sisa = target adjusted - realisasi
+                    $sisaTargetSebelumnyaCurrent = $targetBulanLaluAdjusted - $omsetBulanSebelum;
+                } else {
+                    // Target tercapai, reset sisa ke 0
+                    $sisaTargetSebelumnyaCurrent = 0;
                 }
             }
             

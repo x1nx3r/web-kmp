@@ -469,7 +469,20 @@ class Order extends Model
     {
         $prefix = "ORD";
         $date = now()->format("Ymd");
-        $sequence = static::whereDate("created_at", now())->count() + 1;
+        
+        // Use withTrashed() to avoid conflicts with deleted orders, 
+        // and find the maximum sequence used today.
+        $latestOrder = static::withTrashed()
+            ->where('no_order', 'LIKE', "{$prefix}-{$date}-%")
+            ->orderBy('no_order', 'desc')
+            ->first();
+
+        $sequence = 1;
+        if ($latestOrder) {
+            $parts = explode('-', $latestOrder->no_order);
+            $lastSequence = (int) end($parts);
+            $sequence = $lastSequence + 1;
+        }
 
         return sprintf("%s-%s-%04d", $prefix, $date, $sequence);
     }

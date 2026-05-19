@@ -673,7 +673,7 @@ class OrderCreate extends Component
             "poNumber" => "nullable|string|max:50",
             "poStartDate" => "nullable|date",
             "poEndDate" => "nullable|date|after_or_equal:poStartDate",
-            "poDocument" => "nullable|file|mimes:jpg,jpeg,png|max:5120",
+            "poDocument" => "nullable|file|mimes:jpg,jpeg,png,pdf|max:5120",
             // validation updated to accept new priority values
             "priority" => "required|in:rendah,sedang,tinggi",
         ]);

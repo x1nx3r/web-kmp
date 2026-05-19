@@ -599,7 +599,7 @@
                                                                 @endif
                                                                 <div>
                                                                     <div class="font-medium text-gray-900 flex items-center">
-                                                                        {{ $orderSupplier->supplier->nama }}
+                                                                        {{ $orderSupplier->supplier?->nama ?? 'N/A' }}
                                                                         @if($orderSupplier->is_recommended)
                                                                             <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
                                                                                 Recommended
@@ -610,9 +610,9 @@
                                                                         </span>
                                                                     </div>
                                                                     <div class="text-sm text-gray-600">
-                                                                        {{ $orderSupplier->supplier->alamat }} |
+                                                                        {{ $orderSupplier->supplier?->alamat ?? 'No address' }} |
                                                                         Material: {{ $orderSupplier->bahanBakuSupplier->nama ?? 'N/A' }}
-                                                                        @if($orderSupplier->supplier->picPurchasing)
+                                                                        @if($orderSupplier->supplier && $orderSupplier->supplier->picPurchasing)
                                                                             | PIC: {{ $orderSupplier->supplier->picPurchasing->nama }}
                                                                         @endif
                                                                     </div>

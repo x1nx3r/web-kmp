@@ -523,8 +523,8 @@
                                                 @if($detail->orderSuppliers->count() > 0)
                                                     @php $bestSupplier = $detail->orderSuppliers->sortBy('price_rank')->first(); @endphp
                                                     <div class="text-sm text-gray-500">
-                                                        Best: {{ $bestSupplier->supplier->nama ?? 'N/A' }}
-                                                        @if($bestSupplier->supplier->picPurchasing)
+                                                        Best: {{ $bestSupplier->supplier?->nama ?? 'N/A' }}
+                                                        @if($bestSupplier->supplier && $bestSupplier->supplier->picPurchasing)
                                                             <br><span class="text-xs">PIC: {{ $bestSupplier->supplier->picPurchasing->nama }}</span>
                                                         @endif
                                                     </div>
@@ -597,15 +597,15 @@
                                                                         @endif
                                                                         <div>
                                                                             <div class="text-sm font-medium text-gray-900">
-                                                                                {{ $orderSupplier->supplier->nama ?? 'N/A' }}
+                                                                                {{ $orderSupplier->supplier?->nama ?? 'N/A' }}
                                                                                 @if($orderSupplier->is_recommended)
                                                                                     <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Recommended</span>
                                                                                 @endif
                                                                             </div>
                                                                             <div class="text-xs text-gray-500">
                                                                                 Rank #{{ $orderSupplier->price_rank }} |
-                                                                                {{ $orderSupplier->supplier->alamat ?? 'No address' }}
-                                                                                @if($orderSupplier->supplier->picPurchasing)
+                                                                                {{ $orderSupplier->supplier?->alamat ?? 'No address' }}
+                                                                                @if($orderSupplier->supplier && $orderSupplier->supplier->picPurchasing)
                                                                                     | PIC: {{ $orderSupplier->supplier->picPurchasing->nama }}
                                                                                 @endif
                                                                             </div>

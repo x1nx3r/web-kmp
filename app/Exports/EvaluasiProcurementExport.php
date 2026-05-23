@@ -341,7 +341,7 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
                 'p.total_harga_kirim as p_total_harga_kirim',
                 'p.total_qty_kirim as p_total_qty_kirim',
                 DB::raw('COALESCE(
-                    MAX(ip.amount_after_refraksi),
+                    MAX(ip.subtotal),
                     SUM(pd.qty_kirim * od.harga_jual)
                 ) as realisasi_amount'),
                 DB::raw('COALESCE(

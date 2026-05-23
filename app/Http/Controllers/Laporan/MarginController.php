@@ -203,7 +203,7 @@ class MarginController extends Controller
                 
                 if ($p->invoicePenagihan) {
                     $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
                     
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;
@@ -401,7 +401,7 @@ class MarginController extends Controller
                 
                 if ($p->invoicePenagihan) {
                     $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
                     
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;
@@ -614,7 +614,7 @@ class MarginController extends Controller
                 
                 if ($p->invoicePenagihan) {
                     $qtyJual = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
                     
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;

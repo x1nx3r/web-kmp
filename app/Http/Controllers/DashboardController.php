@@ -155,7 +155,7 @@ class DashboardController extends Controller
             ->select(
                 'pengiriman.id',
                 DB::raw('COALESCE(
-                    MAX(invoice_penagihan.amount_after_refraksi),
+                    MAX(invoice_penagihan.subtotal),
                     SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                 ) as omset_pengiriman')
             )
@@ -186,7 +186,7 @@ class DashboardController extends Controller
             ->select(
                 'pengiriman.id',
                 DB::raw('COALESCE(
-                    MAX(invoice_penagihan.amount_after_refraksi),
+                    MAX(invoice_penagihan.subtotal),
                     SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                 ) as omset_pengiriman')
             )
@@ -208,7 +208,7 @@ class DashboardController extends Controller
             ->select(
                 'pengiriman.id',
                 DB::raw('COALESCE(
-                    MAX(invoice_penagihan.amount_after_refraksi),
+                    MAX(invoice_penagihan.subtotal),
                     SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                 ) as omset_pengiriman')
             )
@@ -239,7 +239,7 @@ class DashboardController extends Controller
                 ->select(
                     'pengiriman.id',
                     DB::raw('COALESCE(
-                        MAX(invoice_penagihan.amount_after_refraksi),
+                        MAX(invoice_penagihan.subtotal),
                         SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                     ) as omset_pengiriman')
                 )
@@ -294,7 +294,7 @@ class DashboardController extends Controller
                 ->select(
                     'pengiriman.id',
                     DB::raw('COALESCE(
-                        MAX(invoice_penagihan.amount_after_refraksi),
+                        MAX(invoice_penagihan.subtotal),
                         SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                     ) as omset_pengiriman')
                 )
@@ -476,7 +476,7 @@ class DashboardController extends Controller
 
                 if ($p->approvalPembayaran) {
                     $qtyAfterRefraksi    = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
-                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->subtotal ?? $p->total_harga_kirim;
 
                     if ($qtyAfterRefraksi > 0) {
                         $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
@@ -493,7 +493,7 @@ class DashboardController extends Controller
 
                 if ($p->invoicePenagihan) {
                     $qtyJual    = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
 
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;
@@ -573,7 +573,7 @@ class DashboardController extends Controller
 
                 if ($p->approvalPembayaran) {
                     $qtyAfterRefraksi    = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
-                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->subtotal ?? $p->total_harga_kirim;
 
                     if ($qtyAfterRefraksi > 0) {
                         $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
@@ -590,7 +590,7 @@ class DashboardController extends Controller
 
                 if ($p->invoicePenagihan) {
                     $qtyJual    = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
 
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;
@@ -672,7 +672,7 @@ class DashboardController extends Controller
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
             ->select('kliens.id as klien_id', 'kliens.nama', 'kliens.cabang', 'pengiriman.id as pengiriman_id',
                 DB::raw('COALESCE(
-                    MAX(invoice_penagihan.amount_after_refraksi),
+                    MAX(invoice_penagihan.subtotal),
                     SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                 ) as omset_pengiriman'))
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
@@ -727,7 +727,7 @@ class DashboardController extends Controller
                     ->select(
                         'pengiriman.id',
                         DB::raw('COALESCE(
-                            MAX(invoice_penagihan.amount_after_refraksi),
+                            MAX(invoice_penagihan.subtotal),
                             SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                         ) as omset_pengiriman')
                     )
@@ -882,7 +882,7 @@ class DashboardController extends Controller
                 'bahan_baku_klien.nama',
                 'pengiriman.id as pengiriman_id',
                 DB::raw('COALESCE(
-                    MAX(invoice_penagihan.amount_after_refraksi),
+                    MAX(invoice_penagihan.subtotal),
                     SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                 ) as omset_pengiriman')
             )
@@ -946,7 +946,7 @@ class DashboardController extends Controller
                     ->select(
                         'pengiriman.id',
                         DB::raw('COALESCE(
-                            MAX(invoice_penagihan.amount_after_refraksi),
+                            MAX(invoice_penagihan.subtotal),
                             SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                         ) as omset_pengiriman')
                     )
@@ -1039,7 +1039,7 @@ class DashboardController extends Controller
 
                 if ($p->approvalPembayaran) {
                     $qtyAfterRefraksi    = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
-                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->subtotal ?? $p->total_harga_kirim;
 
                     if ($qtyAfterRefraksi > 0) {
                         $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
@@ -1056,7 +1056,7 @@ class DashboardController extends Controller
 
                 if ($p->invoicePenagihan) {
                     $qtyJual    = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
 
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;
@@ -1131,7 +1131,7 @@ class DashboardController extends Controller
 
                 if ($p->approvalPembayaran) {
                     $qtyAfterRefraksi    = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
-                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->subtotal ?? $p->total_harga_kirim;
 
                     if ($qtyAfterRefraksi > 0) {
                         $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
@@ -1148,7 +1148,7 @@ class DashboardController extends Controller
 
                 if ($p->invoicePenagihan) {
                     $qtyJual    = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
 
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;
@@ -1254,7 +1254,7 @@ class DashboardController extends Controller
 
                 if ($p->approvalPembayaran) {
                     $qtyAfterRefraksi    = $p->approvalPembayaran->qty_after_refraksi ?? $p->total_qty_kirim;
-                    $amountAfterRefraksi = $p->approvalPembayaran->amount_after_refraksi ?? $p->total_harga_kirim;
+                    $amountAfterRefraksi = $p->approvalPembayaran->subtotal ?? $p->total_harga_kirim;
 
                     if ($qtyAfterRefraksi > 0) {
                         $hargaBeliPerKg = $amountAfterRefraksi / $qtyAfterRefraksi;
@@ -1271,7 +1271,7 @@ class DashboardController extends Controller
 
                 if ($p->invoicePenagihan) {
                     $qtyJual    = $p->invoicePenagihan->qty_after_refraksi ?? $p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim;
-                    $amountJual = $p->invoicePenagihan->amount_after_refraksi ?? $p->invoicePenagihan->subtotal ?? 0;
+                    $amountJual = $p->invoicePenagihan->subtotal ?? $p->invoicePenagihan->subtotal ?? 0;
 
                     if ($qtyJual > 0) {
                         $hargaJualPerKg = $amountJual / $qtyJual;

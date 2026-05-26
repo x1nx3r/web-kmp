@@ -11,7 +11,7 @@ use App\Models\InvoicePenagihan;
 use App\Services\Notifications\ApprovalPenagihanNotificationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
 
 class ApprovePembayaran extends Component
@@ -38,6 +38,14 @@ class ApprovePembayaran extends Component
     public $refraksiForm = [
         'type' => 'qty',
         'value' => 0,
+    ];
+
+    // Additional expenses (pengeluaran tambahan)
+    public $expenseForm = [
+        'truk' => 0,
+        'kuli' => 0,
+        'fee' => 0,
+        'others' => [], // each: ['type' => '', 'amount' => 0]
     ];
 
     public function mount($approvalId)
@@ -76,6 +84,195 @@ class ApprovePembayaran extends Component
         // Load refraksi values from approval pembayaran - default 0 jika tidak ada
         $this->refraksiForm['type'] = $this->approval->refraksi_type ?? 'qty';
         $this->refraksiForm['value'] = floatval($this->approval->refraksi_value ?? 0);
+
+        // Load additional expenses
+        $this->loadExpenses();
+
+        // Ensure calculated fields are up to date on load
+        $this->recalculatePembayaranTotals();
+    }
+
+    private function loadExpenses(): void
+    {
+        $this->expenseForm = [
+            'truk' => 0,
+            'kuli' => 0,
+            'fee' => 0,
+            'others' => [],
+        ];
+
+        if (!$this->approval) {
+            return;
+        }
+
+        $this->approval->loadMissing('expenses');
+
+        foreach ($this->approval->expenses as $e) {
+            $type = trim((string)($e->type ?? ''));
+            $amount = floatval($e->amount ?? 0);
+
+            if ($type === 'truk') {
+                $this->expenseForm['truk'] = $amount;
+            } elseif ($type === 'kuli') {
+                $this->expenseForm['kuli'] = $amount;
+            } elseif ($type === 'fee') {
+                $this->expenseForm['fee'] = $amount;
+            } else {
+                $this->expenseForm['others'][] = [
+                    'type' => $type,
+                    'amount' => $amount,
+                ];
+            }
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+    }
+
+    public function addOtherExpenseRow(): void
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+    }
+
+    public function removeOtherExpenseRow(int $index): void
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if (isset($this->expenseForm['others'][$index])) {
+            array_splice($this->expenseForm['others'], $index, 1);
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+
+        $this->updateExpenses();
+    }
+
+    public function updateExpenses(): void
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if (!$this->approval) {
+            Session::flash('error', 'Data approval tidak ditemukan');
+            return;
+        }
+
+        // Validate fixed amounts
+        foreach (['truk', 'kuli', 'fee'] as $k) {
+            $val = floatval($this->expenseForm[$k] ?? 0);
+            if ($val < 0) {
+                Session::flash('error', ucfirst($k) . ' tidak boleh negatif');
+                return;
+            }
+        }
+
+        // Validate custom rows: if amount>0 => type required
+        foreach (($this->expenseForm['others'] ?? []) as $i => $row) {
+            $amount = floatval($row['amount'] ?? 0);
+            $type = trim((string)($row['type'] ?? ''));
+
+            if ($amount < 0) {
+                Session::flash('error', 'Nominal pengeluaran lainnya tidak boleh negatif (baris #' . ($i + 1) . ')');
+                return;
+            }
+            if ($amount > 0 && $type === '') {
+                Session::flash('error', 'Nama/Jenis pengeluaran lainnya wajib diisi (baris #' . ($i + 1) . ')');
+                return;
+            }
+
+            // Prevent using reserved names for others to avoid duplicates
+            if ($amount > 0 && in_array(strtolower($type), ['truk', 'kuli', 'fee'], true)) {
+                Session::flash('error', 'Nama pengeluaran "' . $type . '" sudah ada di opsi utama. Gunakan field Truk/Kuli/Fee di atas (baris #' . ($i + 1) . ')');
+                return;
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $this->approval->expenses()->delete();
+
+            $fixed = [
+                'truk' => floatval($this->expenseForm['truk'] ?? 0),
+                'kuli' => floatval($this->expenseForm['kuli'] ?? 0),
+                'fee' => floatval($this->expenseForm['fee'] ?? 0),
+            ];
+
+            foreach ($fixed as $type => $amount) {
+                if ($amount > 0) {
+                    $this->approval->expenses()->create([
+                        'type' => $type,
+                        'amount' => $amount,
+                    ]);
+                }
+            }
+
+            foreach (($this->expenseForm['others'] ?? []) as $row) {
+                $type = trim((string)($row['type'] ?? ''));
+                $amount = floatval($row['amount'] ?? 0);
+
+                if ($type === '' || $amount <= 0) {
+                    continue;
+                }
+
+                $this->approval->expenses()->create([
+                    'type' => $type,
+                    'amount' => $amount,
+                ]);
+            }
+
+            $this->recalculatePembayaranTotals();
+            $this->approval->save();
+
+            DB::commit();
+            Session::flash('message', 'Pengeluaran tambahan berhasil disimpan');
+            $this->loadApproval();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Session::flash('error', 'Gagal menyimpan pengeluaran tambahan: ' . $e->getMessage());
+        }
+    }
+
+    private function recalculatePembayaranTotals(): void
+    {
+        if (!$this->approval || !$this->pengiriman) {
+            return;
+        }
+
+        $amountBefore = $this->approval->amount_before_refraksi;
+        if ($amountBefore === null) {
+            $amountBefore = $this->pengiriman->total_harga_kirim;
+        }
+
+        $refraksiAmount = floatval($this->approval->refraksi_amount ?? 0);
+
+        $this->approval->loadMissing('expenses');
+        $expensesTotal = floatval($this->approval->expenses->sum('amount'));
+
+        $subtotal = floatval($amountBefore) - $refraksiAmount - $expensesTotal;
+        if ($subtotal < 0) {
+            $subtotal = 0;
+        }
+
+        $piutang = floatval($this->approval->piutang_amount ?? 0);
+        $totalDibayarkan = $subtotal - $piutang;
+        if ($totalDibayarkan < 0) {
+            $totalDibayarkan = 0;
+        }
+
+        // assign as numeric strings to satisfy decimal casts
+        $this->approval->additional_expenses_total = $expensesTotal;
+        $this->approval->subtotal = $subtotal;
+        $this->approval->total_dibayarkan = $totalDibayarkan;
     }
 
     public function approve()
@@ -83,7 +280,7 @@ class ApprovePembayaran extends Component
         $user = Auth::user();
 
         if (!$this->approval) {
-            session()->flash('error', 'Data approval tidak ditemukan');
+            Session::flash('error', 'Data approval tidak ditemukan');
             return;
         }
 
@@ -189,12 +386,12 @@ class ApprovePembayaran extends Component
 
             DB::commit();
 
-            session()->flash('message', 'Approval berhasil disimpan');
+            Session::flash('message', 'Approval berhasil disimpan');
             return redirect()->route('accounting.approval-pembayaran');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', $e->getMessage());
+            Session::flash('error', $e->getMessage());
         }
     }
 
@@ -203,7 +400,7 @@ class ApprovePembayaran extends Component
         $user = Auth::user();
 
         if (!$this->approval) {
-            session()->flash('error', 'Data approval tidak ditemukan');
+            Session::flash('error', 'Data approval tidak ditemukan');
             return;
         }
 
@@ -212,7 +409,7 @@ class ApprovePembayaran extends Component
         }
 
         if (empty($this->notes)) {
-            session()->flash('error', 'Catatan penolakan harus diisi');
+            Session::flash('error', 'Catatan penolakan harus diisi');
             return;
         }
 
@@ -239,12 +436,12 @@ class ApprovePembayaran extends Component
 
             DB::commit();
 
-            session()->flash('message', 'Approval berhasil ditolak');
+            Session::flash('message', 'Approval berhasil ditolak');
             return redirect()->route('accounting.approval-pembayaran');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', $e->getMessage());
+            Session::flash('error', $e->getMessage());
         }
     }
 
@@ -255,7 +452,7 @@ class ApprovePembayaran extends Component
         }
 
         if (!$this->approval) {
-            session()->flash('error', 'Data approval tidak ditemukan');
+            Session::flash('error', 'Data approval tidak ditemukan');
             return;
         }
 
@@ -270,7 +467,7 @@ class ApprovePembayaran extends Component
                 ]);
 
                 DB::commit();
-                session()->flash('message', 'Pemotongan piutang berhasil dihapus');
+                Session::flash('message', 'Pemotongan piutang berhasil dihapus');
                 $this->loadApproval();
                 return;
             }
@@ -289,7 +486,7 @@ class ApprovePembayaran extends Component
 
             // Validate amount tidak melebihi sisa piutang
             if ($this->piutangForm['amount'] > $catatanPiutang->sisa_piutang) {
-                throw new \Exception('Jumlah pemotongan tidak boleh melebihi sisa piutang Rp ' . number_format($catatanPiutang->sisa_piutang, 0, ',', '.'));
+                throw new \Exception('Jumlah pemotongan tidak boleh melebihi sisa piutang Rp ' . number_format(floatval($catatanPiutang->sisa_piutang), 0, ',', '.'));
             }
 
             $this->approval->update([
@@ -298,12 +495,17 @@ class ApprovePembayaran extends Component
                 'piutang_notes' => $this->piutangForm['notes'],
             ]);
 
+            // Update total_dibayarkan (subtotal - piutang)
+            $this->approval->refresh();
+            $this->recalculatePembayaranTotals();
+            $this->approval->save();
+
             DB::commit();
-            session()->flash('message', 'Pemotongan piutang berhasil disimpan');
+            Session::flash('message', 'Pemotongan piutang berhasil disimpan');
             $this->loadApproval();
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', $e->getMessage());
+            Session::flash('error', $e->getMessage());
         }
     }
 
@@ -314,7 +516,7 @@ class ApprovePembayaran extends Component
         }
 
         if (!$this->approval) {
-            session()->flash('error', 'Data approval tidak ditemukan');
+            Session::flash('error', 'Data approval tidak ditemukan');
             return;
         }
 
@@ -370,14 +572,18 @@ class ApprovePembayaran extends Component
 
             $this->approval->save();
 
+            // Update subtotal/total after refraksi change
+            $this->recalculatePembayaranTotals();
+            $this->approval->save();
+
             DB::commit();
 
-            session()->flash('message', 'Refraksi pembayaran berhasil diupdate');
+            Session::flash('message', 'Refraksi pembayaran berhasil diupdate');
             $this->loadApproval();
 
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Gagal mengupdate refraksi: ' . $e->getMessage());
+            Session::flash('error', 'Gagal mengupdate refraksi: ' . $e->getMessage());
         }
     }
 
@@ -439,7 +645,7 @@ class ApprovePembayaran extends Component
                 $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
                 $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
                 $hargaPerKg = $qtyBeforeRefraksi > 0 ? $amountBeforeRefraksi / $qtyBeforeRefraksi : 0;
-                $refraksiAmount = $refraksiQty * $hargaPerKg;
+                $refraksiAmount = $refraksiQty * $refraksiAmount;
             } elseif ($refraksiType === 'rupiah') {
                 $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
             } elseif ($refraksiType === 'lainnya') {
@@ -448,6 +654,13 @@ class ApprovePembayaran extends Component
         }
 
         $subtotal = $amountBeforeRefraksi - $refraksiAmount;
+
+        // Subtotal should also take additional expenses from approval pembayaran
+        $approvalExpensesTotal = floatval($this->approval->additional_expenses_total ?? 0);
+        $subtotalAfterExpenses = $subtotal - $approvalExpensesTotal;
+        if ($subtotalAfterExpenses < 0) {
+            $subtotalAfterExpenses = 0;
+        }
 
         // Create Invoice with selling price
         $invoice = InvoicePenagihan::create([
@@ -460,11 +673,11 @@ class ApprovePembayaran extends Component
             'customer_phone' => $klien->no_hp ?? null,
             'customer_email' => null,
             'items' => $items,
-            'subtotal' => $subtotal,
+            'subtotal' => $subtotalAfterExpenses,
             'tax_percentage' => 0,
             'tax_amount' => 0,
             'discount_amount' => 0,
-            'total_amount' => $subtotal,
+            'total_amount' => $subtotalAfterExpenses,
             'refraksi_type' => $refraksiType,
             'refraksi_value' => $refraksiValue,
             'refraksi_amount' => $refraksiAmount,
@@ -472,10 +685,24 @@ class ApprovePembayaran extends Component
             'qty_after_refraksi' => $qtyAfterRefraksi,
             'amount_before_refraksi' => $amountBeforeRefraksi,
             'amount_after_refraksi' => $subtotal,
+            'additional_expenses_total' => $approvalExpensesTotal,
             'status' => 'pending',
             'notes' => 'Invoice dibuat otomatis dari approval pembayaran',
             'created_by' => $userId,
         ]);
+
+        // Copy expense detail rows into invoice
+        try {
+            $this->approval->loadMissing('expenses');
+            foreach ($this->approval->expenses as $e) {
+                $invoice->expenses()->create([
+                    'type' => $e->type,
+                    'amount' => $e->amount,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // ignore, invoice still valid
+        }
 
         // Create Approval Penagihan
         $approvalPenagihan = ApprovalPenagihan::create([
@@ -493,7 +720,7 @@ class ApprovePembayaran extends Component
     protected function ensureCanManage(): bool
     {
         if (!$this->canManage) {
-            session()->flash('error', 'Anda tidak memiliki akses untuk melakukan aksi ini');
+            Session::flash('error', 'Anda tidak memiliki akses untuk melakukan aksi ini');
             return false;
         }
 

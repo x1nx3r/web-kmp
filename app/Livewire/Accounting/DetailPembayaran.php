@@ -33,6 +33,14 @@ class DetailPembayaran extends Component
     public $existingBuktiPembayaran = [];
     public $filesToRemove = [];
 
+    // Expense form
+    public $expenseForm = [
+        'truk' => 0,
+        'kuli' => 0,
+        'fee' => 0,
+        'others' => [],
+    ];
+
     // Piutang form
     public $piutangForm = [
         'catatan_piutang_id' => null,
@@ -86,6 +94,7 @@ class DetailPembayaran extends Component
             $this->existingBuktiPembayaran = [];
         }
         $this->piutangForm['notes'] = $this->approval->piutang_notes ?? '';
+        $this->loadExpenses();
     }
 
     public function render()
@@ -411,6 +420,170 @@ class DetailPembayaran extends Component
             DB::rollBack();
             session()->flash('error', 'Gagal update total harga beli: ' . $e->getMessage());
         }
+    }
+
+    private function loadExpenses(): void
+    {
+        $this->expenseForm = [
+            'truk' => 0,
+            'kuli' => 0,
+            'fee' => 0,
+            'others' => [],
+        ];
+
+        if (!$this->approval) return;
+
+        $this->approval->loadMissing('expenses');
+
+        foreach ($this->approval->expenses as $e) {
+            $type = trim((string)($e->type ?? ''));
+            $amount = floatval($e->amount ?? 0);
+
+            if ($type === 'truk') {
+                $this->expenseForm['truk'] = $amount;
+            } elseif ($type === 'kuli') {
+                $this->expenseForm['kuli'] = $amount;
+            } elseif ($type === 'fee') {
+                $this->expenseForm['fee'] = $amount;
+            } else {
+                $this->expenseForm['others'][] = ['type' => $type, 'amount' => $amount];
+            }
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+    }
+
+    public function addOtherExpenseRow(): void
+    {
+        if (!$this->canManage) return;
+        $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+    }
+
+    public function removeOtherExpenseRow(int $index): void
+    {
+        if (!$this->canManage) return;
+
+        if (isset($this->expenseForm['others'][$index])) {
+            array_splice($this->expenseForm['others'], $index, 1);
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+
+        $this->updateExpenses();
+    }
+
+    public function updateExpenses(): void
+    {
+        if (!$this->canManage) {
+            session()->flash('error', 'Anda tidak memiliki akses untuk mengedit');
+            return;
+        }
+
+        foreach (['truk', 'kuli', 'fee'] as $k) {
+            if (floatval($this->expenseForm[$k] ?? 0) < 0) {
+                session()->flash('error', ucfirst($k) . ' tidak boleh negatif');
+                return;
+            }
+        }
+
+        foreach (($this->expenseForm['others'] ?? []) as $i => $row) {
+            $amount = floatval($row['amount'] ?? 0);
+            $type = trim((string)($row['type'] ?? ''));
+
+            if ($amount < 0) {
+                session()->flash('error', 'Nominal pengeluaran lainnya tidak boleh negatif (baris #' . ($i + 1) . ')');
+                return;
+            }
+            if ($amount > 0 && $type === '') {
+                session()->flash('error', 'Nama pengeluaran lainnya wajib diisi (baris #' . ($i + 1) . ')');
+                return;
+            }
+            if ($amount > 0 && in_array(strtolower($type), ['truk', 'kuli', 'fee'], true)) {
+                session()->flash('error', 'Nama "' . $type . '" sudah ada di opsi utama (baris #' . ($i + 1) . ')');
+                return;
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $oldTotal = $this->approval->additional_expenses_total;
+
+            $this->approval->expenses()->delete();
+
+            $fixed = [
+                'truk' => floatval($this->expenseForm['truk'] ?? 0),
+                'kuli' => floatval($this->expenseForm['kuli'] ?? 0),
+                'fee'  => floatval($this->expenseForm['fee'] ?? 0),
+            ];
+
+            foreach ($fixed as $type => $amount) {
+                if ($amount > 0) {
+                    $this->approval->expenses()->create(['type' => $type, 'amount' => $amount]);
+                }
+            }
+
+            foreach (($this->expenseForm['others'] ?? []) as $row) {
+                $type = trim((string)($row['type'] ?? ''));
+                $amount = floatval($row['amount'] ?? 0);
+                if ($type === '' || $amount <= 0) continue;
+                $this->approval->expenses()->create(['type' => $type, 'amount' => $amount]);
+            }
+
+            $this->recalculateTotals();
+            $this->approval->save();
+
+            // Log history jika edit mode
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'pembayaran',
+                    'approval_id'   => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'role'          => $role,
+                    'user_id'       => $user->id,
+                    'action'        => 'edited',
+                    'notes'         => 'Updated pengeluaran tambahan: total Rp ' .
+                                    number_format($this->approval->additional_expenses_total, 0, ',', '.'),
+                    'changes'       => [
+                        'field' => 'additional_expenses',
+                        'old'   => 'Rp ' . number_format($oldTotal, 0, ',', '.'),
+                        'new'   => 'Rp ' . number_format($this->approval->additional_expenses_total, 0, ',', '.'),
+                    ],
+                ]);
+            }
+
+            DB::commit();
+            session()->flash('message', 'Pengeluaran tambahan berhasil disimpan');
+            $this->loadApproval();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menyimpan pengeluaran tambahan: ' . $e->getMessage());
+        }
+    }
+
+    private function recalculateTotals(): void
+    {
+        if (!$this->approval || !$this->pengiriman) return;
+
+        $amountBefore = $this->approval->amount_before_refraksi ?? $this->pengiriman->total_harga_kirim;
+        $refraksiAmount = floatval($this->approval->refraksi_amount ?? 0);
+
+        $this->approval->loadMissing('expenses');
+        $expensesTotal = floatval($this->approval->expenses->sum('amount'));
+
+        $subtotal = max(0, floatval($amountBefore) - $refraksiAmount - $expensesTotal);
+        $piutang  = floatval($this->approval->piutang_amount ?? 0);
+        $totalDibayarkan = max(0, $subtotal - $piutang);
+
+        $this->approval->additional_expenses_total = $expensesTotal;
+        $this->approval->subtotal = $subtotal;
+        $this->approval->total_dibayarkan = $totalDibayarkan;
     }
 
     private function getUserRole($user)

@@ -418,7 +418,7 @@
                 <table class="summary-row total-row">
                     <tr>
                         <td class="summary-label">Total Tagihan</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->total_amount, 2, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format($invoice->amount_after_refraksi, 2, ',', '.') }}</td>
                     </tr>
                 </table>
             </td>

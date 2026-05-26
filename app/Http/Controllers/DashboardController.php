@@ -780,7 +780,8 @@ class DashboardController extends Controller
             ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
             ->select('suppliers.id as supplier_id', 'suppliers.nama', 'pengiriman.id as pengiriman_id',
                 DB::raw('COALESCE(
-                    MAX(approval_pembayaran.amount_after_refraksi),
+                    NULLIF(MAX(approval_pembayaran.subtotal), 0),
+                    NULLIF(MAX(approval_pembayaran.amount_after_refraksi), 0),
                     SUM(pengiriman_details.total_harga)
                 ) as omset_pengiriman'))
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
@@ -834,7 +835,8 @@ class DashboardController extends Controller
                     ->select(
                         'pengiriman.id',
                         DB::raw('COALESCE(
-                            MAX(approval_pembayaran.amount_after_refraksi),
+                            NULLIF(MAX(approval_pembayaran.subtotal), 0),
+                            NULLIF(MAX(approval_pembayaran.amount_after_refraksi), 0),
                             SUM(pengiriman_details.total_harga)
                         ) as omset_pengiriman')
                     )

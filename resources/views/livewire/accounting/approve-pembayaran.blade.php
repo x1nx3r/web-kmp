@@ -457,6 +457,129 @@
                         </div>
                     </div>
 
+                    {{-- Pengeluaran Tambahan (Truk/Kuli/Fee/Lainnya) --}}
+                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" wire:key="pengeluaran-tambahan-{{ $approval->id }}">
+                        <div class="px-5 py-3.5 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+                            <i class="fas fa-receipt text-orange-500 text-sm"></i>
+                            <div>
+                                <h2 class="text-sm font-bold text-gray-800">Pengeluaran Tambahan <span class="text-gray-400 font-normal">(Truk, Kuli, Fee, dll)</span></h2>
+                            </div>
+                        </div>
+
+                        <div class="p-5 space-y-4">
+                            @php
+                                $expensesTotal = floatval($approval->additional_expenses_total ?? 0);
+                            @endphp
+
+                            {{-- Input form (persist via updateExpenses) --}}
+                            @if($canManage && $approval->status === 'pending')
+                                <div class="border border-gray-200 rounded-lg p-4 space-y-4">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Truk</label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                <input type="number" step="0.01" min="0" wire:model.defer="expenseForm.truk"
+                                                       class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition"
+                                                       placeholder="0"  onwheel="this.blur()">
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Kuli</label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                <input type="number" step="0.01" min="0" wire:model.defer="expenseForm.kuli"
+                                                       class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition"
+                                                       placeholder="0"  onwheel="this.blur()">
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Fee</label>
+                                            <div class="relative">
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                <input type="number" step="0.01" min="0" wire:model.defer="expenseForm.fee"
+                                                       class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition"
+                                                       placeholder="0"  onwheel="this.blur()">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-xs font-semibold text-gray-700">Lainnya</p>
+                                            <button type="button" wire:click="addOtherExpenseRow"
+                                                    class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200">
+                                                <i class="fas fa-plus"></i>Tambah Baris
+                                            </button>
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            @forelse(($expenseForm['others'] ?? []) as $i => $row)
+                                                <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                                                    <div class="md:col-span-6">
+                                                        <input type="text" wire:model.defer="expenseForm.others.{{ $i }}.type"
+                                                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition"
+                                                               placeholder="Nama pengeluaran (contoh: Parkir / Tol / Solar)">
+                                                    </div>
+                                                    <div class="md:col-span-5">
+                                                        <div class="relative">
+                                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                            <input type="number" step="0.01" min="0" wire:model.defer="expenseForm.others.{{ $i }}.amount"
+                                                                   class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition"
+                                                                   placeholder="0"  onwheel="this.blur()">
+                                                        </div>
+                                                    </div>
+                                                    <div class="md:col-span-1 flex md:justify-end">
+                                                        <button type="button" wire:click="removeOtherExpenseRow({{ $i }})"
+                                                                class="inline-flex items-center justify-center w-10 h-10 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @empty
+                                                <p class="text-xs text-gray-400">Belum ada baris lainnya.</p>
+                                            @endforelse
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                        <p class="text-xs text-gray-500">Klik simpan untuk menerapkan perubahan.</p>
+                                        <button type="button" wire:click="updateExpenses"
+                                                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition">
+                                            <i class="fas fa-save"></i>Simpan
+                                        </button>
+                                    </div>
+
+                                    <p class="text-xs text-green-600 flex items-center gap-1.5">
+                                        <i class="fas fa-info-circle"></i>Setelah disimpan, subtotal & total dibayarkan akan ikut terhitung.
+                                    </p>
+                                </div>
+                            @else
+                                {{-- Read-only list (from DB relation) --}}
+                                @php $expensesList = $approval->expenses ?? collect(); @endphp
+                                <div class="space-y-2">
+                                    @forelse($expensesList as $exp)
+                                        <div class="flex items-center justify-between gap-3 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                                            <div class="min-w-0">
+                                                <p class="text-xs font-semibold text-gray-700">{{ strtoupper($exp->type) }}</p>
+                                                <p class="text-sm font-bold text-gray-900">Rp {{ number_format($exp->amount ?? 0, 2, ',', '.') }}</p>
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <div class="text-sm text-gray-400 text-center py-3">Belum ada pengeluaran tambahan</div>
+                                    @endforelse
+                                </div>
+                            @endif
+
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <span class="text-sm font-semibold text-gray-800">Total Pengeluaran Tambahan</span>
+                                <span class="text-sm font-bold text-orange-600">Rp {{ number_format($expensesTotal, 2, ',', '.') }}</span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 {{-- Right Column: Sticky Summary & Actions --}}
@@ -468,7 +591,9 @@
                             $totalAwal = $pengiriman->total_harga_kirim ?? 0;
                             $piutangPotongan = $approval->piutang_amount ?? 0;
                             $refraksiPotongan = $approval->refraksi_amount ?? 0;
-                            $totalPembayaran = max(0, $totalAwal - $refraksiPotongan - $piutangPotongan);
+                            $pengeluaranTambahan = $approval->additional_expenses_total ?? 0;
+                            $subtotal = $approval->subtotal ?? max(0, $totalAwal - $refraksiPotongan - $pengeluaranTambahan);
+                            $totalPembayaran = $approval->total_dibayarkan ?? max(0, $subtotal - $piutangPotongan);
                         @endphp
                         <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" wire:key="ringkasan-{{ $approval->id }}">
                             <div class="px-5 py-3.5 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
@@ -483,6 +608,14 @@
                                 <div class="flex justify-between items-center text-sm">
                                     <span class="text-gray-500">Potongan Refraksi</span>
                                     <span class="font-semibold text-red-500">- Rp {{ number_format($refraksiPotongan, 2, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-500">Pengeluaran Tambahan</span>
+                                    <span class="font-semibold text-red-500">- Rp {{ number_format($pengeluaranTambahan, 2, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-500">Subtotal</span>
+                                    <span class="font-semibold text-indigo-700">Rp {{ number_format($subtotal, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="flex justify-between items-center text-sm">
                                     <span class="text-gray-500">Potongan Piutang</span>

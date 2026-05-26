@@ -21,6 +21,12 @@ class DetailPenagihan extends Component
     public $companySetting;
     public $editMode = false;
     public $canManage = false;
+    public $expenseForm = [
+        'truk' => 0,
+        'kuli' => 0,
+        'fee' => 0,
+        'others' => [],
+    ];
 
     // Edit forms
     public $customerForm = [
@@ -169,6 +175,7 @@ class DetailPenagihan extends Component
 
             $this->invoiceNotesForm = $this->invoice->notes ?? '';
         }
+        $this->loadExpenses();
     }
 
     public function updateCustomerInfo()
@@ -430,7 +437,7 @@ class DetailPenagihan extends Component
                 'amount_before_refraksi' => $this->invoice->amount_before_refraksi,
                 'amount_after_refraksi' => $this->invoice->amount_after_refraksi,
                 'subtotal' => $this->invoice->subtotal,
-                'total_amount' => $this->invoice->total_amount,
+                'total_amount' => $this->invoice->subtotal,
             ];
 
             // Recalculate refraksi — gunakan harga JUAL, tapi boleh dioverride manual
@@ -516,7 +523,7 @@ class DetailPenagihan extends Component
                     'amount_before_refraksi' => $this->invoice->amount_before_refraksi,
                     'amount_after_refraksi' => $this->invoice->amount_after_refraksi,
                     'subtotal' => $this->invoice->subtotal,
-                    'total_amount' => $this->invoice->total_amount,
+                    'total_amount' => $this->invoice->subtotal,
                 ],
             ];
 
@@ -544,6 +551,165 @@ class DetailPenagihan extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update refraksi: ' . $e->getMessage());
+        }
+    }
+    private function loadExpenses(): void
+    {
+        $this->expenseForm = [
+            'truk'   => 0,
+            'kuli'   => 0,
+            'fee'    => 0,
+            'others' => [],
+        ];
+
+        if (!$this->invoice) return;
+
+        $this->invoice->loadMissing('expenses');
+
+        foreach ($this->invoice->expenses as $e) {
+            $type   = trim((string)($e->type ?? ''));
+            $amount = floatval($e->amount ?? 0);
+
+            if ($type === 'truk') {
+                $this->expenseForm['truk'] = $amount;
+            } elseif ($type === 'kuli') {
+                $this->expenseForm['kuli'] = $amount;
+            } elseif ($type === 'fee') {
+                $this->expenseForm['fee'] = $amount;
+            } else {
+                $this->expenseForm['others'][] = ['type' => $type, 'amount' => $amount];
+            }
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+    }
+
+    public function addOtherExpenseRow(): void
+    {
+        if (!$this->canManage) return;
+        $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+    }
+
+    public function removeOtherExpenseRow(int $index): void
+    {
+        if (!$this->canManage) return;
+
+        if (isset($this->expenseForm['others'][$index])) {
+            array_splice($this->expenseForm['others'], $index, 1);
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+
+        $this->updateExpenses();
+    }
+
+    public function updateExpenses(): void
+    {
+        if (!$this->canManage) {
+            session()->flash('error', 'Anda tidak memiliki akses');
+            return;
+        }
+
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        // Validasi fixed
+        foreach (['truk', 'kuli', 'fee'] as $k) {
+            if (floatval($this->expenseForm[$k] ?? 0) < 0) {
+                session()->flash('error', ucfirst($k) . ' tidak boleh negatif');
+                return;
+            }
+        }
+
+        // Validasi others
+        foreach (($this->expenseForm['others'] ?? []) as $i => $row) {
+            $amount = floatval($row['amount'] ?? 0);
+            $type   = trim((string)($row['type'] ?? ''));
+
+            if ($amount < 0) {
+                session()->flash('error', 'Nominal tidak boleh negatif (baris #' . ($i + 1) . ')');
+                return;
+            }
+            if ($amount > 0 && $type === '') {
+                session()->flash('error', 'Nama pengeluaran wajib diisi (baris #' . ($i + 1) . ')');
+                return;
+            }
+            if ($amount > 0 && in_array(strtolower($type), ['truk', 'kuli', 'fee'], true)) {
+                session()->flash('error', 'Nama "' . $type . '" sudah ada di opsi utama (baris #' . ($i + 1) . ')');
+                return;
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $user    = Auth::user();
+            $oldTotal = floatval($this->invoice->additional_expenses_total ?? 0);
+
+            $this->invoice->expenses()->delete();
+
+            $expensesTotal = 0;
+
+            $fixed = [
+                'truk' => floatval($this->expenseForm['truk'] ?? 0),
+                'kuli' => floatval($this->expenseForm['kuli'] ?? 0),
+                'fee'  => floatval($this->expenseForm['fee'] ?? 0),
+            ];
+
+            foreach ($fixed as $type => $amount) {
+                if ($amount > 0) {
+                    $this->invoice->expenses()->create(['type' => $type, 'amount' => $amount]);
+                    $expensesTotal += $amount;
+                }
+            }
+
+            foreach (($this->expenseForm['others'] ?? []) as $row) {
+                $type   = trim((string)($row['type'] ?? ''));
+                $amount = floatval($row['amount'] ?? 0);
+                if ($type === '' || $amount <= 0) continue;
+                $this->invoice->expenses()->create(['type' => $type, 'amount' => $amount]);
+                $expensesTotal += $amount;
+            }
+
+            $amountAfterRefraksi = floatval($this->invoice->amount_after_refraksi ?? $this->invoice->subtotal ?? 0);
+            $newSubtotal         = max(0, $amountAfterRefraksi - $expensesTotal);
+
+            $this->invoice->update([
+                'additional_expenses_total' => $expensesTotal,
+                'subtotal'                  => $newSubtotal,
+                'total_amount'              => max(0, $newSubtotal - floatval($this->invoice->discount_amount ?? 0)),
+            ]);
+
+            ApprovalHistory::create([
+                'approval_type' => 'penagihan',
+                'approval_id'   => $this->approval->id,
+                'pengiriman_id' => $this->approval->pengiriman_id,
+                'invoice_id'    => $this->invoice->id,
+                'role'          => $this->getUserRole($user),
+                'user_id'       => $user->id,
+                'action'        => 'edited',
+                'notes'         => 'Pengeluaran tambahan diubah: Rp ' .
+                                number_format($oldTotal, 0, ',', '.') . ' → Rp ' .
+                                number_format($expensesTotal, 0, ',', '.'),
+                'changes'       => [
+                    'field' => 'additional_expenses',
+                    'old'   => 'Rp ' . number_format($oldTotal, 0, ',', '.'),
+                    'new'   => 'Rp ' . number_format($expensesTotal, 0, ',', '.'),
+                ],
+            ]);
+
+            DB::commit();
+            session()->flash('message', 'Pengeluaran tambahan berhasil disimpan');
+            $this->loadDetail();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menyimpan pengeluaran: ' . $e->getMessage());
         }
     }
 
@@ -627,39 +793,32 @@ class DetailPenagihan extends Component
 
     public function render()
     {
-        // Calculate financial summary from order
         $order = $this->pengiriman->purchaseOrder ?? null;
 
-        // Refresh pengiriman data untuk memastikan nilai terbaru
         $this->pengiriman->refresh();
 
-        // Ambil total harga supplier (beli) dari total_harga_kirim pengiriman
-        $totalSupplierCost = floatval($this->pengiriman->total_harga_kirim ?? 0);
-        $totalSelling = 0;
-        $totalMargin = 0;
-        $marginPercentage = 0;
+        // Samakan dengan ApprovePenagihan — ambil dari subtotal final, bukan kalkulasi manual
+        $subtotalPenagihan = floatval(
+            $this->invoice->subtotal ?? $this->invoice->amount_after_refraksi ?? 0
+        );
 
-        // Hitung total harga jual berdasarkan qty kirim × harga jual
-        if ($this->pengiriman->pengirimanDetails) {
-            foreach ($this->pengiriman->pengirimanDetails as $detail) {
-                // Ambil harga jual dari order detail
-                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                if ($orderDetail && $orderDetail->harga_jual) {
-                    // Total = qty kirim × harga jual
-                    $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
-                }
-            }
+        $subtotalPembayaran = floatval(
+            $this->pengiriman->approvalPembayaran->subtotal
+            ?? $this->pengiriman->approvalPembayaran->amount_after_refraksi
+            ?? 0
+        );
 
-            $totalMargin = $totalSelling - $totalSupplierCost;
-            $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
-        }
+        $totalMargin = $subtotalPenagihan - $subtotalPembayaran;
+        $marginPercentage = $subtotalPenagihan > 0
+            ? ($totalMargin / $subtotalPenagihan) * 100
+            : 0;
 
         return view('livewire.accounting.detail-penagihan', [
-            'order' => $order,
-            'totalSupplierCost' => $totalSupplierCost,
-            'totalSelling' => $totalSelling,
-            'totalMargin' => $totalMargin,
-            'marginPercentage' => $marginPercentage,
+            'order'              => $order,
+            'subtotalPenagihan'  => $subtotalPenagihan,
+            'subtotalPembayaran' => $subtotalPembayaran,
+            'totalMargin'        => $totalMargin,
+            'marginPercentage'   => $marginPercentage,
         ]);
     }
 }

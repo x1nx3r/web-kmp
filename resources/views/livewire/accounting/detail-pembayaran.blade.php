@@ -180,6 +180,31 @@
                         </div>
                     @endif
 
+                    {{-- Pengeluaran Tambahan --}}
+                    @if(($approval->additional_expenses_total ?? 0) > 0)
+                        <div class="flex justify-between items-center py-2 text-sm border-t border-gray-100">
+                            <div>
+                                <p class="text-orange-700">Pengeluaran Tambahan</p>
+                                <p class="text-xs text-gray-400">Truk / Kuli / Fee / Lainnya</p>
+                            </div>
+                            <p class="font-semibold text-red-600">- Rp {{ number_format($approval->additional_expenses_total, 2, ',', '.') }}</p>
+                        </div>
+                    @endif
+
+                    {{-- Subtotal (tanpa piutang) --}}
+                    @php
+                        $totalAwal = $pengiriman->total_harga_kirim ?? 0;
+                        $refraksiPotongan = $approval->refraksi_amount ?? 0;
+                        $pengeluaranTambahan = $approval->additional_expenses_total ?? 0;
+                        $piutangPotongan = $approval->piutang_amount ?? 0;
+                        $subtotal = $approval->subtotal ?? max(0, $totalAwal - $refraksiPotongan - $pengeluaranTambahan);
+                        $totalPembayaran = $approval->total_dibayarkan ?? max(0, $subtotal - $piutangPotongan);
+                    @endphp
+                    <div class="flex justify-between items-center py-2 text-sm border-t border-gray-100">
+                        <p class="text-gray-600">Subtotal</p>
+                        <p class="font-semibold text-indigo-700">Rp {{ number_format($subtotal, 2, ',', '.') }}</p>
+                    </div>
+
                     {{-- Piutang --}}
                     @if($approval->piutang_amount > 0)
                         <div class="flex justify-between items-center py-2 text-sm border-t border-gray-100">
@@ -194,9 +219,6 @@
                     @endif
 
                     {{-- Total Final --}}
-                    @php
-                        $totalPembayaran = $pengiriman->total_harga_kirim - ($approval->refraksi_amount ?? 0) - ($approval->piutang_amount ?? 0);
-                    @endphp
                     <div class="flex justify-between items-center pt-4 mt-2 border-t-2 border-gray-200">
                         <div>
                             <p class="font-semibold text-gray-900">Total Pembayaran ke Supplier</p>
@@ -354,22 +376,6 @@
                             </div>
                         @endif
 
-                        <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-semibold text-gray-800">Total Pembayaran ke Supplier</p>
-                                <p class="text-xs text-gray-400 mt-0.5">
-                                    Harga Awal
-                                    @if($approval->refraksi_amount > 0) − Refraksi @endif
-                                    @if($approval->piutang_amount > 0) − Piutang @endif
-                                </p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-xl font-bold text-emerald-600">
-                                    Rp {{ number_format(($approval->amount_after_refraksi ?? $pengiriman->total_harga_kirim) - ($approval->piutang_amount ?? 0), 2, ',', '.') }}
-                                </p>
-                                <p class="text-xs text-gray-400 line-through">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
             @else
@@ -414,7 +420,7 @@
                                 <label class="block text-xs font-medium text-gray-600 mb-1.5">Nilai Refraksi</label>
                                 <input type="number" wire:model="refraksiForm.value" min="0" step="0.01"
                                     class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-gray-50"
-                                    placeholder="{{ ($refraksiForm['type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : '40 untuk Rp 40/kg' }}" />
+                                    placeholder="{{ ($refraksiForm['type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : '40 untuk Rp 40/kg' }}"  onwheel="this.blur()" />
                             </div>
                         </div>
 
@@ -448,7 +454,7 @@
                             <label class="block text-xs font-medium text-gray-600 mb-1.5">Total Harga Beli (Rp)</label>
                             <input type="number" wire:model="totalHargaBeliForm" min="0" step="0.01"
                                 class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-gray-50"
-                                placeholder="Masukkan total harga beli" />
+                                placeholder="Masukkan total harga beli"  onwheel="this.blur()" />
                             <p class="mt-1.5 text-xs text-gray-400">
                                 Nilai saat ini: <strong>Rp {{ number_format($approval->amount_after_refraksi ?? $pengiriman->total_harga_kirim, 0, ',', '.') }}</strong>
                             </p>
@@ -458,6 +464,104 @@
                             class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-colors disabled:opacity-50">
                             <span wire:loading.remove wire:target="updateTotalHargaBeli"><i class="fas fa-save mr-1.5"></i>Update Total Harga Beli</span>
                             <span wire:loading wire:target="updateTotalHargaBeli"><i class="fas fa-spinner fa-spin mr-1.5"></i>Menyimpan...</span>
+                        </button>
+                    </div>
+
+                    {{-- Edit Pengeluaran Tambahan --}}
+                    <div class="bg-white rounded-xl border border-orange-200 p-6" wire:key="edit-expenses-{{ $approval->id }}">
+                        <h3 class="text-sm font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                            <i class="fas fa-receipt text-orange-500"></i>
+                            Edit Pengeluaran Tambahan
+                        </h3>
+                        <p class="text-xs text-gray-400 mb-4">Truk, kuli, fee, dan biaya lainnya yang dikurangkan dari total pembayaran.</p>
+
+                        @if(session()->has('message'))
+                            <div class="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-3 flex items-center gap-2">
+                                <i class="fas fa-check-circle"></i> {{ session('message') }}
+                            </div>
+                        @endif
+                        @if(session()->has('error'))
+                            <div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center gap-2">
+                                <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                            </div>
+                        @endif
+
+                        <div class="space-y-4">
+                            {{-- Fixed: Truk, Kuli, Fee --}}
+                            <div class="grid grid-cols-3 gap-3">
+                                @foreach(['truk' => 'Truk', 'kuli' => 'Kuli', 'fee' => 'Fee'] as $key => $label)
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1.5">{{ $label }}</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                            <input type="number" wire:model.defer="expenseForm.{{ $key }}"
+                                                min="0" step="0.01"
+                                                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-transparent bg-gray-50"
+                                                placeholder="0"  onwheel="this.blur()">
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- Dynamic others --}}
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-xs font-semibold text-gray-600">Lainnya</p>
+                                    <button type="button" wire:click="addOtherExpenseRow"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition-colors">
+                                        <i class="fas fa-plus"></i> Tambah Baris
+                                    </button>
+                                </div>
+
+                                <div class="space-y-2">
+                                    @forelse(($expenseForm['others'] ?? []) as $i => $row)
+                                        <div class="grid grid-cols-12 gap-2 items-center">
+                                            <div class="col-span-6">
+                                                <input type="text" wire:model.defer="expenseForm.others.{{ $i }}.type"
+                                                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-transparent bg-gray-50"
+                                                    placeholder="Nama pengeluaran (contoh: Parkir, Tol)">
+                                            </div>
+                                            <div class="col-span-5">
+                                                <div class="relative">
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                    <input type="number" wire:model.defer="expenseForm.others.{{ $i }}.amount"
+                                                        min="0" step="0.01"
+                                                        class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-transparent bg-gray-50"
+                                                        placeholder="0"  onwheel="this.blur()">
+                                                </div>
+                                            </div>
+                                            <div class="col-span-1 flex justify-end">
+                                                <button type="button" wire:click="removeOtherExpenseRow({{ $i }})"
+                                                    class="w-8 h-8 flex items-center justify-center text-red-500 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors">
+                                                    <i class="fas fa-trash text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <p class="text-xs text-gray-400">Belum ada baris lainnya.</p>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            {{-- Total preview --}}
+                            @php
+                                $previewTotal = floatval($expenseForm['truk'] ?? 0)
+                                            + floatval($expenseForm['kuli'] ?? 0)
+                                            + floatval($expenseForm['fee'] ?? 0);
+                                foreach(($expenseForm['others'] ?? []) as $r) {
+                                    $previewTotal += floatval($r['amount'] ?? 0);
+                                }
+                            @endphp
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-sm">
+                                <span class="text-gray-500">Total Pengeluaran</span>
+                                <span class="font-semibold text-orange-600">Rp {{ number_format($previewTotal, 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+
+                        <button wire:click="updateExpenses" wire:loading.attr="disabled"
+                            class="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors disabled:opacity-50">
+                            <span wire:loading.remove wire:target="updateExpenses"><i class="fas fa-save mr-1.5"></i>Simpan Pengeluaran Tambahan</span>
+                            <span wire:loading wire:target="updateExpenses"><i class="fas fa-spinner fa-spin mr-1.5"></i>Menyimpan...</span>
                         </button>
                     </div>
 
@@ -597,7 +701,7 @@
                                             <input type="number" wire:model="piutangForm.amount" min="0" step="0.01"
                                                 max="{{ $selectedPiutang->sisa_piutang ?? 0 }}"
                                                 class="w-full pl-10 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-                                                placeholder="0">
+                                                placeholder="0"  onwheel="this.blur()">
                                         </div>
                                         <p class="text-xs text-gray-400 mt-1">Maks: Rp {{ number_format($selectedPiutang->sisa_piutang ?? 0, 2, ',', '.') }}</p>
                                     </div>
@@ -624,6 +728,9 @@
                         </div>
                     @endif
                 </div>
+
+
+
             @endif
 
             {{-- Bukti Foto Bongkar --}}

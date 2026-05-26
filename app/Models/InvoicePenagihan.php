@@ -30,6 +30,7 @@ class InvoicePenagihan extends Model
         'amount_before_refraksi',
         'amount_after_refraksi',
         'subtotal',
+        'additional_expenses_total',
         'tax_percentage',
         'tax_amount',
         'discount_amount',
@@ -55,6 +56,7 @@ class InvoicePenagihan extends Model
         'amount_before_refraksi' => 'decimal:3',
         'amount_after_refraksi' => 'decimal:3',
         'subtotal' => 'decimal:3',
+        'additional_expenses_total' => 'decimal:3',
         'tax_percentage' => 'decimal:3',
         'tax_amount' => 'decimal:3',
         'discount_amount' => 'decimal:3',
@@ -92,6 +94,14 @@ class InvoicePenagihan extends Model
     public function pembayaranPabrik()
     {
         return $this->hasMany(PembayaranPiutangPabrik::class, 'invoice_penagihan_id');
+    }
+
+    /**
+     * Relasi ke Biaya Tambahan
+     */
+    public function expenses()
+    {
+        return $this->hasMany(InvoicePenagihanExpense::class, 'invoice_penagihan_id');
     }
 
     /**
@@ -147,6 +157,9 @@ class InvoicePenagihan extends Model
     {
         $this->tax_amount = 0;
         $this->tax_percentage = 0;
+        $this->discount_amount = $this->discount_amount ?? 0;
+
+        // total_amount follows subtotal minus discount (tax currently 0)
         $this->total_amount = $this->subtotal - $this->discount_amount;
         $this->save();
     }

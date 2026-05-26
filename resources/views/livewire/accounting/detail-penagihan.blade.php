@@ -337,7 +337,7 @@
                                             min="0"
                                             wire:model="invoiceForm.amount_before_refraksi"
                                             class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                            placeholder="Kosongkan untuk pakai hasil hitung otomatis"
+                                            placeholder="Kosongkan untuk pakai hasil hitung otomatis"  onwheel="this.blur()"
                                         />
                                         @error('invoiceForm.amount_before_refraksi') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                                         <p class="mt-1 text-[11px] text-gray-500">
@@ -366,7 +366,7 @@
                                             min="0"
                                             wire:model="invoiceForm.refraksi_value"
                                             class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                            placeholder="0 untuk nonaktif"
+                                            placeholder="0 untuk nonaktif"  onwheel="this.blur()"
                                         />
                                         @error('invoiceForm.refraksi_value') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                                     </div>
@@ -387,6 +387,136 @@
                                     </span>
                                 </button>
                             </div>
+                            {{-- ===== PENGELUARAN TAMBAHAN ===== --}}
+                            <div class="bg-white rounded-lg border border-orange-200 overflow-hidden"
+                                wire:key="detail-expenses-{{ $invoice->id }}">
+                                <div class="px-5 py-4 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
+                                    <i class="fas fa-receipt text-orange-500"></i>
+                                    <div>
+                                        <h3 class="text-sm font-bold text-gray-800">Pengeluaran Tambahan</h3>
+                                        <p class="text-xs text-gray-500 mt-0.5">Truk, kuli, fee, dll — dikurangkan dari subtotal invoice</p>
+                                    </div>
+                                </div>
+
+                                <div class="p-5">
+                                    @if($canManage && $editMode)
+                                        {{-- Edit form --}}
+                                        <div class="space-y-4">
+                                            {{-- Fixed: Truk, Kuli, Fee --}}
+                                            <div class="grid grid-cols-3 gap-3">
+                                                @foreach(['truk' => 'Truk', 'kuli' => 'Kuli', 'fee' => 'Fee'] as $key => $label)
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1.5">{{ $label }}</label>
+                                                        <div class="relative">
+                                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                            <input type="number"
+                                                                wire:model.defer="expenseForm.{{ $key }}"
+                                                                min="0" step="0.01"
+                                                                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
+                                                                placeholder="0"  onwheel="this.blur()">
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+
+                                            {{-- Dynamic others --}}
+                                            <div>
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <p class="text-xs font-semibold text-gray-600">Lainnya</p>
+                                                    <button type="button" wire:click="addOtherExpenseRow"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
+                                                        <i class="fas fa-plus"></i> Tambah Baris
+                                                    </button>
+                                                </div>
+                                                <div class="space-y-2">
+                                                    @forelse(($expenseForm['others'] ?? []) as $i => $row)
+                                                        <div class="grid grid-cols-12 gap-2 items-center">
+                                                            <div class="col-span-6">
+                                                                <input type="text"
+                                                                    wire:model.defer="expenseForm.others.{{ $i }}.type"
+                                                                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
+                                                                    placeholder="Nama pengeluaran (Parkir, Tol, dll)">
+                                                            </div>
+                                                            <div class="col-span-5">
+                                                                <div class="relative">
+                                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                                    <input type="number"
+                                                                        wire:model.defer="expenseForm.others.{{ $i }}.amount"
+                                                                        min="0" step="0.01"
+                                                                        class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
+                                                                        placeholder="0"  onwheel="this.blur()">
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-1 flex justify-end">
+                                                                <button type="button"
+                                                                    wire:click="removeOtherExpenseRow({{ $i }})"
+                                                                    class="w-8 h-8 flex items-center justify-center text-red-500 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition">
+                                                                    <i class="fas fa-trash text-xs"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    @empty
+                                                        <p class="text-xs text-gray-400 italic">Belum ada baris lainnya.</p>
+                                                    @endforelse
+                                                </div>
+                                            </div>
+
+                                            {{-- Preview total --}}
+                                            @php
+                                                $previewTotal = floatval($expenseForm['truk'] ?? 0)
+                                                            + floatval($expenseForm['kuli'] ?? 0)
+                                                            + floatval($expenseForm['fee'] ?? 0);
+                                                foreach(($expenseForm['others'] ?? []) as $r) {
+                                                    $previewTotal += floatval($r['amount'] ?? 0);
+                                                }
+                                            @endphp
+                                            <div class="flex items-center justify-between py-3 px-4 bg-orange-50 rounded-lg border border-orange-100 text-sm">
+                                                <span class="text-gray-600 font-medium">Total Pengeluaran</span>
+                                                <span class="font-bold text-orange-600">Rp {{ number_format($previewTotal, 0, ',', '.') }}</span>
+                                            </div>
+
+                                            <button wire:click="updateExpenses" wire:loading.attr="disabled"
+                                                class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                                <span wire:loading.remove wire:target="updateExpenses">
+                                                    <i class="fas fa-save mr-1.5"></i>Simpan Pengeluaran Tambahan
+                                                </span>
+                                                <span wire:loading wire:target="updateExpenses">
+                                                    <i class="fas fa-spinner fa-spin mr-1.5"></i>Menyimpan...
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                    @else
+                                        {{-- Read-only --}}
+                                        @php
+                                            $invoiceExpenses      = $invoice->expenses ?? collect();
+                                            $invoiceExpensesTotal = floatval($invoice->additional_expenses_total ?? 0);
+                                        @endphp
+
+                                        @if($invoiceExpenses->count() > 0)
+                                            <div class="space-y-2 mb-4">
+                                                @foreach($invoiceExpenses as $exp)
+                                                    <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 text-sm">
+                                                        <span class="font-medium text-gray-700 uppercase tracking-wide text-xs">{{ $exp->type }}</span>
+                                                        <span class="font-semibold text-gray-900">Rp {{ number_format($exp->amount, 0, ',', '.') }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="text-center py-6 text-gray-400">
+                                                <i class="fas fa-receipt text-2xl mb-2 block"></i>
+                                                <p class="text-sm">Belum ada pengeluaran tambahan</p>
+                                            </div>
+                                        @endif
+
+                                        <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-sm">
+                                            <span class="font-semibold text-gray-700">Total Pengeluaran</span>
+                                            <span class="font-bold text-orange-600">Rp {{ number_format($invoiceExpensesTotal, 0, ',', '.') }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            {{-- ===== END PENGELUARAN TAMBAHAN ===== --}}
                         @endif
 
                         {{-- Edit Invoice Notes Section --}}
@@ -426,14 +556,6 @@
 
                         {{-- Financial Summary from Order --}}
                         @if($order)
-                            @php
-                                // Gunakan harga jual total dari invoice jika dioverride, agar margin konsisten
-                                $displayTotalSelling = $invoice->amount_before_refraksi ?? $totalSelling;
-                                $displayTotalMargin = $displayTotalSelling - ($pengiriman->total_harga_kirim ?? 0);
-                                $displayMarginPercentage = $displayTotalSelling > 0
-                                    ? ($displayTotalMargin / $displayTotalSelling) * 100
-                                    : 0;
-                            @endphp
                             <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                                 <div class="px-6 py-4 border-b border-gray-200">
                                     <h3 class="text-lg font-semibold text-gray-900 flex items-center">
@@ -441,48 +563,42 @@
                                         Ringkasan Keuangan Order
                                     </h3>
                                 </div>
-                                <div class="p-6 space-y-4">
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-gray-600">Nomor PO:</span>
-                                        <span class="text-sm font-semibold text-gray-900">{{ $order->po_number ?? '-' }}</span>
-                                    </div>
-                                    <hr class="border-gray-200">
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-gray-600">Total Harga Supplier:</span>
-                                        <span class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-gray-600">Total Harga Jual:</span>
+                                <div class="divide-y divide-gray-100">
+                                    {{-- Subtotal Invoice Penagihan --}}
+                                    <div class="px-6 py-3.5 flex justify-between items-start">
+                                        <div>
+                                            <p class="text-sm text-gray-700">Subtotal Invoice Penagihan</p>
+                                            <p class="text-xs text-gray-400 mt-0.5">Tagihan ke customer (setelah refraksi & potongan)</p>
+                                        </div>
                                         <span class="text-sm font-semibold text-gray-900">
-                                            Rp {{ number_format($displayTotalSelling, 2, ',', '.') }}
+                                            Rp {{ number_format($subtotalPenagihan, 2, ',', '.') }}
                                         </span>
                                     </div>
-                                    <hr class="border-gray-200">
-                                    <div class="flex justify-between">
-                                        <span class="text-sm font-medium text-gray-700">Total Margin:</span>
-                                        <span class="text-sm font-bold {{ $displayTotalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                            Rp {{ number_format($displayTotalMargin, 2, ',', '.') }}
+
+                                    {{-- Subtotal Pembayaran Supplier --}}
+                                    <div class="px-6 py-3.5 flex justify-between items-start">
+                                        <div>
+                                            <p class="text-sm text-gray-700">Subtotal Pembayaran Supplier</p>
+                                            <p class="text-xs text-gray-400 mt-0.5">Dibayarkan ke supplier (setelah refraksi & potongan)</p>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-900">
+                                            Rp {{ number_format($subtotalPembayaran, 2, ',', '.') }}
                                         </span>
                                     </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm font-medium text-gray-700">Persentase Margin:</span>
-                                        <span class="text-sm font-bold {{ $displayMarginPercentage >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ number_format($displayMarginPercentage, 2, ',', '.') }}%
+
+                                    {{-- Margin --}}
+                                    <div class="px-6 py-3.5 flex justify-between items-start bg-gray-50">
+                                        <p class="text-sm font-semibold text-gray-800">Margin</p>
+                                        <span class="text-sm font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $totalMargin >= 0 ? '+' : '' }}Rp {{ number_format($totalMargin, 2, ',', '.') }}
                                         </span>
                                     </div>
                                 </div>
                             </div>
                         @endif
 
-                        {{-- Pengiriman Information --}}
+                        {{-- Informasi Pengiriman --}}
                         <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
-                            @php
-                                $displayTotalSelling2 = $invoice->amount_before_refraksi ?? $totalSelling;
-                                $displayTotalMargin2 = $displayTotalSelling2 - ($pengiriman->total_harga_kirim ?? 0);
-                                $displayMarginPercentage2 = $displayTotalSelling2 > 0
-                                    ? ($displayTotalMargin2 / $displayTotalSelling2) * 100
-                                    : 0;
-                            @endphp
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <i class="fas fa-truck text-purple-600 mr-2"></i>
                                 Informasi Pengiriman
@@ -502,19 +618,17 @@
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Total Harga Beli</p>
-                                    <p class="font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
+                                    <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPembayaran, 2, ',', '.') }}</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Total Harga Jual</p>
-                                    <p class="font-semibold text-gray-900">
-                                        Rp {{ number_format($displayTotalSelling2, 2, ',', '.') }}
-                                    </p>
+                                    <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPenagihan, 2, ',', '.') }}</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Margin</p>
-                                    <p class="font-semibold {{ $displayTotalMargin2 >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                        Rp {{ number_format($displayTotalMargin2, 2, ',', '.') }}
-                                        <span class="text-xs">({{ number_format($displayMarginPercentage2, 2, ',', '.') }}%)</span>
+                                    <p class="font-semibold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        Rp {{ number_format($totalMargin, 2, ',', '.') }}
+                                        <span class="text-xs">({{ number_format($marginPercentage, 2, ',', '.') }}%)</span>
                                     </p>
                                 </div>
                             </div>
@@ -722,9 +836,18 @@
                                     <span class="text-gray-600">Subtotal:</span>
                                     <span class="font-semibold">Rp {{ number_format($invoice->subtotal, 2, ',', '.') }}</span>
                                 </div>
+
+                                @if(($invoice->additional_expenses_total ?? 0) > 0)
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Pengeluaran Tambahan:</span>
+                                        <span class="font-semibold text-red-600">- Rp {{ number_format($invoice->additional_expenses_total, 2, ',', '.') }}</span>
+                                    </div>
+                             
+                                @endif
+
                                 <div class="border-t pt-2 flex justify-between">
                                     <span class="font-bold text-gray-900">Total:</span>
-                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format($invoice->total_amount, 2, ',', '.') }}</span>
+                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format(($invoice->subtotal - $invoice->additional_expenses_total), 2, ',', '.') }}</span>
                                 </div>
                             </div>
                         </div>

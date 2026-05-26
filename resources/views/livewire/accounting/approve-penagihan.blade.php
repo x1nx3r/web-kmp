@@ -185,6 +185,36 @@
                             <span class="text-xs text-gray-400">PO: {{ $order->po_number ?? '-' }}</span>
                         @endif
                     </div>
+
+                    @php
+                        // === Subtotal Penagihan ===
+                        $subtotalPenagihan = 0;
+                        if ($invoice) {
+                            if (floatval($invoice->subtotal) > 0) {
+                                $subtotalPenagihan = floatval($invoice->subtotal);
+                            } elseif (floatval($invoice->amount_after_refraksi) > 0) {
+                                $subtotalPenagihan = floatval($invoice->amount_after_refraksi);
+                            }
+                        }
+
+                        // === Subtotal Pembayaran ===
+                        $subtotalPembayaran = 0;
+                        $approvalData = $pengiriman->approvalPembayaran ?? null;
+                        if ($approvalData) {
+                            if (floatval($approvalData->subtotal) > 0) {
+                                $subtotalPembayaran = floatval($approvalData->subtotal);
+                            } elseif (floatval($approvalData->amount_after_refraksi) > 0) {
+                                $subtotalPembayaran = floatval($approvalData->amount_after_refraksi);
+                            }elseif (floatval($pengiriman->total_harga_kirim) > 0) {
+                                $subtotalPembayaran = floatval($pengiriman->total_harga_kirim);
+                            }
+                        }
+
+                        // === Margin ===
+                        $selisih = $subtotalPenagihan - $subtotalPembayaran;
+                        $marginPct = $subtotalPenagihan > 0 ? ($selisih / $subtotalPenagihan) * 100 : 0;
+                    @endphp
+
                     <div class="divide-y divide-gray-100">
                         {{-- Subtotal Invoice Penagihan --}}
                         <div class="px-5 py-3.5 flex justify-between items-start">
@@ -193,7 +223,7 @@
                                 <p class="text-xs text-gray-400 mt-0.5">Tagihan ke customer (setelah refraksi & potongan)</p>
                             </div>
                             <span class="text-sm font-semibold text-gray-900">
-                                Rp {{ number_format($invoice->subtotal ?? $invoice->amount_after_refraksi ?? 0, 2, ',', '.') }}
+                                Rp {{ number_format($subtotalPenagihan, 2, ',', '.') }}
                             </span>
                         </div>
 
@@ -204,23 +234,28 @@
                                 <p class="text-xs text-gray-400 mt-0.5">Dibayarkan ke supplier (setelah refraksi & potongan)</p>
                             </div>
                             <span class="text-sm font-semibold text-gray-900">
-                                Rp {{ number_format($pengiriman->approvalPembayaran->subtotal ?? $pengiriman->approvalPembayaran->amount_after_refraksi ?? 0, 2, ',', '.') }}
+                                Rp {{ number_format($subtotalPembayaran, 2, ',', '.') }}
                             </span>
                         </div>
 
-                        {{-- Selisih --}}
-                        @php
-                            $subtotalPenagihan = floatval($invoice->subtotal ?? $invoice->amount_after_refraksi ?? 0);
-                            $subtotalPembayaran = floatval($pengiriman->approvalPembayaran->subtotal ?? $pengiriman->approvalPembayaran->amount_after_refraksi ?? 0);
-                            $selisih = $subtotalPenagihan - $subtotalPembayaran;
-                        @endphp
-                        <div class="px-5 py-3.5 flex justify-between items-start bg-gray-50">
+                        {{-- Margin --}}
+                        <div class="px-5 py-3.5 flex justify-between items-center bg-gray-50">
                             <div>
                                 <p class="text-sm font-semibold text-gray-800">Margin</p>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    {{ number_format(abs($marginPct), 2, ',', '.') }}% dari total penagihan
+                                </p>
                             </div>
-                            <span class="text-sm font-bold {{ $selisih >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $selisih >= 0 ? '+' : '' }}Rp {{ number_format($selisih, 2, ',', '.') }}
-                            </span>
+                            <div class="text-right">
+                                <span class="text-sm font-bold {{ $selisih >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ $selisih >= 0 ? '+' : '-' }}Rp {{ number_format(abs($selisih), 2, ',', '.') }}
+                                </span>
+                                <p class="text-xs mt-0.5">
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold {{ $selisih >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
+                                        {{ $selisih >= 0 ? 'PROFIT' : 'LOSS' }}
+                                    </span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

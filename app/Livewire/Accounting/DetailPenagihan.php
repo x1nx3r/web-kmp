@@ -795,19 +795,36 @@ class DetailPenagihan extends Component
     {
         $order = $this->pengiriman->purchaseOrder ?? null;
 
-        $this->pengiriman->refresh();
+        // Force refresh dengan load ulang relasi yang dibutuhkan
+        $this->pengiriman->load(['approvalPembayaran']);
+        
+        // === Subtotal Penagihan ===
+        $subtotalPenagihan = 0;
+        if ($this->invoice) {
+            if (floatval($this->invoice->subtotal) > 0) {
+                $subtotalPenagihan = floatval($this->invoice->subtotal);
+            } elseif (floatval($this->invoice->amount_after_refraksi) > 0) {
+                $subtotalPenagihan = floatval($this->invoice->amount_after_refraksi);
+            }
+        }
 
-        // Samakan dengan ApprovePenagihan — ambil dari subtotal final, bukan kalkulasi manual
-        $subtotalPenagihan = floatval(
-            $this->invoice->subtotal ?? $this->invoice->amount_after_refraksi ?? 0
-        );
+        // === Subtotal Pembayaran ===
+        $subtotalPembayaran = 0;
+        $approvalPembayaran = $this->pengiriman->approvalPembayaran;
+        
 
-        $subtotalPembayaran = floatval(
-            $this->pengiriman->approvalPembayaran->subtotal
-            ?? $this->pengiriman->approvalPembayaran->amount_after_refraksi
-            ?? 0
-        );
 
+        if ($approvalPembayaran) {
+            if (floatval($approvalPembayaran->subtotal) > 0) {
+                $subtotalPembayaran = floatval($approvalPembayaran->subtotal);
+            } elseif (floatval($approvalPembayaran->amount_after_refraksi) > 0) {
+                $subtotalPembayaran = floatval($approvalPembayaran->amount_after_refraksi);
+            } elseif (floatval($this->pengiriman->total_harga_kirim) > 0) {
+                $subtotalPembayaran = floatval($this->pengiriman->total_harga_kirim);
+            }
+        }
+
+        // === Margin ===
         $totalMargin = $subtotalPenagihan - $subtotalPembayaran;
         $marginPercentage = $subtotalPenagihan > 0
             ? ($totalMargin / $subtotalPenagihan) * 100

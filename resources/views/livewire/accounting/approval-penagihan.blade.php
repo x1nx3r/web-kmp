@@ -605,31 +605,43 @@
 
                 <div class="p-6">
                     <div class="mb-6 bg-green-50 rounded-lg p-4">
-                        <h4 class="font-semibold text-gray-900 mb-3">Informasi Pengiriman</h4>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <p class="text-gray-500">No. Pengiriman:</p>
-                                <p class="font-medium">
-                                    {{ $isCollection ? $selectedData->pluck('no_pengiriman')->join(', ') : $selectedData->no_pengiriman }}
-                                </p>
+                        <h4 class="font-semibold text-gray-900 mb-3 flex items-center justify-between">
+                            <span>Informasi Pengiriman ({{ $isCollection ? $selectedData->count() : 1 }} Kiriman)</span>
+                            <span class="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded">
+                                Total: Rp {{ number_format($isCollection ? $selectedData->sum('total_harga_kirim') : $selectedData->total_harga_kirim, 2, ',', '.') }}
+                            </span>
+                        </h4>
+                        @if($isCollection)
+                            <div class="space-y-3 max-h-48 overflow-y-auto pr-1">
+                                @foreach($selectedData as $s)
+                                    <div class="bg-white p-3 rounded-lg border border-green-200 flex justify-between items-center text-sm shadow-sm">
+                                        <div>
+                                            <p class="font-semibold text-gray-800">{{ $s->no_pengiriman }}</p>
+                                            <p class="text-xs text-gray-500">Tanggal: {{ $s->tanggal_kirim->format('d M Y') }}</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="font-medium text-gray-900">Rp {{ number_format($s->total_harga_kirim, 2, ',', '.') }}</p>
+                                            <p class="text-xs text-gray-500 font-medium">{{ number_format($s->total_qty_kirim, 2, ',', '.') }} kg</p>
+                                        </div>
+                                    </div>
+                                @endforeach
                             </div>
-                            <div>
-                                <p class="text-gray-500">Tanggal:</p>
-                                <p class="font-medium">
-                                    {{ $isCollection 
-                                        ? ($selectedData->count() > 1 
-                                            ? $selectedData->min('tanggal_kirim')->format('d M Y') . ' s/d ' . $selectedData->max('tanggal_kirim')->format('d M Y')
-                                            : $selectedData->first()->tanggal_kirim->format('d M Y'))
-                                        : $selectedData->tanggal_kirim->format('d M Y') }}
-                                </p>
+                        @else
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p class="text-gray-500">No. Pengiriman:</p>
+                                    <p class="font-medium">{{ $selectedData->no_pengiriman }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Tanggal:</p>
+                                    <p class="font-medium">{{ $selectedData->tanggal_kirim->format('d M Y') }}</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-gray-500">Total Harga:</p>
+                                    <p class="font-semibold text-lg">Rp {{ number_format($selectedData->total_harga_kirim, 2, ',', '.') }}</p>
+                                </div>
                             </div>
-                            <div class="col-span-2">
-                                <p class="text-gray-500">Total Harga:</p>
-                                <p class="font-semibold text-lg">
-                                    Rp {{ number_format($isCollection ? $selectedData->sum('total_harga_kirim') : $selectedData->total_harga_kirim, 2, ',', '.') }}
-                                </p>
-                            </div>
-                        </div>
+                        @endif
                     </div>
 
                     <div class="space-y-4">

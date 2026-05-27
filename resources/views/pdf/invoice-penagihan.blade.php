@@ -241,8 +241,16 @@
 </head>
 <body>
     @php
+        $isMerged = $invoice && $invoice->pengirimans->count() > 0;
+        $shipments = $isMerged ? $invoice->pengirimans : collect([$pengiriman]);
+        $mainShipment = $shipments->first() ?? $pengiriman;
+        
         // Always fetch fresh client data to ensure latest information is displayed
-        $freshKlien = $pengiriman->purchaseOrder->klien()->with('contactPerson')->first();
+        $freshKlien = $mainShipment->purchaseOrder ? $mainShipment->purchaseOrder->klien()->with('contactPerson')->first() : null;
+
+        $poNumbers = $shipments->map(function($s) {
+            return $s->purchaseOrder->po_number ?? $s->purchaseOrder->no_order ?? null;
+        })->filter()->unique()->join(', ') ?: '-';
     @endphp
 
     {{-- Header with Logo and Invoice Title --}}
@@ -325,7 +333,7 @@
         <tbody>
             <tr>
                 <td class="text-center">{{ $invoice->invoice_number }}</td>
-                <td class="text-center">{{ $pengiriman->purchaseOrder->po_number ?? $pengiriman->purchaseOrder->no_order ?? '-' }}</td>
+                <td class="text-center">{{ $poNumbers }}</td>
                 <td class="text-center">{{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
                 <td class="text-center">{{ \Carbon\Carbon::parse($invoice->due_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
             </tr>
@@ -337,24 +345,27 @@
         <thead>
             <tr>
                 <th style="width: 5%;" class="text-center">NO</th>
-                <th style="width: 40%; text-align: left;">DESKRIPSI</th>
-                <th style="width: 15%;" class="text-center">QTY PER KG</th>
-                <th style="width: 18%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
-                <th style="width: 22%;" class="text-center">TOTAL HARGA</th>
+                <th style="width: 35%; text-align: left;">DESKRIPSI</th>
+                <th style="width: 12%;" class="text-center">QTY PER KG</th>
+                <th style="width: 15%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
+                <th style="width: 15%;" class="text-center">REFRAKSI</th>
+                <th style="width: 18%;" class="text-center">TOTAL HARGA</th>
             </tr>
         </thead>
         <tbody>
             @php
                 // Harga jual total dasar (sebelum refraksi) bisa di-override dari invoice edit mode.
                 $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
-                $qtyTotal = (float) ($pengiriman->total_qty_kirim ?? 0);
+                $qtyTotal = (float) ($shipments->sum('total_qty_kirim'));
 
                 // Total harga jual default berdasarkan detail (untuk pro-rate jika invoice override dipakai)
                 $computedTotalSelling = 0;
-                foreach ($pengiriman->details as $d) {
-                    $h = $d->orderDetail->harga_jual ?? 0;
-                    $q = $d->qty_kirim ?? 0;
-                    $computedTotalSelling += ((float) $q) * ((float) $h);
+                foreach ($shipments as $s) {
+                    foreach ($s->pengirimanDetails as $d) {
+                        $h = $d->orderDetail->harga_jual ?? 0;
+                        $q = $d->qty_kirim ?? 0;
+                        $computedTotalSelling += ((float) $q) * ((float) $h);
+                    }
                 }
 
                 // Faktor untuk menyesuaikan harga satuan & total item agar jumlahnya = amountBefore
@@ -364,9 +375,18 @@
                 if ($amountBefore > 0) {
                     $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
                 }
+
+                // Get all details from all shipments to display
+                $allDetails = collect();
+                foreach ($shipments as $s) {
+                    foreach ($s->pengirimanDetails as $d) {
+                        $d->shipment_no = $s->no_pengiriman;
+                        $allDetails->push($d);
+                    }
+                }
             @endphp
 
-            @forelse($pengiriman->details as $index => $detail)
+            @forelse($allDetails as $index => $detail)
                 @php
                     $hargaJualAsli = (float) ($detail->orderDetail->harga_jual ?? 0);
                     $qtyKirim = (float) ($detail->qty_kirim ?? 0);
@@ -374,17 +394,42 @@
                     // Harga ditampilkan dipro-rate supaya sesuai dengan amount_before_refraksi (subtotal sebelum refraksi)
                     $hargaSatuanDisplay = $hargaJualAsli * $ratio;
                     $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+
+                    // Hitung refraksi pro-rata
+                    $itemRefraksi = 0;
+                    if ($invoice->refraksi_value > 0) {
+                        if ($invoice->refraksi_type === 'qty') {
+                            $itemRefraksi = $qtyKirim * ($invoice->refraksi_value / 100) * $hargaSatuanDisplay;
+                        } elseif ($invoice->refraksi_type === 'rupiah') {
+                            $itemRefraksi = $qtyKirim * $invoice->refraksi_value;
+                        } elseif ($invoice->refraksi_type === 'lainnya') {
+                            $itemRefraksi = $amountBefore > 0 ? ($totalHargaItem / $amountBefore) * $invoice->refraksi_amount : 0;
+                        }
+                    }
+                    $totalSetelahRefraksi = $totalHargaItem - $itemRefraksi;
                 @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td style="text-align: left;">{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
+                    <td style="text-align: left;">
+                        {{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
+                        @if($isMerged)
+                            <br><span style="font-size: 8pt; color: #666;">No. Pengiriman: {{ $detail->shipment_no }}</span>
+                        @endif
+                    </td>
                     <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
                     <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
-                    <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
+                    <td class="text-center">
+                        @if($itemRefraksi > 0)
+                            Rp {{ number_format($itemRefraksi, 2, ',', '.') }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                    <td class="text-center">Rp {{ number_format($totalSetelahRefraksi, 2, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="text-center" style="padding: 15px; color: #999;">Detail pengiriman tidak tersedia</td>
+                    <td colspan="6" class="text-center" style="padding: 15px; color: #999;">Detail pengiriman tidak tersedia</td>
                 </tr>
             @endforelse
         </tbody>
@@ -398,7 +443,7 @@
                 <table class="summary-row">
                     <tr>
                         <td class="summary-label">Total Harga</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $pengiriman->total_harga_kirim, 2, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $shipments->sum('total_harga_kirim'), 2, ',', '.') }}</td>
                     </tr>
                 </table>
 

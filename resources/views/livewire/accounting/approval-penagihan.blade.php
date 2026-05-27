@@ -92,7 +92,25 @@
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900">Pengiriman Belum Dibuatkan Invoice</h3>
                     </div>
-                    <span class="text-sm text-gray-600">{{ $pengirimansWithoutInvoice->total() }} pengiriman</span>
+                    <div class="flex items-center space-x-3">
+                        @if(count($selectedPengirimanIds) > 0)
+                            @if($this->isMergeValid)
+                                <button
+                                    wire:click="showCreateMergedInvoice"
+                                    class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
+                                >
+                                    <i class="fas fa-object-group mr-1.5"></i>
+                                    Merge {{ count($selectedPengirimanIds) }} Pengiriman
+                                </button>
+                            @else
+                                <span class="text-xs text-red-600 font-semibold bg-red-100 px-3 py-2 rounded-lg border border-red-200">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>
+                                    Klien harus sama untuk merge!
+                                </span>
+                            @endif
+                        @endif
+                        <span class="text-sm text-gray-600">{{ $pengirimansWithoutInvoice->total() }} pengiriman</span>
+                    </div>
                 </div>
             </div>
 
@@ -100,6 +118,7 @@
                 <table class="w-full">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 40px;"></th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Pengiriman</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klien</th>
@@ -110,6 +129,14 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach($pengirimansWithoutInvoice as $pengiriman)
                             <tr class="hover:bg-yellow-50 transition-colors">
+                                <td class="px-4 py-4 text-center whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        wire:model.live="selectedPengirimanIds"
+                                        value="{{ $pengiriman->id }}"
+                                        class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                    />
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">{{ $pengiriman->no_pengiriman }}</div>
                                     <div class="text-xs text-gray-500">PO: {{ $pengiriman->purchaseOrder->po_number ?? '-' }}</div>
@@ -551,6 +578,22 @@
 
     {{-- Create Invoice Modal --}}
     @if($showCreateInvoiceModal && $selectedData)
+        @php
+            $isCollection = $selectedData instanceof \Illuminate\Support\Collection;
+            $mainShipment = $isCollection ? $selectedData->first() : $selectedData;
+            $hasRefraksi = false;
+            if ($isCollection) {
+                foreach ($selectedData as $s) {
+                    if ($s->approvalPembayaran && $s->approvalPembayaran->refraksi_value > 0) {
+                        $mainShipment = $s;
+                        $hasRefraksi = true;
+                        break;
+                    }
+                }
+            } else {
+                $hasRefraksi = $selectedData->approvalPembayaran && $selectedData->approvalPembayaran->refraksi_value > 0;
+            }
+        @endphp
         <div class="fixed inset-0 bg-green-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between">
@@ -566,15 +609,25 @@
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <p class="text-gray-500">No. Pengiriman:</p>
-                                <p class="font-medium">{{ $selectedData->no_pengiriman }}</p>
+                                <p class="font-medium">
+                                    {{ $isCollection ? $selectedData->pluck('no_pengiriman')->join(', ') : $selectedData->no_pengiriman }}
+                                </p>
                             </div>
                             <div>
                                 <p class="text-gray-500">Tanggal:</p>
-                                <p class="font-medium">{{ $selectedData->tanggal_kirim->format('d M Y') }}</p>
+                                <p class="font-medium">
+                                    {{ $isCollection 
+                                        ? ($selectedData->count() > 1 
+                                            ? $selectedData->min('tanggal_kirim')->format('d M Y') . ' s/d ' . $selectedData->max('tanggal_kirim')->format('d M Y')
+                                            : $selectedData->first()->tanggal_kirim->format('d M Y'))
+                                        : $selectedData->tanggal_kirim->format('d M Y') }}
+                                </p>
                             </div>
                             <div class="col-span-2">
                                 <p class="text-gray-500">Total Harga:</p>
-                                <p class="font-semibold text-lg">Rp {{ number_format($selectedData->total_harga_kirim, 2, ',', '.') }}</p>
+                                <p class="font-semibold text-lg">
+                                    Rp {{ number_format($isCollection ? $selectedData->sum('total_harga_kirim') : $selectedData->total_harga_kirim, 2, ',', '.') }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -630,7 +683,7 @@
                                     <i class="fas fa-percent mr-2 text-yellow-600"></i>
                                     Refraksi
                                 </span>
-                                @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->refraksi_value > 0)
+                                @if($hasRefraksi)
                                     <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
                                         <i class="fas fa-check-circle mr-1"></i>
                                         Dari Pembayaran
@@ -638,34 +691,34 @@
                                 @endif
                             </h5>
 
-                            @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->refraksi_value > 0)
+                            @if($hasRefraksi && $mainShipment->approvalPembayaran)
                                 <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
                                     <p class="text-blue-900 font-medium mb-1">
                                         <i class="fas fa-info-circle mr-1"></i>
-                                        Refraksi diambil dari Approval Pembayaran
+                                        Refraksi diambil dari Approval Pembayaran ({{ $mainShipment->no_pengiriman }})
                                     </p>
                                     <p class="text-blue-700 text-xs">
                                         Tipe: <strong>
-                                            @if($selectedData->approvalPembayaran->refraksi_type === 'qty')
+                                            @if($mainShipment->approvalPembayaran->refraksi_type === 'qty')
                                                 Qty (%)
-                                            @elseif($selectedData->approvalPembayaran->refraksi_type === 'rupiah')
+                                            @elseif($mainShipment->approvalPembayaran->refraksi_type === 'rupiah')
                                                 Rupiah (Rp/kg)
-                                            @elseif($selectedData->approvalPembayaran->refraksi_type === 'lainnya')
+                                            @elseif($mainShipment->approvalPembayaran->refraksi_type === 'lainnya')
                                                 Lainnya (Manual)
                                             @else
-                                                {{ ucfirst($selectedData->approvalPembayaran->refraksi_type) }}
+                                                {{ ucfirst($mainShipment->approvalPembayaran->refraksi_type) }}
                                             @endif
                                         </strong>,
-                                        Nilai: <strong>{{ number_format($selectedData->approvalPembayaran->refraksi_value, 2, ',', '.') }}</strong>
+                                        Nilai: <strong>{{ number_format($mainShipment->approvalPembayaran->refraksi_value, 2, ',', '.') }}</strong>
                                     </p>
 
-                                    @if($selectedData->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
+                                    @if($mainShipment->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
                                         <div class="mt-2 pt-2 border-t border-blue-300">
                                             <p class="text-blue-900 font-medium text-xs mb-1">
                                                 <i class="fas fa-comments mr-1"></i>
                                                 Catatan dari Pembayaran:
                                             </p>
-                                            @foreach($selectedData->approvalPembayaran->histories->where('notes', '!=', null) as $history)
+                                            @foreach($mainShipment->approvalPembayaran->histories->where('notes', '!=', null) as $history)
                                                 <div class="bg-white rounded p-2 mb-1 text-xs">
                                                     <p class="text-gray-600">
                                                         <span class="font-medium text-gray-800">{{ $history->user->nama ?? 'Unknown' }}</span>

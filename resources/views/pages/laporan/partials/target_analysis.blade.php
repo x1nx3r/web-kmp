@@ -88,7 +88,7 @@
                 ->select(
                     'pengiriman.id',
                     \Illuminate\Support\Facades\DB::raw('COALESCE(
-                        MAX(invoice_penagihan.amount_after_refraksi),
+                        MAX(invoice_penagihan.subtotal),
                         SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                     ) as omset_pengiriman')
                 )
@@ -119,7 +119,7 @@
                     ->select(
                         'pengiriman.id',
                         \Illuminate\Support\Facades\DB::raw('COALESCE(
-                            MAX(invoice_penagihan.amount_after_refraksi),
+                            MAX(invoice_penagihan.subtotal),
                             SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                         ) as omset_pengiriman')
                     )
@@ -167,7 +167,7 @@
                     ->select(
                         'pengiriman.id',
                         \Illuminate\Support\Facades\DB::raw('COALESCE(
-                            MAX(invoice_penagihan.amount_after_refraksi),
+                            MAX(invoice_penagihan.subtotal),
                             SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                         ) as omset_pengiriman')
                     )
@@ -248,7 +248,7 @@
                     ->select(
                         'pengiriman.id',
                         \Illuminate\Support\Facades\DB::raw('COALESCE(
-                            MAX(invoice_penagihan.amount_after_refraksi),
+                            MAX(invoice_penagihan.subtotal),
                             SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                         ) as omset_pengiriman')
                     )

@@ -17,6 +17,12 @@ class ApprovePenagihan extends Component
     public $pengiriman;
     public $approvalHistory;
     public $notes = '';
+    public $expenseForm = [
+        'truk' => 0,
+        'kuli' => 0,
+        'fee' => 0,
+        'others' => [],
+    ];
     public $editMode = false;
 
     public $canManage = false;
@@ -41,7 +47,7 @@ class ApprovePenagihan extends Component
         ],
     ];
 
-    // Refraksi form
+    // Refraksi form — TIDAK lagi pakai wire:model.live, simpan manual
     public $refraksiForm = [
         'type' => 'qty',
         'value' => 0,
@@ -66,47 +72,21 @@ class ApprovePenagihan extends Component
         $this->approvalId = $approvalId;
         $this->editMode = $editMode;
         $this->canManage = in_array(Auth::user()->role, ['staff_accounting', 'manager_accounting', 'direktur', 'superadmin']);
-        $this->loadApproval();
+        // Hanya saat mount (pertama kali load) yang boleh sync refraksi dari pembayaran
+        $this->loadApproval(syncRefraksi: true);
     }
 
-    public function updatedSelectedBank($value)
-    {
-        $this->updateBankSelection();
-    }
+    // =========================================================
+    // DIHAPUS: updatedSelectedBank — bank disimpan lewat tombol
+    // DIHAPUS: updatedRefraksiFormType — refraksi tidak live lagi
+    // DIHAPUS: updatedRefraksiFormValue — refraksi tidak live lagi
+    // DIHAPUS: triggerRefraksiUpdate
+    // =========================================================
 
     /**
-     * Triggered when refraksiForm.type changes
+     * @param bool $syncRefraksi Hanya true saat mount; false saat reload biasa agar tidak overwrite perubahan user
      */
-    public function updatedRefraksiFormType($value)
-    {
-        $this->triggerRefraksiUpdate();
-    }
-
-    /**
-     * Triggered when refraksiForm.value changes
-     */
-    public function updatedRefraksiFormValue($value)
-    {
-        $this->triggerRefraksiUpdate();
-    }
-
-    /**
-     * Central guard before calling updateRefraksi
-     */
-    private function triggerRefraksiUpdate()
-    {
-        if (!$this->canManage) {
-            return;
-        }
-
-        if (!$this->editMode && ($this->approval->status === 'completed' || $this->approval->status === 'rejected')) {
-            return;
-        }
-
-        $this->updateRefraksi();
-    }
-
-    public function loadApproval()
+    public function loadApproval(bool $syncRefraksi = false)
     {
         $this->approval = ApprovalPenagihanModel::with([
             'invoice',
@@ -129,8 +109,10 @@ class ApprovePenagihan extends Component
         $this->pengiriman = $this->approval->pengiriman;
         $this->approvalHistory = $this->approval->histories;
 
-        // Auto-sync refraksi dari approval pembayaran jika invoice belum punya refraksi
-        $this->syncRefraksiFromPembayaran();
+        // Hanya sync refraksi dari approval pembayaran saat pertama kali load (mount)
+        if ($syncRefraksi) {
+            $this->syncRefraksiFromPembayaran();
+        }
 
         // Load refraksi values from invoice
         $this->refraksiForm['type'] = $this->invoice->refraksi_type ?? 'qty';
@@ -169,10 +151,12 @@ class ApprovePenagihan extends Component
             ]);
             $this->invoice->refresh();
         }
+        $this->loadExpenses();
     }
 
     /**
-     * Sync refraksi dari approval pembayaran ke invoice penagihan secara otomatis
+     * Sync refraksi dari approval pembayaran ke invoice penagihan secara otomatis.
+     * Hanya berjalan jika invoice BELUM punya refraksi (refraksi_value masih 0/null).
      */
     private function syncRefraksiFromPembayaran()
     {
@@ -186,8 +170,8 @@ class ApprovePenagihan extends Component
             return;
         }
 
-        if ($this->invoice->refraksi_type === $approvalPembayaran->refraksi_type
-            && $this->invoice->refraksi_value == $approvalPembayaran->refraksi_value) {
+        // Hanya sync jika invoice belum punya refraksi sama sekali
+        if (!empty($this->invoice->refraksi_value) && $this->invoice->refraksi_value > 0) {
             return;
         }
 
@@ -239,6 +223,10 @@ class ApprovePenagihan extends Component
         $this->invoice->refresh();
     }
 
+    /**
+     * FIX: Bank disimpan via tombol, bukan auto-save dari updatedSelectedBank.
+     * Ini mencegah re-render yang mereset field defer lainnya.
+     */
     public function updateBankSelection()
     {
         if (!$this->ensureCanManage()) {
@@ -279,6 +267,8 @@ class ApprovePenagihan extends Component
                 ]);
             }
 
+            // FIX: Hanya refresh invoice, TIDAK memanggil loadApproval()
+            // agar field-field form (invoiceNumber, customerName, dll) tidak ter-reset
             $this->invoice->refresh();
             session()->flash('message', 'Bank berhasil diupdate');
         } catch (\Exception $e) {
@@ -512,9 +502,18 @@ class ApprovePenagihan extends Component
         }
     }
 
+    /**
+     * FIX: updateRefraksi sekarang hanya dipanggil via tombol manual dari blade.
+     * Tidak lagi dipanggil otomatis oleh updatedRefraksiForm* hooks.
+     */
     public function updateRefraksi()
     {
         if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if (!$this->editMode && ($this->approval->status === 'completed' || $this->approval->status === 'rejected')) {
+            session()->flash('error', 'Tidak dapat mengubah refraksi pada approval yang sudah selesai');
             return;
         }
 
@@ -611,6 +610,9 @@ class ApprovePenagihan extends Component
             DB::commit();
 
             session()->flash('message', 'Refraksi berhasil diupdate');
+
+            // FIX: Hanya refresh invoice object, TIDAK memanggil loadApproval()
+            // agar nilai form (invoiceNumber, customerName, dll) tidak ter-reset
             $this->invoice->refresh();
 
         } catch (\Exception $e) {
@@ -669,6 +671,8 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Nomor invoice berhasil diperbarui');
+
+            // FIX: Hanya refresh invoice, tidak loadApproval()
             $this->invoice->refresh();
 
         } catch (\Illuminate\Database\QueryException $e) {
@@ -727,6 +731,8 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Tanggal invoice berhasil diupdate');
+
+            // FIX: Hanya refresh invoice, tidak loadApproval()
             $this->invoice->refresh();
 
         } catch (\Exception $e) {
@@ -781,6 +787,8 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Informasi customer berhasil diupdate');
+
+            // FIX: Hanya refresh invoice, tidak loadApproval()
             $this->invoice->refresh();
 
         } catch (\Exception $e) {
@@ -819,10 +827,178 @@ class ApprovePenagihan extends Component
             }
 
             session()->flash('message', 'Catatan invoice berhasil diupdate');
+
+            // FIX: Hanya refresh invoice, tidak loadApproval()
             $this->invoice->refresh();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengupdate catatan: ' . $e->getMessage());
+        }
+    }
+
+    private function loadExpenses(): void
+    {
+        $this->expenseForm = [
+            'truk' => 0,
+            'kuli' => 0,
+            'fee'  => 0,
+            'others' => [],
+        ];
+
+        if (!$this->invoice) return;
+
+        $this->invoice->loadMissing('expenses');
+
+        foreach ($this->invoice->expenses as $e) {
+            $type   = trim((string)($e->type ?? ''));
+            $amount = floatval($e->amount ?? 0);
+
+            if ($type === 'truk') {
+                $this->expenseForm['truk'] = $amount;
+            } elseif ($type === 'kuli') {
+                $this->expenseForm['kuli'] = $amount;
+            } elseif ($type === 'fee') {
+                $this->expenseForm['fee'] = $amount;
+            } else {
+                $this->expenseForm['others'][] = ['type' => $type, 'amount' => $amount];
+            }
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+    }
+
+    public function addOtherExpenseRow(): void
+    {
+        if (!$this->ensureCanManage()) return;
+        $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+    }
+
+    public function removeOtherExpenseRow(int $index): void
+    {
+        if (!$this->ensureCanManage()) return;
+
+        if (isset($this->expenseForm['others'][$index])) {
+            array_splice($this->expenseForm['others'], $index, 1);
+        }
+
+        if (empty($this->expenseForm['others'])) {
+            $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+
+        $this->updateExpenses();
+    }
+
+    public function updateExpenses(): void
+    {
+        if (!$this->ensureCanManage()) return;
+
+        if (!$this->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        // Validasi fixed
+        foreach (['truk', 'kuli', 'fee'] as $k) {
+            if (floatval($this->expenseForm[$k] ?? 0) < 0) {
+                session()->flash('error', ucfirst($k) . ' tidak boleh negatif');
+                return;
+            }
+        }
+
+        // Validasi others
+        foreach (($this->expenseForm['others'] ?? []) as $i => $row) {
+            $amount = floatval($row['amount'] ?? 0);
+            $type   = trim((string)($row['type'] ?? ''));
+
+            if ($amount < 0) {
+                session()->flash('error', 'Nominal tidak boleh negatif (baris #' . ($i + 1) . ')');
+                return;
+            }
+            if ($amount > 0 && $type === '') {
+                session()->flash('error', 'Nama pengeluaran wajib diisi (baris #' . ($i + 1) . ')');
+                return;
+            }
+            if ($amount > 0 && in_array(strtolower($type), ['truk', 'kuli', 'fee'], true)) {
+                session()->flash('error', 'Nama "' . $type . '" sudah ada di opsi utama (baris #' . ($i + 1) . ')');
+                return;
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $oldTotal = floatval($this->invoice->additional_expenses_total ?? 0);
+
+            // Hapus semua expense lama, lalu insert ulang
+            $this->invoice->expenses()->delete();
+
+            $expensesTotal = 0;
+
+            $fixed = [
+                'truk' => floatval($this->expenseForm['truk'] ?? 0),
+                'kuli' => floatval($this->expenseForm['kuli'] ?? 0),
+                'fee'  => floatval($this->expenseForm['fee'] ?? 0),
+            ];
+
+            foreach ($fixed as $type => $amount) {
+                if ($amount > 0) {
+                    $this->invoice->expenses()->create(['type' => $type, 'amount' => $amount]);
+                    $expensesTotal += $amount;
+                }
+            }
+
+            foreach (($this->expenseForm['others'] ?? []) as $row) {
+                $type   = trim((string)($row['type'] ?? ''));
+                $amount = floatval($row['amount'] ?? 0);
+                if ($type === '' || $amount <= 0) continue;
+                $this->invoice->expenses()->create(['type' => $type, 'amount' => $amount]);
+                $expensesTotal += $amount;
+            }
+
+            $amountAfterRefraksi = floatval($this->invoice->amount_after_refraksi ?? $this->invoice->subtotal ?? 0);
+            $newSubtotal = max(0, $amountAfterRefraksi - $expensesTotal);
+
+            $this->invoice->update([
+                'additional_expenses_total' => $expensesTotal,
+                'subtotal'                  => $newSubtotal,
+                'total_amount'              => max(0, $newSubtotal - floatval($this->invoice->discount_amount ?? 0)),
+            ]);
+
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id'   => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id'    => $this->approval->invoice_id,
+                    'role'          => $role,
+                    'user_id'       => $user->id,
+                    'action'        => 'edited',
+                    'notes'         => 'Pengeluaran tambahan invoice diubah: Rp ' .
+                                    number_format($oldTotal, 0, ',', '.') . ' → Rp ' .
+                                    number_format($expensesTotal, 0, ',', '.'),
+                    'changes'       => [
+                        'field' => 'additional_expenses',
+                        'old'   => 'Rp ' . number_format($oldTotal, 0, ',', '.'),
+                        'new'   => 'Rp ' . number_format($expensesTotal, 0, ',', '.'),
+                    ],
+                ]);
+            }
+
+            DB::commit();
+            session()->flash('message', 'Pengeluaran tambahan invoice berhasil disimpan');
+
+            // FIX: Hanya refresh invoice + reload expenses saja
+            // TIDAK memanggil loadApproval() agar field form lain tidak ter-reset
+            $this->invoice->refresh();
+            $this->loadExpenses();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menyimpan pengeluaran: ' . $e->getMessage());
         }
     }
 

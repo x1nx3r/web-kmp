@@ -245,263 +245,226 @@
 
     {{-- Card 4.5: Informasi Refraksi & Harga --}}
     @if($pengiriman->approvalPembayaran || $pengiriman->invoicePenagihan)
-        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-4">
-            <div class="flex items-center mb-4">
-                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                    <i class="fas fa-calculator text-blue-600"></i>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-900">Informasi Refraksi & Harga</h3>
+    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-4">
+        <div class="flex items-center mb-4">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                <i class="fas fa-calculator text-blue-600"></i>
             </div>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {{-- Left Column: Refraksi Info --}}
-                @if($pengiriman->approvalPembayaran)
-                    @php
-                        $approval = $pengiriman->approvalPembayaran;
-                        $hasRefraksi = $approval->refraksi_type && $approval->refraksi_value;
-                    @endphp
-                    
-                    <div class="space-y-4">
-                        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Informasi Refraksi</h4>
-                        
-                        @if($hasRefraksi)
-                            {{-- Refraksi Type & Value --}}
-                            <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
-                                <div class="flex items-center justify-between mb-3">
-                                    <span class="text-sm font-medium text-orange-900">
-                                        <i class="fas fa-percentage mr-1"></i>
-                                        Tipe Refraksi:
-                                    </span>
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-600 text-white">
-                                        {{ strtoupper($approval->refraksi_type) }}
-                                    </span>
-                                </div>
-                                <div class="text-2xl font-bold text-orange-700">
-                                    @if($approval->refraksi_type === 'percentage')
-                                        {{ number_format($approval->refraksi_value, 3, ',', '.') }}%
-                                    @else
-                                        Rp {{ number_format($approval->refraksi_value, 3, ',', '.') }}
-                                    @endif
-                                </div>
-                                <p class="text-xs text-orange-600 mt-1">Nilai Refraksi</p>
-                            </div>
+            <h3 class="text-lg font-semibold text-gray-900">Informasi Refraksi & Harga</h3>
+        </div>
 
-                            {{-- Qty Before & After --}}
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                    <p class="text-xs text-gray-600 mb-1">Qty Sebelum</p>
-                                    <p class="text-lg font-bold text-gray-900">
-                                        {{ number_format($approval->qty_before_refraksi ?? 0, 3, ',', '.') }} <span class="text-sm font-normal text-gray-500">kg</span>
-                                    </p>
+        @php
+            $approval = $pengiriman->approvalPembayaran;
+            $invoice  = $pengiriman->invoicePenagihan;
+
+            // === TOTAL BELI ===
+            $totalBeliForMargin = 0;
+            if ($approval) {
+                if ($approval->subtotal > 0) {
+                    $totalBeliForMargin = $approval->subtotal;
+                } elseif ($approval->amount_after_refraksi > 0) {
+                    $totalBeliForMargin = $approval->amount_after_refraksi;
+                } else {
+                    $qtyFallback = $approval->qty_after_refraksi > 0 ? $approval->qty_after_refraksi
+                                : ($approval->qty_before_refraksi > 0 ? $approval->qty_before_refraksi
+                                : $pengiriman->total_qty_kirim);
+                    $hargaFallback = $pengiriman->total_qty_kirim > 0
+                        ? $pengiriman->total_harga_kirim / $pengiriman->total_qty_kirim : 0;
+                    $totalBeliForMargin = $qtyFallback * $hargaFallback;
+                }
+            }
+            $qtyBeli = $approval
+                ? ($approval->qty_after_refraksi > 0 ? $approval->qty_after_refraksi
+                : ($approval->qty_before_refraksi > 0 ? $approval->qty_before_refraksi
+                : $pengiriman->total_qty_kirim))
+                : $pengiriman->total_qty_kirim;
+            $hargaBeliPerKg = $qtyBeli > 0 ? $totalBeliForMargin / $qtyBeli : 0;
+
+            // === TOTAL JUAL ===
+            $totalJualForMargin = 0;
+            $qtyJual = 0;
+            $hargaJualPerKg = 0;
+            $sourceJual = '';
+
+            if ($invoice) {
+                if ($invoice->subtotal > 0) {
+                    $totalJualForMargin = $invoice->subtotal;
+                } elseif ($invoice->amount_after_refraksi > 0) {
+                    $totalJualForMargin = $invoice->amount_after_refraksi;
+                }
+                $qtyJual = $invoice->qty_after_refraksi > 0 ? $invoice->qty_after_refraksi
+                        : ($invoice->qty_before_refraksi > 0 ? $invoice->qty_before_refraksi
+                        : $pengiriman->total_qty_kirim);
+                $hargaJualPerKg = $qtyJual > 0 ? $totalJualForMargin / $qtyJual : 0;
+                $sourceJual = 'Invoice Penagihan';
+            } elseif ($pengiriman->pengirimanDetails && $pengiriman->pengirimanDetails->count() > 0) {
+                foreach ($pengiriman->pengirimanDetails as $d) {
+                    if ($d->orderDetail && $d->orderDetail->harga_jual > 0) {
+                        $totalJualForMargin += $d->qty_kirim * $d->orderDetail->harga_jual;
+                        $qtyJual += $d->qty_kirim;
+                    }
+                }
+                $hargaJualPerKg = $qtyJual > 0 ? $totalJualForMargin / $qtyJual : 0;
+                $sourceJual = 'Purchase Order';
+            }
+        @endphp
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {{-- KOLOM KIRI: Sisi BELI --}}
+            <div class="space-y-4">
+                <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-2">Sisi Beli (Approval Pembayaran)</h4>
+
+                @if($approval)
+                    @if($approval->refraksi_type && $approval->refraksi_value)
+                        <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium text-orange-800">Tipe Refraksi</span>
+                                <span class="px-2 py-1 bg-orange-600 text-white text-xs rounded-full">{{ strtoupper($approval->refraksi_type) }}</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                                <div>
+                                    <p class="text-xs text-gray-500">Qty Sebelum</p>
+                                    <p class="font-semibold">{{ number_format($approval->qty_before_refraksi ?? 0, 3, ',', '.') }} kg</p>
                                 </div>
-                                <div class="bg-green-50 rounded-lg p-3 border border-green-200">
-                                    <p class="text-xs text-green-600 mb-1">Qty Setelah</p>
-                                    <p class="text-lg font-bold text-green-700">
-                                        {{ number_format($approval->qty_after_refraksi ?? 0, 3, ',', '.') }} <span class="text-sm font-normal text-green-500">kg</span>
-                                    </p>
+                                <div>
+                                    <p class="text-xs text-gray-500">Qty Setelah</p>
+                                    <p class="font-semibold text-green-700">{{ number_format($approval->qty_after_refraksi ?? 0, 3, ',', '.') }} kg</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Amount Sebelum</p>
+                                    <p class="font-semibold">Rp {{ number_format($approval->amount_before_refraksi ?? 0, 0, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Amount Setelah</p>
+                                    <p class="font-semibold text-green-700">Rp {{ number_format($approval->amount_after_refraksi ?? 0, 0, ',', '.') }}</p>
                                 </div>
                             </div>
-
-                            {{-- Amount Before & After --}}
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                    <p class="text-xs text-gray-600 mb-1">Total Sebelum</p>
-                                    <p class="text-sm font-bold text-gray-900">
-                                        Rp {{ number_format($approval->amount_before_refraksi ?? 0, 3, ',', '.') }}
-                                    </p>
-                                </div>
-                                <div class="bg-green-50 rounded-lg p-3 border border-green-200">
-                                    <p class="text-xs text-green-600 mb-1">Total Setelah</p>
-                                    <p class="text-sm font-bold text-green-700">
-                                        Rp {{ number_format($approval->amount_after_refraksi ?? 0, 3, ',', '.') }}
-                                    </p>
-                                </div>
+                            <div class="mt-2 pt-2 border-t border-orange-200">
+                                <p class="text-xs text-red-600">Potongan Refraksi: <span class="font-bold">Rp {{ number_format($approval->refraksi_amount ?? 0, 0, ',', '.') }}</span></p>
                             </div>
+                        </div>
+                    @endif
 
-                            {{-- Refraksi Amount --}}
-                            <div class="bg-red-50 rounded-lg p-4 border border-red-200">
-                                <p class="text-xs text-red-600 mb-1">
-                                    <i class="fas fa-minus-circle mr-1"></i>
-                                    Potongan Refraksi
-                                </p>
-                                <p class="text-xl font-bold text-red-700">
-                                    Rp {{ number_format($approval->refraksi_amount ?? 0, 3, ',', '.') }}
-                                </p>
-                            </div>
-
-                            {{-- Catatan Refraksi --}}
-                            @if($pengiriman->catatan_refraksi)
-                                <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                                    <p class="text-xs font-semibold text-yellow-800 mb-2">
-                                        <i class="fas fa-sticky-note mr-1"></i>
-                                        Catatan Refraksi:
-                                    </p>
-                                    <p class="text-sm text-yellow-900">{{ $pengiriman->catatan_refraksi }}</p>
+                    {{-- Potongan Tambahan Beli --}}
+                    <div class="bg-red-50 rounded-lg p-4 border border-red-200">
+                        <p class="text-sm font-semibold text-red-800 mb-2">
+                            <i class="fas fa-minus-circle mr-1"></i>
+                            Potongan Tambahan (Beli)
+                        </p>
+                        @if($approval->additional_expenses_total > 0)
+                            <p class="text-lg font-bold text-red-700 mb-2">Rp {{ number_format($approval->additional_expenses_total, 0, ',', '.') }}</p>
+                            @if($approval->expenses && $approval->expenses->count() > 0)
+                                <div class="space-y-1">
+                                    @foreach($approval->expenses as $exp)
+                                        <div class="flex justify-between text-xs text-red-700">
+                                            <span>{{ ucfirst($exp->type) }}</span>
+                                            <span>Rp {{ number_format($exp->amount, 0, ',', '.') }}</span>
+                                        </div>
+                                    @endforeach
                                 </div>
                             @endif
                         @else
-                            <div class="text-center py-8 text-gray-400">
-                                <i class="fas fa-info-circle text-3xl mb-2"></i>
-                                <p class="text-sm">Tidak ada refraksi</p>
+                            <p class="text-sm text-gray-500 italic">Tidak ada potongan tambahan</p>
+                        @endif
+                    </div>
+
+                    {{-- Total Beli --}}
+                    <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border-2 border-red-300">
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-sm font-semibold text-red-900"><i class="fas fa-shopping-cart mr-1"></i>Total Beli</p>
+                            <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full">PEMBELIAN</span>
+                        </div>
+                        <p class="text-xl font-bold text-red-900">Rp {{ number_format($totalBeliForMargin, 0, ',', '.') }}</p>
+                        <p class="text-xs text-red-600 mt-1">Rp {{ number_format($hargaBeliPerKg, 0, ',', '.') }}/kg · {{ number_format($qtyBeli, 3, ',', '.') }} kg</p>
+                    </div>
+                @else
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-info-circle text-3xl mb-2"></i>
+                        <p class="text-sm">Approval pembayaran belum dibuat</p>
+                    </div>
+                @endif
+            </div>
+
+            {{-- KOLOM KANAN: Sisi JUAL + Margin --}}
+            <div class="space-y-4">
+                <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-2">Sisi Jual (Invoice Penagihan)</h4>
+
+                @if($invoice)
+                    @if($invoice->refraksi_type && $invoice->refraksi_value)
+                        <div class="bg-orange-50 rounded-lg p-3 border border-orange-200 text-sm">
+                            <p class="font-medium text-orange-800 mb-1">Refraksi Invoice: {{ strtoupper($invoice->refraksi_type) }}</p>
+                            <div class="grid grid-cols-2 gap-1 text-xs">
+                                <span class="text-gray-600">Qty Setelah:</span>
+                                <span class="font-semibold">{{ number_format($invoice->qty_after_refraksi ?? 0, 3, ',', '.') }} kg</span>
+                                <span class="text-gray-600">Amount Setelah:</span>
+                                <span class="font-semibold">Rp {{ number_format($invoice->amount_after_refraksi ?? 0, 0, ',', '.') }}</span>
                             </div>
+                        </div>
+                    @endif
+
+                    {{-- Potongan Tambahan Jual --}}
+                    <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                        <p class="text-sm font-semibold text-green-800 mb-2">
+                            <i class="fas fa-minus-circle mr-1"></i>
+                            Potongan Tambahan (Jual)
+                        </p>
+                        @if($invoice->additional_expenses_total > 0)
+                            <p class="text-lg font-bold text-green-700 mb-2">Rp {{ number_format($invoice->additional_expenses_total, 0, ',', '.') }}</p>
+                            @if($invoice->expenses && $invoice->expenses->count() > 0)
+                                <div class="space-y-1">
+                                    @foreach($invoice->expenses as $exp)
+                                        <div class="flex justify-between text-xs text-green-700">
+                                            <span>{{ ucfirst($exp->type) }}</span>
+                                            <span>Rp {{ number_format($exp->amount, 0, ',', '.') }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @else
+                            <p class="text-sm text-gray-500 italic">Tidak ada potongan tambahan</p>
                         @endif
                     </div>
                 @endif
 
-                {{-- Right Column: Price Info --}}
-                <div class="space-y-4">
-                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Informasi Harga</h4>
-                    
-                    {{-- Harga Beli (from approval pembayaran) --}}
-                    @if($pengiriman->approvalPembayaran)
-                        @php
-                            $approval = $pengiriman->approvalPembayaran;
-                            $totalHargaBeli = $approval->amount_after_refraksi ?? $approval->amount_before_refraksi ?? $pengiriman->total_harga_kirim ?? 0;
-                            $qtyAfterRefraksi = $approval->qty_after_refraksi ?? $approval->qty_before_refraksi ?? $pengiriman->total_qty_kirim ?? 1;
-                            $hargaBeliPerKg = $qtyAfterRefraksi > 0 ? $totalHargaBeli / $qtyAfterRefraksi : 0;
-                        @endphp
-                        
-                        <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border-2 border-red-300">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-sm font-semibold text-red-900">
-                                    <i class="fas fa-shopping-cart mr-1"></i>
-                                    Harga Beli
-                                </p>
-                                <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full font-semibold">PEMBELIAN</span>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-baseline">
-                                    <span class="text-xs text-red-700">Per Kg:</span>
-                                    <span class="text-lg font-bold text-red-900">
-                                        Rp {{ number_format($hargaBeliPerKg, 3, ',', '.') }}
-                                    </span>
-                                </div>
-                                <div class="flex justify-between items-baseline pt-2 border-t border-red-200">
-                                    <span class="text-xs text-red-700">Total:</span>
-                                    <span class="text-xl font-bold text-red-900">
-                                        Rp {{ number_format($totalHargaBeli, 3, ',', '.') }}
-                                    </span>
-                                </div>
-                                <p class="text-xs text-red-600 mt-1">
-                                    <i class="fas fa-info-circle mr-1"></i>
-                                    Untuk {{ number_format($qtyAfterRefraksi, 3, ',', '.') }} kg
-                                </p>
-                            </div>
+                {{-- Total Jual --}}
+                @if($hargaJualPerKg > 0 || $totalJualForMargin > 0)
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border-2 border-green-300">
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-sm font-semibold text-green-900"><i class="fas fa-tag mr-1"></i>Total Jual</p>
+                            <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full">PENJUALAN</span>
                         </div>
-                    @endif
+                        <p class="text-xl font-bold text-green-900">Rp {{ number_format($totalJualForMargin, 0, ',', '.') }}</p>
+                        <p class="text-xs text-green-600 mt-1">Rp {{ number_format($hargaJualPerKg, 0, ',', '.') }}/kg · {{ number_format($qtyJual, 3, ',', '.') }} kg</p>
+                        <p class="text-xs text-green-500 mt-1">Sumber: {{ $sourceJual }}</p>
+                    </div>
+                @else
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center text-gray-400">
+                        <i class="fas fa-info-circle text-2xl mb-1"></i>
+                        <p class="text-sm">Harga jual belum tersedia</p>
+                    </div>
+                @endif
 
-                    {{-- Harga Jual (from invoice penagihan or PO) --}}
+                {{-- Margin --}}
+                @if($approval && $totalJualForMargin > 0 && $totalBeliForMargin > 0)
                     @php
-                        $hargaJualPerKg = 0;
-                        $totalHargaJual = 0;
-                        $qtyJual = 0;
-                        $source = '';
-                        
-                        // Priority 1: Check invoice penagihan
-                        if ($pengiriman->invoicePenagihan) {
-                            $invoice = $pengiriman->invoicePenagihan;
-                            $totalHargaJual = $invoice->amount_after_refraksi ?? $invoice->subtotal ?? 0;
-                            $qtyJual = $invoice->qty_after_refraksi ?? $invoice->qty_before_refraksi ?? $pengiriman->total_qty_kirim ?? 1;
-                            $hargaJualPerKg = $qtyJual > 0 ? $totalHargaJual / $qtyJual : 0;
-                            $source = 'Invoice Penagihan';
-                        }
-                        // Priority 2: Fallback to PO (OrderDetail)
-                        elseif ($pengiriman->pengirimanDetails && $pengiriman->pengirimanDetails->count() > 0) {
-                            foreach ($pengiriman->pengirimanDetails as $detail) {
-                                if ($detail->orderDetail && $detail->orderDetail->harga_jual > 0) {
-                                    $hargaJualPerKg += $detail->orderDetail->harga_jual;
-                                    $totalHargaJual += ($detail->qty_kirim * $detail->orderDetail->harga_jual);
-                                    $qtyJual += $detail->qty_kirim;
-                                }
-                            }
-                            // Calculate average if multiple items
-                            if ($pengiriman->pengirimanDetails->count() > 1 && $qtyJual > 0) {
-                                $hargaJualPerKg = $totalHargaJual / $qtyJual;
-                            }
-                            $source = 'Purchase Order';
-                        }
+                        $margin = $totalJualForMargin - $totalBeliForMargin;
+                        $marginPct = $totalJualForMargin > 0 ? ($margin / $totalJualForMargin) * 100 : 0;
+                        $isProfit = $margin >= 0;
+                        $colorMargin = $isProfit ? 'blue' : 'red';
                     @endphp
-                    
-                    @if($hargaJualPerKg > 0 || $totalHargaJual > 0)
-                        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border-2 border-green-300">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-sm font-semibold text-green-900">
-                                    <i class="fas fa-tag mr-1"></i>
-                                    Harga Jual
-                                </p>
-                                <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full font-semibold">PENJUALAN</span>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-baseline">
-                                    <span class="text-xs text-green-700">Per Kg:</span>
-                                    <span class="text-lg font-bold text-green-900">
-                                        Rp {{ number_format($hargaJualPerKg, 3, ',', '.') }}
-                                    </span>
-                                </div>
-                                <div class="flex justify-between items-baseline pt-2 border-t border-green-200">
-                                    <span class="text-xs text-green-700">Total:</span>
-                                    <span class="text-xl font-bold text-green-900">
-                                        Rp {{ number_format($totalHargaJual, 3, ',', '.') }}
-                                    </span>
-                                </div>
-                                <p class="text-xs text-green-600 mt-1">
-                                    <i class="fas fa-info-circle mr-1"></i>
-                                    Untuk {{ number_format($qtyJual, 3, ',', '.') }} kg
-                                </p>
-                                <p class="text-xs text-green-500 mt-1">
-                                    <i class="fas fa-source mr-1"></i>
-                                    Sumber: {{ $source }}
-                                </p>
-                            </div>
+                    <div class="bg-{{ $colorMargin }}-50 rounded-lg p-4 border-2 border-{{ $colorMargin }}-300">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-sm font-semibold text-{{ $colorMargin }}-900"><i class="fas fa-chart-line mr-1"></i>Margin</p>
+                            <span class="px-2 py-1 bg-{{ $colorMargin }}-600 text-white text-xs rounded-full">{{ $isProfit ? 'PROFIT' : 'LOSS' }}</span>
                         </div>
-                    @else
-                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div class="text-center py-4 text-gray-400">
-                                <i class="fas fa-info-circle text-2xl mb-2"></i>
-                                <p class="text-sm">Harga jual belum tersedia</p>
-                                <p class="text-xs mt-1">Invoice penagihan belum dibuat</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- Margin Calculation (if both prices available) --}}
-                    @if($pengiriman->approvalPembayaran && ($hargaJualPerKg > 0))
-                        @php
-                            $margin = $totalHargaJual - $totalHargaBeli;
-                            // Profit Margin: (margin / harga jual) * 100
-                            $marginPercentage = $totalHargaJual > 0 ? ($margin / $totalHargaJual) * 100 : 0;
-                            $isPositive = $margin >= 0;
-                        @endphp
-                        
-                        <div class="bg-gradient-to-br from-{{ $isPositive ? 'blue' : 'red' }}-50 to-{{ $isPositive ? 'blue' : 'red' }}-100 rounded-lg p-4 border-2 border-{{ $isPositive ? 'blue' : 'red' }}-300">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-sm font-semibold text-{{ $isPositive ? 'blue' : 'red' }}-900">
-                                    <i class="fas fa-chart-line mr-1"></i>
-                                    Margin Keuntungan
-                                </p>
-                                <span class="px-2 py-1 bg-{{ $isPositive ? 'blue' : 'red' }}-600 text-white text-xs rounded-full font-semibold">
-                                    {{ $isPositive ? 'PROFIT' : 'LOSS' }}
-                                </span>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-baseline">
-                                    <span class="text-xs text-{{ $isPositive ? 'blue' : 'red' }}-700">Nominal:</span>
-                                    <span class="text-xl font-bold text-{{ $isPositive ? 'blue' : 'red' }}-900">
-                                        {{ $isPositive ? '+' : '' }}Rp {{ number_format($margin, 3, ',', '.') }}
-                                    </span>
-                                </div>
-                                <div class="flex justify-between items-baseline pt-2 border-t border-{{ $isPositive ? 'blue' : 'red' }}-200">
-                                    <span class="text-xs text-{{ $isPositive ? 'blue' : 'red' }}-700">Persentase:</span>
-                                    <span class="text-xl font-bold text-{{ $isPositive ? 'blue' : 'red' }}-900">
-                                        {{ $isPositive ? '+' : '' }}{{ number_format($marginPercentage, 3, ',', '.') }}%
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                </div>
+                        <p class="text-xl font-bold text-{{ $colorMargin }}-900">{{ $isProfit ? '+' : '' }}Rp {{ number_format($margin, 0, ',', '.') }}</p>
+                        <p class="text-lg font-semibold text-{{ $colorMargin }}-700 mt-1">{{ $isProfit ? '+' : '' }}{{ number_format($marginPct, 2, ',', '.') }}%</p>
+                    </div>
+                @endif
             </div>
         </div>
+    </div>
     @endif
 
     {{-- Card 5: Catatan Pengiriman --}}

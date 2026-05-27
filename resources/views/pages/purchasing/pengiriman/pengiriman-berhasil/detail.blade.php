@@ -217,7 +217,6 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// Function to populate modal with pengiriman data
 function populateDetailModalBerhasil(pengiriman) {
     const content = document.getElementById('detailContentBerhasil');
     
@@ -225,8 +224,13 @@ function populateDetailModalBerhasil(pengiriman) {
     let detailsTable = '';
     if (pengiriman.details && pengiriman.details.length > 0) {
         detailsTable = `
-            <div>
-                <h4 class="text-md font-semibold text-gray-900 mb-3">Detail Barang</h4>
+            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-boxes text-green-600"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-900">Detail Barang</h4>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
                         <thead class="bg-gray-50">
@@ -243,7 +247,7 @@ function populateDetailModalBerhasil(pengiriman) {
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${detail.bahan_baku}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${detail.supplier}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${detail.qty_kirim} kg</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${parseFloat(detail.qty_kirim).toLocaleString('id-ID', {minimumFractionDigits: 3})} kg</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp ${parseFloat(detail.harga_satuan).toLocaleString('id-ID')}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Rp ${parseFloat(detail.total_harga).toLocaleString('id-ID')}</td>
                                 </tr>
@@ -255,7 +259,298 @@ function populateDetailModalBerhasil(pengiriman) {
         `;
     }
 
-    // Generate file pengiriman section (Combined: Foto Tanda Terima + Bukti Foto Bongkar) - HORIZONTAL LAYOUT
+    // === INFORMASI REFRAKSI & HARGA ===
+    let refraksiHargaSection = '';
+    if (pengiriman.approval_pembayaran || pengiriman.invoice_penagihan) {
+
+        const approval = pengiriman.approval_pembayaran;
+        const invoice  = pengiriman.invoice_penagihan;
+
+        // --- SISI BELI ---
+        let sisaBeliHtml = '';
+        if (approval) {
+            // Refraksi info
+            let refraksiBeliHtml = '';
+            if (approval.refraksi_type && parseFloat(approval.refraksi_value) > 0) {
+                refraksiBeliHtml = `
+                    <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-orange-900">
+                                <i class="fas fa-percentage mr-1"></i> Tipe Refraksi
+                            </span>
+                            <span class="px-2 py-1 bg-orange-600 text-white text-xs rounded-full font-semibold">
+                                ${approval.refraksi_type.toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                            <div>
+                                <p class="text-xs text-gray-500">Qty Sebelum</p>
+                                <p class="font-semibold text-gray-800">${parseFloat(approval.qty_before_refraksi || 0).toLocaleString('id-ID', {minimumFractionDigits: 3})} kg</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Qty Setelah</p>
+                                <p class="font-semibold text-green-700">${parseFloat(approval.qty_after_refraksi || 0).toLocaleString('id-ID', {minimumFractionDigits: 3})} kg</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Amount Sebelum</p>
+                                <p class="font-semibold text-gray-800">Rp ${parseFloat(approval.amount_before_refraksi || 0).toLocaleString('id-ID')}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Amount Setelah</p>
+                                <p class="font-semibold text-green-700">Rp ${parseFloat(approval.amount_after_refraksi || 0).toLocaleString('id-ID')}</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 pt-2 border-t border-orange-200">
+                            <p class="text-xs text-red-600">
+                                Potongan Refraksi: <span class="font-bold">Rp ${parseFloat(approval.refraksi_amount || 0).toLocaleString('id-ID')}</span>
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Expenses beli breakdown
+            const expensesTotalBeli = parseFloat(approval.additional_expenses_total || 0);
+            const expensesBeli      = approval.expenses || [];
+            let expensesBeliHtml = `
+                <div class="bg-red-50 rounded-lg p-4 border border-red-200">
+                    <p class="text-sm font-semibold text-red-800 mb-2">
+                        <i class="fas fa-minus-circle mr-1"></i>
+                        Potongan Tambahan (Beli)
+                    </p>
+                    ${expensesTotalBeli > 0 ? `
+                        <p class="text-lg font-bold text-red-700 mb-2">Rp ${expensesTotalBeli.toLocaleString('id-ID')}</p>
+                        ${expensesBeli.length > 0 ? `
+                            <div class="space-y-1 border-t border-red-200 pt-2">
+                                ${expensesBeli.map(e => `
+                                    <div class="flex justify-between text-xs text-red-700">
+                                        <span class="capitalize">${e.type}</span>
+                                        <span>Rp ${parseFloat(e.amount).toLocaleString('id-ID')}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    ` : `<p class="text-sm text-gray-500 italic">Tidak ada potongan tambahan</p>`}
+                </div>
+            `;
+
+            // Total beli card
+            let totalBeliHtml = `
+                <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border-2 border-red-300">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-semibold text-red-900">
+                            <i class="fas fa-shopping-cart mr-1"></i> Total Beli
+                        </p>
+                        <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full font-semibold">PEMBELIAN</span>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-xs text-red-700">Per Kg:</span>
+                            <span class="text-lg font-bold text-red-900">Rp ${parseFloat(pengiriman.harga_beli_per_kg || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-2 border-t border-red-200">
+                            <span class="text-xs text-red-700">Total:</span>
+                            <span class="text-xl font-bold text-red-900">Rp ${parseFloat(pengiriman.total_harga_beli || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                        <p class="text-xs text-red-600 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Untuk ${parseFloat(pengiriman.qty_after_refraksi || 0).toLocaleString('id-ID', {minimumFractionDigits: 3})} kg
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            sisaBeliHtml = `
+                <div class="space-y-4">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-2">
+                        Sisi Beli (Approval Pembayaran)
+                    </h4>
+                    ${refraksiBeliHtml}
+                    ${expensesBeliHtml}
+                    ${totalBeliHtml}
+                </div>
+            `;
+        } else {
+            sisaBeliHtml = `
+                <div class="space-y-4">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-2">
+                        Sisi Beli (Approval Pembayaran)
+                    </h4>
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-info-circle text-3xl mb-2"></i>
+                        <p class="text-sm">Approval pembayaran belum dibuat</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- SISI JUAL ---
+        // Refraksi invoice
+        let refraksiJualHtml = '';
+        if (invoice && approval && approval.refraksi_type && parseFloat(approval.refraksi_value || 0) > 0) {
+            // tampilkan refraksi invoice jika ada data dari invoice side
+        }
+        // (invoice refraksi sudah masuk ke subtotal, cukup tampilkan expenses & total)
+
+        // Expenses jual breakdown
+        let expensesJualHtml = '';
+        if (invoice) {
+            const expensesTotalJual = parseFloat(invoice.additional_expenses_total || 0);
+            const expensesJual      = invoice.expenses || [];
+            expensesJualHtml = `
+                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <p class="text-sm font-semibold text-green-800 mb-2">
+                        <i class="fas fa-minus-circle mr-1"></i>
+                        Potongan Tambahan (Jual)
+                    </p>
+                    ${expensesTotalJual > 0 ? `
+                        <p class="text-lg font-bold text-green-700 mb-2">Rp ${expensesTotalJual.toLocaleString('id-ID')}</p>
+                        ${expensesJual.length > 0 ? `
+                            <div class="space-y-1 border-t border-green-200 pt-2">
+                                ${expensesJual.map(e => `
+                                    <div class="flex justify-between text-xs text-green-700">
+                                        <span class="capitalize">${e.type}</span>
+                                        <span>Rp ${parseFloat(e.amount).toLocaleString('id-ID')}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    ` : `<p class="text-sm text-gray-500 italic">Tidak ada potongan tambahan</p>`}
+                </div>
+            `;
+        }
+
+        // Total jual card
+        let totalJualHtml = '';
+        if (pengiriman.harga_jual_per_kg > 0 || pengiriman.total_harga_jual > 0) {
+            totalJualHtml = `
+                <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border-2 border-green-300">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-semibold text-green-900">
+                            <i class="fas fa-tag mr-1"></i> Total Jual
+                        </p>
+                        <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full font-semibold">PENJUALAN</span>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-xs text-green-700">Per Kg:</span>
+                            <span class="text-lg font-bold text-green-900">Rp ${parseFloat(pengiriman.harga_jual_per_kg || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-2 border-t border-green-200">
+                            <span class="text-xs text-green-700">Total:</span>
+                            <span class="text-xl font-bold text-green-900">Rp ${parseFloat(pengiriman.total_harga_jual || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                        <p class="text-xs text-green-600 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Untuk ${parseFloat(pengiriman.qty_jual || 0).toLocaleString('id-ID', {minimumFractionDigits: 3})} kg
+                        </p>
+                        <p class="text-xs text-green-500">Sumber: ${pengiriman.harga_jual_source || 'N/A'}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            totalJualHtml = `
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="text-center py-4 text-gray-400">
+                        <i class="fas fa-info-circle text-2xl mb-2"></i>
+                        <p class="text-sm">Harga jual belum tersedia</p>
+                        <p class="text-xs mt-1">Invoice penagihan belum dibuat</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Margin card
+        let marginHtml = '';
+        if (pengiriman.margin !== undefined && pengiriman.margin !== null) {
+            const margin    = parseFloat(pengiriman.margin || 0);
+            const marginPct = parseFloat(pengiriman.margin_percentage || 0);
+            const isProfit  = margin >= 0;
+            const color     = isProfit ? 'blue' : 'red';
+            const label     = isProfit ? 'PROFIT' : 'LOSS';
+            const sign      = isProfit ? '+' : '';
+
+            marginHtml = `
+                <div class="bg-${color}-50 rounded-lg p-4 border-2 border-${color}-300">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-semibold text-${color}-900">
+                            <i class="fas fa-chart-line mr-1"></i> Margin Keuntungan
+                        </p>
+                        <span class="px-2 py-1 bg-${color}-600 text-white text-xs rounded-full font-semibold">${label}</span>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-xs text-${color}-700">Nominal:</span>
+                            <span class="text-xl font-bold text-${color}-900">${sign}Rp ${Math.abs(margin).toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-2 border-t border-${color}-200">
+                            <span class="text-xs text-${color}-700">Persentase:</span>
+                            <span class="text-xl font-bold text-${color}-900">${sign}${Math.abs(marginPct).toFixed(2)}%</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const sisaJualHtml = `
+            <div class="space-y-4">
+                <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-2">
+                    Sisi Jual (Invoice Penagihan)
+                </h4>
+                ${expensesJualHtml}
+                ${totalJualHtml}
+                ${marginHtml}
+            </div>
+        `;
+
+        refraksiHargaSection = `
+            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <div class="flex items-center mb-4">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-calculator text-blue-600"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900">Informasi Refraksi & Harga</h3>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    ${sisaBeliHtml}
+                    ${sisaJualHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    // Generate catatan refraksi section
+    let catatanRefraksiSection = '';
+    if (pengiriman.catatan_refraksi) {
+        catatanRefraksiSection = `
+            <div class="bg-gradient-to-r from-orange-50 to-yellow-50 border-l-4 border-orange-500 rounded-lg p-6 shadow-sm">
+                <div class="flex items-start mb-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                        <i class="fas fa-exclamation-circle text-orange-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-orange-900 mb-1">Catatan Refraksi</h3>
+                        <p class="text-xs text-orange-600">Informasi penting terkait pengurangan kuantitas/harga</p>
+                    </div>
+                </div>
+                <div class="bg-white bg-opacity-60 rounded-lg p-4 border border-orange-200">
+                    <p class="text-gray-800 whitespace-pre-line">${pengiriman.catatan_refraksi}</p>
+                </div>
+                ${pengiriman.approval_pembayaran && pengiriman.approval_pembayaran.refraksi_amount ? `
+                    <div class="mt-3 flex items-center justify-between text-sm">
+                        <span class="text-orange-700 font-medium">
+                            <i class="fas fa-info-circle mr-1"></i> Potongan Refraksi:
+                        </span>
+                        <span class="text-orange-900 font-bold">
+                            Rp ${parseFloat(pengiriman.approval_pembayaran.refraksi_amount).toLocaleString('id-ID')}
+                        </span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // Generate file pengiriman section
     let filePengirimanSection = '';
     if (pengiriman.foto_tanda_terima_url || (pengiriman.bukti_foto_urls && pengiriman.bukti_foto_urls.length > 0)) {
         filePengirimanSection = `
@@ -264,10 +559,8 @@ function populateDetailModalBerhasil(pengiriman) {
                     <i class="fas fa-folder-open text-blue-600 mr-2"></i>
                     File Pengiriman
                 </h4>
-                
                 <div class="grid grid-cols-1 ${pengiriman.foto_tanda_terima_url && pengiriman.bukti_foto_urls && pengiriman.bukti_foto_urls.length > 0 ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-4">
                     ${pengiriman.foto_tanda_terima_url ? `
-                        <!-- Foto Tanda Terima -->
                         <div class="bg-white rounded-lg p-4 border border-purple-200">
                             <div class="flex items-center mb-2">
                                 <i class="fas fa-file-signature text-purple-600 mr-2"></i>
@@ -280,17 +573,17 @@ function populateDetailModalBerhasil(pengiriman) {
                                 </div>
                             ` : ''}
                             <div class="relative group">
-                                <img src="${pengiriman.foto_tanda_terima_url}" 
-                                     alt="Foto Tanda Terima" 
+                                <img src="${pengiriman.foto_tanda_terima_url}"
+                                     alt="Foto Tanda Terima"
                                      class="w-full h-48 object-cover rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90 transition-opacity shadow-md"
                                      onclick="viewImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'Foto Tanda Terima')">
                                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                                     <div class="flex space-x-2">
-                                        <button onclick="viewImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'Foto Tanda Terima')" 
+                                        <button onclick="viewImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'Foto Tanda Terima')"
                                                 class="bg-white text-purple-600 p-3 rounded-full shadow-lg hover:bg-purple-50 transition-all">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button onclick="downloadImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'tanda_terima_${pengiriman.no_pengiriman}.jpg')" 
+                                        <button onclick="downloadImageBerhasil('${pengiriman.foto_tanda_terima_url}', 'tanda_terima_${pengiriman.no_pengiriman}.jpg')"
                                                 class="bg-white text-green-600 p-3 rounded-full shadow-lg hover:bg-green-50 transition-all">
                                             <i class="fas fa-download"></i>
                                         </button>
@@ -299,9 +592,8 @@ function populateDetailModalBerhasil(pengiriman) {
                             </div>
                         </div>
                     ` : ''}
-                    
+
                     ${pengiriman.bukti_foto_urls && pengiriman.bukti_foto_urls.length > 0 ? `
-                        <!-- Bukti Foto Bongkar -->
                         <div class="bg-white rounded-lg p-4 border border-blue-200">
                             <div class="flex items-center mb-2">
                                 <i class="fas fa-camera text-blue-600 mr-2"></i>
@@ -316,17 +608,17 @@ function populateDetailModalBerhasil(pengiriman) {
                             <div class="grid grid-cols-2 gap-2 mb-3">
                                 ${pengiriman.bukti_foto_urls.slice(0, 4).map((url, index) => `
                                     <div class="relative group image-grid-item">
-                                        <img src="${url}" 
-                                             alt="Bukti foto bongkar ${index + 1}" 
+                                        <img src="${url}"
+                                             alt="Bukti foto bongkar ${index + 1}"
                                              class="w-full h-24 object-cover rounded-lg border-2 border-blue-300 cursor-pointer hover:opacity-90 transition-opacity shadow-md"
                                              onclick="viewImageBerhasil('${url}', 'Bukti Foto Bongkar ${index + 1}')">
                                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                                             <div class="flex space-x-1">
-                                                <button onclick="viewImageBerhasil('${url}', 'Bukti Foto Bongkar ${index + 1}')" 
+                                                <button onclick="viewImageBerhasil('${url}', 'Bukti Foto Bongkar ${index + 1}')"
                                                         class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all">
                                                     <i class="fas fa-eye text-xs"></i>
                                                 </button>
-                                                <button onclick="downloadImageBerhasil('${url}', 'bukti_bongkar_${index + 1}.jpg')" 
+                                                <button onclick="downloadImageBerhasil('${url}', 'bukti_bongkar_${index + 1}.jpg')"
                                                         class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all">
                                                     <i class="fas fa-download text-xs"></i>
                                                 </button>
@@ -343,7 +635,7 @@ function populateDetailModalBerhasil(pengiriman) {
                                 <span class="text-xs text-gray-600">
                                     ${pengiriman.foto_tanda_terima_url ? pengiriman.bukti_foto_urls.length + 1 : pengiriman.bukti_foto_urls.length} file total
                                 </span>
-                                <button onclick="downloadAllFilesBerhasil(${JSON.stringify(pengiriman.bukti_foto_urls).replace(/"/g, '&quot;')}, '${pengiriman.foto_tanda_terima_url || ''}', '${pengiriman.no_pengiriman}')" 
+                                <button onclick="downloadAllFilesBerhasil(${JSON.stringify(pengiriman.bukti_foto_urls).replace(/"/g, '&quot;')}, '${pengiriman.foto_tanda_terima_url || ''}', '${pengiriman.no_pengiriman}')"
                                         class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-all">
                                     <i class="fas fa-download mr-1"></i>
                                     Download Semua
@@ -355,8 +647,8 @@ function populateDetailModalBerhasil(pengiriman) {
             </div>
         `;
     }
-    
-    // Generate timeline section with sub-timeline for file uploads
+
+    // Generate timeline section
     let timelineSection = '';
     if (pengiriman.timeline && pengiriman.timeline.length > 0) {
         timelineSection = `
@@ -370,55 +662,59 @@ function populateDetailModalBerhasil(pengiriman) {
                         <p class="text-xs text-indigo-600">Riwayat perubahan status pengiriman</p>
                     </div>
                 </div>
-                
                 <div class="relative pl-2">
                     ${pengiriman.timeline.map((item, index) => {
                         const isLast = index === pengiriman.timeline.length - 1;
-                        const colorClasses = {
-                            'blue': 'bg-blue-500 border-blue-600 shadow-blue-200',
-                            'yellow': 'bg-yellow-500 border-yellow-600 shadow-yellow-200',
-                            'green': 'bg-green-500 border-green-600 shadow-green-200',
-                            'gray': 'bg-gray-500 border-gray-600 shadow-gray-200',
-                            'indigo': 'bg-indigo-500 border-indigo-600 shadow-indigo-200',
-                            'purple': 'bg-purple-500 border-purple-600 shadow-purple-200'
+                        const colorMap = {
+                            'blue': 'bg-blue-500 border-blue-600',
+                            'yellow': 'bg-yellow-500 border-yellow-600',
+                            'green': 'bg-green-500 border-green-600',
+                            'gray': 'bg-gray-500 border-gray-600',
+                            'indigo': 'bg-indigo-500 border-indigo-600',
+                            'purple': 'bg-purple-500 border-purple-600',
+                            'red': 'bg-red-500 border-red-600',
                         };
-                        const bgColorClasses = {
+                        const bgMap = {
                             'blue': 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300',
                             'yellow': 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-300',
                             'green': 'bg-gradient-to-br from-green-50 to-green-100 border-green-300',
                             'gray': 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300',
                             'indigo': 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-300',
-                            'purple': 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-300'
+                            'purple': 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-300',
+                            'red': 'bg-gradient-to-br from-red-50 to-red-100 border-red-300',
                         };
-                        const textColorClasses = {
+                        const textMap = {
                             'blue': 'text-blue-800',
                             'yellow': 'text-yellow-800',
                             'green': 'text-green-800',
                             'gray': 'text-gray-800',
                             'indigo': 'text-indigo-800',
-                            'purple': 'text-purple-800'
+                            'purple': 'text-purple-800',
+                            'red': 'text-red-800',
                         };
-                        
-                        // Check for sub-timeline based on status
+
+                        const c   = item.color || 'gray';
+                        const dot = colorMap[c] || colorMap['gray'];
+                        const bg  = bgMap[c]    || bgMap['gray'];
+                        const txt = textMap[c]  || textMap['gray'];
+
+                        // Sub-timeline
                         const isPengirimanDibuat = item.type === 'pengiriman' && item.status === 'pending';
-                        const isFisikDiterima = item.type === 'pengiriman' && item.status === 'fisik_diterima';
-                        
+                        const isFisikDiterima    = item.type === 'pengiriman' && item.status === 'fisik_diterima';
+
                         let subTimeline = '';
-                        
-                        // Sub-timeline for "Pengiriman Dibuat" - Bukti Foto Bongkar
                         if (isPengirimanDibuat && pengiriman.bukti_foto_bongkar_uploaded_at) {
                             subTimeline = `
                                 <div class="ml-10 mt-3 space-y-3 border-l-2 border-dashed border-gray-300 pl-4">
-                                    <div class="flex items-start timeline-item-hover group">
-                                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500 border-2 border-blue-600 mr-3 flex-shrink-0 shadow-md group-hover:scale-110 transition-transform">
+                                    <div class="flex items-start group">
+                                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500 border-2 border-blue-600 mr-3 flex-shrink-0 shadow-md">
                                             <i class="fas fa-camera text-white text-xs"></i>
                                         </div>
-                                        <div class="flex-1 bg-white rounded-lg px-3 py-2 border-2 border-blue-200 shadow-sm group-hover:shadow-md transition-shadow">
+                                        <div class="flex-1 bg-white rounded-lg px-3 py-2 border-2 border-blue-200 shadow-sm">
                                             <div class="flex items-center justify-between">
                                                 <span class="text-sm text-blue-900 font-semibold">Upload Bukti Foto Bongkar</span>
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
-                                                    <i class="fas fa-check-circle mr-1"></i>
-                                                    Uploaded
+                                                    <i class="fas fa-check-circle mr-1"></i> Uploaded
                                                 </span>
                                             </div>
                                             <div class="text-xs text-gray-600 mt-1 flex items-center">
@@ -430,21 +726,18 @@ function populateDetailModalBerhasil(pengiriman) {
                                 </div>
                             `;
                         }
-                        
-                        // Sub-timeline for "Fisik Diterima" - Foto Tanda Terima
                         if (isFisikDiterima && pengiriman.foto_tanda_terima_uploaded_at) {
                             subTimeline = `
                                 <div class="ml-10 mt-3 space-y-3 border-l-2 border-dashed border-purple-300 pl-4">
-                                    <div class="flex items-start timeline-item-hover group">
-                                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500 border-2 border-purple-600 mr-3 flex-shrink-0 shadow-md group-hover:scale-110 transition-transform">
+                                    <div class="flex items-start group">
+                                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500 border-2 border-purple-600 mr-3 flex-shrink-0 shadow-md">
                                             <i class="fas fa-file-signature text-white text-xs"></i>
                                         </div>
-                                        <div class="flex-1 bg-white rounded-lg px-3 py-2 border-2 border-purple-200 shadow-sm group-hover:shadow-md transition-shadow">
+                                        <div class="flex-1 bg-white rounded-lg px-3 py-2 border-2 border-purple-200 shadow-sm">
                                             <div class="flex items-center justify-between">
                                                 <span class="text-sm text-purple-900 font-semibold">Upload Foto Tanda Terima</span>
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700">
-                                                    <i class="fas fa-check-circle mr-1"></i>
-                                                    Uploaded
+                                                    <i class="fas fa-check-circle mr-1"></i> Uploaded
                                                 </span>
                                             </div>
                                             <div class="text-xs text-gray-600 mt-1 flex items-center">
@@ -456,23 +749,22 @@ function populateDetailModalBerhasil(pengiriman) {
                                 </div>
                             `;
                         }
-                        
+
                         return `
-                            <div class="flex mb-6 ${isLast ? '' : 'pb-2'} timeline-item group">
+                            <div class="flex mb-6 timeline-item group">
                                 <div class="flex flex-col items-center mr-4">
-                                    <div class="relative flex items-center justify-center w-12 h-12 rounded-xl ${colorClasses[item.color] || colorClasses['gray']} border-3 shadow-xl flex-shrink-0 group-hover:scale-110 transition-transform timeline-icon-pulse">
+                                    <div class="relative flex items-center justify-center w-12 h-12 rounded-xl ${dot} border-3 shadow-xl flex-shrink-0 group-hover:scale-110 transition-transform">
                                         <i class="fas ${item.icon} text-white text-lg"></i>
-                                        <div class="absolute inset-0 rounded-xl ${colorClasses[item.color] || colorClasses['gray']} opacity-20 animate-ping-slow"></div>
                                     </div>
                                     ${!isLast ? '<div class="w-1 flex-1 bg-gradient-to-b from-gray-300 to-gray-200 mt-3 rounded-full"></div>' : ''}
                                 </div>
                                 <div class="flex-1">
-                                    <div class="${bgColorClasses[item.color] || bgColorClasses['gray']} rounded-xl p-5 border-2 shadow-lg group-hover:shadow-xl transition-all timeline-content">
+                                    <div class="${bg} rounded-xl p-5 border-2 shadow-lg group-hover:shadow-xl transition-all">
                                         <div class="flex items-start justify-between">
                                             <div class="flex-1">
                                                 <div class="flex items-center mb-2">
-                                                    <h5 class="font-bold ${textColorClasses[item.color] || textColorClasses['gray']} text-base">${item.title}</h5>
-                                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.color === 'green' ? 'bg-green-600 text-white' : 'bg-white bg-opacity-70 ' + textColorClasses[item.color]}">
+                                                    <h5 class="font-bold ${txt} text-base">${item.title}</h5>
+                                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white bg-opacity-70 ${txt}">
                                                         ${item.status ? item.status.toUpperCase() : 'COMPLETED'}
                                                     </span>
                                                 </div>
@@ -501,19 +793,14 @@ function populateDetailModalBerhasil(pengiriman) {
             </div>
         `;
     }
-    
-    // Check if user can revisi (only direktur and manager_purchasing)
+
+    // Check user role
     const userRole = '{{ Auth::user()->role ?? "" }}';
     const canRevisi = ['direktur', 'manager_purchasing'].includes(userRole);
-    
-    // Pengiriman berhasil always can be revised by authorized users
-    // No need to check approval/invoice status - accounting will handle their own data
-    const canBeRevised = true;
-    
+
     content.innerHTML = `
-        <!-- Action Buttons (if allowed) -->
         ${canRevisi ? `
-            <div class="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-xl p-4 mb-4">
+            <div class="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-xl p-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
@@ -524,58 +811,32 @@ function populateDetailModalBerhasil(pengiriman) {
                             <p class="text-xs text-gray-600">Kembalikan ke status Pengiriman Masuk untuk diperbaiki</p>
                         </div>
                     </div>
-                    <button onclick="openRevisiModalBerhasil(${pengiriman.id})" 
-                            class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all duration-200 font-semibold shadow-md hover:shadow-lg flex items-center">
-                        <i class="fas fa-undo mr-2"></i>
-                        Revisi Pengiriman
+                    <button onclick="openRevisiModalBerhasil(${pengiriman.id})"
+                            class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all font-semibold shadow-md flex items-center">
+                        <i class="fas fa-undo mr-2"></i> Revisi Pengiriman
                     </button>
                 </div>
             </div>
         ` : ''}
-    
+
         <!-- 1. Informasi Pengiriman -->
         <div class="bg-green-50 rounded-lg p-4 border border-green-200">
             <div class="flex items-center justify-between mb-3">
                 <h4 class="text-md font-semibold text-gray-900">Informasi Pengiriman</h4>
                 ${pengiriman.bukti_pembayaran_url ? `
-                    <a href="${pengiriman.bukti_pembayaran_url}" 
-                       download
-                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-all duration-150 shadow-sm hover:shadow-md">
-                        <i class="fas fa-download mr-1.5"></i>
-                        Download Bukti Pembayaran
+                    <a href="${pengiriman.bukti_pembayaran_url}" download
+                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-all shadow-sm">
+                        <i class="fas fa-download mr-1.5"></i> Download Bukti Pembayaran
                     </a>
                 ` : ''}
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="text-sm font-medium text-gray-600">No Pengiriman</label>
-                    <p class="text-sm text-gray-900 font-medium">${pengiriman.no_pengiriman}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Status</label>
-                    <p class="text-sm">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <i class="fas fa-check-circle mr-1"></i>
-                            ${pengiriman.status}
-                        </span>
-                    </p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">No PO</label>
-                    <p class="text-sm text-gray-900">${pengiriman.no_po}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">PIC Procurement</label>
-                    <p class="text-sm text-gray-900">${pengiriman.pic_purchasing}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Tanggal Kirim</label>
-                    <p class="text-sm text-gray-900">${pengiriman.tanggal_kirim}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Hari Kirim</label>
-                    <p class="text-sm text-gray-900">${pengiriman.hari_kirim}</p>
-                </div>
+                <div><label class="text-sm font-medium text-gray-600">No Pengiriman</label><p class="text-sm text-gray-900 font-medium">${pengiriman.no_pengiriman}</p></div>
+                <div><label class="text-sm font-medium text-gray-600">Status</label><p class="text-sm"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check-circle mr-1"></i>${pengiriman.status}</span></p></div>
+                <div><label class="text-sm font-medium text-gray-600">No PO</label><p class="text-sm text-gray-900">${pengiriman.no_po}</p></div>
+                <div><label class="text-sm font-medium text-gray-600">PIC Procurement</label><p class="text-sm text-gray-900">${pengiriman.pic_purchasing}</p></div>
+                <div><label class="text-sm font-medium text-gray-600">Tanggal Kirim</label><p class="text-sm text-gray-900">${pengiriman.tanggal_kirim}</p></div>
+                <div><label class="text-sm font-medium text-gray-600">Hari Kirim</label><p class="text-sm text-gray-900">${pengiriman.hari_kirim}</p></div>
             </div>
         </div>
 
@@ -583,297 +844,61 @@ function populateDetailModalBerhasil(pengiriman) {
         <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h4 class="text-md font-semibold text-gray-900 mb-3">Ringkasan</h4>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Total Quantity</label>
-                    <p class="text-lg font-bold text-blue-600">${pengiriman.total_qty}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Total Harga</label>
-                    <p class="text-lg font-bold text-green-600">${pengiriman.total_harga}</p>
-                </div>
-                <div>
-                    <label class="text-sm font-medium text-gray-600">Total Item</label>
-                    <p class="text-lg font-bold text-purple-600">${pengiriman.total_items} item</p>
-                </div>
+                <div><label class="text-sm font-medium text-gray-600">Total Quantity</label><p class="text-lg font-bold text-blue-600">${pengiriman.total_qty}</p></div>
+                <div><label class="text-sm font-medium text-gray-600">Total Harga</label><p class="text-lg font-bold text-green-600">${pengiriman.total_harga}</p></div>
+                <div><label class="text-sm font-medium text-gray-600">Total Item</label><p class="text-lg font-bold text-purple-600">${pengiriman.total_items} item</p></div>
             </div>
         </div>
 
         <!-- 3. Detail Barang -->
         ${detailsTable}
 
-        <!-- 3.5. Informasi Refraksi & Harga -->
-        ${pengiriman.approval_pembayaran || pengiriman.invoice_penagihan ? `
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                <div class="flex items-center mb-4">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                        <i class="fas fa-calculator text-blue-600"></i>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-900">Informasi Refraksi & Harga</h3>
-                </div>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    ${pengiriman.approval_pembayaran ? `
-                        <!-- Left: Refraksi Info -->
-                        <div class="space-y-4">
-                            <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Informasi Refraksi</h4>
-                            
-                            ${pengiriman.approval_pembayaran.refraksi_type && pengiriman.approval_pembayaran.refraksi_value ? `
-                                <!-- Refraksi Type & Value -->
-                                <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <span class="text-sm font-medium text-orange-900">
-                                            <i class="fas fa-percentage mr-1"></i>
-                                            Tipe Refraksi:
-                                        </span>
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-600 text-white">
-                                            ${pengiriman.approval_pembayaran.refraksi_type.toUpperCase()}
-                                        </span>
-                                    </div>
-                                    <div class="text-2xl font-bold text-orange-700">
-                                        ${pengiriman.approval_pembayaran.refraksi_type === 'percentage' 
-                                            ? `${parseFloat(pengiriman.approval_pembayaran.refraksi_value).toFixed(2)}%` 
-                                            : `Rp ${parseFloat(pengiriman.approval_pembayaran.refraksi_value).toLocaleString('id-ID')}`}
-                                    </div>
-                                    <p class="text-xs text-orange-600 mt-1">Nilai Refraksi</p>
-                                </div>
+        <!-- 4. Informasi Refraksi & Harga -->
+        ${refraksiHargaSection}
 
-                                <!-- Qty Before & After -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                        <p class="text-xs text-gray-600 mb-1">Qty Sebelum</p>
-                                        <p class="text-lg font-bold text-gray-900">
-                                            ${parseFloat(pengiriman.approval_pembayaran.qty_before_refraksi || 0).toLocaleString('id-ID')} <span class="text-sm font-normal text-gray-500">kg</span>
-                                        </p>
-                                    </div>
-                                    <div class="bg-green-50 rounded-lg p-3 border border-green-200">
-                                        <p class="text-xs text-green-600 mb-1">Qty Setelah</p>
-                                        <p class="text-lg font-bold text-green-700">
-                                            ${parseFloat(pengiriman.approval_pembayaran.qty_after_refraksi || 0).toLocaleString('id-ID')} <span class="text-sm font-normal text-green-500">kg</span>
-                                        </p>
-                                    </div>
-                                </div>
+        <!-- 5. Catatan Refraksi -->
+        ${catatanRefraksiSection}
 
-                                <!-- Amount Before & After -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                        <p class="text-xs text-gray-600 mb-1">Total Sebelum</p>
-                                        <p class="text-sm font-bold text-gray-900">
-                                            Rp ${parseFloat(pengiriman.approval_pembayaran.amount_before_refraksi || 0).toLocaleString('id-ID')}
-                                        </p>
-                                    </div>
-                                    <div class="bg-green-50 rounded-lg p-3 border border-green-200">
-                                        <p class="text-xs text-green-600 mb-1">Total Setelah</p>
-                                        <p class="text-sm font-bold text-green-700">
-                                            Rp ${parseFloat(pengiriman.approval_pembayaran.amount_after_refraksi || 0).toLocaleString('id-ID')}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <!-- Refraksi Amount -->
-                                <div class="bg-red-50 rounded-lg p-4 border border-red-200">
-                                    <p class="text-xs text-red-600 mb-1">
-                                        <i class="fas fa-minus-circle mr-1"></i>
-                                        Potongan Refraksi
-                                    </p>
-                                    <p class="text-xl font-bold text-red-700">
-                                        Rp ${parseFloat(pengiriman.approval_pembayaran.refraksi_amount || 0).toLocaleString('id-ID')}
-                                    </p>
-                                </div>
-                            ` : `
-                                <div class="text-center py-8 text-gray-400">
-                                    <i class="fas fa-info-circle text-3xl mb-2"></i>
-                                    <p class="text-sm">Tidak ada refraksi</p>
-                                </div>
-                            `}
-                        </div>
-
-                        <!-- Right: Price Info -->
-                        <div class="space-y-4">
-                            <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Informasi Harga</h4>
-                            
-                            <!-- Harga Beli -->
-                            <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border-2 border-red-300">
-                                <div class="flex items-center justify-between mb-2">
-                                    <p class="text-sm font-semibold text-red-900">
-                                        <i class="fas fa-shopping-cart mr-1"></i>
-                                        Harga Beli
-                                    </p>
-                                    <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full font-semibold">PEMBELIAN</span>
-                                </div>
-                                <div class="space-y-2">
-                                    <div class="flex justify-between items-baseline">
-                                        <span class="text-xs text-red-700">Per Kg:</span>
-                                        <span class="text-lg font-bold text-red-900">
-                                            Rp ${parseFloat(pengiriman.harga_beli_per_kg || 0).toLocaleString('id-ID')}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between items-baseline pt-2 border-t border-red-200">
-                                        <span class="text-xs text-red-700">Total:</span>
-                                        <span class="text-xl font-bold text-red-900">
-                                            Rp ${parseFloat(pengiriman.total_harga_beli || 0).toLocaleString('id-ID')}
-                                        </span>
-                                    </div>
-                                    <p class="text-xs text-red-600 mt-1">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        Untuk ${parseFloat(pengiriman.qty_after_refraksi || 0).toLocaleString('id-ID')} kg
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Harga Jual -->
-                            ${pengiriman.harga_jual_per_kg && pengiriman.harga_jual_per_kg > 0 ? `
-                                <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border-2 border-green-300">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <p class="text-sm font-semibold text-green-900">
-                                            <i class="fas fa-tag mr-1"></i>
-                                            Harga Jual
-                                        </p>
-                                        <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full font-semibold">PENJUALAN</span>
-                                    </div>
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between items-baseline">
-                                            <span class="text-xs text-green-700">Per Kg:</span>
-                                            <span class="text-lg font-bold text-green-900">
-                                                Rp ${parseFloat(pengiriman.harga_jual_per_kg || 0).toLocaleString('id-ID')}
-                                            </span>
-                                        </div>
-                                        <div class="flex justify-between items-baseline pt-2 border-t border-green-200">
-                                            <span class="text-xs text-green-700">Total:</span>
-                                            <span class="text-xl font-bold text-green-900">
-                                                Rp ${parseFloat(pengiriman.total_harga_jual || 0).toLocaleString('id-ID')}
-                                            </span>
-                                        </div>
-                                        <p class="text-xs text-green-600 mt-1">
-                                            <i class="fas fa-info-circle mr-1"></i>
-                                            Untuk ${parseFloat(pengiriman.qty_jual || 0).toLocaleString('id-ID')} kg
-                                        </p>
-                                        <p class="text-xs text-green-500 mt-1">
-                                            <i class="fas fa-source mr-1"></i>
-                                            Sumber: ${pengiriman.harga_jual_source || 'N/A'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <!-- Margin -->
-                                ${pengiriman.margin !== undefined ? `
-                                    <div class="bg-gradient-to-br from-${pengiriman.margin >= 0 ? 'blue' : 'red'}-50 to-${pengiriman.margin >= 0 ? 'blue' : 'red'}-100 rounded-lg p-4 border-2 border-${pengiriman.margin >= 0 ? 'blue' : 'red'}-300">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <p class="text-sm font-semibold text-${pengiriman.margin >= 0 ? 'blue' : 'red'}-900">
-                                                <i class="fas fa-chart-line mr-1"></i>
-                                                Margin Keuntungan
-                                            </p>
-                                            <span class="px-2 py-1 bg-${pengiriman.margin >= 0 ? 'blue' : 'red'}-600 text-white text-xs rounded-full font-semibold">
-                                                ${pengiriman.margin >= 0 ? 'PROFIT' : 'LOSS'}
-                                            </span>
-                                        </div>
-                                        <div class="space-y-2">
-                                            <div class="flex justify-between items-baseline">
-                                                <span class="text-xs text-${pengiriman.margin >= 0 ? 'blue' : 'red'}-700">Nominal:</span>
-                                                <span class="text-xl font-bold text-${pengiriman.margin >= 0 ? 'blue' : 'red'}-900">
-                                                    ${pengiriman.margin >= 0 ? '+' : ''}Rp ${parseFloat(pengiriman.margin || 0).toLocaleString('id-ID')}
-                                                </span>
-                                            </div>
-                                            <div class="flex justify-between items-baseline pt-2 border-t border-${pengiriman.margin >= 0 ? 'blue' : 'red'}-200">
-                                                <span class="text-xs text-${pengiriman.margin >= 0 ? 'blue' : 'red'}-700">Persentase:</span>
-                                                <span class="text-xl font-bold text-${pengiriman.margin >= 0 ? 'blue' : 'red'}-900">
-                                                    ${pengiriman.margin >= 0 ? '+' : ''}${parseFloat(pengiriman.margin_percentage || 0).toFixed(2)}%
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ` : ''}
-                            ` : `
-                                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                    <div class="text-center py-4 text-gray-400">
-                                        <i class="fas fa-info-circle text-2xl mb-2"></i>
-                                        <p class="text-sm">Harga jual belum tersedia</p>
-                                        <p class="text-xs mt-1">Invoice penagihan belum dibuat</p>
-                                    </div>
-                                </div>
-                            `}
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        ` : ''}
-
-        <!-- 3.6. Catatan Refraksi (if exists) -->
-        ${pengiriman.catatan_refraksi ? `
-            <div class="bg-gradient-to-r from-orange-50 to-yellow-50 border-l-4 border-orange-500 rounded-lg p-6 shadow-sm">
-                <div class="flex items-start mb-3">
-                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-                        <i class="fas fa-exclamation-circle text-orange-600"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-orange-900 mb-1">Catatan Refraksi</h3>
-                        <p class="text-xs text-orange-600">Informasi penting terkait pengurangan kuantitas/harga</p>
-                    </div>
-                </div>
-                <div class="bg-white bg-opacity-60 rounded-lg p-4 border border-orange-200">
-                    <p class="text-gray-800 whitespace-pre-line">${pengiriman.catatan_refraksi}</p>
-                </div>
-                
-                ${pengiriman.approval_pembayaran && pengiriman.approval_pembayaran.refraksi_amount ? `
-                    <div class="mt-3 flex items-center justify-between text-sm">
-                        <span class="text-orange-700 font-medium">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Potongan Refraksi:
-                        </span>
-                        <span class="text-orange-900 font-bold">
-                            Rp ${parseFloat(pengiriman.approval_pembayaran.refraksi_amount).toLocaleString('id-ID')}
-                        </span>
-                    </div>
-                ` : ''}
-            </div>
-        ` : ''}
-
-        <!-- 4. File Pengiriman -->
+        <!-- 6. File Pengiriman -->
         ${filePengirimanSection}
 
-        <!-- 5. Catatan (Editable) -->
+        <!-- 7. Catatan -->
         <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
             <div class="flex items-center justify-between mb-2">
                 <h4 class="text-md font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-sticky-note text-blue-600 mr-2"></i>
-                    Catatan
+                    <i class="fas fa-sticky-note text-blue-600 mr-2"></i> Catatan
                 </h4>
-                <button id="editCatatanBtn_${pengiriman.id}" onclick="toggleEditCatatan(${pengiriman.id})" 
+                <button id="editCatatanBtn_${pengiriman.id}" onclick="toggleEditCatatan(${pengiriman.id})"
                         class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-all">
-                    <i class="fas fa-edit mr-1"></i>
-                    Edit Catatan
+                    <i class="fas fa-edit mr-1"></i> Edit Catatan
                 </button>
             </div>
-            
-            <div id="catatanViewMode_${pengiriman.id}" class="catatan-view-mode">
+            <div id="catatanViewMode_${pengiriman.id}">
                 <p class="text-sm text-gray-700 whitespace-pre-line">${pengiriman.catatan || 'Belum ada catatan'}</p>
             </div>
-            
-            <div id="catatanEditMode_${pengiriman.id}" class="catatan-edit-mode hidden">
-                <textarea id="catatanInput_${pengiriman.id}" 
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            <div id="catatanEditMode_${pengiriman.id}" class="hidden">
+                <textarea id="catatanInput_${pengiriman.id}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                           rows="4"
                           placeholder="Tambahkan catatan...">${pengiriman.catatan || ''}</textarea>
                 <div class="flex justify-end space-x-2 mt-2">
-                    <button onclick="cancelEditCatatan(${pengiriman.id})" 
+                    <button onclick="cancelEditCatatan(${pengiriman.id})"
                             class="text-xs bg-gray-300 hover:bg-gray-400 text-gray-700 px-3 py-1.5 rounded-lg transition-all">
-                        <i class="fas fa-times mr-1"></i>
-                        Batal
+                        <i class="fas fa-times mr-1"></i> Batal
                     </button>
-                    <button onclick="saveCatatan(${pengiriman.id})" 
+                    <button onclick="saveCatatan(${pengiriman.id})"
                             class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-all">
-                        <i class="fas fa-save mr-1"></i>
-                        Simpan
+                        <i class="fas fa-save mr-1"></i> Simpan
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- 6. Review Pengiriman -->
+        <!-- 8. Review -->
         ${pengiriman.rating || pengiriman.ulasan ? `
             <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                 <h4 class="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                    <i class="fas fa-star text-yellow-600 mr-2"></i>
-                    Review Pengiriman
+                    <i class="fas fa-star text-yellow-600 mr-2"></i> Review Pengiriman
                 </h4>
                 <div class="space-y-3">
                     ${pengiriman.rating ? `
@@ -900,19 +925,13 @@ function populateDetailModalBerhasil(pengiriman) {
                 </div>
             </div>
         ` : `
-            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h4 class="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                    <i class="fas fa-star text-gray-400 mr-2"></i>
-                    Review Pengiriman
-                </h4>
-                <div class="text-center py-3">
-                    <i class="fas fa-star-o text-gray-400 text-2xl mb-2"></i>
-                    <p class="text-sm text-gray-500 italic">Belum ada review untuk pengiriman ini</p>
-                </div>
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center py-6">
+                <i class="fas fa-star text-gray-300 text-2xl mb-2"></i>
+                <p class="text-sm text-gray-500 italic">Belum ada review untuk pengiriman ini</p>
             </div>
         `}
 
-        <!-- 7. Timeline Proses -->
+        <!-- 9. Timeline -->
         ${timelineSection}
     `;
 }

@@ -31,6 +31,9 @@ class ApprovalPembayaran extends Model
         'qty_after_refraksi',
         'amount_before_refraksi',
         'amount_after_refraksi',
+        'additional_expenses_total',
+        'subtotal',
+        'total_dibayarkan',
     ];
 
     protected $casts = [
@@ -44,6 +47,9 @@ class ApprovalPembayaran extends Model
         'qty_after_refraksi' => 'decimal:2',
         'amount_before_refraksi' => 'decimal:2',
         'amount_after_refraksi' => 'decimal:2',
+        'additional_expenses_total' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'total_dibayarkan' => 'decimal:2',
     ];
 
     /**
@@ -93,6 +99,14 @@ class ApprovalPembayaran extends Model
     public function catatanPiutang()
     {
         return $this->belongsTo(CatatanPiutang::class, 'catatan_piutang_id');
+    }
+
+    /**
+     * Relasi ke Approval Pembayaran Expense
+     */
+    public function expenses()
+    {
+        return $this->hasMany(ApprovalPembayaranExpense::class, 'approval_pembayaran_id');
     }
 
     /**

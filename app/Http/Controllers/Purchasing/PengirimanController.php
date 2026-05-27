@@ -1440,8 +1440,8 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
-                "order.orderDetails", // ✅ Load orderDetails
-                "order.orderDetails.bahanBakuKlien", // ✅ Load bahanBakuKlien for fallback matching
+                "order.orderDetails",
+                "order.orderDetails.bahanBakuKlien", 
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
@@ -1449,6 +1449,8 @@ class PengirimanController extends Controller
                 "pengirimanDetails.orderDetail",
                 "approvalPembayaran",
                 "invoicePenagihan",
+                "approvalPembayaran.expenses",
+                "invoicePenagihan.expenses",    
             ])
                 ->where("status", "menunggu_fisik")
                 ->findOrFail($id);
@@ -1482,8 +1484,8 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
-                "order.orderDetails", // ✅ Load orderDetails
-                "order.orderDetails.bahanBakuKlien", // ✅ Load bahanBakuKlien for fallback matching
+                "order.orderDetails", 
+                "order.orderDetails.bahanBakuKlien", 
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
@@ -1491,6 +1493,8 @@ class PengirimanController extends Controller
                 "pengirimanDetails.orderDetail",
                 "approvalPembayaran",
                 "invoicePenagihan",
+                "approvalPembayaran.expenses",
+                "invoicePenagihan.expenses",
             ])
                 ->where("status", "menunggu_verifikasi")
                 ->findOrFail($id);
@@ -1611,15 +1615,17 @@ class PengirimanController extends Controller
             $pengiriman = Pengiriman::with([
                 "order",
                 "order.klien",
-                "order.orderDetails", // ✅ Load orderDetails
-                "order.orderDetails.bahanBakuKlien", // ✅ Load bahanBakuKlien for fallback matching
+                "order.orderDetails",
+                "order.orderDetails.bahanBakuKlien",
                 "purchasing",
                 "forecast",
                 "pengirimanDetails.bahanBakuSupplier",
                 "pengirimanDetails.bahanBakuSupplier.supplier",
                 "pengirimanDetails.orderDetail",
                 "approvalPembayaran",
+                "approvalPembayaran.expenses",
                 "invoicePenagihan",
+                "invoicePenagihan.expenses",
             ])
                 ->where("status", "berhasil")
                 ->findOrFail($id);
@@ -1627,11 +1633,9 @@ class PengirimanController extends Controller
             // Build timeline
             $timeline = [];
 
-            // Forecast timeline
             if ($pengiriman->forecast) {
                 $forecast = $pengiriman->forecast;
 
-                // Forecast created
                 $timeline[] = [
                     "type" => "forecast",
                     "status" => "created",
@@ -1639,19 +1643,13 @@ class PengirimanController extends Controller
                     "description" => "Forecast {$forecast->no_forecast} telah dibuat",
                     "timestamp" => $forecast->created_at,
                     "formatted_time" => $forecast->created_at
-                        ? Carbon::parse($forecast->created_at)->format(
-                            "d M Y, H:i",
-                        )
+                        ? Carbon::parse($forecast->created_at)->format("d M Y, H:i")
                         : "-",
                     "icon" => "fa-plus-circle",
                     "color" => "blue",
                 ];
 
-                // Forecast updated if different from created
-                if (
-                    $forecast->updated_at &&
-                    $forecast->updated_at != $forecast->created_at
-                ) {
+                if ($forecast->updated_at && $forecast->updated_at != $forecast->created_at) {
                     $timeline[] = [
                         "type" => "forecast",
                         "status" => "updated",
@@ -1659,16 +1657,13 @@ class PengirimanController extends Controller
                         "description" => "Forecast {$forecast->no_forecast} telah diperbarui",
                         "timestamp" => $forecast->updated_at,
                         "formatted_time" => $forecast->updated_at
-                            ? Carbon::parse($forecast->updated_at)->format(
-                                "d M Y, H:i",
-                            )
+                            ? Carbon::parse($forecast->updated_at)->format("d M Y, H:i")
                             : "-",
                         "icon" => "fa-edit",
                         "color" => "yellow",
                     ];
                 }
 
-                // Forecast success (when pengiriman created)
                 if ($forecast->status === "sukses") {
                     $timeline[] = [
                         "type" => "forecast",
@@ -1677,9 +1672,7 @@ class PengirimanController extends Controller
                         "description" => "Forecast {$forecast->no_forecast} berhasil diproses",
                         "timestamp" => $pengiriman->created_at,
                         "formatted_time" => $pengiriman->created_at
-                            ? Carbon::parse($pengiriman->created_at)->format(
-                                "d M Y, H:i",
-                            )
+                            ? Carbon::parse($pengiriman->created_at)->format("d M Y, H:i")
                             : "-",
                         "icon" => "fa-check-circle",
                         "color" => "green",
@@ -1687,8 +1680,6 @@ class PengirimanController extends Controller
                 }
             }
 
-            // Pengiriman timeline
-            // Pengiriman created (pending - menunggu fisik)
             $timeline[] = [
                 "type" => "pengiriman",
                 "status" => "pending",
@@ -1696,15 +1687,12 @@ class PengirimanController extends Controller
                 "description" => "Pengiriman {$pengiriman->no_pengiriman} telah dibuat dan menunggu verifikasi fisik",
                 "timestamp" => $pengiriman->created_at,
                 "formatted_time" => $pengiriman->created_at
-                    ? Carbon::parse($pengiriman->created_at)->format(
-                        "d M Y, H:i",
-                    )
+                    ? Carbon::parse($pengiriman->created_at)->format("d M Y, H:i")
                     : "-",
                 "icon" => "fa-box",
                 "color" => "gray",
             ];
 
-            // Fisik Diterima (estimate from file upload time or between created_at and updated_at)
             $fisikVerifiedAt = null;
             if ($pengiriman->foto_tanda_terima_uploaded_at) {
                 $fisikVerifiedAt = Carbon::parse($pengiriman->foto_tanda_terima_uploaded_at);
@@ -1715,8 +1703,7 @@ class PengirimanController extends Controller
                     $fisikVerifiedAt = $buktiFotoAt;
                 }
             }
-            
-            // If no file upload time, estimate as midpoint between created and updated
+
             if (!$fisikVerifiedAt && $pengiriman->created_at && $pengiriman->updated_at && $pengiriman->created_at != $pengiriman->updated_at) {
                 $createdTimestamp = Carbon::parse($pengiriman->created_at)->timestamp;
                 $updatedTimestamp = Carbon::parse($pengiriman->updated_at)->timestamp;
@@ -1737,11 +1724,7 @@ class PengirimanController extends Controller
                 ];
             }
 
-            // Pengiriman updated (menunggu verifikasi dokumen oleh accounting)
-            if (
-                $pengiriman->updated_at &&
-                $pengiriman->updated_at != $pengiriman->created_at
-            ) {
+            if ($pengiriman->updated_at && $pengiriman->updated_at != $pengiriman->created_at) {
                 $timeline[] = [
                     "type" => "pengiriman",
                     "status" => "menunggu_verifikasi",
@@ -1749,16 +1732,13 @@ class PengirimanController extends Controller
                     "description" => "Pengiriman {$pengiriman->no_pengiriman} menunggu verifikasi dokumen oleh Accounting",
                     "timestamp" => $pengiriman->updated_at,
                     "formatted_time" => $pengiriman->updated_at
-                        ? Carbon::parse($pengiriman->updated_at)->format(
-                            "d M Y, H:i",
-                        )
+                        ? Carbon::parse($pengiriman->updated_at)->format("d M Y, H:i")
                         : "-",
                     "icon" => "fa-file-invoice",
                     "color" => "yellow",
                 ];
             }
 
-            // Pengiriman success
             $timeline[] = [
                 "type" => "pengiriman",
                 "status" => "berhasil",
@@ -1766,15 +1746,12 @@ class PengirimanController extends Controller
                 "description" => "Pengiriman {$pengiriman->no_pengiriman} telah berhasil diverifikasi",
                 "timestamp" => $pengiriman->updated_at,
                 "formatted_time" => $pengiriman->updated_at
-                    ? Carbon::parse($pengiriman->updated_at)->format(
-                        "d M Y, H:i",
-                    )
+                    ? Carbon::parse($pengiriman->updated_at)->format("d M Y, H:i")
                     : "-",
                 "icon" => "fa-check-double",
                 "color" => "green",
             ];
 
-            // Sort timeline by timestamp
             usort($timeline, function ($a, $b) {
                 return $a["timestamp"] <=> $b["timestamp"];
             });
@@ -1791,55 +1768,33 @@ class PengirimanController extends Controller
                     : "-",
                 "hari_kirim" => $pengiriman->hari_kirim ?? "-",
                 "total_qty" =>
-                    number_format(
-                        $pengiriman->total_qty_kirim ?? 0,
-                        0,
-                        ",",
-                        ".",
-                    ) . " kg",
+                    number_format($pengiriman->total_qty_kirim ?? 0, 0, ",", ".") . " kg",
                 "total_harga" =>
-                    "Rp " .
-                    number_format(
-                        $pengiriman->total_harga_kirim ?? 0,
-                        0,
-                        ",",
-                        ".",
-                    ),
+                    "Rp " . number_format($pengiriman->total_harga_kirim ?? 0, 0, ",", "."),
                 "total_items" => $pengiriman->pengirimanDetails
                     ? $pengiriman->pengirimanDetails->count()
                     : 0,
                 "catatan" => $pengiriman->catatan,
                 "rating" => $pengiriman->rating,
                 "ulasan" => $pengiriman->ulasan,
-                "bukti_foto_bongkar" =>
-                    $pengiriman->bukti_foto_bongkar_array ?? [],
+                "bukti_foto_bongkar" => $pengiriman->bukti_foto_bongkar_array ?? [],
                 "bukti_foto_urls" => $pengiriman->bukti_foto_bongkar_url ?? [],
                 "bukti_foto_bongkar_uploaded_at" => $pengiriman->bukti_foto_bongkar_uploaded_at
-                    ? Carbon::parse(
-                            $pengiriman->bukti_foto_bongkar_uploaded_at,
-                        )->format("d M Y, H:i") . " WIB"
+                    ? Carbon::parse($pengiriman->bukti_foto_bongkar_uploaded_at)->format("d M Y, H:i") . " WIB"
                     : null,
                 "foto_tanda_terima" => $pengiriman->foto_tanda_terima,
                 "foto_tanda_terima_url" => $pengiriman->foto_tanda_terima
-                    ? asset(
-                        "storage/pengiriman/tanda-terima/" .
-                            $pengiriman->foto_tanda_terima,
-                    )
+                    ? asset("storage/pengiriman/tanda-terima/" . $pengiriman->foto_tanda_terima)
                     : null,
                 "foto_tanda_terima_uploaded_at" => $pengiriman->foto_tanda_terima_uploaded_at
-                    ? Carbon::parse(
-                            $pengiriman->foto_tanda_terima_uploaded_at,
-                        )->format("d M Y, H:i") . " WIB"
+                    ? Carbon::parse($pengiriman->foto_tanda_terima_uploaded_at)->format("d M Y, H:i") . " WIB"
                     : null,
                 "timeline" => $timeline,
                 "details" => $pengiriman->pengirimanDetails
                     ? $pengiriman->pengirimanDetails->map(function ($detail) {
                         return [
-                            "bahan_baku" =>
-                                $detail->bahanBakuSupplier->nama ?? "-",
-                            "supplier" =>
-                                $detail->bahanBakuSupplier->supplier->nama ??
-                                "-",
+                            "bahan_baku" => $detail->bahanBakuSupplier->nama ?? "-",
+                            "supplier" => $detail->bahanBakuSupplier->supplier->nama ?? "-",
                             "qty_kirim" => $detail->qty_kirim,
                             "harga_satuan" => $detail->harga_satuan,
                             "total_harga" => $detail->total_harga,
@@ -1848,127 +1803,138 @@ class PengirimanController extends Controller
                     : [],
             ];
 
-            // Add refraksi and price info if approval pembayaran exists
+            // === SISI BELI ===
             if ($pengiriman->approvalPembayaran) {
                 $approval = $pengiriman->approvalPembayaran;
-                $data["approval_pembayaran"] = [
-                    "refraksi_type" => $approval->refraksi_type,
-                    "refraksi_value" => $approval->refraksi_value,
-                    "refraksi_amount" => $approval->refraksi_amount,
-                    "qty_before_refraksi" => $approval->qty_before_refraksi,
-                    "qty_after_refraksi" => $approval->qty_after_refraksi,
-                    "amount_before_refraksi" =>
-                        $approval->amount_before_refraksi,
-                    "amount_after_refraksi" =>
-                        $approval->amount_after_refraksi,
-                ];
 
-                // Add bukti pembayaran URL if exists
-                if ($approval->bukti_pembayaran) {
-                    $data["bukti_pembayaran_url"] = asset(
-                        "storage/" . $approval->bukti_pembayaran,
-                    );
+                // Prioritas: subtotal > amount_after_refraksi > qty*harga
+                if ($approval->subtotal > 0) {
+                    $totalHargaBeli = (float) $approval->subtotal;
+                } elseif ($approval->amount_after_refraksi > 0) {
+                    $totalHargaBeli = (float) $approval->amount_after_refraksi;
+                } else {
+                    $qtyFallback = $approval->qty_after_refraksi > 0
+                        ? (float) $approval->qty_after_refraksi
+                        : ($approval->qty_before_refraksi > 0
+                            ? (float) $approval->qty_before_refraksi
+                            : (float) ($pengiriman->total_qty_kirim ?? 0));
+                    $hargaFallback = ($pengiriman->total_qty_kirim > 0)
+                        ? (float) $pengiriman->total_harga_kirim / (float) $pengiriman->total_qty_kirim
+                        : 0;
+                    $totalHargaBeli = $qtyFallback * $hargaFallback;
                 }
 
-                // Calculate harga beli
-                $totalHargaBeli =
-                    $approval->amount_after_refraksi ??
-                    $approval->amount_before_refraksi ??
-                    $pengiriman->total_harga_kirim ??
-                    0;
-                $qtyAfterRefraksi =
-                    $approval->qty_after_refraksi ??
-                    $approval->qty_before_refraksi ??
-                    $pengiriman->total_qty_kirim ??
-                    1;
-                $hargaBeliPerKg =
-                    $qtyAfterRefraksi > 0
-                        ? $totalHargaBeli / $qtyAfterRefraksi
-                        : 0;
+                $qtyAfterRefraksi = $approval->qty_after_refraksi > 0
+                    ? (float) $approval->qty_after_refraksi
+                    : ($approval->qty_before_refraksi > 0
+                        ? (float) $approval->qty_before_refraksi
+                        : (float) ($pengiriman->total_qty_kirim ?? 1));
 
-                $data["total_harga_beli"] = $totalHargaBeli;
+                $hargaBeliPerKg = $qtyAfterRefraksi > 0 ? $totalHargaBeli / $qtyAfterRefraksi : 0;
+
+                $data["approval_pembayaran"] = [
+                    "refraksi_type"             => $approval->refraksi_type,
+                    "refraksi_value"            => $approval->refraksi_value,
+                    "refraksi_amount"           => $approval->refraksi_amount,
+                    "qty_before_refraksi"       => $approval->qty_before_refraksi,
+                    "qty_after_refraksi"        => $approval->qty_after_refraksi,
+                    "amount_before_refraksi"    => $approval->amount_before_refraksi,
+                    "amount_after_refraksi"     => $approval->amount_after_refraksi,
+                    "additional_expenses_total" => $approval->additional_expenses_total ?? 0,
+                    "expenses"                  => $approval->expenses
+                        ? $approval->expenses->map(fn($e) => [
+                            "type"   => $e->type,
+                            "amount" => (float) $e->amount,
+                        ])->toArray()
+                        : [],
+                ];
+
+                if ($approval->bukti_pembayaran) {
+                    $data["bukti_pembayaran_url"] = asset("storage/" . $approval->bukti_pembayaran);
+                }
+
+                $data["total_harga_beli"]  = $totalHargaBeli;
                 $data["qty_after_refraksi"] = $qtyAfterRefraksi;
                 $data["harga_beli_per_kg"] = $hargaBeliPerKg;
             }
 
-            // Calculate harga jual
-            $hargaJualPerKg = 0;
-            $totalHargaJual = 0;
-            $qtyJual = 0;
-            $source = "";
+            // === SISI JUAL ===
+            $hargaJualPerKg     = 0;
+            $totalHargaJual     = 0;
+            $qtyJual            = 0;
+            $source             = "";
 
             if ($pengiriman->invoicePenagihan) {
                 $invoice = $pengiriman->invoicePenagihan;
-                $totalHargaJual =
-                    $invoice->amount_after_refraksi ??
-                    $invoice->subtotal ??
-                    0;
-                $qtyJual =
-                    $invoice->qty_after_refraksi ??
-                    $invoice->qty_before_refraksi ??
-                    $pengiriman->total_qty_kirim ??
-                    1;
-                $hargaJualPerKg =
-                    $qtyJual > 0 ? $totalHargaJual / $qtyJual : 0;
+
+                // Prioritas: subtotal > amount_after_refraksi
+                if ((float) $invoice->subtotal > 0) {
+                    $totalHargaJual = (float) $invoice->subtotal;
+                } elseif ((float) $invoice->amount_after_refraksi > 0) {
+                    $totalHargaJual = (float) $invoice->amount_after_refraksi;
+                }
+
+                $qtyJual = (float) $invoice->qty_after_refraksi > 0
+                    ? (float) $invoice->qty_after_refraksi
+                    : ((float) $invoice->qty_before_refraksi > 0
+                        ? (float) $invoice->qty_before_refraksi
+                        : (float) ($pengiriman->total_qty_kirim ?? 1));
+
+                $hargaJualPerKg = $qtyJual > 0 ? $totalHargaJual / $qtyJual : 0;
                 $source = "Invoice Penagihan";
-            } elseif (
-                $pengiriman->pengirimanDetails &&
-                $pengiriman->pengirimanDetails->count() > 0
-            ) {
+
+                // Tambahkan data invoice ke response
+                $data["invoice_penagihan"] = [
+                    "additional_expenses_total" => $invoice->additional_expenses_total ?? 0,
+                    "expenses"                  => $invoice->expenses
+                        ? $invoice->expenses->map(fn($e) => [
+                            "type"   => $e->type,
+                            "amount" => (float) $e->amount,
+                        ])->toArray()
+                        : [],
+                ];
+
+            } elseif ($pengiriman->pengirimanDetails && $pengiriman->pengirimanDetails->count() > 0) {
                 foreach ($pengiriman->pengirimanDetails as $detail) {
-                    if (
-                        $detail->orderDetail &&
-                        $detail->orderDetail->harga_jual > 0
-                    ) {
-                        $hargaJualPerKg += $detail->orderDetail->harga_jual;
-                        $totalHargaJual +=
-                            $detail->qty_kirim *
-                            $detail->orderDetail->harga_jual;
-                        $qtyJual += $detail->qty_kirim;
+                    if ($detail->orderDetail && $detail->orderDetail->harga_jual > 0) {
+                        $totalHargaJual += (float) $detail->qty_kirim * (float) $detail->orderDetail->harga_jual;
+                        $qtyJual        += (float) $detail->qty_kirim;
                     }
                 }
-                if (
-                    $pengiriman->pengirimanDetails->count() > 1 &&
-                    $qtyJual > 0
-                ) {
-                    $hargaJualPerKg = $totalHargaJual / $qtyJual;
-                }
+                $hargaJualPerKg = $qtyJual > 0 ? $totalHargaJual / $qtyJual : 0;
                 $source = "Purchase Order";
             }
 
-            if ($hargaJualPerKg > 0) {
-                $data["harga_jual_per_kg"] = $hargaJualPerKg;
-                $data["total_harga_jual"] = $totalHargaJual;
-                $data["qty_jual"] = $qtyJual;
-                $data["harga_jual_source"] = $source;
+            if ($hargaJualPerKg > 0 || $totalHargaJual > 0) {
+                $data["harga_jual_per_kg"]  = $hargaJualPerKg;
+                $data["total_harga_jual"]   = $totalHargaJual;
+                $data["qty_jual"]           = $qtyJual;
+                $data["harga_jual_source"]  = $source;
 
-                // Calculate margin if harga beli is available
-                if (
-                    isset($data["total_harga_beli"]) &&
-                    $data["total_harga_beli"] > 0
-                ) {
-                    $margin =
-                        $totalHargaJual - $data["total_harga_beli"];
-                    $marginPercentage =
-                        ($margin / $data["total_harga_beli"]) * 100;
-                    $data["margin"] = $margin;
+                // === MARGIN ===
+                // Gunakan totalBeliForMargin yang sudah dihitung di atas
+                if (isset($data["total_harga_beli"]) && $data["total_harga_beli"] > 0) {
+                    $margin           = $totalHargaJual - $data["total_harga_beli"];
+                    $marginPercentage = $totalHargaJual > 0
+                        ? ($margin / $totalHargaJual) * 100
+                        : 0;
+                    $data["margin"]            = $margin;
                     $data["margin_percentage"] = $marginPercentage;
                 }
             }
 
-            // Add catatan refraksi
             $data["catatan_refraksi"] = $pengiriman->catatan_refraksi;
 
             return response()->json([
-                "success" => true,
+                "success"    => true,
                 "pengiriman" => $data,
             ]);
+
         } catch (\Exception $e) {
             return response()->json(
                 [
                     "success" => false,
-                    "message" =>
-                        "Gagal memuat detail pengiriman: " . $e->getMessage(),
+                    "message" => "Gagal memuat detail pengiriman: " . $e->getMessage(),
                 ],
                 500,
             );

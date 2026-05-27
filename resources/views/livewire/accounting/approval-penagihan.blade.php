@@ -781,7 +781,7 @@
                         <div>
                             <label class="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
                                 <span>Catatan</span>
-                                @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
+                                @if($mainShipment->approvalPembayaran && $mainShipment->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
                                     <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                                         <i class="fas fa-comment-dots mr-1"></i>
                                         Ada catatan dari pembayaran

@@ -12,20 +12,20 @@
 
         body {
             font-family: Arial, sans-serif;
-            font-size: 10pt;
+            font-size: 8.5pt;
             color: #000;
-            padding: 20px;
+            padding: 15px;
         }
 
         .header-section {
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-collapse: collapse;
         }
 
         .header-section td {
             vertical-align: middle;
-            padding: 10px 0;
+            padding: 5px 0;
         }
 
         .logo-cell {
@@ -40,80 +40,80 @@
 
         .invoice-title h1 {
             color: #1C46F4;
-            font-size: 36pt;
+            font-size: 30pt;
             font-weight: bold;
             margin: 0;
             letter-spacing: 3px;
         }
 
         .company-info {
-            font-size: 9pt;
-            line-height: 1.6;
+            font-size: 8pt;
+            line-height: 1.5;
             color: #333;
         }
 
         .customer-section {
             text-align: right;
-            font-size: 10pt;
+            font-size: 8.5pt;
         }
 
         .customer-label {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             font-weight: normal;
         }
 
         .customer-name {
             font-weight: bold;
-            font-size: 11pt;
-            margin-bottom: 3px;
+            font-size: 9.5pt;
+            margin-bottom: 2px;
         }
 
         .customer-phone {
-            font-size: 9pt;
+            font-size: 8pt;
         }
 
         .info-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 15px 0;
         }
 
         .info-table th {
             background-color: #2AB672;
             color: white;
-            padding: 10px;
+            padding: 6px;
             text-align: left;
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: bold;
             border: 1px solid #2AB672;
         }
 
         .info-table td {
             background-color: white;
-            padding: 10px;
+            padding: 6px;
             border: 1px solid #ddd;
-            font-size: 9pt;
+            font-size: 8pt;
         }
 
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 15px 0;
         }
 
         .items-table th {
             background-color: #2AB672;
             color: white;
-            padding: 10px 8px;
-            font-size: 9pt;
+            padding: 6px 8px;
+            font-size: 8pt;
             font-weight: bold;
             border: 1px solid #2AB672;
         }
 
         .items-table td {
-            padding: 10px 8px;
+            padding: 6px 8px;
             border: 1px solid #ddd;
-            font-size: 9pt;
+            font-size: 8pt;
         }
 
         .text-center {
@@ -126,7 +126,7 @@
 
         .summary-section {
             width: 100%;
-            margin-top: 20px;
+            margin-top: 15px;
             border-collapse: collapse;
         }
 
@@ -142,12 +142,12 @@
         .summary-row {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .summary-row td {
-            padding: 8px 10px;
-            font-size: 10pt;
+            padding: 6px 10px;
+            font-size: 8.5pt;
         }
 
         .summary-label {
@@ -165,17 +165,17 @@
             background-color: #1C46F4;
             color: white;
             font-weight: bold;
-            margin-top: 5px;
+            margin-top: 3px;
         }
 
         .total-row td {
-            padding: 10px;
-            font-size: 11pt;
+            padding: 8px 10px;
+            font-size: 9.5pt;
         }
 
         .signature-section {
             width: 100%;
-            margin-top: 30px;
+            margin-top: 20px;
             border-collapse: collapse;
         }
 
@@ -192,10 +192,10 @@
         .company-box {
             background-color: #1C46F4;
             color: white;
-            padding: 10px 15px;
+            padding: 8px 12px;
             font-weight: bold;
-            font-size: 10pt;
-            margin-bottom: 80px;
+            font-size: 8.5pt;
+            margin-bottom: 50px;
             text-align: center;
         }
 
@@ -205,19 +205,19 @@
 
         .signature-name {
             font-weight: bold;
-            font-size: 10pt;
-            margin-bottom: 3px;
+            font-size: 8.5pt;
+            margin-bottom: 2px;
         }
 
         .signature-title {
-            font-size: 9pt;
+            font-size: 8pt;
             text-transform: uppercase;
         }
 
         .payment-section {
-            margin-top: 40px;
-            font-size: 9pt;
-            line-height: 1.6;
+            margin-top: 25px;
+            font-size: 8pt;
+            line-height: 1.5;
         }
 
         .payment-section strong {
@@ -230,12 +230,12 @@
 
         .footer-thankyou {
             text-align: center;
-            margin-top: 50px;
-            font-size: 10pt;
+            margin-top: 25px;
+            font-size: 8.5pt;
             font-weight: bold;
             color: white;
             background-color: #1C46F4;
-            padding: 15px;
+            padding: 10px;
         }
     </style>
 </head>

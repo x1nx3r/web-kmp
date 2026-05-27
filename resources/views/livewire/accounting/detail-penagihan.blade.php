@@ -598,41 +598,140 @@
                         @endif
 
                         {{-- Informasi Pengiriman --}}
-                        <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
-                            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                <i class="fas fa-truck text-purple-600 mr-2"></i>
-                                Informasi Pengiriman
-                            </h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-sm text-gray-600">No. Pengiriman</p>
-                                    <p class="font-semibold text-gray-900">{{ $pengiriman->no_pengiriman }}</p>
+                        @php
+                            $isMerged = $invoice && $invoice->pengirimans->count() > 0;
+                            $shipments = $isMerged ? $invoice->pengirimans : collect([$pengiriman]);
+                        @endphp
+
+                        @if($isMerged)
+                            <div class="space-y-4">
+                                <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-5 text-white shadow-sm">
+                                    <h3 class="text-lg font-bold mb-2 flex items-center">
+                                        <i class="fas fa-cubes mr-2"></i>
+                                        Gabungan Kiriman ({{ $shipments->count() }} Pengiriman)
+                                    </h3>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3 pt-3 border-t border-purple-500/30">
+                                        <div>
+                                            <p class="text-purple-200 text-xs">Total Qty Gabungan</p>
+                                            <p class="font-semibold text-base">{{ number_format($shipments->sum('total_qty_kirim'), 2, ',', '.') }} kg</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-purple-200 text-xs">Total Harga Beli</p>
+                                            <p class="font-semibold text-base">Rp {{ number_format($subtotalPembayaran, 2, ',', '.') }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-purple-200 text-xs">Total Harga Jual</p>
+                                            <p class="font-semibold text-base">Rp {{ number_format($subtotalPenagihan, 2, ',', '.') }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-purple-200 text-xs">Margin Gabungan</p>
+                                            <p class="font-bold text-base {{ $totalMargin >= 0 ? 'text-green-300' : 'text-red-300' }}">
+                                                Rp {{ number_format($totalMargin, 2, ',', '.') }} ({{ number_format($marginPercentage, 2, ',', '.') }}%)
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Tanggal Kirim</p>
-                                    <p class="font-semibold text-gray-900">{{ $pengiriman->tanggal_kirim->format('d M Y') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Total Qty</p>
-                                    <p class="font-semibold text-gray-900">{{ number_format($pengiriman->total_qty_kirim, 2, ',', '.') }} kg</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Total Harga Beli</p>
-                                    <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPembayaran, 2, ',', '.') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Total Harga Jual</p>
-                                    <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPenagihan, 2, ',', '.') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Margin</p>
-                                    <p class="font-semibold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                        Rp {{ number_format($totalMargin, 2, ',', '.') }}
-                                        <span class="text-xs">({{ number_format($marginPercentage, 2, ',', '.') }}%)</span>
-                                    </p>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    @foreach($shipments as $s)
+                                        @php
+                                            $sPembayaran = 0;
+                                            $sApproval = $s->approvalPembayaran;
+                                            if ($sApproval) {
+                                                if (floatval($sApproval->subtotal) > 0) {
+                                                    $sPembayaran = floatval($sApproval->subtotal);
+                                                } elseif (floatval($sApproval->amount_after_refraksi) > 0) {
+                                                    $sPembayaran = floatval($sApproval->amount_after_refraksi);
+                                                } else {
+                                                    $sPembayaran = floatval($s->total_harga_kirim);
+                                                }
+                                            } else {
+                                                $sPembayaran = floatval($s->total_harga_kirim);
+                                            }
+
+                                            $sPenagihan = 0;
+                                            foreach ($s->pengirimanDetails as $detail) {
+                                                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                                                $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                                                $sPenagihan += floatval($detail->qty_kirim) * $hargaJual;
+                                            }
+
+                                            $sMargin = $sPenagihan - $sPembayaran;
+                                            $sMarginPercentage = $sPenagihan > 0 ? ($sMargin / $sPenagihan) * 100 : 0;
+                                        @endphp
+                                        <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200 shadow-sm relative overflow-hidden">
+                                            <div class="absolute top-0 right-0 bg-purple-100 text-purple-700 font-bold text-[10px] px-2.5 py-1 rounded-bl">
+                                                INSTANSI KIRIMAN
+                                            </div>
+                                            <h4 class="font-bold text-gray-900 mb-3 flex items-center">
+                                                <i class="fas fa-truck text-purple-600 mr-2 text-sm"></i>
+                                                {{ $s->no_pengiriman }}
+                                            </h4>
+                                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                                <div>
+                                                    <p class="text-gray-500">Tanggal Kirim</p>
+                                                    <p class="font-semibold text-gray-800">{{ $s->tanggal_kirim->format('d M Y') }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Total Qty</p>
+                                                    <p class="font-semibold text-gray-800">{{ number_format($s->total_qty_kirim, 2, ',', '.') }} kg</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Harga Beli</p>
+                                                    <p class="font-semibold text-gray-800">Rp {{ number_format($sPembayaran, 2, ',', '.') }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Harga Jual</p>
+                                                    <p class="font-semibold text-gray-800">Rp {{ number_format($sPenagihan, 2, ',', '.') }}</p>
+                                                </div>
+                                                <div class="col-span-2 pt-2 border-t border-purple-200/50 flex justify-between items-center">
+                                                    <span class="text-gray-500">Margin Kiriman:</span>
+                                                    <span class="font-bold {{ $sMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                        Rp {{ number_format($sMargin, 2, ',', '.') }} ({{ number_format($sMarginPercentage, 2, ',', '.') }}%)
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
                                 </div>
                             </div>
-                        </div>
+                        @else
+                            <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <i class="fas fa-truck text-purple-600 mr-2"></i>
+                                    Informasi Pengiriman
+                                </h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-600">No. Pengiriman</p>
+                                        <p class="font-semibold text-gray-900">{{ $pengiriman->no_pengiriman }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Tanggal Kirim</p>
+                                        <p class="font-semibold text-gray-900">{{ $pengiriman->tanggal_kirim->format('d M Y') }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Total Qty</p>
+                                        <p class="font-semibold text-gray-900">{{ number_format($pengiriman->total_qty_kirim, 2, ',', '.') }} kg</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Total Harga Beli</p>
+                                        <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPembayaran, 2, ',', '.') }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Total Harga Jual</p>
+                                        <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPenagihan, 2, ',', '.') }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Margin</p>
+                                        <p class="font-semibold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            Rp {{ number_format($totalMargin, 2, ',', '.') }}
+                                            <span class="text-xs">({{ number_format($marginPercentage, 2, ',', '.') }}%)</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- Bukti Foto Bongkar --}}
                         @if($pengiriman->bukti_foto_bongkar_raw)
@@ -767,21 +866,35 @@
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($pengiriman->details as $detail)
-                                            <tr>
-                                                <td class="px-4 py-3 text-sm text-gray-900">
-                                                    {{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}
-                                                </td>
-                                                <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg
-                                                </td>
-                                                <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->harga_satuan, 2, ',', '.') }}
-                                                </td>
-                                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->total_harga, 2, ',', '.') }}
-                                                </td>
-                                            </tr>
+                                        @php
+                                            $isMerged = $invoice && $invoice->pengirimans->count() > 0;
+                                            $shipments = $isMerged ? $invoice->pengirimans : collect([$pengiriman]);
+                                        @endphp
+                                        @foreach($shipments as $s)
+                                            @foreach($s->pengirimanDetails as $detail)
+                                                @php
+                                                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                                                    $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                                                    $totalJual = floatval($detail->qty_kirim) * $hargaJual;
+                                                @endphp
+                                                <tr>
+                                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                                        <div>{{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}</div>
+                                                        @if($isMerged)
+                                                            <div class="text-xs text-gray-500 font-medium">No. Pengiriman: {{ $s->no_pengiriman }}</div>
+                                                        @endif
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                                                        {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                                                        Rp {{ number_format($hargaJual, 2, ',', '.') }}
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
+                                                        Rp {{ number_format($totalJual, 2, ',', '.') }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
                                         @endforeach
                                     </tbody>
                                 </table>

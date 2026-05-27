@@ -7,6 +7,11 @@
     $isPIC = $pengiriman->purchasing_id === $currentUser->id;
     $canManagePengiriman = in_array($currentUser->role, ['direktur', 'manager_purchasing', 'staff_purchasing']);
     $canEdit = $canManagePengiriman && ($currentUser->role !== 'staff_purchasing' || $isPIC);
+
+    // Load existing expense if any
+    $existingExpense = $pengiriman->approvalPembayaran?->expenses?->first();
+    $existingType = $existingExpense?->type;
+    $existingAmount = $existingExpense?->amount;
 @endphp
 
 {{-- Modal Header - Sticky & Responsive --}}
@@ -547,6 +552,37 @@
                             <div class="text-left sm:text-right">
                                 <span class="text-xs text-green-500 font-semibold" id="marginPercentage">0%</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Additional Cost Section --}}
+                <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <i class="fas fa-coins text-orange-600 mr-2 text-sm"></i>
+                        <span>Tambahan Biaya (Additional Cost)</span>
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Jenis Tambahan Biaya</label>
+                            <select name="additional_cost_type" id="additional_cost_type" 
+                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                                    {{ !$canEdit ? 'disabled' : '' }}>
+                                <option value="">-- Tidak Ada --</option>
+                                <option value="truk" {{ (old('additional_cost_type', $existingType) == 'truk') ? 'selected' : '' }}>Truk</option>
+                                <option value="kuli" {{ (old('additional_cost_type', $existingType) == 'kuli') ? 'selected' : '' }}>Kuli</option>
+                                <option value="refraksi" {{ (old('additional_cost_type', $existingType) == 'refraksi') ? 'selected' : '' }}>Refraksi</option>
+                                <option value="fee" {{ (old('additional_cost_type', $existingType) == 'fee') ? 'selected' : '' }}>Fee</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Nominal Biaya (Rp)</label>
+                            <input type="number" name="additional_cost_amount" id="additional_cost_amount"
+                                   value="{{ old('additional_cost_amount', $existingAmount ? floatval($existingAmount) : '') }}"
+                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                                   placeholder="Masukkan nominal tambahan biaya (opsional)"
+                                   min="0" step="0.01"
+                                   {{ !$canEdit ? 'readonly' : '' }}>
                         </div>
                     </div>
                 </div>

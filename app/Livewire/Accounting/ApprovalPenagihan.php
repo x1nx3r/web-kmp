@@ -259,6 +259,11 @@ class ApprovalPenagihan extends Component
 
     public function showCreateInvoice($pengirimanId)
     {
+        if (!empty($this->selectedPengirimanIds)) {
+            $this->showCreateMergedInvoice();
+            return;
+        }
+
         $pengiriman = Pengiriman::with([
             'purchaseOrder.klien',
             'forecast',

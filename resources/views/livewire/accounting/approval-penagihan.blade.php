@@ -99,8 +99,13 @@
                                     wire:click="showCreateMergedInvoice"
                                     class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
                                 >
-                                    <i class="fas fa-object-group mr-1.5"></i>
-                                    Merge {{ count($selectedPengirimanIds) }} Pengiriman
+                                    @if(count($selectedPengirimanIds) === 1)
+                                        <i class="fas fa-file-invoice mr-1.5"></i>
+                                        Buat Invoice (1 Pilihan)
+                                    @else
+                                        <i class="fas fa-object-group mr-1.5"></i>
+                                        Merge {{ count($selectedPengirimanIds) }} Pengiriman
+                                    @endif
                                 </button>
                             @else
                                 <span class="text-xs text-red-600 font-semibold bg-red-100 px-3 py-2 rounded-lg border border-red-200">

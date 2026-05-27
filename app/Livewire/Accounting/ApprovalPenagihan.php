@@ -287,7 +287,15 @@ class ApprovalPenagihan extends Component
 
     public function createInvoice()
     {
-        $this->validate();
+        $this->validate([
+            'invoiceForm.customer_name' => 'required|string|max:255',
+            'invoiceForm.customer_address' => 'required|string',
+            'invoiceForm.customer_phone' => 'nullable|string|max:20',
+            'invoiceForm.customer_email' => 'nullable|email|max:255',
+            'invoiceForm.refraksi_type' => 'required|in:qty,rupiah,lainnya',
+            'invoiceForm.refraksi_value' => 'required|numeric|min:0',
+            'invoiceForm.notes' => 'nullable|string',
+        ]);
 
         $pengiriman = $this->selectedData;
 
@@ -318,7 +326,7 @@ class ApprovalPenagihan extends Component
                 $totalSellingPrice += $itemTotal;
 
                 // Collect item details for invoice
-                $bahanBakuName = $detail->bahanBakuSupplier->nama ?? ($orderDetail->bahanBakuKlien->nama ?? 'Bahan Baku');
+                $bahanBakuName = $detail->bahanBakuSupplier?->nama ?? ($orderDetail?->bahanBakuKlien?->nama ?? 'Bahan Baku');
                 $itemDetails[] = [
                     'name' => $bahanBakuName,
                     'qty' => $qtyKirim,
@@ -330,9 +338,9 @@ class ApprovalPenagihan extends Component
             // Prepare items with selling price
             $items = [[
                 'item_name' => 'Pengiriman ' . $pengiriman->no_pengiriman,
-                'description' => 'No. Pengiriman: ' . $pengiriman->no_pengiriman .
-                                 '\nTanggal Kirim: ' . $pengiriman->tanggal_kirim->format('d M Y') .
-                                 '\nTotal Qty: ' . number_format($pengiriman->total_qty_kirim, 2, ',', '.') . ' kg',
+                'description' => "No. Pengiriman: " . $pengiriman->no_pengiriman .
+                                 "\nTanggal Kirim: " . $pengiriman->tanggal_kirim->format('d M Y') .
+                                 "\nTotal Qty: " . number_format($pengiriman->total_qty_kirim, 2, ',', '.') . " kg",
                 'quantity' => 1,
                 'unit' => 'paket',
                 'unit_price' => $totalSellingPrice,

@@ -868,9 +868,10 @@ class PengirimanController extends Controller
                     "details.*.bahan_baku_supplier_id" =>
                         "required|exists:bahan_baku_supplier,id",
                     "details.*.qty_kirim" => "required|numeric|min:0",
-                    // ✅ ALLOW user-edited prices (nullable - will use DB if not provided)
-                    "details.*.harga_satuan" => "nullable|numeric|min:0", // User can edit
-                    "details.*.total_harga" => "nullable|numeric|min:0", // Auto calculated
+                    "details.*.harga_satuan" => "nullable|numeric|min:0",
+                    "details.*.total_harga" => "nullable|numeric|min:0",
+                    "additional_cost_type" => "nullable|string|in:truk,kuli,refraksi,fee",
+                    "additional_cost_amount" => "nullable|numeric|min:0",
                 ],
                 [
                     "pengiriman_id.required" => "ID pengiriman diperlukan",
@@ -1222,6 +1223,37 @@ class PengirimanController extends Controller
                 }
             }
 
+            // Save additional cost/expense if entered
+            $additionalCostType = $request->input('additional_cost_type');
+            $additionalCostAmount = floatval($request->input('additional_cost_amount') ?? 0);
+
+            // Fetch or create ApprovalPembayaran
+            $approvalPembayaran = \App\Models\ApprovalPembayaran::firstOrCreate(
+                ['pengiriman_id' => $pengiriman->id],
+                ['status' => 'pending']
+            );
+
+            // Clear out any old expenses to avoid duplicates
+            $approvalPembayaran->expenses()->delete();
+            $expensesTotal = 0;
+
+            if (!empty($additionalCostType) && $additionalCostAmount > 0) {
+                $approvalPembayaran->expenses()->create([
+                    'type' => $additionalCostType,
+                    'amount' => $additionalCostAmount,
+                ]);
+                $expensesTotal = $additionalCostAmount;
+            }
+
+            // Update the totals in approvalPembayaran
+            $amountAfterRefraksi = floatval($approvalPembayaran->amount_after_refraksi ?? $pengiriman->total_harga_kirim ?? 0);
+            $newSubtotal = max(0, $amountAfterRefraksi - $expensesTotal);
+
+            $approvalPembayaran->update([
+                'additional_expenses_total' => $expensesTotal,
+                'subtotal' => $newSubtotal,
+                'total_dibayarkan' => $newSubtotal,
+            ]);
       
             $this->reduceOrderDetailQty($pengiriman);
 

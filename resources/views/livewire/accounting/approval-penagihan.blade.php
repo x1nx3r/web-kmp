@@ -104,13 +104,13 @@
                                         Buat Invoice (1 Pilihan)
                                     @else
                                         <i class="fas fa-object-group mr-1.5"></i>
-                                        Merge {{ count($selectedPengirimanIds) }} Pengiriman
+                                        Gabung {{ count($selectedPengirimanIds) }} Pengiriman
                                     @endif
                                 </button>
                             @else
                                 <span class="text-xs text-red-600 font-semibold bg-red-100 px-3 py-2 rounded-lg border border-red-200">
                                     <i class="fas fa-exclamation-circle mr-1"></i>
-                                    Klien harus sama untuk merge!
+                                    Klien harus sama untuk gabung!
                                 </span>
                             @endif
                         @endif

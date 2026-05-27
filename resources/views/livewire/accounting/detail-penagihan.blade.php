@@ -767,21 +767,35 @@
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($pengiriman->details as $detail)
-                                            <tr>
-                                                <td class="px-4 py-3 text-sm text-gray-900">
-                                                    {{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}
-                                                </td>
-                                                <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg
-                                                </td>
-                                                <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->harga_satuan, 2, ',', '.') }}
-                                                </td>
-                                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->total_harga, 2, ',', '.') }}
-                                                </td>
-                                            </tr>
+                                        @php
+                                            $isMerged = $invoice && $invoice->pengirimans->count() > 0;
+                                            $shipments = $isMerged ? $invoice->pengirimans : collect([$pengiriman]);
+                                        @endphp
+                                        @foreach($shipments as $s)
+                                            @foreach($s->pengirimanDetails as $detail)
+                                                @php
+                                                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                                                    $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                                                    $totalJual = floatval($detail->qty_kirim) * $hargaJual;
+                                                @endphp
+                                                <tr>
+                                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                                        <div>{{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}</div>
+                                                        @if($isMerged)
+                                                            <div class="text-xs text-gray-500 font-medium">No. Pengiriman: {{ $s->no_pengiriman }}</div>
+                                                        @endif
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                                                        {{ number_format($detail->qty_kirim, 2, ',', '.') }} kg
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                                                        Rp {{ number_format($hargaJual, 2, ',', '.') }}
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
+                                                        Rp {{ number_format($totalJual, 2, ',', '.') }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
                                         @endforeach
                                     </tbody>
                                 </table>

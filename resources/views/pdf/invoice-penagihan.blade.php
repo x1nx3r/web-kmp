@@ -12,20 +12,20 @@
 
         body {
             font-family: Arial, sans-serif;
-            font-size: 8.5pt;
+            font-size: 10pt;
             color: #000;
-            padding: 15px;
+            padding: 20px;
         }
 
         .header-section {
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             border-collapse: collapse;
         }
 
         .header-section td {
             vertical-align: middle;
-            padding: 5px 0;
+            padding: 10px 0;
         }
 
         .logo-cell {
@@ -40,80 +40,80 @@
 
         .invoice-title h1 {
             color: #1C46F4;
-            font-size: 30pt;
+            font-size: 36pt;
             font-weight: bold;
             margin: 0;
             letter-spacing: 3px;
         }
 
         .company-info {
-            font-size: 8pt;
-            line-height: 1.5;
+            font-size: 9pt;
+            line-height: 1.6;
             color: #333;
         }
 
         .customer-section {
             text-align: right;
-            font-size: 8.5pt;
+            font-size: 10pt;
         }
 
         .customer-label {
-            margin-bottom: 3px;
+            margin-bottom: 5px;
             font-weight: normal;
         }
 
         .customer-name {
             font-weight: bold;
-            font-size: 9.5pt;
-            margin-bottom: 2px;
+            font-size: 11pt;
+            margin-bottom: 3px;
         }
 
         .customer-phone {
-            font-size: 8pt;
+            font-size: 9pt;
         }
 
         .info-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            margin: 20px 0;
         }
 
         .info-table th {
             background-color: #2AB672;
             color: white;
-            padding: 6px;
+            padding: 10px;
             text-align: left;
-            font-size: 8pt;
+            font-size: 9pt;
             font-weight: bold;
             border: 1px solid #2AB672;
         }
 
         .info-table td {
             background-color: white;
-            padding: 6px;
+            padding: 10px;
             border: 1px solid #ddd;
-            font-size: 8pt;
+            font-size: 9pt;
         }
 
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            margin: 20px 0;
         }
 
         .items-table th {
             background-color: #2AB672;
             color: white;
-            padding: 6px 8px;
-            font-size: 8pt;
+            padding: 10px 8px;
+            font-size: 9pt;
             font-weight: bold;
             border: 1px solid #2AB672;
         }
 
         .items-table td {
-            padding: 6px 8px;
+            padding: 10px 8px;
             border: 1px solid #ddd;
-            font-size: 8pt;
+            font-size: 9pt;
         }
 
         .text-center {
@@ -126,7 +126,7 @@
 
         .summary-section {
             width: 100%;
-            margin-top: 15px;
+            margin-top: 20px;
             border-collapse: collapse;
         }
 
@@ -142,12 +142,12 @@
         .summary-row {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
 
         .summary-row td {
-            padding: 6px 10px;
-            font-size: 8.5pt;
+            padding: 8px 10px;
+            font-size: 10pt;
         }
 
         .summary-label {
@@ -165,17 +165,17 @@
             background-color: #1C46F4;
             color: white;
             font-weight: bold;
-            margin-top: 3px;
+            margin-top: 5px;
         }
 
         .total-row td {
-            padding: 8px 10px;
-            font-size: 9.5pt;
+            padding: 10px;
+            font-size: 11pt;
         }
 
         .signature-section {
             width: 100%;
-            margin-top: 20px;
+            margin-top: 30px;
             border-collapse: collapse;
         }
 
@@ -192,10 +192,10 @@
         .company-box {
             background-color: #1C46F4;
             color: white;
-            padding: 8px 12px;
+            padding: 10px 15px;
             font-weight: bold;
-            font-size: 8.5pt;
-            margin-bottom: 50px;
+            font-size: 10pt;
+            margin-bottom: 80px;
             text-align: center;
         }
 
@@ -205,19 +205,19 @@
 
         .signature-name {
             font-weight: bold;
-            font-size: 8.5pt;
-            margin-bottom: 2px;
+            font-size: 10pt;
+            margin-bottom: 3px;
         }
 
         .signature-title {
-            font-size: 8pt;
+            font-size: 9pt;
             text-transform: uppercase;
         }
 
         .payment-section {
-            margin-top: 25px;
-            font-size: 8pt;
-            line-height: 1.5;
+            margin-top: 40px;
+            font-size: 9pt;
+            line-height: 1.6;
         }
 
         .payment-section strong {
@@ -230,27 +230,19 @@
 
         .footer-thankyou {
             text-align: center;
-            margin-top: 25px;
-            font-size: 8.5pt;
+            margin-top: 50px;
+            font-size: 10pt;
             font-weight: bold;
             color: white;
             background-color: #1C46F4;
-            padding: 10px;
+            padding: 15px;
         }
     </style>
 </head>
 <body>
     @php
-        $isMerged = $invoice && $invoice->pengirimans->count() > 0;
-        $shipments = $isMerged ? $invoice->pengirimans : collect([$pengiriman]);
-        $mainShipment = $shipments->first() ?? $pengiriman;
-        
         // Always fetch fresh client data to ensure latest information is displayed
-        $freshKlien = $mainShipment->purchaseOrder ? $mainShipment->purchaseOrder->klien()->with('contactPerson')->first() : null;
-
-        $poNumbers = $shipments->map(function($s) {
-            return $s->purchaseOrder->po_number ?? $s->purchaseOrder->no_order ?? null;
-        })->filter()->unique()->join(', ') ?: '-';
+        $freshKlien = $pengiriman->purchaseOrder->klien()->with('contactPerson')->first();
     @endphp
 
     {{-- Header with Logo and Invoice Title --}}
@@ -333,7 +325,7 @@
         <tbody>
             <tr>
                 <td class="text-center">{{ $invoice->invoice_number }}</td>
-                <td class="text-center">{{ $poNumbers }}</td>
+                <td class="text-center">{{ $pengiriman->purchaseOrder->po_number ?? $pengiriman->purchaseOrder->no_order ?? '-' }}</td>
                 <td class="text-center">{{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
                 <td class="text-center">{{ \Carbon\Carbon::parse($invoice->due_date)->locale('id')->isoFormat('D MMMM YYYY') }}</td>
             </tr>
@@ -345,27 +337,24 @@
         <thead>
             <tr>
                 <th style="width: 5%;" class="text-center">NO</th>
-                <th style="width: 35%; text-align: left;">DESKRIPSI</th>
-                <th style="width: 12%;" class="text-center">QTY PER KG</th>
-                <th style="width: 15%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
-                <th style="width: 15%;" class="text-center">REFRAKSI</th>
-                <th style="width: 18%;" class="text-center">TOTAL HARGA</th>
+                <th style="width: 40%; text-align: left;">DESKRIPSI</th>
+                <th style="width: 15%;" class="text-center">QTY PER KG</th>
+                <th style="width: 18%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
+                <th style="width: 22%;" class="text-center">TOTAL HARGA</th>
             </tr>
         </thead>
         <tbody>
             @php
                 // Harga jual total dasar (sebelum refraksi) bisa di-override dari invoice edit mode.
                 $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
-                $qtyTotal = (float) ($shipments->sum('total_qty_kirim'));
+                $qtyTotal = (float) ($pengiriman->total_qty_kirim ?? 0);
 
                 // Total harga jual default berdasarkan detail (untuk pro-rate jika invoice override dipakai)
                 $computedTotalSelling = 0;
-                foreach ($shipments as $s) {
-                    foreach ($s->pengirimanDetails as $d) {
-                        $h = $d->orderDetail->harga_jual ?? 0;
-                        $q = $d->qty_kirim ?? 0;
-                        $computedTotalSelling += ((float) $q) * ((float) $h);
-                    }
+                foreach ($pengiriman->details as $d) {
+                    $h = $d->orderDetail->harga_jual ?? 0;
+                    $q = $d->qty_kirim ?? 0;
+                    $computedTotalSelling += ((float) $q) * ((float) $h);
                 }
 
                 // Faktor untuk menyesuaikan harga satuan & total item agar jumlahnya = amountBefore
@@ -375,18 +364,9 @@
                 if ($amountBefore > 0) {
                     $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
                 }
-
-                // Get all details from all shipments to display
-                $allDetails = collect();
-                foreach ($shipments as $s) {
-                    foreach ($s->pengirimanDetails as $d) {
-                        $d->shipment_no = $s->no_pengiriman;
-                        $allDetails->push($d);
-                    }
-                }
             @endphp
 
-            @forelse($allDetails as $index => $detail)
+            @forelse($pengiriman->details as $index => $detail)
                 @php
                     $hargaJualAsli = (float) ($detail->orderDetail->harga_jual ?? 0);
                     $qtyKirim = (float) ($detail->qty_kirim ?? 0);
@@ -394,42 +374,17 @@
                     // Harga ditampilkan dipro-rate supaya sesuai dengan amount_before_refraksi (subtotal sebelum refraksi)
                     $hargaSatuanDisplay = $hargaJualAsli * $ratio;
                     $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
-
-                    // Hitung refraksi pro-rata
-                    $itemRefraksi = 0;
-                    if ($invoice->refraksi_value > 0) {
-                        if ($invoice->refraksi_type === 'qty') {
-                            $itemRefraksi = $qtyKirim * ($invoice->refraksi_value / 100) * $hargaSatuanDisplay;
-                        } elseif ($invoice->refraksi_type === 'rupiah') {
-                            $itemRefraksi = $qtyKirim * $invoice->refraksi_value;
-                        } elseif ($invoice->refraksi_type === 'lainnya') {
-                            $itemRefraksi = $amountBefore > 0 ? ($totalHargaItem / $amountBefore) * $invoice->refraksi_amount : 0;
-                        }
-                    }
-                    $totalSetelahRefraksi = $totalHargaItem - $itemRefraksi;
                 @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td style="text-align: left;">
-                        {{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
-                        @if($isMerged)
-                            <br><span style="font-size: 8pt; color: #666;">No. Pengiriman: {{ $detail->shipment_no }}</span>
-                        @endif
-                    </td>
+                    <td style="text-align: left;">{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
                     <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
                     <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
-                    <td class="text-center">
-                        @if($itemRefraksi > 0)
-                            Rp {{ number_format($itemRefraksi, 2, ',', '.') }}
-                        @else
-                            -
-                        @endif
-                    </td>
-                    <td class="text-center">Rp {{ number_format($totalSetelahRefraksi, 2, ',', '.') }}</td>
+                    <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center" style="padding: 15px; color: #999;">Detail pengiriman tidak tersedia</td>
+                    <td colspan="5" class="text-center" style="padding: 15px; color: #999;">Detail pengiriman tidak tersedia</td>
                 </tr>
             @endforelse
         </tbody>
@@ -443,7 +398,7 @@
                 <table class="summary-row">
                     <tr>
                         <td class="summary-label">Total Harga</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $shipments->sum('total_harga_kirim'), 2, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $pengiriman->total_harga_kirim, 2, ',', '.') }}</td>
                     </tr>
                 </table>
 

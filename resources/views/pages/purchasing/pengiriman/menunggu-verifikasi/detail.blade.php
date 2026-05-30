@@ -385,7 +385,6 @@
                             <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full">PEMBELIAN</span>
                         </div>
                         <p class="text-xl font-bold text-red-900">Rp {{ number_format($totalBeliForMargin, 3, ',', '.') }}</p>
-                        <p class="text-xs text-red-600 mt-1">Rp {{ number_format($hargaBeliPerKg, 3, ',', '.') }}/kg · {{ number_format($qtyBeli, 3, ',', '.') }} kg</p>
                     </div>
                 @else
                     <div class="text-center py-8 text-gray-400">

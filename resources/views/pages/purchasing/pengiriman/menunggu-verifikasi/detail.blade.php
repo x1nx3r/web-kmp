@@ -342,15 +342,15 @@
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500">Amount Sebelum</p>
-                                    <p class="font-semibold">Rp {{ number_format($approval->amount_before_refraksi ?? 0, 0, ',', '.') }}</p>
+                                    <p class="font-semibold">Rp {{ number_format($approval->amount_before_refraksi ?? 0, 3, ',', '.') }}</p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500">Amount Setelah</p>
-                                    <p class="font-semibold text-green-700">Rp {{ number_format($approval->amount_after_refraksi ?? 0, 0, ',', '.') }}</p>
+                                    <p class="font-semibold text-green-700">Rp {{ number_format($approval->amount_after_refraksi ?? 0, 3, ',', '.') }}</p>
                                 </div>
                             </div>
                             <div class="mt-2 pt-2 border-t border-orange-200">
-                                <p class="text-xs text-red-600">Potongan Refraksi: <span class="font-bold">Rp {{ number_format($approval->refraksi_amount ?? 0, 0, ',', '.') }}</span></p>
+                                <p class="text-xs text-red-600">Potongan Refraksi: <span class="font-bold">Rp {{ number_format($approval->refraksi_amount ?? 0, 3, ',', '.') }}</span></p>
                             </div>
                         </div>
                     @endif
@@ -362,13 +362,13 @@
                             Potongan Tambahan (Beli)
                         </p>
                         @if($approval->additional_expenses_total > 0)
-                            <p class="text-lg font-bold text-red-700 mb-2">Rp {{ number_format($approval->additional_expenses_total, 0, ',', '.') }}</p>
+                            <p class="text-lg font-bold text-red-700 mb-2">Rp {{ number_format($approval->additional_expenses_total, 3, ',', '.') }}</p>
                             @if($approval->expenses && $approval->expenses->count() > 0)
                                 <div class="space-y-1">
                                     @foreach($approval->expenses as $exp)
                                         <div class="flex justify-between text-xs text-red-700">
                                             <span>{{ ucfirst($exp->type) }}</span>
-                                            <span>Rp {{ number_format($exp->amount, 0, ',', '.') }}</span>
+                                            <span>Rp {{ number_format($exp->amount, 3, ',', '.') }}</span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -384,8 +384,8 @@
                             <p class="text-sm font-semibold text-red-900"><i class="fas fa-shopping-cart mr-1"></i>Total Beli</p>
                             <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full">PEMBELIAN</span>
                         </div>
-                        <p class="text-xl font-bold text-red-900">Rp {{ number_format($totalBeliForMargin, 0, ',', '.') }}</p>
-                        <p class="text-xs text-red-600 mt-1">Rp {{ number_format($hargaBeliPerKg, 0, ',', '.') }}/kg · {{ number_format($qtyBeli, 3, ',', '.') }} kg</p>
+                        <p class="text-xl font-bold text-red-900">Rp {{ number_format($totalBeliForMargin, 3, ',', '.') }}</p>
+                        <p class="text-xs text-red-600 mt-1">Rp {{ number_format($hargaBeliPerKg, 3, ',', '.') }}/kg · {{ number_format($qtyBeli, 3, ',', '.') }} kg</p>
                     </div>
                 @else
                     <div class="text-center py-8 text-gray-400">
@@ -407,7 +407,7 @@
                                 <span class="text-gray-600">Qty Setelah:</span>
                                 <span class="font-semibold">{{ number_format($invoice->qty_after_refraksi ?? 0, 3, ',', '.') }} kg</span>
                                 <span class="text-gray-600">Amount Setelah:</span>
-                                <span class="font-semibold">Rp {{ number_format($invoice->amount_after_refraksi ?? 0, 0, ',', '.') }}</span>
+                                <span class="font-semibold">Rp {{ number_format($invoice->amount_after_refraksi ?? 0, 3, ',', '.') }}</span>
                             </div>
                         </div>
                     @endif
@@ -419,13 +419,13 @@
                             Potongan Tambahan (Jual)
                         </p>
                         @if($invoice->additional_expenses_total > 0)
-                            <p class="text-lg font-bold text-green-700 mb-2">Rp {{ number_format($invoice->additional_expenses_total, 0, ',', '.') }}</p>
+                            <p class="text-lg font-bold text-green-700 mb-2">Rp {{ number_format($invoice->additional_expenses_total, 3, ',', '.') }}</p>
                             @if($invoice->expenses && $invoice->expenses->count() > 0)
                                 <div class="space-y-1">
                                     @foreach($invoice->expenses as $exp)
                                         <div class="flex justify-between text-xs text-green-700">
                                             <span>{{ ucfirst($exp->type) }}</span>
-                                            <span>Rp {{ number_format($exp->amount, 0, ',', '.') }}</span>
+                                            <span>Rp {{ number_format($exp->amount, 3, ',', '.') }}</span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -443,8 +443,8 @@
                             <p class="text-sm font-semibold text-green-900"><i class="fas fa-tag mr-1"></i>Total Jual</p>
                             <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full">PENJUALAN</span>
                         </div>
-                        <p class="text-xl font-bold text-green-900">Rp {{ number_format($totalJualForMargin, 0, ',', '.') }}</p>
-                        <p class="text-xs text-green-600 mt-1">Rp {{ number_format($hargaJualPerKg, 0, ',', '.') }}/kg · {{ number_format($qtyJual, 3, ',', '.') }} kg</p>
+                        <p class="text-xl font-bold text-green-900">Rp {{ number_format($totalJualForMargin, 3, ',', '.') }}</p>
+                        <p class="text-xs text-green-600 mt-1">Rp {{ number_format($hargaJualPerKg, 3, ',', '.') }}/kg · {{ number_format($qtyJual, 3, ',', '.') }} kg</p>
                         <p class="text-xs text-green-500 mt-1">Sumber: {{ $sourceJual }}</p>
                     </div>
                 @else
@@ -467,8 +467,8 @@
                             <p class="text-sm font-semibold text-{{ $colorMargin }}-900"><i class="fas fa-chart-line mr-1"></i>Margin</p>
                             <span class="px-2 py-1 bg-{{ $colorMargin }}-600 text-white text-xs rounded-full">{{ $isProfit ? 'PROFIT' : 'LOSS' }}</span>
                         </div>
-                        <p class="text-xl font-bold text-{{ $colorMargin }}-900">{{ $isProfit ? '+' : '' }}Rp {{ number_format($margin, 0, ',', '.') }}</p>
-                        <p class="text-lg font-semibold text-{{ $colorMargin }}-700 mt-1">{{ $isProfit ? '+' : '' }}{{ number_format($marginPct, 2, ',', '.') }}%</p>
+                        <p class="text-xl font-bold text-{{ $colorMargin }}-900">{{ $isProfit ? '+' : '' }}Rp {{ number_format($margin, 3, ',', '.') }}</p>
+                        <p class="text-lg font-semibold text-{{ $colorMargin }}-700 mt-1">{{ $isProfit ? '+' : '' }}{{ number_format($marginPct, 3, ',', '.') }}%</p>
                     </div>
                 @endif
             </div>

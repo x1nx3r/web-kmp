@@ -167,7 +167,6 @@ class ApprovalPenagihan extends Component
 
         if ($this->activeTab === 'pending') {
             $pengirimansWithoutInvoice = Pengiriman::whereIn('status', ['berhasil', 'menunggu_verifikasi'])
-                ->whereNull('invoice_penagihan_id')
                 ->doesntHave('invoicePenagihan')
                 ->whereHas('approvalPembayaran', function($q) {
                     $q->where('status', 'completed');
@@ -392,26 +391,16 @@ class ApprovalPenagihan extends Component
         $this->selectedData = $shipments;
         $this->showCreateInvoiceModal = true;
     }
-
     public function createInvoice()
     {
-        $this->validate([
-            'invoiceForm.customer_name' => 'required|string|max:255',
-            'invoiceForm.customer_address' => 'required|string',
-            'invoiceForm.customer_phone' => 'nullable|string|max:20',
-            'invoiceForm.customer_email' => 'nullable|email|max:255',
-            'invoiceForm.refraksi_type' => 'required|in:qty,rupiah,lainnya',
-            'invoiceForm.refraksi_value' => 'required|numeric|min:0',
-            'invoiceForm.notes' => 'nullable|string',
-        ]);
+        $this->validate();
 
-        if (!$this->selectedData) {
+        $pengiriman = $this->selectedData;
+
+        if (!$pengiriman) {
             session()->flash('error', 'Data pengiriman tidak ditemukan');
             return;
         }
-
-        $isMerged = $this->selectedData instanceof \Illuminate\Support\Collection;
-        $shipments = $isMerged ? $this->selectedData : collect([$this->selectedData]);
 
         DB::beginTransaction();
         try {
@@ -420,68 +409,64 @@ class ApprovalPenagihan extends Component
             // Generate invoice number
             $invoiceNumber = InvoicePenagihan::generateInvoiceNumber();
 
+            // Load pengiriman details with order detail for harga_jual
+            $pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail');
+
             // Calculate total selling price (harga jual) instead of buying price (harga beli)
             $totalSellingPrice = 0;
-            $items = [];
+            $itemDetails = [];
 
-            foreach ($shipments as $pengiriman) {
-                $pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail');
-                
-                $shipmentSellingPrice = 0;
-                $itemDetails = [];
+            foreach ($pengiriman->pengirimanDetails as $detail) {
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                $qtyKirim = floatval($detail->qty_kirim);
+                $itemTotal = $qtyKirim * $hargaJual;
+                $totalSellingPrice += $itemTotal;
 
-                foreach ($pengiriman->pengirimanDetails as $detail) {
-                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                    $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
-                    $qtyKirim = floatval($detail->qty_kirim);
-                    $itemTotal = $qtyKirim * $hargaJual;
-                    $shipmentSellingPrice += $itemTotal;
-
-                    // Collect item details for invoice
-                    $bahanBakuName = $detail->bahanBakuSupplier?->nama ?? ($orderDetail?->bahanBakuKlien?->nama ?? 'Bahan Baku');
-                    $itemDetails[] = [
-                        'name' => $bahanBakuName,
-                        'qty' => $qtyKirim,
-                        'harga_jual' => $hargaJual,
-                        'total' => $itemTotal,
-                    ];
-                }
-
-                $items[] = [
-                    'item_name' => 'Pengiriman ' . $pengiriman->no_pengiriman,
-                    'description' => "No. Pengiriman: " . $pengiriman->no_pengiriman .
-                                     "\nTanggal Kirim: " . $pengiriman->tanggal_kirim->format('d M Y') .
-                                     "\nTotal Qty: " . number_format($pengiriman->total_qty_kirim, 2, ',', '.') . " kg",
-                    'quantity' => 1,
-                    'unit' => 'paket',
-                    'unit_price' => $shipmentSellingPrice,
-                    'amount' => $shipmentSellingPrice,
-                    'details' => $itemDetails,
+                // Collect item details for invoice
+                $bahanBakuName = $detail->bahanBakuSupplier->nama ?? ($orderDetail->bahanBakuKlien->nama ?? 'Bahan Baku');
+                $itemDetails[] = [
+                    'name' => $bahanBakuName,
+                    'qty' => $qtyKirim,
+                    'harga_jual' => $hargaJual,
+                    'total' => $itemTotal,
                 ];
-
-                $totalSellingPrice += $shipmentSellingPrice;
             }
 
+            // Prepare items with selling price
+            $items = [[
+                'item_name' => 'Pengiriman ' . $pengiriman->no_pengiriman,
+                'description' => 'No. Pengiriman: ' . $pengiriman->no_pengiriman .
+                                 '\nTanggal Kirim: ' . $pengiriman->tanggal_kirim->format('d M Y') .
+                                 '\nTotal Qty: ' . number_format($pengiriman->total_qty_kirim, 2, ',', '.') . ' kg',
+                'quantity' => 1,
+                'unit' => 'paket',
+                'unit_price' => $totalSellingPrice,
+                'amount' => $totalSellingPrice,
+                'details' => $itemDetails,
+            ]];
+
             // Calculate refraksi using selling price
-            $qtyBeforeRefraksi = $shipments->sum('total_qty_kirim');
+            $qtyBeforeRefraksi = $pengiriman->total_qty_kirim;
             $qtyAfterRefraksi = $qtyBeforeRefraksi;
             $refraksiAmount = 0;
-            $subtotal = $totalSellingPrice;
+            $subtotal = $totalSellingPrice; // Use selling price as subtotal
 
             if ($this->invoiceForm['refraksi_type'] === 'qty') {
-                // Refraksi Qty
+                // Refraksi Qty: persentase dari qty
                 $refraksiQty = $qtyBeforeRefraksi * ($this->invoiceForm['refraksi_value'] / 100);
                 $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
 
+                // Hitung refraksi amount berdasarkan harga per kg (using selling price)
                 $hargaPerKg = $qtyBeforeRefraksi > 0 ? $subtotal / $qtyBeforeRefraksi : 0;
                 $refraksiAmount = $refraksiQty * $hargaPerKg;
                 $subtotal = $subtotal - $refraksiAmount;
             } elseif ($this->invoiceForm['refraksi_type'] === 'rupiah') {
-                // Refraksi Rupiah
+                // Refraksi Rupiah: potongan rupiah per kg
                 $refraksiAmount = $this->invoiceForm['refraksi_value'] * $qtyBeforeRefraksi;
                 $subtotal = $subtotal - $refraksiAmount;
             } elseif ($this->invoiceForm['refraksi_type'] === 'lainnya') {
-                // Refraksi Lainnya
+                // Refraksi Lainnya: input manual langsung nominal total
                 $refraksiAmount = $this->invoiceForm['refraksi_value'];
                 $subtotal = $subtotal - $refraksiAmount;
             }
@@ -490,9 +475,9 @@ class ApprovalPenagihan extends Component
             $taxAmount = $subtotal * ($companySetting->tax_percentage / 100);
             $totalAmount = $subtotal + $taxAmount;
 
-            // Create invoice
+            // Create invoice with selling price
             $invoice = InvoicePenagihan::create([
-                'pengiriman_id' => $shipments->first()->id,
+                'pengiriman_id' => $pengiriman->id,
                 'invoice_number' => $invoiceNumber,
                 'invoice_date' => now(),
                 'due_date' => now()->addDays($companySetting->invoice_due_days),

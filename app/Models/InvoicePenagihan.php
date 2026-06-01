@@ -73,14 +73,6 @@ class InvoicePenagihan extends Model
     }
 
     /**
-     * Relasi ke Pengiriman yang di-merge
-     */
-    public function pengirimans()
-    {
-        return $this->hasMany(Pengiriman::class, 'invoice_penagihan_id');
-    }
-
-    /**
      * Relasi ke User (Created By)
      */
     public function creator()

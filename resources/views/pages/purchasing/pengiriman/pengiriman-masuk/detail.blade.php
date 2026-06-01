@@ -552,6 +552,114 @@
                 </div>
             </div>
         </div>
+        {{-- Card: Refraksi Pembayaran (Supplier) --}}
+        <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm mb-4">
+            <div class="flex items-center mb-3 sm:mb-4 pb-3 border-b border-gray-200">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 shrink-0">
+                    <i class="fas fa-hand-holding-usd text-green-600 text-sm sm:text-base"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900">Refraksi Pembayaran <span class="text-gray-400 font-normal text-sm">(Supplier)</span></h3>
+                    <p class="text-xs text-gray-500 hidden sm:block">Potongan pembayaran ke supplier. Isi 0 jika tidak ada refraksi.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Jenis Refraksi</label>
+                    <select name="refraksi_type" id="refraksi_type"
+                            onchange="updateRefraksiLabel()"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                            {{ !$canEdit ? 'disabled' : '' }}>
+                        <option value="qty">Qty (%)</option>
+                        <option value="rupiah">Rupiah (Rp/kg)</option>
+                        <option value="lainnya">Lainnya (Total nominal)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">
+                        Nilai Refraksi 
+                    </label>
+                    <div class="relative">
+                        <span id="refraksi_prefix" class="hidden absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                        <input type="number" name="refraksi_value" id="refraksi_value"
+                            value="0" min="0" step="0.001"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                            placeholder="0 = tidak ada refraksi"
+                            {{ !$canEdit ? 'readonly' : '' }}>
+                        <span id="refraksi_suffix" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle mr-1"></i>Isi 0 untuk tidak ada refraksi</p>
+                </div>
+            </div>
+        </div>
+
+        {{-- Card: Pengeluaran Tambahan --}}
+        <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm mb-4">
+            <div class="flex items-center mb-3 sm:mb-4 pb-3 border-b border-gray-200">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 shrink-0">
+                    <i class="fas fa-receipt text-orange-600 text-sm sm:text-base"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900">Pengeluaran Tambahan <span class="text-gray-400 font-normal text-sm">(Truk, Kuli, Fee, dll)</span></h3>
+                    <p class="text-xs text-gray-500 hidden sm:block">Biaya operasional yang dipotong dari pembayaran supplier.</p>
+                </div>
+            </div>
+
+            {{-- Fixed expenses --}}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                @foreach(['truk' => 'Truk', 'kuli' => 'Kuli', 'fee' => 'Fee'] as $key => $label)
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">{{ $label }}</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                        <input type="number" name="expense_{{ $key }}" id="expense_{{ $key }}"
+                            value="0" min="0" step="0.01"
+                            class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                            placeholder="0"
+                            onwheel="this.blur()"
+                            {{ !$canEdit ? 'readonly' : '' }}>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- Dynamic others --}}
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-gray-700">Lainnya</p>
+                    @if($canEdit)
+                    <button type="button" onclick="addExpenseRow()"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition-colors">
+                        <i class="fas fa-plus"></i>Tambah Baris
+                    </button>
+                    @endif
+                </div>
+                <div id="expense_others_container" class="space-y-2">
+                    {{-- Baris pertama (default kosong) --}}
+                    <div class="expense-other-row flex items-center gap-2">
+                        <input type="text" name="expense_others[0][type]"
+                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                            placeholder="Nama pengeluaran (contoh: Tol, Parkir)"
+                            {{ !$canEdit ? 'readonly' : '' }}>
+                        <div class="relative w-40 shrink-0">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                            <input type="number" name="expense_others[0][amount]"
+                                value="0" min="0" step="0.01"
+                                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : '' }}"
+                                placeholder="0"
+                                onwheel="this.blur()"
+                                {{ !$canEdit ? 'readonly' : '' }}>
+                        </div>
+                        @if($canEdit)
+                        <button type="button" onclick="removeExpenseRow(this)"
+                                class="hidden w-9 h-9 shrink-0 flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
 
         {{-- Card 4: Catatan Pengiriman - Responsive --}}
         <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm">
@@ -985,4 +1093,81 @@ if (document.readyState === 'loading') {
         });
     }, 100);
 }
+// ===== REFRAKSI & EXPENSES FUNCTIONS =====
+
+function updateRefraksiLabel() {
+    const type = document.getElementById('refraksi_type').value;
+    const label = document.getElementById('refraksi_unit_label');
+    const prefix = document.getElementById('refraksi_prefix');
+    const suffix = document.getElementById('refraksi_suffix');
+    const input = document.getElementById('refraksi_value');
+
+    if (type === 'qty') {
+        label.textContent = '(dalam %)';
+        prefix.classList.add('hidden');
+        suffix.classList.remove('hidden');
+        input.classList.remove('pl-9');
+        input.classList.add('px-3');
+    } else {
+        label.textContent = type === 'rupiah' ? '(Rp per kg)' : '(total nominal Rp)';
+        prefix.classList.remove('hidden');
+        suffix.classList.add('hidden');
+        input.classList.remove('px-3');
+        input.classList.add('pl-9');
+    }
+}
+
+let expenseOtherIndex = 1;
+
+function addExpenseRow() {
+    const container = document.getElementById('expense_others_container');
+    const rows = container.querySelectorAll('.expense-other-row');
+
+    const newRow = document.createElement('div');
+    newRow.className = 'expense-other-row flex items-center gap-2';
+    newRow.innerHTML = `
+        <input type="text" name="expense_others[${expenseOtherIndex}][type]"
+               class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+               placeholder="Nama pengeluaran (contoh: Tol, Parkir)">
+        <div class="relative w-40 shrink-0">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+            <input type="number" name="expense_others[${expenseOtherIndex}][amount]"
+                   value="0" min="0" step="0.01"
+                   class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                   placeholder="0" onwheel="this.blur()">
+        </div>
+        <button type="button" onclick="removeExpenseRow(this)"
+                class="w-9 h-9 shrink-0 flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors">
+            <i class="fas fa-trash text-xs"></i>
+        </button>
+    `;
+    container.appendChild(newRow);
+    expenseOtherIndex++;
+    updateExpenseRemoveButtons();
+}
+
+function removeExpenseRow(btn) {
+    const container = document.getElementById('expense_others_container');
+    const rows = container.querySelectorAll('.expense-other-row');
+    if (rows.length <= 1) {
+        // Jangan hapus, reset saja
+        const inputs = btn.closest('.expense-other-row').querySelectorAll('input');
+        inputs.forEach(i => { if (i.type === 'text') i.value = ''; else i.value = 0; });
+        return;
+    }
+    btn.closest('.expense-other-row').remove();
+    updateExpenseRemoveButtons();
+}
+
+function updateExpenseRemoveButtons() {
+    const container = document.getElementById('expense_others_container');
+    const rows = container.querySelectorAll('.expense-other-row');
+    rows.forEach(row => {
+        const btn = row.querySelector('button[onclick*="removeExpenseRow"]');
+        if (btn) {
+            btn.classList.toggle('hidden', rows.length <= 1);
+        }
+    });
+}
+// ===== END REFRAKSI & EXPENSES FUNCTIONS =====
 </script>

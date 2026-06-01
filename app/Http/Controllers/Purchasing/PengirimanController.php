@@ -176,6 +176,98 @@ class PengirimanController extends Controller
         
         return true;
     }
+    /**
+ * Populate refraksi & expenses ke ApprovalPembayaran dari request Purchasing
+ * Logic identik dengan ApprovePembayaran::updateRefraksi() & updateExpenses()
+ */
+    private function populateApprovalFromRequest(
+        \App\Models\ApprovalPembayaran $approval,
+        Pengiriman $pengiriman,
+        Request $request
+    ): void {
+        $refraksiType  = $request->input('refraksi_type', 'qty');
+        $refraksiValue = floatval($request->input('refraksi_value', 0));
+
+        $qtyBefore    = floatval($pengiriman->total_qty_kirim);
+        $amountBefore = floatval($pengiriman->total_harga_kirim);
+
+        // --- Hitung refraksi ---
+        $refraksiAmount  = 0;
+        $qtyAfter        = $qtyBefore;
+        $amountAfter     = $amountBefore;
+
+        if ($refraksiValue > 0) {
+            if ($refraksiType === 'qty') {
+                $refraksiQty    = $qtyBefore * ($refraksiValue / 100);
+                $qtyAfter       = $qtyBefore - $refraksiQty;
+                $hargaPerKg     = $qtyBefore > 0 ? $amountBefore / $qtyBefore : 0;
+                $refraksiAmount = $refraksiQty * $hargaPerKg;
+                $amountAfter    = $amountBefore - $refraksiAmount;
+            } elseif ($refraksiType === 'rupiah') {
+                $refraksiAmount = $refraksiValue * $qtyBefore;
+                $amountAfter    = $amountBefore - $refraksiAmount;
+            } elseif ($refraksiType === 'lainnya') {
+                $refraksiAmount = $refraksiValue;
+                $amountAfter    = $amountBefore - $refraksiAmount;
+            }
+
+            $approval->refraksi_type          = $refraksiType;
+            $approval->refraksi_value         = $refraksiValue;
+            $approval->refraksi_amount        = $refraksiAmount;
+            $approval->qty_after_refraksi     = $qtyAfter;
+            $approval->amount_after_refraksi  = $amountAfter;
+        } else {
+            $approval->refraksi_type          = null;
+            $approval->refraksi_value         = 0;
+            $approval->refraksi_amount        = 0;
+            $approval->qty_after_refraksi     = $qtyBefore;
+            $approval->amount_after_refraksi  = $amountBefore;
+        }
+
+        $approval->qty_before_refraksi    = $qtyBefore;
+        $approval->amount_before_refraksi = $amountBefore;
+        $approval->save();
+
+        // --- Simpan expenses ---
+        $approval->expenses()->delete();
+
+        $fixed = [
+            'truk' => floatval($request->input('expense_truk', 0)),
+            'kuli' => floatval($request->input('expense_kuli', 0)),
+            'fee'  => floatval($request->input('expense_fee', 0)),
+        ];
+
+        foreach ($fixed as $type => $amount) {
+            if ($amount > 0) {
+                $approval->expenses()->create(['type' => $type, 'amount' => $amount]);
+            }
+        }
+
+        foreach ((array) $request->input('expense_others', []) as $row) {
+            $type   = trim((string) ($row['type'] ?? ''));
+            $amount = floatval($row['amount'] ?? 0);
+            if ($type !== '' && $amount > 0 && !in_array(strtolower($type), ['truk', 'kuli', 'fee'], true)) {
+                $approval->expenses()->create(['type' => $type, 'amount' => $amount]);
+            }
+        }
+
+        // --- Recalculate totals ---
+        $approval->refresh();
+        $expensesTotal = floatval($approval->expenses->sum('amount'));
+        $subtotal      = max(0, $amountBefore - $refraksiAmount - $expensesTotal);
+
+        $approval->additional_expenses_total = $expensesTotal;
+        $approval->subtotal                  = $subtotal;
+        $approval->total_dibayarkan          = $subtotal; // piutang = 0 saat ini
+        $approval->save();
+
+        Log::info("ApprovalPembayaran #{$approval->id} populated from Purchasing submit", [
+            'refraksi_type'   => $approval->refraksi_type,
+            'refraksi_amount' => $approval->refraksi_amount,
+            'expenses_total'  => $expensesTotal,
+            'subtotal'        => $subtotal,
+        ]);
+    }
 
     public function index(Request $request): View
     {
@@ -864,6 +956,14 @@ class PengirimanController extends Controller
                         "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240",
                     "catatan" => "nullable|string",
                     "catatan_refraksi" => "nullable|string",
+                    'refraksi_type'              => 'nullable|in:qty,rupiah,lainnya',
+                    'refraksi_value'             => 'nullable|numeric|min:0',
+                    'expense_truk'               => 'nullable|numeric|min:0',
+                    'expense_kuli'               => 'nullable|numeric|min:0',
+                    'expense_fee'                => 'nullable|numeric|min:0',
+                    'expense_others'             => 'nullable|array',
+                    'expense_others.*.type'      => 'nullable|string|max:100',
+                    'expense_others.*.amount'    => 'nullable|numeric|min:0',
                     "details" => "required|array|min:1",
                     "details.*.bahan_baku_supplier_id" =>
                         "required|exists:bahan_baku_supplier,id",
@@ -1224,6 +1324,10 @@ class PengirimanController extends Controller
 
       
             $this->reduceOrderDetailQty($pengiriman);
+            $pengiriman->refresh();
+            if ($pengiriman->approvalPembayaran) {
+                $this->populateApprovalFromRequest($pengiriman->approvalPembayaran, $pengiriman, $request);
+            }
 
             // Commit transaction
             DB::commit();

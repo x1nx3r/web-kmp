@@ -93,27 +93,6 @@
                         <h3 class="text-lg font-semibold text-gray-900">Pengiriman Belum Dibuatkan Invoice</h3>
                     </div>
                     <div class="flex items-center space-x-3">
-                        @if(count($selectedPengirimanIds) > 0)
-                            @if($this->isMergeValid)
-                                <button
-                                    wire:click="showCreateMergedInvoice"
-                                    class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
-                                >
-                                    @if(count($selectedPengirimanIds) === 1)
-                                        <i class="fas fa-file-invoice mr-1.5"></i>
-                                        Buat Invoice (1 Pilihan)
-                                    @else
-                                        <i class="fas fa-object-group mr-1.5"></i>
-                                        Gabung {{ count($selectedPengirimanIds) }} Pengiriman
-                                    @endif
-                                </button>
-                            @else
-                                <span class="text-xs text-red-600 font-semibold bg-red-100 px-3 py-2 rounded-lg border border-red-200">
-                                    <i class="fas fa-exclamation-circle mr-1"></i>
-                                    Klien harus sama untuk gabung!
-                                </span>
-                            @endif
-                        @endif
                         <span class="text-sm text-gray-600">{{ $pengirimansWithoutInvoice->total() }} pengiriman</span>
                     </div>
                 </div>
@@ -123,7 +102,6 @@
                 <table class="w-full">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 40px;"></th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Pengiriman</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klien</th>
@@ -134,14 +112,6 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach($pengirimansWithoutInvoice as $pengiriman)
                             <tr class="hover:bg-yellow-50 transition-colors">
-                                <td class="px-4 py-4 text-center whitespace-nowrap">
-                                    <input
-                                        type="checkbox"
-                                        wire:model.live="selectedPengirimanIds"
-                                        value="{{ $pengiriman->id }}"
-                                        class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                                    />
-                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">{{ $pengiriman->no_pengiriman }}</div>
                                     <div class="text-xs text-gray-500">PO: {{ $pengiriman->purchaseOrder->po_number ?? '-' }}</div>
@@ -356,7 +326,25 @@
                         @endif
                     </h3>
                 </div>
-                <span class="text-sm text-gray-600">Total: {{ $approvals->total() }} invoice</span>
+                <div class="flex items-center space-x-3">
+                    @if($activeTab === 'pending' && count($selectedApprovalIds) > 0)
+                        @if($this->isMergeValid)
+                            <button
+                                wire:click="showCreateMergedInvoice"
+                                class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
+                            >
+                                <i class="fas fa-object-group mr-1.5"></i>
+                                Gabung {{ count($selectedApprovalIds) }} Invoice
+                            </button>
+                        @else
+                            <span class="text-xs text-red-600 font-semibold bg-red-100 px-3 py-2 rounded-lg border border-red-200">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                Customer harus sama untuk gabung!
+                            </span>
+                        @endif
+                    @endif
+                    <span class="text-sm text-gray-600">Total: {{ $approvals->total() }} invoice</span>
+                </div>
             </div>
         </div>
 
@@ -364,6 +352,9 @@
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        @if($activeTab === 'pending')
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 40px;"></th>
+                        @endif
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengiriman</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
@@ -378,13 +369,39 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($approvals as $approval)
                         <tr class="hover:bg-gray-50 transition-colors">
+                            @if($activeTab === 'pending')
+                                <td class="px-4 py-4 text-center whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        wire:model.live="selectedApprovalIds"
+                                        value="{{ $approval->id }}"
+                                        class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                    />
+                                </td>
+                            @endif
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900">{{ $approval->invoice->invoice_number }}</div>
                                 <div class="text-xs text-gray-500">{{ $approval->invoice->invoice_date->format('d M Y') }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
-                                <div class="text-xs text-gray-500">{{ $approval->pengiriman->tanggal_kirim->format('d M Y') }}</div>
+                            <td class="px-6 py-4">
+                                @php
+                                    $allShipments = $approval->invoice->pengirimans ?? collect();
+                                    $isMergedRow = $allShipments->count() > 1;
+                                @endphp
+                                @if($isMergedRow)
+                                    <div class="space-y-1">
+                                        @foreach($allShipments as $s)
+                                            <div class="text-sm font-medium text-gray-900">{{ $s->no_pengiriman }}</div>
+                                            <div class="text-xs text-gray-500">{{ $s->tanggal_kirim->format('d M Y') }}</div>
+                                        @endforeach
+                                    </div>
+                                    <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700">
+                                        <i class="fas fa-object-group mr-1"></i> Gabungan {{ $allShipments->count() }} Kiriman
+                                    </span>
+                                @else
+                                    <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
+                                    <div class="text-xs text-gray-500">{{ $approval->pengiriman->tanggal_kirim->format('d M Y') }}</div>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">{{ $approval->invoice->customer_name }}</div>
@@ -392,7 +409,8 @@
                             </td>
                             <td class="px-6 py-4">
                                 @php
-                                    $suppliers = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama')->filter()->unique();
+                                    $allShipmentsForSupplier = ($allShipments->count() > 0) ? $allShipments : collect([$approval->pengiriman]);
+                                    $suppliers = $allShipmentsForSupplier->flatMap(fn($s) => $s->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama'))->filter()->unique();
                                 @endphp
                                 @if($suppliers->count() > 0)
                                     <div class="text-sm font-medium text-gray-900">{{ $suppliers->first() }}</div>
@@ -405,7 +423,8 @@
                             </td>
                             <td class="px-6 py-4">
                                 @php
-                                    $products = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.nama')->filter();
+                                    $allShipmentsForProducts = ($allShipments->count() > 0) ? $allShipments : collect([$approval->pengiriman]);
+                                    $products = $allShipmentsForProducts->flatMap(fn($s) => $s->pengirimanDetails->pluck('bahanBakuSupplier.nama'))->filter();
                                 @endphp
                                 @if($products->count() > 0)
                                     <div class="text-sm font-medium text-gray-900">{{ $products->first() }}</div>
@@ -417,7 +436,11 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ number_format($approval->pengiriman->pengirimanDetails->sum('qty_kirim'), 2, ',', '.') }} kg</div>
+                                @php
+                                    $allShipmentsForQty = ($allShipments->count() > 0) ? $allShipments : collect([$approval->pengiriman]);
+                                    $totalQty = $allShipmentsForQty->sum(fn($s) => $s->pengirimanDetails->sum('qty_kirim'));
+                                @endphp
+                                <div class="text-sm font-medium text-gray-900">{{ number_format($totalQty, 2, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 2, ',', '.') }}</div>
@@ -464,7 +487,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-12 text-center">
+                            <td colspan="10" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
                                     <p class="text-gray-500 text-sm">Belum ada invoice yang dibuat</p>

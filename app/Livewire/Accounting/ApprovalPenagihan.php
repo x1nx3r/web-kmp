@@ -30,22 +30,22 @@ class ApprovalPenagihan extends Component
     public $canManage = false;
     public $approvalHistory = [];
     public $approvalId = null;
-    public $selectedPengirimanIds = [];
+    public $selectedApprovalIds = [];
 
     public function getIsMergeValidProperty()
     {
-        if (empty($this->selectedPengirimanIds)) {
+        if (empty($this->selectedApprovalIds)) {
             return false;
         }
 
-        $shipments = Pengiriman::with('purchaseOrder.klien')->whereIn('id', $this->selectedPengirimanIds)->get();
+        $approvals = ApprovalPenagihanModel::with('invoice')->whereIn('id', $this->selectedApprovalIds)->get();
 
-        if ($shipments->isEmpty()) {
+        if ($approvals->isEmpty()) {
             return false;
         }
 
-        $klienIds = $shipments->map(fn($s) => $s->purchaseOrder?->klien_id)->filter()->unique();
-        return $klienIds->count() === 1;
+        $customerNames = $approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique();
+        return $customerNames->count() === 1;
     }
 
     // Invoice form
@@ -128,18 +128,21 @@ class ApprovalPenagihan extends Component
     {
         $this->resetPage();
         $this->resetPage('page_without_invoice');
+        $this->selectedApprovalIds = [];
     }
 
     public function updatingCustomerFilter()
     {
         $this->resetPage();
         $this->resetPage('page_without_invoice');
+        $this->selectedApprovalIds = [];
     }
 
     public function updatingSupplierFilter()
     {
         $this->resetPage();
         $this->resetPage('page_without_invoice');
+        $this->selectedApprovalIds = [];
     }
 
     public function setActiveTab($tab)
@@ -147,6 +150,7 @@ class ApprovalPenagihan extends Component
         $this->activeTab = $tab;
         $this->resetPage();
         $this->resetPage('page_without_invoice');
+        $this->selectedApprovalIds = [];
     }
 
     public function gotoPage($page, $pageName = 'page_approval')
@@ -178,7 +182,8 @@ class ApprovalPenagihan extends Component
 
         // Get approval penagihan based on active tab
         $query = ApprovalPenagihanModel::with([
-            'invoice',
+            'invoice.pengirimans.pengirimanDetails.bahanBakuSupplier.supplier',
+            'invoice.pengirimans.purchaseOrder.klien',
             'pengiriman.purchaseOrder.klien',
             'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
             'pengiriman.forecast',
@@ -259,11 +264,6 @@ class ApprovalPenagihan extends Component
 
     public function showCreateInvoice($pengirimanId)
     {
-        if (!empty($this->selectedPengirimanIds)) {
-            $this->showCreateMergedInvoice();
-            return;
-        }
-
         $pengiriman = Pengiriman::with([
             'purchaseOrder.klien',
             'forecast',
@@ -310,11 +310,30 @@ class ApprovalPenagihan extends Component
 
     public function showCreateMergedInvoice()
     {
-        if (empty($this->selectedPengirimanIds)) {
-            session()->flash('error', 'Silakan pilih minimal 1 pengiriman.');
+        if (empty($this->selectedApprovalIds)) {
+            session()->flash('error', 'Silakan pilih minimal 1 invoice.');
             return;
         }
 
+        $approvals = ApprovalPenagihanModel::with([
+            'invoice',
+            'pengiriman.purchaseOrder.klien',
+            'pengiriman.pengirimanDetails.bahanBakuSupplier',
+            'pengiriman.approvalPembayaran.histories' => function($query) {
+                $query->where('approval_type', 'pembayaran')
+                      ->orderBy('created_at', 'desc');
+            }
+        ])->whereIn('id', $this->selectedApprovalIds)->get();
+
+        // Validate all belong to the same customer name
+        $customerNames = $approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique();
+        if ($customerNames->count() > 1) {
+            session()->flash('error', 'Gagal menggabungkan invoice: Customer dari invoice terpilih harus sama.');
+            return;
+        }
+
+        // Collect all unique Pengiriman records from these approvals' invoices
+        $invoiceIds = $approvals->pluck('invoice_id')->filter()->unique();
         $shipments = Pengiriman::with([
             'purchaseOrder.klien',
             'forecast',
@@ -323,12 +342,13 @@ class ApprovalPenagihan extends Component
                 $query->where('approval_type', 'pembayaran')
                       ->orderBy('created_at', 'desc');
             }
-        ])->whereIn('id', $this->selectedPengirimanIds)->get();
+        ])->whereIn('invoice_penagihan_id', $invoiceIds)
+          ->orWhereIn('id', $approvals->pluck('pengiriman_id'))
+          ->get()
+          ->unique('id');
 
-        // Validate all belong to the same client
-        $klienIds = $shipments->map(fn($s) => $s->purchaseOrder?->klien_id)->filter()->unique();
-        if ($klienIds->count() > 1) {
-            session()->flash('error', 'Gagal membuat invoice: Klien dari pengiriman terpilih harus sama.');
+        if ($shipments->isEmpty()) {
+            session()->flash('error', 'Tidak ada data pengiriman yang ditemukan untuk digabungkan.');
             return;
         }
 
@@ -360,10 +380,10 @@ class ApprovalPenagihan extends Component
         }
 
         $this->invoiceForm = [
-            'customer_name' => $klien->nama ?? '',
-            'customer_address' => $klien->alamat_lengkap ?? '',
-            'customer_phone' => $klien->no_hp ?? '',
-            'customer_email' => '',
+            'customer_name' => $klien->nama ?? $approvals->first()->invoice->customer_name ?? '',
+            'customer_address' => $klien->alamat_lengkap ?? $approvals->first()->invoice->customer_address ?? '',
+            'customer_phone' => $klien->no_hp ?? $approvals->first()->invoice->customer_phone ?? '',
+            'customer_email' => $approvals->first()->invoice->customer_email ?? '',
             'refraksi_type' => $refraksiType,
             'refraksi_value' => $refraksiValue,
             'notes' => $notes,
@@ -503,6 +523,21 @@ class ApprovalPenagihan extends Component
                 $s->update(['invoice_penagihan_id' => $invoice->id]);
             }
 
+            // If merging existing invoices, remove the old approvals and invoices in the database
+            if (!empty($this->selectedApprovalIds)) {
+                $oldApprovals = ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)->get();
+                $oldInvoiceIds = $oldApprovals->pluck('invoice_id')->filter()->unique();
+
+                // Set old reference to null first for safety
+                Pengiriman::whereIn('invoice_penagihan_id', $oldInvoiceIds)
+                    ->where('invoice_penagihan_id', '!=', $invoice->id)
+                    ->update(['invoice_penagihan_id' => null]);
+
+                // Cascade delete old approvals & invoices
+                ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)->delete();
+                InvoicePenagihan::whereIn('id', $oldInvoiceIds)->delete();
+            }
+
             // Create approval penagihan
             $approvalPenagihan = ApprovalPenagihanModel::create([
                 'invoice_id' => $invoice->id,
@@ -517,9 +552,11 @@ class ApprovalPenagihan extends Component
 
             DB::commit();
 
-            session()->flash('message', 'Invoice berhasil dibuat');
+            session()->flash('message', $isMerged
+                ? 'Invoice berhasil digabungkan (' . $shipments->count() . ' pengiriman digabung ke 1 invoice)'
+                : 'Invoice berhasil dibuat');
             $this->closeModal();
-            $this->selectedPengirimanIds = []; // Clear checkboxes
+            $this->selectedApprovalIds = []; // Clear checkboxes
             $this->render();
 
         } catch (\Exception $e) {

@@ -89,6 +89,12 @@ class ApprovePenagihan extends Component
     public function loadApproval(bool $syncRefraksi = false)
     {
         $this->approval = ApprovalPenagihanModel::with([
+            'invoice.pengirimans.pengirimanDetails.bahanBakuSupplier.supplier',
+            'invoice.pengirimans.pengirimanDetails.purchaseOrderBahanBaku.bahanBakuKlien',
+            'invoice.pengirimans.pengirimanDetails.purchaseOrderBahanBaku',
+            'invoice.pengirimans.pengirimanDetails.orderDetail',
+            'invoice.pengirimans.purchaseOrder.klien',
+            'invoice.pengirimans.approvalPembayaran',
             'invoice',
             'pengiriman.pengirimanDetails.bahanBakuSupplier',
             'pengiriman.pengirimanDetails.purchaseOrderBahanBaku.bahanBakuKlien',
@@ -161,6 +167,11 @@ class ApprovePenagihan extends Component
     private function syncRefraksiFromPembayaran()
     {
         if (!$this->pengiriman) {
+            return;
+        }
+
+        $isMerged = $this->invoice && $this->invoice->pengirimans->count() > 0;
+        if ($isMerged) {
             return;
         }
 
@@ -529,13 +540,21 @@ class ApprovePenagihan extends Component
 
         DB::beginTransaction();
         try {
-            // Hitung total harga jual
+            // Hitung total harga jual dan qty
             $totalSelling = 0;
-            if ($this->pengiriman->pengirimanDetails) {
-                foreach ($this->pengiriman->pengirimanDetails as $detail) {
-                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                    if ($orderDetail && $orderDetail->harga_jual) {
-                        $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+            $qtyBeforeRefraksi = 0;
+            
+            $isMerged = $this->invoice && $this->invoice->pengirimans->count() > 0;
+            $shipments = $isMerged ? $this->invoice->pengirimans : collect([$this->pengiriman]);
+            
+            foreach ($shipments as $s) {
+                $qtyBeforeRefraksi += floatval($s->total_qty_kirim);
+                if ($s->pengirimanDetails) {
+                    foreach ($s->pengirimanDetails as $detail) {
+                        $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                        if ($orderDetail && $orderDetail->harga_jual) {
+                            $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+                        }
                     }
                 }
             }
@@ -547,15 +566,14 @@ class ApprovePenagihan extends Component
                     'refraksi_type'          => null,
                     'refraksi_value'         => 0,
                     'refraksi_amount'        => 0,
-                    'qty_before_refraksi'    => $this->pengiriman->total_qty_kirim,
-                    'qty_after_refraksi'     => $this->pengiriman->total_qty_kirim,
+                    'qty_before_refraksi'    => $qtyBeforeRefraksi,
+                    'qty_after_refraksi'     => $qtyBeforeRefraksi,
                     'amount_before_refraksi' => $totalSelling,
                     'amount_after_refraksi'  => $totalSelling,
                     'subtotal'               => $totalSelling,
                 ]);
             } else {
                 $refraksiType         = $this->refraksiForm['type'];
-                $qtyBeforeRefraksi    = floatval($this->pengiriman->total_qty_kirim);
                 $amountBeforeRefraksi = $totalSelling;
                 $qtyAfterRefraksi     = $qtyBeforeRefraksi;
                 $refraksiAmount       = 0;
@@ -1113,24 +1131,48 @@ class ApprovePenagihan extends Component
         $totalMargin = 0;
         $marginPercentage = 0;
 
-        if ($this->pengiriman) {
-            $order = $this->pengiriman->purchaseOrder ?? null;
+        $isMerged = $this->invoice && $this->invoice->pengirimans->count() > 0;
+        $shipments = $isMerged ? $this->invoice->pengirimans : collect($this->pengiriman ? [$this->pengiriman] : []);
 
-            $this->pengiriman->refresh();
+        foreach ($shipments as $s) {
+            $s->loadMissing(['approvalPembayaran', 'pengirimanDetails.bahanBakuSupplier', 'pengirimanDetails.purchaseOrderBahanBaku.bahanBakuKlien', 'pengirimanDetails.orderDetail']);
+        }
 
-            $totalSupplierCost = floatval($this->pengiriman->total_harga_kirim ?? 0);
+        if ($shipments->count() > 0) {
+            if ($this->pengiriman) {
+                $order = $this->pengiriman->purchaseOrder ?? null;
+            }
 
-            if ($this->pengiriman->pengirimanDetails) {
-                foreach ($this->pengiriman->pengirimanDetails as $detail) {
-                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                    if ($orderDetail && $orderDetail->harga_jual) {
-                        $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+            // === Calculate Subtotal Pembayaran (Supplier Cost) ===
+            foreach ($shipments as $s) {
+                $approvalPembayaran = $s->approvalPembayaran;
+                if ($approvalPembayaran) {
+                    if (floatval($approvalPembayaran->subtotal) > 0) {
+                        $totalSupplierCost += floatval($approvalPembayaran->subtotal);
+                    } elseif (floatval($approvalPembayaran->amount_after_refraksi) > 0) {
+                        $totalSupplierCost += floatval($approvalPembayaran->amount_after_refraksi);
+                    } elseif (floatval($s->total_harga_kirim) > 0) {
+                        $totalSupplierCost += floatval($s->total_harga_kirim);
+                    }
+                } else {
+                    if (floatval($s->total_harga_kirim) > 0) {
+                        $totalSupplierCost += floatval($s->total_harga_kirim);
                     }
                 }
 
-                $totalMargin = $totalSelling - $totalSupplierCost;
-                $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
+                // === Calculate Total Selling ===
+                if ($s->pengirimanDetails) {
+                    foreach ($s->pengirimanDetails as $detail) {
+                        $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                        if ($orderDetail && $orderDetail->harga_jual) {
+                            $totalSelling += floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual);
+                        }
+                    }
+                }
             }
+
+            $totalMargin = $totalSelling - $totalSupplierCost;
+            $marginPercentage = $totalSelling > 0 ? ($totalMargin / $totalSelling) * 100 : 0;
         }
 
         return view('livewire.accounting.approve-penagihan', [
@@ -1139,6 +1181,8 @@ class ApprovePenagihan extends Component
             'totalSelling'      => $totalSelling,
             'totalMargin'       => $totalMargin,
             'marginPercentage'  => $marginPercentage,
+            'isMerged'          => $isMerged,
+            'shipments'         => $shipments,
         ]);
     }
 }

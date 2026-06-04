@@ -597,8 +597,7 @@
                         <i class="fas fa-receipt text-orange-500 text-sm"></i>
                         <div>
                             <h3 class="text-sm font-semibold text-gray-800">Pengeluaran Tambahan</h3>
-                            <p class="text-xs text-gray-400">Truk, kuli, fee, dll — dikurangkan dari subtotal invoice</p>
-                        </div>
+                            <p class="text-xs text-gray-400">Truk, kuli, fee, dll — ditambahkan ke total invoice</p>                        </div>
                     </div>
 
                     <div class="p-5">

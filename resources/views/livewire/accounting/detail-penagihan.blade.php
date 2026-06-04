@@ -840,14 +840,14 @@
                                 @if(($invoice->additional_expenses_total ?? 0) > 0)
                                     <div class="flex justify-between">
                                         <span class="text-gray-600">Pengeluaran Tambahan:</span>
-                                        <span class="font-semibold text-red-600">- Rp {{ number_format($invoice->additional_expenses_total, 3, ',', '.') }}</span>
+                                        <span class="font-semibold text-red-600">+ Rp {{ number_format($invoice->additional_expenses_total, 3, ',', '.') }}</span>
                                     </div>
                              
                                 @endif
 
                                 <div class="border-t pt-2 flex justify-between">
                                     <span class="font-bold text-gray-900">Total:</span>
-                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format(($invoice->subtotal - $invoice->additional_expenses_total), 3, ',', '.') }}</span>
+                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format(($invoice->subtotal + $invoice->additional_expenses_total), 3, ',', '.') }}</span>
                                 </div>
                             </div>
                         </div>

@@ -975,12 +975,10 @@ class ApprovePenagihan extends Component
             }
 
             $amountAfterRefraksi = floatval($this->invoice->amount_after_refraksi ?? $this->invoice->subtotal ?? 0);
-            $newSubtotal = max(0, $amountAfterRefraksi - $expensesTotal);
-
             $this->invoice->update([
                 'additional_expenses_total' => $expensesTotal,
-                'subtotal'                  => $newSubtotal,
-                'total_amount'              => max(0, $newSubtotal - floatval($this->invoice->discount_amount ?? 0)),
+                'subtotal'                  => $amountAfterRefraksi,
+                'total_amount'              => max(0, $amountAfterRefraksi + $expensesTotal - floatval($this->invoice->discount_amount ?? 0)),
             ]);
 
             if ($this->editMode && $this->approval->status === 'completed') {

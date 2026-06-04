@@ -258,7 +258,7 @@ class ApprovePembayaran extends Component
         $this->approval->loadMissing('expenses');
         $expensesTotal = floatval($this->approval->expenses->sum('amount'));
 
-        $subtotal = floatval($amountBefore) - $refraksiAmount - $expensesTotal;
+        $subtotal = floatval($amountBefore) - $refraksiAmount + $expensesTotal;
         if ($subtotal < 0) {
             $subtotal = 0;
         }

@@ -611,7 +611,7 @@
                                 </div>
                                 <div class="flex justify-between items-center text-sm">
                                     <span class="text-gray-500">Pengeluaran Tambahan</span>
-                                    <span class="font-semibold text-red-500">- Rp {{ number_format($pengeluaranTambahan, 3, ',', '.') }}</span>
+                                    <span class="font-semibold text-red-500">+ Rp {{ number_format($pengeluaranTambahan, 3, ',', '.') }}</span>
                                 </div>
                                 <div class="flex justify-between items-center text-sm">
                                     <span class="text-gray-500">Subtotal</span>

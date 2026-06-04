@@ -187,7 +187,7 @@
                                 <p class="text-orange-700">Pengeluaran Tambahan</p>
                                 <p class="text-xs text-gray-400">Truk / Kuli / Fee / Lainnya</p>
                             </div>
-                            <p class="font-semibold text-red-600">- Rp {{ number_format($approval->additional_expenses_total, 3, ',', '.') }}</p>
+                            <p class="font-semibold text-red-600">+ Rp {{ number_format($approval->additional_expenses_total, 3, ',', '.') }}</p>
                         </div>
                     @endif
 
@@ -554,7 +554,7 @@
                             @endphp
                             <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-sm">
                                 <span class="text-gray-500">Total Pengeluaran</span>
-                                <span class="font-semibold text-orange-600">Rp {{ number_format($previewTotal, 0, 3,', '.') }}</span>
+                                <span class="font-semibold text-orange-600">Rp {{ number_format($previewTotal, 0, ',', '.') }}</span>
                             </div>
                         </div>
 

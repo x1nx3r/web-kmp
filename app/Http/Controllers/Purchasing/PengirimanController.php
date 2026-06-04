@@ -254,7 +254,7 @@ class PengirimanController extends Controller
         // --- Recalculate totals ---
         $approval->refresh();
         $expensesTotal = floatval($approval->expenses->sum('amount'));
-        $subtotal      = max(0, $amountBefore - $refraksiAmount - $expensesTotal);
+        $subtotal      = max(0, $amountBefore - $refraksiAmount + $expensesTotal);
 
         $approval->additional_expenses_total = $expensesTotal;
         $approval->subtotal                  = $subtotal;

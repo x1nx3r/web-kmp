@@ -170,55 +170,67 @@ class MarginController extends Controller
                 continue;
             }
 
-            foreach ($p->pengirimanDetails as $detail) {
-                $harga = $this->hitungHargaBeliJual($p, $detail);
+            // Ambil detail pertama untuk info bahan baku/supplier
+            $detail = $p->pengirimanDetails->first();
+            if (!$detail) continue;
 
-                $margin           = $harga['harga_jual_total'] - $harga['harga_beli_total'];
-                $marginPercentage = $harga['harga_jual_total'] > 0
-                    ? ($margin / $harga['harga_jual_total']) * 100
+            // Total qty dijumlah dari semua details
+            $qtyTotal = $p->pengirimanDetails->sum('qty_kirim');
+
+            $harga = $this->hitungHargaBeliJual($p, $detail);
+
+            // Fallback harga beli total: jika tidak ada approval, sum dari semua details
+            if (!$p->approvalPembayaran) {
+                $harga['harga_beli_total'] = $p->pengirimanDetails->sum('total_harga');
+                $harga['harga_beli_per_kg'] = $qtyTotal > 0
+                    ? $harga['harga_beli_total'] / $qtyTotal
                     : 0;
-
-                $klien             = $p->order->klien ?? null;
-                $namaKlien         = $klien ? $klien->nama . ($klien->cabang ? " ({$klien->cabang})" : '') : '-';
-                $namaPicMarketing  = $p->order->winner->user->nama ?? '-';
-                $supplier          = $detail->bahanBakuSupplier->supplier ?? null;
-                $bahanBaku         = $detail->orderDetail->bahanBakuKlien ?? null;
-                $bahanBakuSupplier = $detail->bahanBakuSupplier ?? null;
-
-                $row = [
-                    'tanggal_kirim'     => Carbon::parse($p->tanggal_kirim)->format('d/m/Y'),
-                    'no_pengiriman'     => $p->no_pengiriman ?? '-',
-                    'no_po'             => $p->order->po_number ?? '-',
-                    'pic_purchasing'    => $p->purchasing->nama ?? '-',
-                    'pic_marketing'     => $namaPicMarketing,
-                    'klien'             => $namaKlien,
-                    'supplier'          => $supplier->nama ?? '-',
-                    'bahan_baku'        => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
-                    'qty'               => $detail->qty_kirim,
-                    'harga_beli_per_kg' => $harga['harga_beli_per_kg'],
-                    'harga_beli_total'  => $harga['harga_beli_total'],
-                    'harga_jual_per_kg' => $harga['harga_jual_per_kg'],
-                    'harga_jual_total'  => $harga['harga_jual_total'],
-                    'margin'            => $margin,
-                    'margin_percentage' => $marginPercentage,
-                ];
-
-                // Field tambahan hanya untuk index (view) & exportExcel
-                if ($withMeta) {
-                    $row['pengiriman_id']    = $p->id;
-                    $row['status']           = $p->status;
-                    $row['sumber_harga_jual'] = $harga['sumber_harga_jual'];
-                    $row['has_refraksi']     = $p->approvalPembayaran
-                        && floatval($p->approvalPembayaran->refraksi_amount ?? 0) > 0;
-                }
-
-                $marginData[] = $row;
-
-                $totalQty       += floatval($detail->qty_kirim);
-                $totalHargaBeli += $harga['harga_beli_total'];
-                $totalHargaJual += $harga['harga_jual_total'];
-                $totalMargin    += $margin;
             }
+
+            $margin           = $harga['harga_jual_total'] - $harga['harga_beli_total'];
+            $marginPercentage = $harga['harga_jual_total'] > 0
+                ? ($margin / $harga['harga_jual_total']) * 100
+                : 0;
+
+            $klien            = $p->order->klien ?? null;
+            $namaKlien        = $klien ? $klien->nama . ($klien->cabang ? " ({$klien->cabang})" : '') : '-';
+            $namaPicMarketing = $p->order->winner->user->nama ?? '-';
+            $supplier         = $detail->bahanBakuSupplier->supplier ?? null;
+            $bahanBaku        = $detail->orderDetail->bahanBakuKlien ?? null;
+            $bahanBakuSupplier = $detail->bahanBakuSupplier ?? null;
+
+            $row = [
+                'tanggal_kirim'     => Carbon::parse($p->tanggal_kirim)->format('d/m/Y'),
+                'no_pengiriman'     => $p->no_pengiriman ?? '-',
+                'no_po'             => $p->order->po_number ?? '-',
+                'pic_purchasing'    => $p->purchasing->nama ?? '-',
+                'pic_marketing'     => $namaPicMarketing,
+                'klien'             => $namaKlien,
+                'supplier'          => $supplier->nama ?? '-',
+                'bahan_baku'        => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
+                'qty'               => $qtyTotal,
+                'harga_beli_per_kg' => $harga['harga_beli_per_kg'],
+                'harga_beli_total'  => $harga['harga_beli_total'],
+                'harga_jual_per_kg' => $harga['harga_jual_per_kg'],
+                'harga_jual_total'  => $harga['harga_jual_total'],
+                'margin'            => $margin,
+                'margin_percentage' => $marginPercentage,
+            ];
+
+            if ($withMeta) {
+                $row['pengiriman_id']     = $p->id;
+                $row['status']            = $p->status;
+                $row['sumber_harga_jual'] = $harga['sumber_harga_jual'];
+                $row['has_refraksi']      = $p->approvalPembayaran
+                    && floatval($p->approvalPembayaran->refraksi_amount ?? 0) > 0;
+            }
+
+            $marginData[] = $row;
+
+            $totalQty       += $qtyTotal;
+            $totalHargaBeli += $harga['harga_beli_total'];
+            $totalHargaJual += $harga['harga_jual_total'];
+            $totalMargin    += $margin;
         }
 
         return compact('marginData', 'totalQty', 'totalHargaBeli', 'totalHargaJual', 'totalMargin');

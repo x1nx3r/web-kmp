@@ -198,17 +198,7 @@
                         }
 
                         // === Subtotal Pembayaran ===
-                        $subtotalPembayaran = 0;
-                        $approvalData = $pengiriman->approvalPembayaran ?? null;
-                        if ($approvalData) {
-                            if (floatval($approvalData->subtotal) > 0) {
-                                $subtotalPembayaran = floatval($approvalData->subtotal);
-                            } elseif (floatval($approvalData->amount_after_refraksi) > 0) {
-                                $subtotalPembayaran = floatval($approvalData->amount_after_refraksi);
-                            }elseif (floatval($pengiriman->total_harga_kirim) > 0) {
-                                $subtotalPembayaran = floatval($pengiriman->total_harga_kirim);
-                            }
-                        }
+                        $subtotalPembayaran = $totalSupplierCost;
 
                         // === Margin ===
                         $selisih = $subtotalPenagihan - $subtotalPembayaran;
@@ -223,7 +213,7 @@
                                 <p class="text-xs text-gray-400 mt-0.5">Tagihan ke customer (setelah refraksi & potongan)</p>
                             </div>
                             <span class="text-sm font-semibold text-gray-900">
-                                Rp {{ number_format($subtotalPenagihan, 2, ',', '.') }}
+                                Rp {{ number_format($subtotalPenagihan, 3, ',', '.') }}
                             </span>
                         </div>
 
@@ -234,7 +224,7 @@
                                 <p class="text-xs text-gray-400 mt-0.5">Dibayarkan ke supplier (setelah refraksi & potongan)</p>
                             </div>
                             <span class="text-sm font-semibold text-gray-900">
-                                Rp {{ number_format($subtotalPembayaran, 2, ',', '.') }}
+                                Rp {{ number_format($subtotalPembayaran, 3, ',', '.') }}
                             </span>
                         </div>
 
@@ -243,12 +233,12 @@
                             <div>
                                 <p class="text-sm font-semibold text-gray-800">Margin</p>
                                 <p class="text-xs text-gray-400 mt-0.5">
-                                    {{ number_format(abs($marginPct), 2, ',', '.') }}% dari total penagihan
+                                    {{ number_format(abs($marginPct), 3, ',', '.') }}% dari total penagihan
                                 </p>
                             </div>
                             <div class="text-right">
                                 <span class="text-sm font-bold {{ $selisih >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $selisih >= 0 ? '+' : '-' }}Rp {{ number_format(abs($selisih), 2, ',', '.') }}
+                                    {{ $selisih >= 0 ? '+' : '-' }}Rp {{ number_format(abs($selisih), 3, ',', '.') }}
                                 </span>
                                 <p class="text-xs mt-0.5">
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold {{ $selisih >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
@@ -261,7 +251,134 @@
                 </div>
 
                 {{-- Informasi Pengiriman --}}
-                @if($pengiriman)
+                @if($isMerged)
+                    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-purple-50">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-cubes text-purple-600 text-sm"></i>
+                                <h3 class="text-sm font-semibold text-purple-900">Informasi Pengiriman (Gabungan {{ $shipments->count() }} Kiriman)</h3>
+                            </div>
+                            <span class="px-2.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                                MERGED INVOICE
+                            </span>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-0.5">Total Qty Gabungan</p>
+                                    <p class="text-base font-bold text-gray-800">{{ number_format($shipments->sum('total_qty_kirim'), 2, ',', '.') }} kg</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-0.5">Total Harga Beli (Supplier)</p>
+                                    <p class="text-base font-bold text-gray-800">Rp {{ number_format($totalSupplierCost, 2, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-0.5">Total Harga Jual (Tagihan)</p>
+                                    <p class="text-base font-bold text-gray-800">Rp {{ number_format($totalSelling, 2, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-0.5">Margin Gabungan</p>
+                                    <p class="text-base font-bold {{ $totalMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        Rp {{ number_format($totalMargin, 2, ',', '.') }}
+                                        <span class="text-xs font-semibold">({{ number_format($marginPercentage, 2, ',', '.') }}%)</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                @foreach($shipments as $s)
+                                    @php
+                                        $sPembayaran = 0;
+                                        $sApproval = $s->approvalPembayaran;
+                                        if ($sApproval) {
+                                            if (floatval($sApproval->subtotal) > 0) {
+                                                $sPembayaran = floatval($sApproval->subtotal);
+                                            } elseif (floatval($sApproval->amount_after_refraksi) > 0) {
+                                                $sPembayaran = floatval($sApproval->amount_after_refraksi);
+                                            } else {
+                                                $sPembayaran = floatval($s->total_harga_kirim);
+                                            }
+                                        } else {
+                                            $sPembayaran = floatval($s->total_harga_kirim);
+                                        }
+
+                                        $sPenagihan = 0;
+                                        if ($s->pengirimanDetails) {
+                                            foreach ($s->pengirimanDetails as $detail) {
+                                                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                                                $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                                                $sPenagihan += floatval($detail->qty_kirim) * $hargaJual;
+                                            }
+                                        }
+
+                                        $sMargin = $sPenagihan - $sPembayaran;
+                                        $sMarginPercentage = $sPenagihan > 0 ? ($sMargin / $sPenagihan) * 100 : 0;
+                                    @endphp
+                                    <div class="bg-white rounded-lg border border-purple-100 hover:border-purple-200 shadow-sm overflow-hidden transition-all duration-200">
+                                        <div class="px-4 py-2.5 bg-gradient-to-r from-purple-50 to-indigo-50/30 flex justify-between items-center border-b border-purple-50">
+                                            <h4 class="font-bold text-gray-800 text-xs flex items-center gap-1.5">
+                                                <i class="fas fa-truck text-purple-500"></i>
+                                                {{ $s->no_pengiriman }}
+                                            </h4>
+                                            <span class="text-[10px] text-gray-400 font-medium">Tanggal Kirim: {{ $s->tanggal_kirim->format('d M Y') }}</span>
+                                        </div>
+                                        <div class="p-4">
+                                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-3">
+                                                <div>
+                                                    <p class="text-gray-400">Qty Kirim</p>
+                                                    <p class="font-semibold text-gray-800">{{ number_format($s->total_qty_kirim, 2, ',', '.') }} kg</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-400">Harga Beli</p>
+                                                    <p class="font-semibold text-gray-800">Rp {{ number_format($sPembayaran, 2, ',', '.') }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-400">Harga Jual</p>
+                                                    <p class="font-semibold text-gray-800">Rp {{ number_format($sPenagihan, 2, ',', '.') }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-400">Margin Kiriman</p>
+                                                    <p class="font-bold {{ $sMargin >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                        Rp {{ number_format($sMargin, 2, ',', '.') }} ({{ number_format($sMarginPercentage, 1, ',', '.') }}%)
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            @if($s->pengirimanDetails && $s->pengirimanDetails->count() > 0)
+                                                <div class="border-t border-gray-100/70 pt-3">
+                                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Detail Item Kiriman</p>
+                                                    <div class="space-y-1.5">
+                                                        @foreach($s->pengirimanDetails as $detail)
+                                                            @php
+                                                                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                                                                $hargaJualItem = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                                                                $totalJualItem = floatval($detail->qty_kirim) * $hargaJualItem;
+                                                            @endphp
+                                                            <div class="flex flex-wrap justify-between items-center bg-gray-50 rounded px-3 py-1.5 text-xs">
+                                                                <div class="min-w-0">
+                                                                    <p class="font-medium text-gray-700 truncate">{{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}</p>
+                                                                    <p class="text-[10px] text-gray-400">{{ $detail->bahanBakuSupplier->supplier->nama ?? '-' }}</p>
+                                                                </div>
+                                                                <div class="flex items-center gap-4 text-right">
+                                                                    <div>
+                                                                        <span class="text-gray-500">{{ number_format($detail->qty_kirim, 2, ',', '.') }} kg</span>
+                                                                        <span class="text-gray-300 mx-1">|</span>
+                                                                        <span class="text-gray-500">Rp {{ number_format($hargaJualItem, 0, ',', '.') }}/kg</span>
+                                                                    </div>
+                                                                    <span class="font-semibold text-gray-800">Rp {{ number_format($totalJualItem, 0, ',', '.') }}</span>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @elseif($pengiriman)
                     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                         <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
                             <i class="fas fa-truck text-blue-500 text-sm"></i>
@@ -279,11 +396,11 @@
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-400 mb-1">Total Qty</p>
-                                    <p class="text-sm font-semibold text-gray-800">{{ number_format($pengiriman->total_qty_kirim, 2, ',', '.') }} kg</p>
+                                    <p class="text-sm font-semibold text-gray-800">{{ number_format($pengiriman->total_qty_kirim, 3, ',', '.') }} kg</p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-400 mb-1">Total Harga Beli</p>
-                                    <p class="text-sm font-semibold text-gray-800">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</p>
+                                    <p class="text-sm font-semibold text-gray-800">Rp {{ number_format($pengiriman->total_harga_kirim, 3, ',', '.') }}</p>
                                 </div>
                             </div>
 
@@ -304,15 +421,15 @@
                                                 </div>
                                                 <div>
                                                     <p class="text-xs text-gray-400 mb-0.5">Qty Kirim</p>
-                                                    <p class="font-medium text-gray-800">{{ number_format($detail->qty_kirim, 2, ',', '.') }} kg</p>
+                                                    <p class="font-medium text-gray-800">{{ number_format($detail->qty_kirim, 3, ',', '.') }} kg</p>
                                                 </div>
                                                 <div>
                                                     <p class="text-xs text-gray-400 mb-0.5">Harga Beli/kg</p>
-                                                    <p class="font-medium text-gray-800">Rp {{ number_format($detail->harga_satuan, 0, ',', '.') }}</p>
+                                                    <p class="font-medium text-gray-800">Rp {{ number_format($detail->harga_satuan, 3, ',', '.') }}</p>
                                                 </div>
                                                 <div>
                                                     <p class="text-xs text-gray-400 mb-0.5">Total Harga Beli</p>
-                                                    <p class="font-semibold text-gray-900">Rp {{ number_format($detail->total_harga, 0, ',', '.') }}</p>
+                                                    <p class="font-semibold text-gray-900">Rp {{ number_format($detail->total_harga, 3, ',', '.') }}</p>
                                                 </div>
                                             </div>
                                         @endforeach
@@ -388,17 +505,17 @@
                                 </div>
                                 @if($invoice->refraksi_type === 'qty')
                                     <p class="text-gray-700">Tipe Qty &bull; {{ $invoice->refraksi_value }}%</p>
-                                    <p class="text-gray-600 text-xs mt-0.5">{{ number_format($invoice->qty_before_refraksi, 2, ',', '.') }} → {{ number_format($invoice->qty_after_refraksi, 2, ',', '.') }} kg</p>
+                                    <p class="text-gray-600 text-xs mt-0.5">{{ number_format($invoice->qty_before_refraksi, 3, ',', '.') }} → {{ number_format($invoice->qty_after_refraksi, 3, ',', '.') }} kg</p>
                                 @elseif($invoice->refraksi_type === 'rupiah')
-                                    <p class="text-gray-700">Tipe Rupiah &bull; Rp {{ number_format($invoice->refraksi_value, 2, ',', '.') }}/kg</p>
-                                    <p class="text-gray-600 text-xs mt-0.5">Qty: {{ number_format($invoice->qty_before_refraksi, 2, ',', '.') }} kg</p>
+                                    <p class="text-gray-700">Tipe Rupiah &bull; Rp {{ number_format($invoice->refraksi_value, 3, ',', '.') }}/kg</p>
+                                    <p class="text-gray-600 text-xs mt-0.5">Qty: {{ number_format($invoice->qty_before_refraksi, 3, ',', '.') }} kg</p>
                                 @elseif($invoice->refraksi_type === 'lainnya')
                                     <p class="text-gray-700">Tipe Lainnya (Manual)</p>
-                                    <p class="text-gray-600 text-xs mt-0.5">Nilai: Rp {{ number_format($invoice->refraksi_value, 2, ',', '.') }}</p>
+                                    <p class="text-gray-600 text-xs mt-0.5">Nilai: Rp {{ number_format($invoice->refraksi_value, 3, ',', '.') }}</p>
                                 @else
                                     <p class="text-gray-700">{{ ucfirst($invoice->refraksi_type) }}</p>
                                 @endif
-                                <p class="font-semibold text-red-600 mt-2">Potongan: Rp {{ number_format($invoice->refraksi_amount, 2, ',', '.') }}</p>
+                                <p class="font-semibold text-red-600 mt-2">Potongan: Rp {{ number_format($invoice->refraksi_amount, 3, ',', '.') }}</p>
                                 @if($pengiriman && $pengiriman->approvalPembayaran && $pengiriman->approvalPembayaran->refraksi_value > 0)
                                     <p class="text-xs text-blue-600 mt-1.5">
                                         <i class="fas fa-info-circle mr-1"></i>Refraksi otomatis dari approval pembayaran
@@ -458,17 +575,17 @@
                         <div class="rounded-lg border border-gray-200 overflow-hidden">
                             <div class="px-4 py-3 flex justify-between items-center text-sm border-b border-gray-100">
                                 <span class="text-gray-600">Harga Jual (sebelum refraksi)</span>
-                                <span class="font-semibold text-gray-800">Rp {{ number_format($invoice->amount_before_refraksi ?? $invoice->subtotal, 2, ',', '.') }}</span>
+                                <span class="font-semibold text-gray-800">Rp {{ number_format($invoice->amount_before_refraksi ?? $invoice->subtotal, 3, ',', '.') }}</span>
                             </div>
                             @if(($invoice->refraksi_amount ?? 0) > 0)
                                 <div class="px-4 py-3 flex justify-between items-center text-sm border-b border-gray-100 bg-red-50">
                                     <span class="text-gray-600">Potongan Refraksi</span>
-                                    <span class="font-semibold text-red-500">- Rp {{ number_format($invoice->refraksi_amount, 2, ',', '.') }}</span>
+                                    <span class="font-semibold text-red-500">- Rp {{ number_format($invoice->refraksi_amount, 3, ',', '.') }}</span>
                                 </div>
                             @endif
                             <div class="px-4 py-3 flex justify-between items-center bg-gray-50">
                                 <span class="text-sm font-bold text-gray-900">Total Invoice</span>
-                                <span class="text-base font-bold text-green-600">Rp {{ number_format($invoice->amount_after_refraksi, 2, ',', '.') }}</span>
+                                <span class="text-base font-bold text-green-600">Rp {{ number_format($invoice->amount_after_refraksi, 3, ',', '.') }}</span>
                             </div>
                         </div>
                     </div>
@@ -480,8 +597,7 @@
                         <i class="fas fa-receipt text-orange-500 text-sm"></i>
                         <div>
                             <h3 class="text-sm font-semibold text-gray-800">Pengeluaran Tambahan</h3>
-                            <p class="text-xs text-gray-400">Truk, kuli, fee, dll — dikurangkan dari subtotal invoice</p>
-                        </div>
+                            <p class="text-xs text-gray-400">Truk, kuli, fee, dll — ditambahkan ke total invoice</p>                        </div>
                     </div>
 
                     <div class="p-5">
@@ -556,7 +672,7 @@
                                 @endphp
                                 <div class="flex items-center justify-between py-2.5 px-4 bg-orange-50 rounded-lg border border-orange-100 text-sm">
                                     <span class="text-gray-600 font-medium">Total Pengeluaran</span>
-                                    <span class="font-bold text-orange-600">Rp {{ number_format($previewTotal, 0, ',', '.') }}</span>
+                                    <span class="font-bold text-orange-600">Rp {{ number_format($previewTotal, 3, ',', '.') }}</span>
                                 </div>
 
                                 <button wire:click="updateExpenses" wire:loading.attr="disabled"
@@ -581,7 +697,7 @@
                                     @foreach($invoiceExpenses as $exp)
                                         <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 text-sm">
                                             <span class="font-medium text-gray-600 uppercase tracking-wide text-xs">{{ $exp->type }}</span>
-                                            <span class="font-semibold text-gray-800">Rp {{ number_format($exp->amount, 0, ',', '.') }}</span>
+                                            <span class="font-semibold text-gray-800">Rp {{ number_format($exp->amount, 3, ',', '.') }}</span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -594,7 +710,7 @@
 
                             <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-sm">
                                 <span class="font-semibold text-gray-700">Total Pengeluaran</span>
-                                <span class="font-bold text-orange-600">Rp {{ number_format($invoiceExpensesTotal, 0, ',', '.') }}</span>
+                                <span class="font-bold text-orange-600">Rp {{ number_format($invoiceExpensesTotal, 3, ',', '.') }}</span>
                             </div>
                         @endif
                     </div>

@@ -92,7 +92,9 @@
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900">Pengiriman Belum Dibuatkan Invoice</h3>
                     </div>
-                    <span class="text-sm text-gray-600">{{ $pengirimansWithoutInvoice->total() }} pengiriman</span>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-600">{{ $pengirimansWithoutInvoice->total() }} pengiriman</span>
+                    </div>
                 </div>
             </div>
 
@@ -122,7 +124,7 @@
                                     <div class="text-xs text-gray-500">{{ $pengiriman->purchaseOrder->klien->cabang ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 2, ',', '.') }}</div>
+                                    <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($pengiriman->total_harga_kirim, 3, ',', '.') }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <button
@@ -324,7 +326,25 @@
                         @endif
                     </h3>
                 </div>
-                <span class="text-sm text-gray-600">Total: {{ $approvals->total() }} invoice</span>
+                <div class="flex items-center space-x-3">
+                    @if($activeTab === 'pending' && count($selectedApprovalIds) > 0)
+                        @if($this->isMergeValid)
+                            <button
+                                wire:click="showCreateMergedInvoice"
+                                class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
+                            >
+                                <i class="fas fa-object-group mr-1.5"></i>
+                                Gabung {{ count($selectedApprovalIds) }} Invoice
+                            </button>
+                        @else
+                            <span class="text-xs text-red-600 font-semibold bg-red-100 px-3 py-2 rounded-lg border border-red-200">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                Customer harus sama untuk gabung!
+                            </span>
+                        @endif
+                    @endif
+                    <span class="text-sm text-gray-600">Total: {{ $approvals->total() }} invoice</span>
+                </div>
             </div>
         </div>
 
@@ -332,6 +352,9 @@
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        @if($activeTab === 'pending')
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 40px;"></th>
+                        @endif
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengiriman</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
@@ -346,13 +369,39 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($approvals as $approval)
                         <tr class="hover:bg-gray-50 transition-colors">
+                            @if($activeTab === 'pending')
+                                <td class="px-4 py-4 text-center whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        wire:model.live="selectedApprovalIds"
+                                        value="{{ $approval->id }}"
+                                        class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                    />
+                                </td>
+                            @endif
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900">{{ $approval->invoice->invoice_number }}</div>
                                 <div class="text-xs text-gray-500">{{ $approval->invoice->invoice_date->format('d M Y') }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
-                                <div class="text-xs text-gray-500">{{ $approval->pengiriman->tanggal_kirim->format('d M Y') }}</div>
+                            <td class="px-6 py-4">
+                                @php
+                                    $allShipments = $approval->invoice->pengirimans ?? collect();
+                                    $isMergedRow = $allShipments->count() > 1;
+                                @endphp
+                                @if($isMergedRow)
+                                    <div class="space-y-1">
+                                        @foreach($allShipments as $s)
+                                            <div class="text-sm font-medium text-gray-900">{{ $s->no_pengiriman }}</div>
+                                            <div class="text-xs text-gray-500">{{ $s->tanggal_kirim->format('d M Y') }}</div>
+                                        @endforeach
+                                    </div>
+                                    <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700">
+                                        <i class="fas fa-object-group mr-1"></i> Gabungan {{ $allShipments->count() }} Kiriman
+                                    </span>
+                                @else
+                                    <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
+                                    <div class="text-xs text-gray-500">{{ $approval->pengiriman->tanggal_kirim->format('d M Y') }}</div>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">{{ $approval->invoice->customer_name }}</div>
@@ -360,7 +409,8 @@
                             </td>
                             <td class="px-6 py-4">
                                 @php
-                                    $suppliers = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama')->filter()->unique();
+                                    $allShipmentsForSupplier = ($allShipments->count() > 0) ? $allShipments : collect([$approval->pengiriman]);
+                                    $suppliers = $allShipmentsForSupplier->flatMap(fn($s) => $s->pengirimanDetails->pluck('bahanBakuSupplier.supplier.nama'))->filter()->unique();
                                 @endphp
                                 @if($suppliers->count() > 0)
                                     <div class="text-sm font-medium text-gray-900">{{ $suppliers->first() }}</div>
@@ -373,7 +423,8 @@
                             </td>
                             <td class="px-6 py-4">
                                 @php
-                                    $products = $approval->pengiriman->pengirimanDetails->pluck('bahanBakuSupplier.nama')->filter();
+                                    $allShipmentsForProducts = ($allShipments->count() > 0) ? $allShipments : collect([$approval->pengiriman]);
+                                    $products = $allShipmentsForProducts->flatMap(fn($s) => $s->pengirimanDetails->pluck('bahanBakuSupplier.nama'))->filter();
                                 @endphp
                                 @if($products->count() > 0)
                                     <div class="text-sm font-medium text-gray-900">{{ $products->first() }}</div>
@@ -385,10 +436,14 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ number_format($approval->pengiriman->pengirimanDetails->sum('qty_kirim'), 2, ',', '.') }} kg</div>
+                                @php
+                                    $allShipmentsForQty = ($allShipments->count() > 0) ? $allShipments : collect([$approval->pengiriman]);
+                                    $totalQty = $allShipmentsForQty->sum(fn($s) => $s->pengirimanDetails->sum('qty_kirim'));
+                                @endphp
+                                <div class="text-sm font-medium text-gray-900">{{ number_format($totalQty, 3, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 2, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 3, ',', '.') }}</div>
                             </td>
                             {{-- <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
@@ -432,7 +487,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-12 text-center">
+                            <td colspan="10" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fas fa-inbox text-gray-300 text-5xl mb-3"></i>
                                     <p class="text-gray-500 text-sm">Belum ada invoice yang dibuat</p>
@@ -550,36 +605,84 @@
     </div>
 
     {{-- Create Invoice Modal --}}
-    @if($showCreateInvoiceModal && $selectedData)
-        <div class="fixed inset-0 bg-green-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    @if($showCreateInvoiceModal && $selectedShipment && $selectedShipments)
+        <div class="fixed inset-0 bg-green-900/30 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between">
-                    <h3 class="text-xl font-bold text-white">Buat Invoice Penagihan</h3>
+                    <h3 class="text-xl font-bold text-white">
+                        @if($isMergedInvoice)
+                            Gabung Invoice Penagihan ({{ $selectedShipments->count() }} Pengiriman)
+                        @else
+                            Buat Invoice Penagihan
+                        @endif
+                    </h3>
                     <button wire:click="closeModal" class="text-white hover:text-gray-200 transition-colors">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
 
                 <div class="p-6">
+                    {{-- Informasi Pengiriman --}}
                     <div class="mb-6 bg-green-50 rounded-lg p-4">
-                        <h4 class="font-semibold text-gray-900 mb-3">Informasi Pengiriman</h4>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <p class="text-gray-500">No. Pengiriman:</p>
-                                <p class="font-medium">{{ $selectedData->no_pengiriman }}</p>
+                        <h4 class="font-semibold text-gray-900 mb-3">
+                            @if($isMergedInvoice)
+                                Informasi Pengiriman yang Digabung
+                            @else
+                                Informasi Pengiriman
+                            @endif
+                        </h4>
+
+                        @if($isMergedInvoice)
+                            {{-- Tampilkan semua pengiriman yang digabung --}}
+                            <div class="space-y-3">
+                                @foreach($selectedShipments as $shipment)
+                                    <div class="grid grid-cols-2 gap-4 text-sm bg-white rounded p-3 border border-green-200">
+                                        <div>
+                                            <p class="text-gray-500">No. Pengiriman:</p>
+                                            <p class="font-medium">{{ $shipment->no_pengiriman }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-500">Tanggal:</p>
+                                            <p class="font-medium">{{ $shipment->tanggal_kirim?->format('d M Y') ?? '-' }}</p>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <p class="text-gray-500">Total Harga:</p>
+                                            <p class="font-semibold">Rp {{ number_format($shipment->total_harga_kirim, 3, ',', '.') }}</p>
+                                        </div>
+                                    </div>
+                                @endforeach
+
+                                {{-- Total gabungan --}}
+                                <div class="bg-green-100 rounded p-3 text-sm">
+                                    <div class="flex justify-between font-semibold">
+                                        <span>Total Gabungan:</span>
+                                        <span class="text-lg text-green-800">
+                                            Rp {{ number_format($selectedShipments->sum(fn($s) => $s->total_harga_kirim), 3, ',', '.') }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <p class="text-gray-500">Tanggal:</p>
-                                <p class="font-medium">{{ $selectedData->tanggal_kirim->format('d M Y') }}</p>
+                        @else
+                            {{-- Invoice tunggal --}}
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p class="text-gray-500">No. Pengiriman:</p>
+                                    <p class="font-medium">{{ $selectedShipment->no_pengiriman }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Tanggal:</p>
+                                    <p class="font-medium">{{ $selectedShipment->tanggal_kirim?->format('d M Y') ?? '-' }}</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-gray-500">Total Harga:</p>
+                                    <p class="font-semibold text-lg">Rp {{ number_format($selectedShipment->total_harga_kirim, 3, ',', '.') }}</p>
+                                </div>
                             </div>
-                            <div class="col-span-2">
-                                <p class="text-gray-500">Total Harga:</p>
-                                <p class="font-semibold text-lg">Rp {{ number_format($selectedData->total_harga_kirim, 2, ',', '.') }}</p>
-                            </div>
-                        </div>
+                        @endif
                     </div>
 
                     <div class="space-y-4">
+                        {{-- Nama Customer --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Nama Customer <span class="text-red-500">*</span>
@@ -592,6 +695,7 @@
                             @error('invoiceForm.customer_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
+                        {{-- Alamat Customer --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Alamat Customer <span class="text-red-500">*</span>
@@ -625,47 +729,43 @@
 
                         {{-- Refraksi Section --}}
                         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <h5 class="font-semibold text-gray-900 mb-3 flex items-center justify-between">
-                                <span>
-                                    <i class="fas fa-percent mr-2 text-yellow-600"></i>
-                                    Refraksi
-                                </span>
-                                @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->refraksi_value > 0)
-                                    <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                                        <i class="fas fa-check-circle mr-1"></i>
-                                        Dari Pembayaran
-                                    </span>
-                                @endif
+                            <h5 class="font-semibold text-gray-900 mb-3">
+                                <i class="fas fa-percent mr-2 text-yellow-600"></i>Refraksi
                             </h5>
 
-                            @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->refraksi_value > 0)
+                            {{--
+                                Info refraksi dari approval pembayaran.
+                                Untuk merged: cek dari selectedShipment (primary/representative).
+                                Null-safe (?->) di seluruh chain.
+                            --}}
+                            @php
+                                $apPembayaran = $selectedShipment->approvalPembayaran ?? null;
+                            @endphp
+
+                            @if($apPembayaran && ($apPembayaran->refraksi_value ?? 0) > 0)
                                 <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
                                     <p class="text-blue-900 font-medium mb-1">
                                         <i class="fas fa-info-circle mr-1"></i>
                                         Refraksi diambil dari Approval Pembayaran
+                                        @if($isMergedInvoice) (pengiriman pertama) @endif
                                     </p>
                                     <p class="text-blue-700 text-xs">
                                         Tipe: <strong>
-                                            @if($selectedData->approvalPembayaran->refraksi_type === 'qty')
-                                                Qty (%)
-                                            @elseif($selectedData->approvalPembayaran->refraksi_type === 'rupiah')
-                                                Rupiah (Rp/kg)
-                                            @elseif($selectedData->approvalPembayaran->refraksi_type === 'lainnya')
-                                                Lainnya (Manual)
-                                            @else
-                                                {{ ucfirst($selectedData->approvalPembayaran->refraksi_type) }}
+                                            @if($apPembayaran->refraksi_type === 'qty') Qty (%)
+                                            @elseif($apPembayaran->refraksi_type === 'rupiah') Rupiah (Rp/kg)
+                                            @elseif($apPembayaran->refraksi_type === 'lainnya') Lainnya (Manual)
+                                            @else {{ ucfirst($apPembayaran->refraksi_type) }}
                                             @endif
                                         </strong>,
-                                        Nilai: <strong>{{ number_format($selectedData->approvalPembayaran->refraksi_value, 2, ',', '.') }}</strong>
+                                        Nilai: <strong>{{ number_format($apPembayaran->refraksi_value, 3, ',', '.') }}</strong>
                                     </p>
 
-                                    @if($selectedData->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
+                                    @if(($apPembayaran->histories ?? collect())->where('notes', '!=', null)->count() > 0)
                                         <div class="mt-2 pt-2 border-t border-blue-300">
                                             <p class="text-blue-900 font-medium text-xs mb-1">
-                                                <i class="fas fa-comments mr-1"></i>
-                                                Catatan dari Pembayaran:
+                                                <i class="fas fa-comments mr-1"></i>Catatan dari Pembayaran:
                                             </p>
-                                            @foreach($selectedData->approvalPembayaran->histories->where('notes', '!=', null) as $history)
+                                            @foreach($apPembayaran->histories->where('notes', '!=', null) as $history)
                                                 <div class="bg-white rounded p-2 mb-1 text-xs">
                                                     <p class="text-gray-600">
                                                         <span class="font-medium text-gray-800">{{ $history->user->nama ?? 'Unknown' }}</span>
@@ -725,16 +825,9 @@
                             </div>
                         </div>
 
+                        {{-- Catatan --}}
                         <div>
-                            <label class="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
-                                <span>Catatan</span>
-                                @if($selectedData->approvalPembayaran && $selectedData->approvalPembayaran->histories->where('notes', '!=', null)->count() > 0)
-                                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                        <i class="fas fa-comment-dots mr-1"></i>
-                                        Ada catatan dari pembayaran
-                                    </span>
-                                @endif
-                            </label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
                             <textarea
                                 wire:model="invoiceForm.notes"
                                 rows="3"
@@ -759,11 +852,14 @@
                     >
                         <span wire:loading.remove wire:target="createInvoice">
                             <i class="fas fa-save mr-1"></i>
-                            Buat Invoice
+                            @if($isMergedInvoice)
+                                Gabung & Simpan Invoice
+                            @else
+                                Buat Invoice
+                            @endif
                         </span>
                         <span wire:loading wire:target="createInvoice">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>
-                            Menyimpan...
+                            <i class="fas fa-spinner fa-spin mr-1"></i>Menyimpan...
                         </span>
                     </button>
                 </div>
@@ -849,25 +945,25 @@
                                                 <span class="font-medium">Tipe:</span> Refraksi Qty ({{ $selectedData->invoice->refraksi_value }}%)
                                             </p>
                                             <p class="text-gray-600">
-                                                <span class="font-medium">Qty Awal:</span> {{ number_format($selectedData->invoice->qty_before_refraksi, 2, ',', '.') }} kg
+                                                <span class="font-medium">Qty Awal:</span> {{ number_format($selectedData->invoice->qty_before_refraksi, 3, ',', '.') }} kg
                                             </p>
                                             <p class="text-gray-600">
-                                                <span class="font-medium">Qty Setelah Refraksi:</span> {{ number_format($selectedData->invoice->qty_after_refraksi, 2, ',', '.') }} kg
+                                                <span class="font-medium">Qty Setelah Refraksi:</span> {{ number_format($selectedData->invoice->qty_after_refraksi, 3, ',', '.') }} kg
                                             </p>
                                             <p class="text-red-600 font-semibold">
-                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 2, ',', '.') }}
+                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 3, ',', '.') }}
                                             </p>
                                         </div>
                                     @elseif($selectedData->invoice->refraksi_type === 'rupiah')
                                         <div class="text-xs space-y-1">
                                             <p class="text-gray-600">
-                                                <span class="font-medium">Tipe:</span> Refraksi Rupiah (Rp {{ number_format($selectedData->invoice->refraksi_value, 2, ',', '.') }}/kg)
+                                                <span class="font-medium">Tipe:</span> Refraksi Rupiah (Rp {{ number_format($selectedData->invoice->refraksi_value, 3, ',', '.') }}/kg)
                                             </p>
                                             <p class="text-gray-600">
-                                                <span class="font-medium">Qty:</span> {{ number_format($selectedData->invoice->qty_before_refraksi, 2, ',', '.') }} kg
+                                                <span class="font-medium">Qty:</span> {{ number_format($selectedData->invoice->qty_before_refraksi, 3, ',', '.') }} kg
                                             </p>
                                             <p class="text-red-600 font-semibold">
-                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 2, ',', '.') }}
+                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 3, ',', '.') }}
                                             </p>
                                         </div>
                                     @elseif($selectedData->invoice->refraksi_type === 'lainnya')
@@ -876,10 +972,10 @@
                                                 <span class="font-medium">Tipe:</span> Refraksi Lainnya (Manual)
                                             </p>
                                             <p class="text-gray-600">
-                                                <span class="font-medium">Nilai Potongan:</span> Rp {{ number_format($selectedData->invoice->refraksi_value, 2, ',', '.') }}
+                                                <span class="font-medium">Nilai Potongan:</span> Rp {{ number_format($selectedData->invoice->refraksi_value, 3, ',', '.') }}
                                             </p>
                                             <p class="text-red-600 font-semibold">
-                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 2, ',', '.') }}
+                                                Potongan: Rp {{ number_format($selectedData->invoice->refraksi_amount, 3, ',', '.') }}
                                             </p>
                                         </div>
                                     @endif
@@ -888,15 +984,15 @@
 
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Subtotal:</span>
-                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->subtotal, 2, ',', '.') }}</span>
+                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->subtotal, 3, ',', '.') }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">PPN ({{ $selectedData->invoice->tax_percentage }}%):</span>
-                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->tax_amount, 2, ',', '.') }}</span>
+                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->tax_amount, 3, ',', '.') }}</span>
                             </div>
                             <div class="border-t pt-2 flex justify-between">
                                 <span class="font-semibold text-gray-900">Total:</span>
-                                <span class="font-bold text-lg text-green-600">Rp {{ number_format($selectedData->invoice->total_amount, 2, ',', '.') }}</span>
+                                <span class="font-bold text-lg text-green-600">Rp {{ number_format($selectedData->invoice->total_amount, 3, ',', '.') }}</span>
                             </div>
                         </div>
 
@@ -993,7 +1089,7 @@
                                 />
                                 <p class="mt-1 text-xs text-gray-500">
                                     <i class="fas fa-calculator mr-1"></i>
-                                    Nilai saat ini: <strong>Rp {{ number_format($selectedData->invoice->subtotal ?? 0, 0, ',', '.') }}</strong>
+                                    Nilai saat ini: <strong>Rp {{ number_format($selectedData->invoice->subtotal ?? 0, 3, ',', '.') }}</strong>
                                 </p>
                                 @error('totalHargaJualForm') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                             </div>

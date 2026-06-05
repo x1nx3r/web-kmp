@@ -132,104 +132,106 @@ class DashboardController extends Controller
                 continue;
             }
 
-            foreach ($p->pengirimanDetails as $detail) {
+            // Ambil detail pertama untuk info bahan baku/supplier
+            $detail = $p->pengirimanDetails->first();
+            if (!$detail) continue;
 
-                // ===== HARGA JUAL =====
-                $hargaJualPerKg    = 0;
-                $totalHargaJualItem = 0;
+            // Total qty dijumlah dari semua details
+            $totalQtyKirim = $p->pengirimanDetails->sum('qty_kirim');
 
-                if ($p->invoicePenagihan) {
-                    $amountJual = $toFloat($p->invoicePenagihan->subtotal) > 0
-                        ? $toFloat($p->invoicePenagihan->subtotal)
-                        : $toFloat($p->invoicePenagihan->amount_after_refraksi);
+            // ===== HARGA JUAL =====
+            $hargaJualPerKg     = 0;
+            $totalHargaJualItem = 0;
 
-                    $qtyJual = $toFloat($p->invoicePenagihan->qty_after_refraksi) > 0
-                        ? $toFloat($p->invoicePenagihan->qty_after_refraksi)
-                        : $toFloat($p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim);
+            if ($p->invoicePenagihan) {
+                $amountJual = $toFloat($p->invoicePenagihan->subtotal) > 0
+                    ? $toFloat($p->invoicePenagihan->subtotal)
+                    : $toFloat($p->invoicePenagihan->amount_after_refraksi);
 
-                    if ($qtyJual > 0 && $amountJual > 0) {
-                        $hargaJualPerKg = $amountJual / $qtyJual;
-                    }
+                $qtyJual = $toFloat($p->invoicePenagihan->qty_after_refraksi) > 0
+                    ? $toFloat($p->invoicePenagihan->qty_after_refraksi)
+                    : $toFloat($p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim);
 
-                    // Total langsung dari invoice agar refraksi tidak dibatalkan
-                    $totalHargaJualItem = $amountJual;
-
-                } elseif ($detail->orderDetail && $toFloat($detail->orderDetail->harga_jual) > 0) {
-                    $hargaJualPerKg    = $toFloat($detail->orderDetail->harga_jual);
-                    $totalHargaJualItem = $toFloat($detail->qty_kirim) * $hargaJualPerKg;
+                if ($qtyJual > 0 && $amountJual > 0) {
+                    $hargaJualPerKg = $amountJual / $qtyJual;
                 }
 
-                // ===== HARGA BELI =====
-                $hargaBeliPerKg    = 0;
-                $totalHargaBeliItem = 0;
+                $totalHargaJualItem = $amountJual;
 
-                if ($p->approvalPembayaran) {
-                    $amountBeli = $toFloat($p->approvalPembayaran->subtotal) > 0
-                        ? $toFloat($p->approvalPembayaran->subtotal)
-                        : ($toFloat($p->approvalPembayaran->amount_after_refraksi) > 0
-                            ? $toFloat($p->approvalPembayaran->amount_after_refraksi)
-                            : $toFloat($p->total_harga_kirim));
-
-                    $qtyBeli = $toFloat($p->approvalPembayaran->qty_after_refraksi) > 0
-                        ? $toFloat($p->approvalPembayaran->qty_after_refraksi)
-                        : $toFloat($p->total_qty_kirim);
-
-                    if ($qtyBeli > 0 && $amountBeli > 0) {
-                        $hargaBeliPerKg = $amountBeli / $qtyBeli;
-                    }
-
-                    // Total langsung dari approval agar refraksi tidak dibatalkan
-                    $totalHargaBeliItem = $amountBeli;
-
-                } else {
-                    $hargaBeliPerKg    = $toFloat($detail->harga_satuan);
-                    $totalHargaBeliItem = $toFloat($detail->total_harga);
-                }
-
-                $margin           = $totalHargaJualItem - $totalHargaBeliItem;
-                $marginPercentage = $totalHargaJualItem > 0 ? ($margin / $totalHargaJualItem) * 100 : 0;
-
-                $klien             = $p->order->klien ?? null;
-                $namaKlien         = $klien ? $klien->nama . ($klien->cabang ? " - {$klien->cabang}" : '') : '-';
-                $picMarketingUser  = $p->order->winner->user ?? null;
-                $namaPicMarketing  = $picMarketingUser ? $picMarketingUser->nama : '-';
-                $supplier          = $detail->bahanBakuSupplier->supplier ?? null;
-                $bahanBaku         = $detail->orderDetail->bahanBakuKlien ?? null;
-                $bahanBakuSupplier = $detail->bahanBakuSupplier ?? null;
-
-                $row = [
-                    'tanggal_kirim'     => $p->tanggal_kirim,
-                    'pic_purchasing'    => $p->purchasing->nama ?? '-',
-                    'pic_marketing'     => $namaPicMarketing,
-                    'klien'             => $namaKlien,
-                    'supplier'          => $supplier->nama ?? '-',
-                    'bahan_baku'        => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
-                    'qty_kirim'         => $detail->qty_kirim,
-                    'qty'               => $detail->qty_kirim,
-                    'harga_beli_per_kg' => $hargaBeliPerKg,
-                    'harga_beli_total'  => $totalHargaBeliItem,
-                    'harga_jual_per_kg' => $hargaJualPerKg,
-                    'harga_jual_total'  => $totalHargaJualItem,
-                    'total_harga_beli'  => $totalHargaBeliItem,
-                    'total_harga_jual'  => $totalHargaJualItem,
-                    'margin'            => $margin,
-                    'margin_percentage' => $marginPercentage,
-                ];
-
-                if ($withMeta) {
-                    $row['pengiriman_id'] = $p->id;
-                    $row['status']        = $p->status;
-                    $row['no_pengiriman'] = $p->no_pengiriman ?? '-';
-                    $row['has_refraksi']  = $p->approvalPembayaran
-                        && floatval($p->approvalPembayaran->refraksi_amount ?? 0) > 0;
-                }
-
-                $rows[] = $row;
-
-                $totalMargin    += $margin;
-                $totalHargaBeli += $totalHargaBeliItem;
-                $totalHargaJual += $totalHargaJualItem;
+            } elseif ($detail->orderDetail && $toFloat($detail->orderDetail->harga_jual) > 0) {
+                $hargaJualPerKg     = $toFloat($detail->orderDetail->harga_jual);
+                $totalHargaJualItem = $totalQtyKirim * $hargaJualPerKg;
             }
+
+            // ===== HARGA BELI =====
+            $hargaBeliPerKg     = 0;
+            $totalHargaBeliItem = 0;
+
+            if ($p->approvalPembayaran) {
+                $amountBeli = $toFloat($p->approvalPembayaran->subtotal) > 0
+                    ? $toFloat($p->approvalPembayaran->subtotal)
+                    : ($toFloat($p->approvalPembayaran->amount_after_refraksi) > 0
+                        ? $toFloat($p->approvalPembayaran->amount_after_refraksi)
+                        : $toFloat($p->total_harga_kirim));
+
+                $qtyBeli = $toFloat($p->approvalPembayaran->qty_after_refraksi) > 0
+                    ? $toFloat($p->approvalPembayaran->qty_after_refraksi)
+                    : $toFloat($p->total_qty_kirim);
+
+                if ($qtyBeli > 0 && $amountBeli > 0) {
+                    $hargaBeliPerKg = $amountBeli / $qtyBeli;
+                }
+
+                $totalHargaBeliItem = $amountBeli;
+
+            } else {
+                $hargaBeliPerKg     = $toFloat($detail->harga_satuan);
+                $totalHargaBeliItem = $p->pengirimanDetails->sum('total_harga');
+            }
+
+            $margin           = $totalHargaJualItem - $totalHargaBeliItem;
+            $marginPercentage = $totalHargaJualItem > 0 ? ($margin / $totalHargaJualItem) * 100 : 0;
+
+            $klien            = $p->order->klien ?? null;
+            $namaKlien        = $klien ? $klien->nama . ($klien->cabang ? " - {$klien->cabang}" : '') : '-';
+            $picMarketingUser = $p->order->winner->user ?? null;
+            $namaPicMarketing = $picMarketingUser ? $picMarketingUser->nama : '-';
+            $supplier         = $detail->bahanBakuSupplier->supplier ?? null;
+            $bahanBaku        = $detail->orderDetail->bahanBakuKlien ?? null;
+            $bahanBakuSupplier = $detail->bahanBakuSupplier ?? null;
+
+            $row = [
+                'tanggal_kirim'     => $p->tanggal_kirim,
+                'pic_purchasing'    => $p->purchasing->nama ?? '-',
+                'pic_marketing'     => $namaPicMarketing,
+                'klien'             => $namaKlien,
+                'supplier'          => $supplier->nama ?? '-',
+                'bahan_baku'        => $bahanBaku->nama ?? $bahanBakuSupplier->nama ?? '-',
+                'qty_kirim'         => $totalQtyKirim,
+                'qty'               => $totalQtyKirim,
+                'harga_beli_per_kg' => $hargaBeliPerKg,
+                'harga_beli_total'  => $totalHargaBeliItem,
+                'harga_jual_per_kg' => $hargaJualPerKg,
+                'harga_jual_total'  => $totalHargaJualItem,
+                'total_harga_beli'  => $totalHargaBeliItem,
+                'total_harga_jual'  => $totalHargaJualItem,
+                'margin'            => $margin,
+                'margin_percentage' => $marginPercentage,
+            ];
+
+            if ($withMeta) {
+                $row['pengiriman_id'] = $p->id;
+                $row['status']        = $p->status;
+                $row['no_pengiriman'] = $p->no_pengiriman ?? '-';
+                $row['has_refraksi']  = $p->approvalPembayaran
+                    && floatval($p->approvalPembayaran->refraksi_amount ?? 0) > 0;
+            }
+
+            $rows[] = $row;
+
+            $totalMargin    += $margin;
+            $totalHargaBeli += $totalHargaBeliItem;
+            $totalHargaJual += $totalHargaJualItem;
         }
 
         return compact('rows', 'totalMargin', 'totalHargaBeli', 'totalHargaJual');

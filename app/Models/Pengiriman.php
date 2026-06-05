@@ -32,6 +32,7 @@ class Pengiriman extends Model
         'catatan_refraksi',
         'rating',
         'ulasan',
+        'invoice_penagihan_id',
     ];
 
     protected $casts = [
@@ -131,6 +132,14 @@ class Pengiriman extends Model
     public function invoicePenagihan()
     {
         return $this->hasOne(InvoicePenagihan::class);
+    }
+
+    /**
+     * Relasi ke Invoice Penagihan (untuk merged invoice)
+     */
+    public function mergedInvoicePenagihan()
+    {
+        return $this->belongsTo(InvoicePenagihan::class, 'invoice_penagihan_id');
     }
 
     /**

@@ -577,7 +577,7 @@ class DetailPembayaran extends Component
         $this->approval->loadMissing('expenses');
         $expensesTotal = floatval($this->approval->expenses->sum('amount'));
 
-        $subtotal = max(0, floatval($amountBefore) - $refraksiAmount - $expensesTotal);
+        $subtotal = max(0, floatval($amountBefore) - $refraksiAmount + $expensesTotal);
         $piutang  = floatval($this->approval->piutang_amount ?? 0);
         $totalDibayarkan = max(0, $subtotal - $piutang);
 

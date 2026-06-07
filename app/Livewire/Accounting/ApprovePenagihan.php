@@ -53,6 +53,9 @@ class ApprovePenagihan extends Component
         'value' => 0,
     ];
 
+    // Per-item refraksi (indexed by items JSON index)
+    public $itemRefraksi = [];
+
     // Invoice date form
     public $invoiceDate;
     public $dueDate;
@@ -123,6 +126,13 @@ class ApprovePenagihan extends Component
         // Load refraksi values from invoice
         $this->refraksiForm['type'] = $this->invoice->refraksi_type ?? 'qty';
         $this->refraksiForm['value'] = $this->invoice->refraksi_value ?? 0;
+
+        // Load per-item refraksi from invoice items JSON
+        $rawItems = $this->invoice->items ?? [];
+        $this->itemRefraksi = [];
+        foreach ($rawItems as $i => $it) {
+            $this->itemRefraksi[$i] = (float) ($it['refraksi_kg'] ?? 0);
+        }
 
         // Load invoice dates
         $this->invoiceDate = $this->invoice->invoice_date?->format('Y-m-d');
@@ -636,6 +646,45 @@ class ApprovePenagihan extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal mengupdate refraksi: ' . $e->getMessage());
+        }
+    }
+
+    public function updateItemRefraksi()
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if ($this->approval->status === 'completed') {
+            session()->flash('error', 'Tidak dapat mengubah refraksi item pada approval yang sudah selesai');
+            return;
+        }
+
+        $rawItems = $this->invoice->items ?? [];
+
+        if (empty($rawItems) || !isset($rawItems[0]['quantity'])) {
+            session()->flash('error', 'Format item tidak mendukung refraksi per-item');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($rawItems as $i => &$it) {
+                $refKg = max((float) ($this->itemRefraksi[$i] ?? 0), 0);
+                $qty   = (float) ($it['quantity'] ?? 0);
+                $it['refraksi_kg'] = $refKg;
+                $it['total'] = max($qty - $refKg, 0) * (float) ($it['unit_price'] ?? 0);
+            }
+
+            $this->invoice->update(['items' => $rawItems]);
+            $this->invoice->refresh();
+
+            DB::commit();
+
+            session()->flash('message', 'Refraksi per-item berhasil diupdate');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal mengupdate refraksi item: ' . $e->getMessage());
         }
     }
 

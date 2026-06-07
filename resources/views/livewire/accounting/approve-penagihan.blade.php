@@ -445,6 +445,59 @@
                     </div>
                 @endif
 
+                {{-- Per-item Refraksi --}}
+                @php $invoiceItems = $invoice->items ?? []; @endphp
+                @if($canManage && $approval->status !== 'completed' && !empty($invoiceItems) && isset($invoiceItems[0]['quantity']) && !isset($invoiceItems[0]['item_name']))
+                    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                            <i class="fas fa-balance-scale text-purple-500 text-sm"></i>
+                            <h3 class="text-sm font-semibold text-gray-800">Refraksi Per-Item</h3>
+                            <span class="text-xs text-gray-400">(KG)</span>
+                        </div>
+                        <div class="p-5">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs">
+                                    <thead>
+                                        <tr class="border-b border-gray-200">
+                                            <th class="text-left py-2 px-2 font-medium text-gray-500">Item</th>
+                                            <th class="text-center py-2 px-2 font-medium text-gray-500">Qty (KG)</th>
+                                            <th class="text-center py-2 px-2 font-medium text-gray-500">Refraksi (KG)</th>
+                                            <th class="text-center py-2 px-2 font-medium text-gray-500">Netto</th>
+                                            <th class="text-right py-2 px-2 font-medium text-gray-500">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($invoiceItems as $ii => $it)
+                                            @php
+                                                $q = (float) ($it['quantity'] ?? 0);
+                                                $ref = (float) ($itemRefraksi[$ii] ?? 0);
+                                                $price = (float) ($it['unit_price'] ?? 0);
+                                                $net = max($q - $ref, 0);
+                                                $total = $net * $price;
+                                            @endphp
+                                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                                <td class="py-2 px-2">{{ $it['description'] ?? '-' }}</td>
+                                                <td class="text-center py-2 px-2">{{ number_format($q, 2, ',', '.') }}</td>
+                                                <td class="text-center py-2 px-2">
+                                                    <input type="number" step="0.01" min="0" max="{{ $q }}"
+                                                        wire:model.defer="itemRefraksi.{{ $ii }}"
+                                                        class="w-20 px-2 py-1 text-xs text-center border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-400 focus:border-transparent">
+                                                </td>
+                                                <td class="text-center py-2 px-2 font-medium">{{ number_format($net, 2, ',', '.') }}</td>
+                                                <td class="text-right py-2 px-2 font-medium">Rp {{ number_format($total, 2, ',', '.') }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button wire:click="updateItemRefraksi"
+                                class="mt-3 w-full px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition font-medium">
+                                <i class="fas fa-save mr-1.5"></i> Simpan Refraksi Per-Item
+                            </button>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Perhitungan & Refraksi --}}
                 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                     <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">

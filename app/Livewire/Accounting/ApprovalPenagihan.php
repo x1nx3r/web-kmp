@@ -480,26 +480,6 @@ class ApprovalPenagihan extends Component
             'notes'            => $notes,
         ];
 
-        $this->customerForm = [
-            'customer_name'    => $this->invoiceForm['customer_name'],
-            'customer_address' => $this->invoiceForm['customer_address'],
-            'customer_phone'   => $this->invoiceForm['customer_phone'],
-            'customer_email'   => $this->invoiceForm['customer_email'],
-        ];
-
-        $this->dateForm = [
-            'invoice_date' => now()->format('Y-m-d'),
-            'due_date'     => now()->addDays(30)->format('Y-m-d'),
-        ];
-
-        $this->bankForm = [
-            'bank_name'           => '',
-            'bank_account_number' => '',
-            'bank_account_name'   => '',
-        ];
-
-        $this->invoiceNumberForm = InvoicePenagihan::generateInvoiceNumber();
-
         $this->selectedShipment  = $firstShipment;
         $this->selectedShipments = $shipments;
         $this->isMergedInvoice   = true;
@@ -509,7 +489,15 @@ class ApprovalPenagihan extends Component
 
     public function createInvoice()
     {
-        $this->validate();
+        $this->validate([
+            'invoiceForm.customer_name' => 'required|string|max:255',
+            'invoiceForm.customer_address' => 'required|string',
+            'invoiceForm.customer_phone' => 'nullable|string|max:20',
+            'invoiceForm.customer_email' => 'nullable|email|max:255',
+            'invoiceForm.refraksi_type' => 'required|in:qty,rupiah,lainnya',
+            'invoiceForm.refraksi_value' => 'required|numeric|min:0',
+            'invoiceForm.notes' => 'nullable|string',
+        ]);
 
         // Gunakan $selectedShipments (selalu Collection setelah refactor)
         $shipments = $this->selectedShipments;

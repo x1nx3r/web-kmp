@@ -402,17 +402,9 @@
                         $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
                     }
                     $itemNo = 0;
-                    $isMerged = $pengirimans->count() > 1;
                 @endphp
 
                 @forelse($pengirimans as $p)
-                    @if($isMerged)
-                        <tr>
-                            <td colspan="6" style="padding: 6px 8px; background: #f0fdf4; font-weight: 700; font-size: 10pt; color: #166534; border-bottom: 1px solid #ddd;">
-                                {{ $p->no_pengiriman }}
-                            </td>
-                        </tr>
-                    @endif
                     @foreach($p->details as $detail)
                         @php
                             $itemNo++;

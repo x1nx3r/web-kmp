@@ -487,36 +487,62 @@ class ApprovalPenagihan extends Component
                 $subtotal       = $subtotal - $refraksiAmount;
             }
 
+            // Kumpulkan additional expenses dari seluruh approval pembayaran
+            $expensesTotal = 0;
+            $expenseRows   = collect();
+
+            foreach ($shipments as $s) {
+                $s->loadMissing('approvalPembayaran.expenses');
+                $ap = $s->approvalPembayaran;
+                if ($ap) {
+                    $expensesTotal += floatval($ap->additional_expenses_total ?? 0);
+                    foreach ($ap->expenses as $e) {
+                        $expenseRows->push($e);
+                    }
+                }
+            }
+
+            $subtotal += $expensesTotal;
+
             $taxAmount   = $subtotal * ($companySetting->tax_percentage / 100);
             $totalAmount = $subtotal + $taxAmount;
 
             // Buat invoice
             $invoice = InvoicePenagihan::create([
-                'pengiriman_id'         => $primaryShipment->id,
-                'invoice_number'        => $invoiceNumber,
-                'invoice_date'          => now(),
-                'due_date'              => now()->addDays($companySetting->invoice_due_days),
-                'customer_name'         => $this->invoiceForm['customer_name'],
-                'customer_address'      => $this->invoiceForm['customer_address'],
-                'customer_phone'        => $this->invoiceForm['customer_phone'],
-                'customer_email'        => $this->invoiceForm['customer_email'],
-                'items'                 => $items,
-                'refraksi_type'         => $this->invoiceForm['refraksi_type'],
-                'refraksi_value'        => $this->invoiceForm['refraksi_value'],
-                'refraksi_amount'       => $refraksiAmount,
-                'qty_before_refraksi'   => $qtyBeforeRefraksi,
-                'qty_after_refraksi'    => $qtyAfterRefraksi,
-                'amount_before_refraksi'=> $totalSellingPrice,
-                'amount_after_refraksi' => $subtotal,
-                'subtotal'              => $subtotal,
-                'tax_percentage'        => $companySetting->tax_percentage,
-                'tax_amount'            => $taxAmount,
-                'discount_amount'       => 0,
-                'total_amount'          => $totalAmount,
-                'notes'                 => $this->invoiceForm['notes'],
-                'payment_status'        => 'unpaid',
-                'created_by'            => Auth::id(),
+                'pengiriman_id'          => $primaryShipment->id,
+                'invoice_number'         => $invoiceNumber,
+                'invoice_date'           => now(),
+                'due_date'               => now()->addDays($companySetting->invoice_due_days),
+                'customer_name'          => $this->invoiceForm['customer_name'],
+                'customer_address'       => $this->invoiceForm['customer_address'],
+                'customer_phone'         => $this->invoiceForm['customer_phone'],
+                'customer_email'         => $this->invoiceForm['customer_email'],
+                'items'                  => $items,
+                'refraksi_type'          => $this->invoiceForm['refraksi_type'],
+                'refraksi_value'         => $this->invoiceForm['refraksi_value'],
+                'refraksi_amount'        => $refraksiAmount,
+                'qty_before_refraksi'    => $qtyBeforeRefraksi,
+                'qty_after_refraksi'     => $qtyAfterRefraksi,
+                'amount_before_refraksi' => $totalSellingPrice,
+                'amount_after_refraksi'  => $subtotal - $expensesTotal,
+                'subtotal'               => $subtotal,
+                'additional_expenses_total' => $expensesTotal,
+                'tax_percentage'         => $companySetting->tax_percentage,
+                'tax_amount'             => $taxAmount,
+                'discount_amount'        => 0,
+                'total_amount'           => $totalAmount,
+                'notes'                  => $this->invoiceForm['notes'],
+                'payment_status'         => 'unpaid',
+                'created_by'             => Auth::id(),
             ]);
+
+            // Copy expense rows ke invoice
+            foreach ($expenseRows as $e) {
+                $invoice->expenses()->create([
+                    'type'   => $e->type,
+                    'amount' => $e->amount,
+                ]);
+            }
 
             // Link semua pengiriman ke invoice baru
             foreach ($shipments as $s) {

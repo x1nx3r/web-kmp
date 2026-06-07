@@ -5,10 +5,8 @@ namespace App\Livewire\Accounting;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\ApprovalPembayaran as ApprovalPembayaranModel;
-use App\Models\ApprovalPenagihan;
 use App\Models\ApprovalHistory;
 use App\Models\InvoicePenagihan;
-use App\Services\Notifications\ApprovalPenagihanNotificationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -370,9 +368,6 @@ class ApprovePembayaran extends Component
                 }
             }
 
-            // Create Invoice Penagihan and Approval Penagihan automatically
-            $this->createInvoiceAndApprovalPenagihan($user->id);
-
             // Save history
             ApprovalHistory::create([
                 'approval_type' => 'pembayaran',
@@ -584,136 +579,6 @@ class ApprovePembayaran extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             Session::flash('error', 'Gagal mengupdate refraksi: ' . $e->getMessage());
-        }
-    }
-
-    private function createInvoiceAndApprovalPenagihan($userId)
-    {
-        // Check if invoice already exists
-        $existingInvoice = InvoicePenagihan::where('pengiriman_id', $this->approval->pengiriman_id)->first();
-
-        if ($existingInvoice) {
-            // If invoice already exists, just return
-            return;
-        }
-
-        $pengiriman = $this->approval->pengiriman;
-
-        // Load pengiriman details with order detail for harga_jual
-        $pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail');
-
-        $purchaseOrder = $pengiriman->purchaseOrder;
-        $klien = $purchaseOrder->klien ?? null;
-
-        // Generate invoice number using model method with duplicate prevention
-        $invoiceNumber = InvoicePenagihan::generateInvoiceNumber();
-
-        // Calculate total selling price (harga jual) instead of buying price (harga beli)
-        $totalSellingPrice = 0;
-        $items = [];
-
-        foreach ($pengiriman->pengirimanDetails as $detail) {
-            $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-            $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
-            $qtyKirim = floatval($detail->qty_kirim);
-            $itemTotal = $qtyKirim * $hargaJual;
-            $totalSellingPrice += $itemTotal;
-
-            // Collect item details for invoice
-            $bahanBakuName = $detail->bahanBakuSupplier->nama ?? ($orderDetail->bahanBakuKlien->nama ?? 'Bahan Baku');
-            $items[] = [
-                'description' => $bahanBakuName,
-                'quantity' => $qtyKirim,
-                'unit_price' => $hargaJual,
-                'total' => $itemTotal,
-            ];
-        }
-
-        // Get refraksi from approval pembayaran (opsional)
-        $refraksiType = $this->approval->refraksi_type;
-        $refraksiValue = $this->approval->refraksi_value ?? 0;
-
-        // Calculate amounts based on refraksi using selling price
-        $qtyBeforeRefraksi = $pengiriman->total_qty_kirim;
-        $amountBeforeRefraksi = $totalSellingPrice; // Use selling price
-        $qtyAfterRefraksi = $qtyBeforeRefraksi;
-        $refraksiAmount = 0;
-
-        // Hanya hitung refraksi jika ada type dan value > 0
-        if ($refraksiType && $refraksiValue > 0) {
-            if ($refraksiType === 'qty') {
-                $refraksiQty = $qtyBeforeRefraksi * ($refraksiValue / 100);
-                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
-                $hargaPerKg = $qtyBeforeRefraksi > 0 ? $amountBeforeRefraksi / $qtyBeforeRefraksi : 0;
-                $refraksiAmount = $refraksiQty * $refraksiAmount;
-            } elseif ($refraksiType === 'rupiah') {
-                $refraksiAmount = $refraksiValue * $qtyBeforeRefraksi;
-            } elseif ($refraksiType === 'lainnya') {
-                $refraksiAmount = $refraksiValue;
-            }
-        }
-
-        $subtotal = $amountBeforeRefraksi - $refraksiAmount;
-
-        // Subtotal should also take additional expenses from approval pembayaran
-        $approvalExpensesTotal = floatval($this->approval->additional_expenses_total ?? 0);
-        $subtotalAfterExpenses = $subtotal + $approvalExpensesTotal;
-        if ($subtotalAfterExpenses < 0) {
-            $subtotalAfterExpenses = 0;
-        }
-
-        // Create Invoice with selling price
-        $invoice = InvoicePenagihan::create([
-            'pengiriman_id' => $pengiriman->id,
-            'invoice_number' => $invoiceNumber,
-            'invoice_date' => now(),
-            'due_date' => now()->addDays(30),
-            'customer_name' => $klien->nama ?? 'Customer',
-            'customer_address' => $klien->alamat_lengkap ?? '-',
-            'customer_phone' => $klien->no_hp ?? null,
-            'customer_email' => null,
-            'items' => $items,
-            'subtotal' => $subtotalAfterExpenses,
-            'tax_percentage' => 0,
-            'tax_amount' => 0,
-            'discount_amount' => 0,
-            'total_amount' => $subtotalAfterExpenses,
-            'refraksi_type' => $refraksiType,
-            'refraksi_value' => $refraksiValue,
-            'refraksi_amount' => $refraksiAmount,
-            'qty_before_refraksi' => $qtyBeforeRefraksi,
-            'qty_after_refraksi' => $qtyAfterRefraksi,
-            'amount_before_refraksi' => $amountBeforeRefraksi,
-            'amount_after_refraksi' => $subtotal,
-            'additional_expenses_total' => $approvalExpensesTotal,
-            'status' => 'pending',
-            'notes' => 'Invoice dibuat otomatis dari approval pembayaran',
-            'created_by' => $userId,
-        ]);
-
-        // Copy expense detail rows into invoice
-        try {
-            $this->approval->loadMissing('expenses');
-            foreach ($this->approval->expenses as $e) {
-                $invoice->expenses()->create([
-                    'type' => $e->type,
-                    'amount' => $e->amount,
-                ]);
-            }
-        } catch (\Exception $e) {
-            // ignore, invoice still valid
-        }
-
-        // Create Approval Penagihan
-        $approvalPenagihan = ApprovalPenagihan::create([
-            'pengiriman_id' => $pengiriman->id,
-            'invoice_id' => $invoice->id,
-            'status' => 'pending',
-        ]);
-
-        // Send notification to accounting team
-        if ($approvalPenagihan) {
-            ApprovalPenagihanNotificationService::notifyPendingApproval($approvalPenagihan);
         }
     }
 

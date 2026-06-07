@@ -554,13 +554,16 @@ class ApprovalPenagihan extends Component
                 $oldApprovals  = ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)->get();
                 $oldInvoiceIds = $oldApprovals->pluck('invoice_id')->filter()->unique();
 
-                // Putus referensi ke invoice lama dulu (hindari FK conflict)
+                // Putus referensi ke invoice lama dulu
                 Pengiriman::whereIn('invoice_penagihan_id', $oldInvoiceIds)
                     ->where('invoice_penagihan_id', '!=', $invoice->id)
                     ->update(['invoice_penagihan_id' => null]);
 
-                ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)->delete();
-                InvoicePenagihan::whereIn('id', $oldInvoiceIds)->delete();
+                // Tandai approval & invoice lama sebagai digabung (bukan dihapus)
+                ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)
+                    ->update(['status' => 'digabung']);
+                InvoicePenagihan::whereIn('id', $oldInvoiceIds)
+                    ->update(['status' => 'digabung']);
             }
 
             // Buat approval penagihan baru

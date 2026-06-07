@@ -345,43 +345,54 @@
         </thead>
         <tbody>
             @php
-                // Harga jual total dasar (sebelum refraksi) bisa di-override dari invoice edit mode.
                 $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
-                $qtyTotal = (float) ($pengiriman->total_qty_kirim ?? 0);
 
-                // Total harga jual default berdasarkan detail (untuk pro-rate jika invoice override dipakai)
+                // Hitung total harga jual dari SEMUA pengiriman
                 $computedTotalSelling = 0;
-                foreach ($pengiriman->details as $d) {
-                    $h = $d->orderDetail->harga_jual ?? 0;
-                    $q = $d->qty_kirim ?? 0;
-                    $computedTotalSelling += ((float) $q) * ((float) $h);
+                foreach ($pengirimans as $p) {
+                    foreach ($p->details as $d) {
+                        $h = $d->orderDetail->harga_jual ?? 0;
+                        $q = $d->qty_kirim ?? 0;
+                        $computedTotalSelling += ((float) $q) * ((float) $h);
+                    }
                 }
 
-                // Faktor untuk menyesuaikan harga satuan & total item agar jumlahnya = amountBefore
-                // - Jika amountBefore kosong/0 => gunakan harga_jual asli (factor 1)
-                // - Jika computedTotalSelling 0 => fallback factor 0 (semua 0)
                 $ratio = 1;
                 if ($amountBefore > 0) {
                     $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
                 }
+
+                $itemNo = 0;
+                $isMerged = $pengirimans->count() > 1;
             @endphp
 
-            @forelse($pengiriman->details as $index => $detail)
-                @php
-                    $hargaJualAsli = (float) ($detail->orderDetail->harga_jual ?? 0);
-                    $qtyKirim = (float) ($detail->qty_kirim ?? 0);
+            @forelse($pengirimans as $p)
+                @php $firstItem = true; @endphp
+                @foreach($p->details as $detail)
+                    @php
+                        $itemNo++;
+                        if ($firstItem && $isMerged) {
+                            $firstItem = false;
+                        }
 
-                    // Harga ditampilkan dipro-rate supaya sesuai dengan amount_before_refraksi (subtotal sebelum refraksi)
-                    $hargaSatuanDisplay = $hargaJualAsli * $ratio;
-                    $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
-                @endphp
-                <tr>
-                    <td class="text-center">{{ $index + 1 }}</td>
-                    <td style="text-align: left;">{{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}</td>
-                    <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
-                    <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
-                    <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
-                </tr>
+                        $hargaJualAsli = (float) ($detail->orderDetail->harga_jual ?? 0);
+                        $qtyKirim = (float) ($detail->qty_kirim ?? 0);
+                        $hargaSatuanDisplay = $hargaJualAsli * $ratio;
+                        $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+                    @endphp
+                    <tr>
+                        <td class="text-center">{{ $itemNo }}</td>
+                        <td style="text-align: left;">
+                            @if($firstItem && $isMerged)
+                                <strong>{{ $p->no_pengiriman }}</strong><br>
+                            @endif
+                            {{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
+                        </td>
+                        <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
+                        <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
+                        <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
+                    </tr>
+                @endforeach
             @empty
                 <tr>
                     <td colspan="5" class="text-center" style="padding: 15px; color: #999;">Detail pengiriman tidak tersedia</td>

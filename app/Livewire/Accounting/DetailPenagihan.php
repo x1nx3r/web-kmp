@@ -731,7 +731,9 @@ class DetailPenagihan extends Component
     {
         try {
             $approval = ApprovalPenagihan::with([
-                'invoice',
+                'invoice.pengirimans.details.bahanBakuSupplier',
+                'invoice.pengirimans.details.purchaseOrderBahanBaku.bahanBakuKlien',
+                'invoice.pengirimans.purchaseOrder.klien',
                 'pengiriman.details.bahanBakuSupplier',
                 'pengiriman.details.purchaseOrderBahanBaku.bahanBakuKlien',
                 'pengiriman.purchaseOrder.klien'
@@ -739,12 +741,14 @@ class DetailPenagihan extends Component
 
             $invoice = $approval->invoice;
             $pengiriman = $approval->pengiriman;
+            $pengirimans = $invoice->pengirimans->count() > 1 ? $invoice->pengirimans : collect([$pengiriman]);
             $companySetting = CompanySetting::first();
 
             // Prepare data for PDF
             $data = [
                 'invoice' => $invoice,
                 'pengiriman' => $pengiriman,
+                'pengirimans' => $pengirimans,
                 'approval' => $approval,
                 'company' => $companySetting,
             ];

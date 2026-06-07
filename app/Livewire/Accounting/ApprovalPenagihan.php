@@ -400,6 +400,113 @@ class ApprovalPenagihan extends Component
 
         $this->showCreateInvoiceModal = true;
     }
+
+    public function mergeInvoices()
+    {
+        if (empty($this->selectedApprovalIds)) {
+            session()->flash('error', 'Silakan pilih minimal 1 invoice.');
+            return;
+        }
+
+        $approvals = ApprovalPenagihanModel::with([
+            'invoice',
+            'pengiriman.purchaseOrder.klien',
+            'pengiriman.pengirimanDetails.bahanBakuSupplier',
+            'pengiriman.approvalPembayaran.histories' => function($query) {
+                $query->where('approval_type', 'pembayaran')
+                    ->orderBy('created_at', 'desc');
+            }
+        ])->whereIn('id', $this->selectedApprovalIds)->get();
+
+        $customerNames = $approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique();
+        if ($customerNames->count() > 1) {
+            session()->flash('error', 'Gagal menggabungkan invoice: Customer dari invoice terpilih harus sama.');
+            return;
+        }
+
+        $invoiceIds = $approvals->pluck('invoice_id')->filter()->unique();
+        $shipments = Pengiriman::with([
+            'purchaseOrder.klien',
+            'forecast',
+            'pengirimanDetails.bahanBakuSupplier',
+            'approvalPembayaran.histories' => function($query) {
+                $query->where('approval_type', 'pembayaran')
+                    ->orderBy('created_at', 'desc');
+            }
+        ])->whereIn('invoice_penagihan_id', $invoiceIds)
+        ->orWhereIn('id', $approvals->pluck('pengiriman_id'))
+        ->get()
+        ->unique('id');
+
+        if ($shipments->isEmpty()) {
+            session()->flash('error', 'Tidak ada data pengiriman yang ditemukan untuk digabungkan.');
+            return;
+        }
+
+        $firstShipment = $shipments->first();
+        $klien = $firstShipment->purchaseOrder->klien ?? null;
+
+        $combinedNotes = [];
+        foreach ($shipments as $s) {
+            $ap = $s->approvalPembayaran;
+            if ($ap) {
+                $latestHistory = $ap->histories->first();
+                if ($latestHistory && $latestHistory->notes) {
+                    $combinedNotes[] = $s->no_pengiriman . ': ' . $latestHistory->notes;
+                }
+            }
+        }
+        $notes = !empty($combinedNotes)
+            ? "Catatan dari Pembayaran:\n" . implode("\n", $combinedNotes)
+            : '';
+
+        $refraksiType  = 'qty';
+        $refraksiValue = 0;
+        foreach ($shipments as $s) {
+            if ($s->approvalPembayaran && $s->approvalPembayaran->refraksi_value > 0) {
+                $refraksiType  = $s->approvalPembayaran->refraksi_type ?? 'qty';
+                $refraksiValue = $s->approvalPembayaran->refraksi_value ?? 0;
+                break;
+            }
+        }
+
+        $this->invoiceForm = [
+            'customer_name'    => $klien->nama ?? $approvals->first()->invoice?->customer_name ?? '',
+            'customer_address' => $klien->alamat_lengkap ?? $approvals->first()->invoice?->customer_address ?? '',
+            'customer_phone'   => $klien->no_hp ?? $approvals->first()->invoice?->customer_phone ?? '',
+            'customer_email'   => $approvals->first()->invoice?->customer_email ?? '',
+            'refraksi_type'    => $refraksiType,
+            'refraksi_value'   => $refraksiValue,
+            'notes'            => $notes,
+        ];
+
+        $this->customerForm = [
+            'customer_name'    => $this->invoiceForm['customer_name'],
+            'customer_address' => $this->invoiceForm['customer_address'],
+            'customer_phone'   => $this->invoiceForm['customer_phone'],
+            'customer_email'   => $this->invoiceForm['customer_email'],
+        ];
+
+        $this->dateForm = [
+            'invoice_date' => now()->format('Y-m-d'),
+            'due_date'     => now()->addDays(30)->format('Y-m-d'),
+        ];
+
+        $this->bankForm = [
+            'bank_name'           => '',
+            'bank_account_number' => '',
+            'bank_account_name'   => '',
+        ];
+
+        $this->invoiceNumberForm = InvoicePenagihan::generateInvoiceNumber();
+
+        $this->selectedShipment  = $firstShipment;
+        $this->selectedShipments = $shipments;
+        $this->isMergedInvoice   = true;
+
+        $this->createInvoice();
+    }
+
     public function createInvoice()
     {
         $this->validate();

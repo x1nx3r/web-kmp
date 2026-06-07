@@ -330,7 +330,8 @@
                     @if($activeTab === 'pending' && count($selectedApprovalIds) > 0)
                         @if($this->isMergeValid)
                             <button
-                                wire:click="showCreateMergedInvoice"
+                                wire:click="mergeInvoices"
+                                wire:confirm="Gabung {{ count($selectedApprovalIds) }} invoice menjadi satu? Invoice lama akan ditandai sebagai digabung."
                                 class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
                             >
                                 <i class="fas fa-object-group mr-1.5"></i>

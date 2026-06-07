@@ -85,6 +85,11 @@ class ApprovalPenagihan extends Component
     public $invoiceNumberForm = '';
     public $totalHargaJualForm = 0;
 
+    public $shipmentRefraksi = [];
+    public $shipmentExpenses = [];
+    public $newExpenseType = '';
+    public $newExpenseAmount = 0;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'customerFilter' => ['except' => 'all'],
@@ -744,6 +749,30 @@ class ApprovalPenagihan extends Component
         // Populate total harga jual form
         $this->totalHargaJualForm = $approval->invoice->subtotal ?? 0;
 
+        // Load per-pengiriman refraksi and expenses
+        $this->shipmentRefraksi = [];
+        $this->shipmentExpenses = [];
+        if ($approval->invoice) {
+            $approval->invoice->load('pengirimans.approvalPembayaran.expenses');
+            foreach ($approval->invoice->pengirimans as $s) {
+                $ap = $s->approvalPembayaran;
+                $this->shipmentRefraksi[$s->id] = [
+                    'type'  => $ap?->refraksi_type ?? 'qty',
+                    'value' => $ap?->refraksi_value ?? 0,
+                ];
+                $this->shipmentExpenses[$s->id] = [];
+                if ($ap) {
+                    foreach ($ap->expenses as $e) {
+                        $this->shipmentExpenses[$s->id][] = [
+                            'id'     => $e->id,
+                            'type'   => $e->type,
+                            'amount' => $e->amount,
+                        ];
+                    }
+                }
+            }
+        }
+
         // Load approval history
         $this->approvalHistory = ApprovalHistory::where('approval_type', 'penagihan')
             ->where('approval_id', $approvalId)
@@ -1037,100 +1066,189 @@ class ApprovalPenagihan extends Component
         }
     }
 
-    public function updateDiscount()
+    public function updateShipmentRefraksi($pengirimanId)
     {
         if (!$this->selectedData || !$this->selectedData->invoice) {
             return;
         }
 
+        $pengiriman = Pengiriman::with('approvalPembayaran')->find($pengirimanId);
+        if (!$pengiriman) {
+            session()->flash('error', 'Data pengiriman tidak ditemukan');
+            return;
+        }
+
         DB::beginTransaction();
         try {
-            $invoice = $this->selectedData->invoice;
-            $pengiriman = $invoice->pengiriman;
-            $user = Auth::user();
+            $type  = $this->shipmentRefraksi[$pengirimanId]['type'] ?? 'qty';
+            $value = floatval($this->shipmentRefraksi[$pengirimanId]['value'] ?? 0);
 
-            // Store old values for history
-            $oldValues = [
-                'refraksi_type' => $invoice->refraksi_type,
-                'refraksi_value' => $invoice->refraksi_value,
-                'refraksi_amount' => $invoice->refraksi_amount,
-            ];
-
-            // Update refraksi values
-            $invoice->refraksi_type = $this->invoiceForm['refraksi_type'];
-            $invoice->refraksi_value = floatval($this->invoiceForm['refraksi_value']);
-
-            // Recalculate base using harga JUAL (same as createInvoice)
-            $pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail');
-            $totalSellingPrice = 0;
-            foreach ($pengiriman->pengirimanDetails as $detail) {
-                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                $hargaJual = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
-                $totalSellingPrice += floatval($detail->qty_kirim) * $hargaJual;
+            // Save to approvalPembayaran
+            $ap = $pengiriman->approvalPembayaran;
+            if ($ap) {
+                $ap->update([
+                    'refraksi_type'  => $type,
+                    'refraksi_value' => $value,
+                ]);
             }
 
-            $qtyBeforeRefraksi = $pengiriman->total_qty_kirim;
-            $qtyAfterRefraksi = $qtyBeforeRefraksi;
-            $refraksiAmount = 0;
-            $subtotal = $totalSellingPrice; // ← harga JUAL, bukan harga beli
-
-            if ($invoice->refraksi_type === 'qty') {
-                // Refraksi Qty
-                $refraksiQty = $qtyBeforeRefraksi * ($invoice->refraksi_value / 100);
-                $qtyAfterRefraksi = $qtyBeforeRefraksi - $refraksiQty;
-
-                $hargaPerKg = $qtyBeforeRefraksi > 0 ? $subtotal / $qtyBeforeRefraksi : 0;
-                $refraksiAmount = $refraksiQty * $hargaPerKg;
-                $subtotal = $subtotal - $refraksiAmount;
-            } elseif ($invoice->refraksi_type === 'rupiah') {
-                // Refraksi Rupiah
-                $refraksiAmount = $invoice->refraksi_value * $qtyBeforeRefraksi;
-                $subtotal = $subtotal - $refraksiAmount;
-            } elseif ($invoice->refraksi_type === 'lainnya') {
-                // Refraksi Lainnya: input manual langsung nominal total
-                $refraksiAmount = $invoice->refraksi_value;
-                $subtotal = $subtotal - $refraksiAmount;
-            }
-
-            // Update invoice
-            $invoice->refraksi_amount = $refraksiAmount;
-            $invoice->qty_before_refraksi = $qtyBeforeRefraksi;
-            $invoice->qty_after_refraksi = $qtyAfterRefraksi;
-            $invoice->subtotal = $subtotal;
-
-            $invoice->recalculateTotal();
-
-            // Save history
-            $changes = [
-                'before' => $oldValues,
-                'after' => [
-                    'refraksi_type' => $invoice->refraksi_type,
-                    'refraksi_value' => $invoice->refraksi_value,
-                    'refraksi_amount' => $invoice->refraksi_amount,
-                ],
-            ];
-
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $this->selectedData->id,
-                'pengiriman_id' => $this->selectedData->pengiriman_id,
-                'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
-                'user_id' => $user->id,
-                'action' => 'edited',
-                'changes' => $changes,
-                'notes' => 'Update refraksi invoice',
-            ]);
+            // Recalculate invoice totals from all shipments
+            $this->recalculateInvoiceFromShipments();
 
             DB::commit();
-            session()->flash('message', 'Refraksi berhasil diupdate');
+            session()->flash('message', 'Refraksi pengiriman ' . $pengiriman->no_pengiriman . ' berhasil diupdate');
 
-            // Reload data
             $this->showDetail($this->selectedData->id);
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Gagal update refraksi: ' . $e->getMessage());
         }
+    }
+
+    public function addShipmentExpense($pengirimanId)
+    {
+        $this->shipmentExpenses[$pengirimanId][] = [
+            'id'     => null,
+            'type'   => '',
+            'amount' => 0,
+        ];
+    }
+
+    public function removeShipmentExpense($pengirimanId, $index)
+    {
+        if (isset($this->shipmentExpenses[$pengirimanId][$index])) {
+            unset($this->shipmentExpenses[$pengirimanId][$index]);
+            $this->shipmentExpenses[$pengirimanId] = array_values($this->shipmentExpenses[$pengirimanId]);
+        }
+    }
+
+    public function saveShipmentExpenses($pengirimanId)
+    {
+        if (!$this->selectedData || !$this->selectedData->invoice) {
+            return;
+        }
+
+        $pengiriman = Pengiriman::with('approvalPembayaran')->find($pengirimanId);
+        if (!$pengiriman || !$pengiriman->approvalPembayaran) {
+            session()->flash('error', 'Data pengiriman atau approval pembayaran tidak ditemukan');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $ap = $pengiriman->approvalPembayaran;
+            $expenses = $this->shipmentExpenses[$pengirimanId] ?? [];
+
+            // Get existing expense IDs to track deletions
+            $existingIds = $ap->expenses()->pluck('id')->toArray();
+            $submittedIds = [];
+
+            foreach ($expenses as $e) {
+                $type   = $e['type'] ?? '';
+                $amount = floatval($e['amount'] ?? 0);
+
+                if (empty($type) || $amount <= 0) {
+                    continue;
+                }
+
+                if (!empty($e['id'])) {
+                    // Update existing
+                    $ap->expenses()->where('id', $e['id'])->update([
+                        'type'   => $type,
+                        'amount' => $amount,
+                    ]);
+                    $submittedIds[] = $e['id'];
+                } else {
+                    // Create new
+                    $new = $ap->expenses()->create([
+                        'type'   => $type,
+                        'amount' => $amount,
+                    ]);
+                    $submittedIds[] = $new->id;
+                }
+            }
+
+            // Delete removed expenses
+            $toDelete = array_diff($existingIds, $submittedIds);
+            if (!empty($toDelete)) {
+                $ap->expenses()->whereIn('id', $toDelete)->delete();
+            }
+
+            // Sync additional_expenses_total on approvalPembayaran
+            $ap->additional_expenses_total = $ap->expenses()->sum('amount');
+            $ap->save();
+
+            // Recalculate invoice totals
+            $this->recalculateInvoiceFromShipments();
+
+            DB::commit();
+            session()->flash('message', 'Biaya pengiriman ' . $pengiriman->no_pengiriman . ' berhasil disimpan');
+
+            $this->showDetail($this->selectedData->id);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menyimpan biaya: ' . $e->getMessage());
+        }
+    }
+
+    private function recalculateInvoiceFromShipments()
+    {
+        $invoice = $this->selectedData->invoice;
+        $invoice->load('pengirimans.approvalPembayaran.expenses', 'pengirimans.pengirimanDetails.purchaseOrderBahanBaku', 'pengirimans.pengirimanDetails.orderDetail');
+
+        $totalSellingPrice = 0;
+        $totalQty          = 0;
+        $totalRefraksiAmt  = 0;
+        $totalExpenses     = 0;
+        $qtyBefore         = 0;
+        $qtyAfter          = 0;
+
+        foreach ($invoice->pengirimans as $s) {
+            $sellPrice = 0;
+            foreach ($s->pengirimanDetails as $detail) {
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                $hargaJual   = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                $sellPrice  += floatval($detail->qty_kirim) * $hargaJual;
+            }
+            $totalSellingPrice += $sellPrice;
+            $totalQty          += floatval($s->total_qty_kirim);
+
+            $ap = $s->approvalPembayaran;
+            if ($ap) {
+                $type  = $ap->refraksi_type ?? 'qty';
+                $value = $ap->refraksi_value ?? 0;
+
+                if ($type === 'qty') {
+                    $rQty  = floatval($s->total_qty_kirim) * ($value / 100);
+                    $hKg   = floatval($s->total_qty_kirim) > 0 ? $sellPrice / floatval($s->total_qty_kirim) : 0;
+                    $rAmt  = $rQty * $hKg;
+                    $totalRefraksiAmt += $rAmt;
+                    $qtyAfter += floatval($s->total_qty_kirim) - $rQty;
+                } elseif ($type === 'rupiah') {
+                    $rAmt = $value * floatval($s->total_qty_kirim);
+                    $totalRefraksiAmt += $rAmt;
+                } else {
+                    $totalRefraksiAmt += $value;
+                }
+
+                $totalExpenses += floatval($ap->additional_expenses_total ?? 0);
+            }
+
+            $qtyBefore += floatval($s->total_qty_kirim);
+        }
+
+        $subtotal = $totalSellingPrice - $totalRefraksiAmt + $totalExpenses;
+
+        $invoice->refraksi_type            = 'qty';
+        $invoice->refraksi_value           = 0;
+        $invoice->refraksi_amount          = $totalRefraksiAmt;
+        $invoice->qty_before_refraksi      = $qtyBefore;
+        $invoice->qty_after_refraksi       = $qtyAfter;
+        $invoice->amount_before_refraksi   = $totalSellingPrice;
+        $invoice->amount_after_refraksi    = $totalSellingPrice - $totalRefraksiAmt;
+        $invoice->subtotal                 = $subtotal;
+        $invoice->additional_expenses_total = $totalExpenses;
+        $invoice->recalculateTotal();
     }
 
     public function approve()

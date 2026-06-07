@@ -631,6 +631,7 @@ class ApprovePembayaran extends Component
                 'description' => $bahanBakuName,
                 'quantity'    => $qtyKirim,
                 'unit_price'  => $hargaJual,
+                'refraksi_kg' => 0,
                 'total'       => $itemTotal,
             ];
         }

@@ -337,67 +337,103 @@
         <thead>
             <tr>
                 <th style="width: 5%;" class="text-center">NO</th>
-                <th style="width: 40%; text-align: left;">DESKRIPSI</th>
-                <th style="width: 15%;" class="text-center">QTY PER KG</th>
-                <th style="width: 18%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
-                <th style="width: 22%;" class="text-center">TOTAL HARGA</th>
+                <th style="width: 35%; text-align: left;">DESKRIPSI</th>
+                <th style="width: 14%;" class="text-center">QTY PER KG</th>
+                <th style="width: 16%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
+                <th style="width: 12%;" class="text-center">REFRAKSI<br>(KG)</th>
+                <th style="width: 18%;" class="text-center">TOTAL HARGA</th>
             </tr>
         </thead>
         <tbody>
             @php
-                $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
-
-                // Hitung total harga jual dari SEMUA pengiriman
-                $computedTotalSelling = 0;
-                foreach ($pengirimans as $p) {
-                    foreach ($p->details as $d) {
-                        $h = $d->orderDetail->harga_jual ?? 0;
-                        $q = $d->qty_kirim ?? 0;
-                        $computedTotalSelling += ((float) $q) * ((float) $h);
-                    }
-                }
-
-                $ratio = 1;
-                if ($amountBefore > 0) {
-                    $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
-                }
-
-                $itemNo = 0;
-                $isMerged = $pengirimans->count() > 1;
+                $rawItems = $invoice->items ?? [];
+                $useItems = !empty($rawItems) && isset($rawItems[0]['quantity']) && !isset($rawItems[0]['item_name']);
             @endphp
 
-            @forelse($pengirimans as $p)
-                @php $firstItem = true; @endphp
-                @foreach($p->details as $detail)
-                    @php
-                        $itemNo++;
-                        if ($firstItem && $isMerged) {
-                            $firstItem = false;
-                        }
+            @if($useItems)
+                {{-- Render from invoice items JSON --}}
+                @php
+                    $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
+                    $computedTotalSelling = 0;
+                    foreach ($rawItems as $it) {
+                        $computedTotalSelling += (float) ($it['quantity'] ?? 0) * (float) ($it['unit_price'] ?? 0);
+                    }
+                    $ratio = 1;
+                    if ($amountBefore > 0) {
+                        $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
+                    }
+                @endphp
 
-                        $hargaJualAsli = (float) ($detail->orderDetail->harga_jual ?? 0);
-                        $qtyKirim = (float) ($detail->qty_kirim ?? 0);
-                        $hargaSatuanDisplay = $hargaJualAsli * $ratio;
-                        $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+                @forelse($rawItems as $index => $it)
+                    @php
+                        $qty       = (float) ($it['quantity'] ?? 0);
+                        $refKg     = (float) ($it['refraksi_kg'] ?? 0);
+                        $unitPrice = (float) ($it['unit_price'] ?? 0) * $ratio;
+                        $netQty    = max($qty - $refKg, 0);
+                        $total     = $netQty * $unitPrice;
                     @endphp
                     <tr>
-                        <td class="text-center">{{ $itemNo }}</td>
-                        <td style="text-align: left;">
-                            @if($firstItem && $isMerged)
-                                <strong>{{ $p->no_pengiriman }}</strong><br>
-                            @endif
-                            {{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
-                        </td>
-                        <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
-                        <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
-                        <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
+                        <td class="text-center">{{ $index + 1 }}</td>
+                        <td style="text-align: left;">{{ $it['description'] ?? '-' }}</td>
+                        <td class="text-center">{{ number_format($qty, 2, ',', '.') }}</td>
+                        <td class="text-center">Rp {{ number_format($unitPrice, 2, ',', '.') }}</td>
+                        <td class="text-center">{{ number_format($refKg, 2, ',', '.') }}</td>
+                        <td class="text-center">Rp {{ number_format($total, 2, ',', '.') }}</td>
                     </tr>
-                @endforeach
-            @empty
-                <tr>
-                    <td colspan="5" class="text-center" style="padding: 15px; color: #999;">Detail pengiriman tidak tersedia</td>
-                </tr>
-            @endforelse
+                @empty
+                    <tr>
+                        <td colspan="6" class="text-center" style="padding: 15px; color: #999;">Tidak ada item</td>
+                    </tr>
+                @endforelse
+            @else
+                {{-- Fallback: render from pengirimans details --}}
+                @php
+                    $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
+                    $computedTotalSelling = 0;
+                    foreach ($pengirimans as $p) {
+                        foreach ($p->details as $d) {
+                            $h = $d->orderDetail->harga_jual ?? 0;
+                            $q = $d->qty_kirim ?? 0;
+                            $computedTotalSelling += ((float) $q) * ((float) $h);
+                        }
+                    }
+                    $ratio = 1;
+                    if ($amountBefore > 0) {
+                        $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
+                    }
+                    $itemNo = 0;
+                    $isMerged = $pengirimans->count() > 1;
+                @endphp
+
+                @forelse($pengirimans as $p)
+                    @foreach($p->details as $detail)
+                        @php
+                            $itemNo++;
+                            $hargaJualAsli = (float) ($detail->orderDetail->harga_jual ?? 0);
+                            $qtyKirim = (float) ($detail->qty_kirim ?? 0);
+                            $hargaSatuanDisplay = $hargaJualAsli * $ratio;
+                            $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+                        @endphp
+                        <tr>
+                            <td class="text-center">{{ $itemNo }}</td>
+                            <td style="text-align: left;">
+                                @if($itemNo === 1 && $isMerged)
+                                    <strong>{{ $p->no_pengiriman }}</strong><br>
+                                @endif
+                                {{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
+                            </td>
+                            <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
+                            <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
+                        </tr>
+                    @endforeach
+                @empty
+                    <tr>
+                        <td colspan="6" class="text-center" style="padding: 15px; color: #999;">Detail pengiriman tidak tersedia</td>
+                    </tr>
+                @endforelse
+            @endif
         </tbody>
     </table>
 

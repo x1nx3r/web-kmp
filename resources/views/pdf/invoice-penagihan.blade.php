@@ -406,6 +406,13 @@
                 @endphp
 
                 @forelse($pengirimans as $p)
+                    @if($isMerged)
+                        <tr>
+                            <td colspan="6" style="padding: 6px 8px; background: #f0fdf4; font-weight: 700; font-size: 10pt; color: #166534; border-bottom: 1px solid #ddd;">
+                                {{ $p->no_pengiriman }}
+                            </td>
+                        </tr>
+                    @endif
                     @foreach($p->details as $detail)
                         @php
                             $itemNo++;
@@ -417,9 +424,6 @@
                         <tr>
                             <td class="text-center">{{ $itemNo }}</td>
                             <td style="text-align: left;">
-                                @if($itemNo === 1 && $isMerged)
-                                    <strong>{{ $p->no_pengiriman }}</strong><br>
-                                @endif
                                 {{ $detail->orderDetail->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama_bahan_baku ?? $detail->bahanBakuSupplier->nama ?? '-' }}
                             </td>
                             <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>

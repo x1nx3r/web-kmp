@@ -444,7 +444,7 @@
                                 <div class="text-sm font-medium text-gray-900">{{ number_format($totalQty, 3, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 3, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->subtotal, 3, ',', '.') }}</div>
                             </td>
                             {{-- <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')

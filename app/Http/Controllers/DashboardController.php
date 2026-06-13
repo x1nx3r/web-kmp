@@ -144,9 +144,9 @@ class DashboardController extends Controller
             $totalHargaJualItem = 0;
 
             if ($p->invoicePenagihan) {
-                $amountJual = $toFloat($p->invoicePenagihan->subtotal) > 0
-                    ? $toFloat($p->invoicePenagihan->subtotal)
-                    : $toFloat($p->invoicePenagihan->amount_after_refraksi);
+                $amountJual = $toFloat($p->invoicePenagihan->amount_after_refraksi) > 0
+                    ? $toFloat($p->invoicePenagihan->amount_after_refraksi)
+                    : $toFloat($p->invoicePenagihan->subtotal);
 
                 $qtyJual = $toFloat($p->invoicePenagihan->qty_after_refraksi) > 0
                     ? $toFloat($p->invoicePenagihan->qty_after_refraksi)

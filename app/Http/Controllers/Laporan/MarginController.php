@@ -17,16 +17,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class MarginController extends Controller
 {
-    /**
-     * Hitung harga jual & beli per kg secara konsisten.
-     *
-     * Jual : invoice->subtotal (jika > 0) → invoice->amount_after_refraksi → fallback orderDetail->harga_jual
-     * Beli : approvalPembayaran->subtotal (jika > 0) → amount_after_refraksi (jika > 0) → total_harga_kirim → fallback detail->harga_satuan
-     * Qty  : qty_after_refraksi (jika > 0) → total_qty_kirim
-     *
-     * PENTING: totalHargaJualItem & totalHargaBeliItem diambil LANGSUNG dari amount invoice/approval
-     * (bukan harga_per_kg × detail->qty_kirim) agar efek refraksi tidak dibatalkan.
-     */
+   
     private function hitungHargaBeliJual($p, $detail): array
     {
         $toFloat = fn($val) => floatval(str_replace(',', '.', (string)($val ?? 0)));
@@ -38,9 +29,9 @@ class MarginController extends Controller
 
         if ($p->invoicePenagihan) {
             // Prioritas amount: subtotal → amount_after_refraksi
-            $amountJual = $toFloat($p->invoicePenagihan->subtotal) > 0
-                ? $toFloat($p->invoicePenagihan->subtotal)
-                : $toFloat($p->invoicePenagihan->amount_after_refraksi);
+            $amountJual = $toFloat($p->invoicePenagihan->amount_after_refraksi) > 0
+                ? $toFloat($p->invoicePenagihan->amount_after_refraksi)
+                : $toFloat($p->invoicePenagihan->subtotal);
 
             // Prioritas qty: qty_after_refraksi → qty_before_refraksi → total_qty_kirim
             $qtyJual = $toFloat($p->invoicePenagihan->qty_after_refraksi) > 0

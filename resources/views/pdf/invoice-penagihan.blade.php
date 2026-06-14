@@ -333,6 +333,10 @@
     </table>
 
     {{-- Items Table --}}
+    @php
+        $refraksiIsQty = $invoice->refraksi_type === 'qty' || !$invoice->refraksi_type;
+        $refraksiHeader = $refraksiIsQty ? 'REFRAKSI<br>(KG)' : 'REFRAKSI<br>(Rp)';
+    @endphp
     <table class="items-table">
         <thead>
             <tr>
@@ -340,7 +344,7 @@
                 <th style="width: 35%; text-align: left;">DESKRIPSI</th>
                 <th style="width: 14%;" class="text-center">QTY PER KG</th>
                 <th style="width: 16%;" class="text-center">HARGA SATUAN<br>PER-KG</th>
-                <th style="width: 12%;" class="text-center">REFRAKSI<br>(KG)</th>
+                <th style="width: 12%;" class="text-center">{!! $refraksiHeader !!}</th>
                 <th style="width: 18%;" class="text-center">TOTAL HARGA</th>
             </tr>
         </thead>
@@ -390,17 +394,25 @@
                 @php
                     $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
                     $computedTotalSelling = 0;
+                    $totalQtyAll = 0;
                     foreach ($pengirimans as $p) {
                         foreach ($p->details as $d) {
                             $h = $d->orderDetail->harga_jual ?? 0;
                             $q = $d->qty_kirim ?? 0;
                             $computedTotalSelling += ((float) $q) * ((float) $h);
+                            $totalQtyAll += (float) $q;
                         }
                     }
                     $ratio = 1;
                     if ($amountBefore > 0) {
                         $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
                     }
+
+                    $refraksiType = $invoice->refraksi_type;
+                    $refraksiValue = (float) ($invoice->refraksi_value ?? 0);
+                    $refraksiAmount = (float) ($invoice->refraksi_amount ?? 0);
+                    $hasRefraksi = $refraksiValue > 0 && $refraksiAmount > 0;
+
                     $itemNo = 0;
                 @endphp
 
@@ -411,7 +423,25 @@
                             $hargaJualAsli = (float) ($detail->orderDetail->harga_jual ?? 0);
                             $qtyKirim = (float) ($detail->qty_kirim ?? 0);
                             $hargaSatuanDisplay = $hargaJualAsli * $ratio;
-                            $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+
+                            $refraksiKg = 0;
+                            $itemRefraksiAmount = 0;
+                            if ($hasRefraksi && $refraksiType === 'qty') {
+                                $refraksiKg = $qtyKirim * ($refraksiValue / 100);
+                                $netQty = max($qtyKirim - $refraksiKg, 0);
+                                $totalHargaItem = $netQty * $hargaSatuanDisplay;
+                                $itemRefraksiAmount = $refraksiKg * $hargaSatuanDisplay;
+                            } elseif ($hasRefraksi && $refraksiType === 'rupiah' && $totalQtyAll > 0) {
+                                $itemRefraksiAmount = ($qtyKirim / $totalQtyAll) * $refraksiAmount;
+                                $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                            } elseif ($hasRefraksi && $refraksiType === 'lainnya' && $computedTotalSelling > 0) {
+                                $itemRefraksiAmount = ($qtyKirim * $hargaSatuanDisplay / $computedTotalSelling) * $refraksiAmount;
+                                $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                            } else {
+                                $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+                            }
+
+                            if ($totalHargaItem < 0) $totalHargaItem = 0;
                         @endphp
                         <tr>
                             <td class="text-center">{{ $itemNo }}</td>
@@ -420,7 +450,15 @@
                             </td>
                             <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
                             <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
-                            <td class="text-center">-</td>
+                            <td class="text-center">
+                                @if($hasRefraksi && $refraksiType === 'qty')
+                                    {{ number_format($refraksiKg, 2, ',', '.') }}
+                                @elseif($hasRefraksi)
+                                    Rp {{ number_format($itemRefraksiAmount, 2, ',', '.') }}
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td class="text-center">Rp {{ number_format($totalHargaItem, 2, ',', '.') }}</td>
                         </tr>
                     @endforeach

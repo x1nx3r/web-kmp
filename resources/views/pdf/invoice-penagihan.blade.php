@@ -334,8 +334,7 @@
 
     {{-- Items Table --}}
     @php
-        $refraksiIsQty = $invoice->refraksi_type === 'qty' || !$invoice->refraksi_type;
-        $refraksiHeader = $refraksiIsQty ? 'REFRAKSI<br>(KG)' : 'REFRAKSI<br>(Rp)';
+        $refraksiHeader = 'REFRAKSI<br>(Rp)';
     @endphp
     <table class="items-table">
         <thead>
@@ -359,13 +358,22 @@
                 @php
                     $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
                     $computedTotalSelling = 0;
+                    $totalQtyAll = 0;
                     foreach ($rawItems as $it) {
-                        $computedTotalSelling += (float) ($it['quantity'] ?? 0) * (float) ($it['unit_price'] ?? 0);
+                        $q = (float) ($it['quantity'] ?? 0);
+                        $p = (float) ($it['unit_price'] ?? 0);
+                        $computedTotalSelling += $q * $p;
+                        $totalQtyAll += $q;
                     }
                     $ratio = 1;
                     if ($amountBefore > 0) {
                         $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
                     }
+
+                    $invRefType   = $invoice->refraksi_type;
+                    $invRefValue  = (float) ($invoice->refraksi_value ?? 0);
+                    $invRefAmount = (float) ($invoice->refraksi_amount ?? 0);
+                    $invHasRef    = $invRefValue > 0 && $invRefAmount > 0;
                 @endphp
 
                 @forelse($rawItems as $index => $it)
@@ -373,15 +381,29 @@
                         $qty       = (float) ($it['quantity'] ?? 0);
                         $refKg     = (float) ($it['refraksi_kg'] ?? 0);
                         $unitPrice = (float) ($it['unit_price'] ?? 0) * $ratio;
-                        $netQty    = max($qty - $refKg, 0);
-                        $total     = $netQty * $unitPrice;
+
+                        // Fallback: distribute invoice-level refraksi per item
+                        $itemRefraksiRp = $refKg * $unitPrice;
+                        if ($itemRefraksiRp <= 0 && $invHasRef && $qty > 0) {
+                            if ($invRefType === 'qty') {
+                                $rk = $qty * ($invRefValue / 100);
+                                $itemRefraksiRp = $rk * $unitPrice;
+                            } elseif ($invRefType === 'rupiah' && $totalQtyAll > 0) {
+                                $itemRefraksiRp = ($qty / $totalQtyAll) * $invRefAmount;
+                            } elseif ($invRefType === 'lainnya' && $computedTotalSelling > 0) {
+                                $itemRefraksiRp = ($qty * $unitPrice / $computedTotalSelling) * $invRefAmount;
+                            }
+                        }
+
+                        $total = ($qty * $unitPrice) - $itemRefraksiRp;
+                        if ($total < 0) $total = 0;
                     @endphp
                     <tr>
                         <td class="text-center">{{ $index + 1 }}</td>
                         <td style="text-align: left;">{{ $it['description'] ?? '-' }}</td>
                         <td class="text-center">{{ number_format($qty, 2, ',', '.') }}</td>
                         <td class="text-center">Rp {{ number_format($unitPrice, 2, ',', '.') }}</td>
-                        <td class="text-center">{{ number_format($refKg, 2, ',', '.') }}</td>
+                        <td class="text-center">Rp {{ number_format($itemRefraksiRp, 2, ',', '.') }}</td>
                         <td class="text-center">Rp {{ number_format($total, 2, ',', '.') }}</td>
                     </tr>
                 @empty
@@ -390,33 +412,59 @@
                     </tr>
                 @endforelse
             @else
-                {{-- Fallback: render from pengirimans details --}}
                 @php
-                    $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
-                    $computedTotalSelling = 0;
-                    $totalQtyAll = 0;
-                    foreach ($pengirimans as $p) {
-                        foreach ($p->details as $d) {
-                            $h = $d->orderDetail->harga_jual ?? 0;
-                            $q = $d->qty_kirim ?? 0;
-                            $computedTotalSelling += ((float) $q) * ((float) $h);
-                            $totalQtyAll += (float) $q;
-                        }
-                    }
-                    $ratio = 1;
-                    if ($amountBefore > 0) {
-                        $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
-                    }
+                    $isMerge = $pengirimans->count() > 1;
 
-                    $refraksiType = $invoice->refraksi_type;
-                    $refraksiValue = (float) ($invoice->refraksi_value ?? 0);
-                    $refraksiAmount = (float) ($invoice->refraksi_amount ?? 0);
-                    $hasRefraksi = $refraksiValue > 0 && $refraksiAmount > 0;
+                    if (!$isMerge) {
+                        $amountBefore = (float) ($invoice->amount_before_refraksi ?? 0);
+                        $computedTotalSelling = 0;
+                        $totalQtyAll = 0;
+                        foreach ($pengirimans as $p) {
+                            foreach ($p->details as $d) {
+                                $h = $d->orderDetail->harga_jual ?? 0;
+                                $q = $d->qty_kirim ?? 0;
+                                $computedTotalSelling += ((float) $q) * ((float) $h);
+                                $totalQtyAll += (float) $q;
+                            }
+                        }
+                        $ratio = 1;
+                        if ($amountBefore > 0) {
+                            $ratio = $computedTotalSelling > 0 ? ($amountBefore / $computedTotalSelling) : 0;
+                        }
+
+                        $refraksiType = $invoice->refraksi_type;
+                        $refraksiValue = (float) ($invoice->refraksi_value ?? 0);
+                        $refraksiAmount = (float) ($invoice->refraksi_amount ?? 0);
+                        $hasRefraksi = $refraksiValue > 0 && $refraksiAmount > 0;
+                    }
 
                     $itemNo = 0;
                 @endphp
 
                 @forelse($pengirimans as $p)
+                    @php
+                        $pIdx = $loop->index;
+                        if ($isMerge) {
+                            $perItem = $rawItems[$pIdx] ?? null;
+                            $perRefType = $perItem['refraksi_type'] ?? null;
+                            $perRefVal  = (float) ($perItem['refraksi_value'] ?? 0);
+                            $perRefAmt  = (float) ($perItem['refraksi_amount'] ?? 0);
+                            $perHasRef  = $perRefVal > 0;
+
+                            $qtyInItem       = array_sum(array_column($perItem['details'] ?? [], 'qty'));
+                            $itemSellingTotal = (float) ($perItem['amount'] ?? 0);
+                            $itemSellingComputed = 0;
+                            foreach ($p->details as $d) {
+                                $h = $d->orderDetail->harga_jual ?? 0;
+                                $q = $d->qty_kirim ?? 0;
+                                $itemSellingComputed += ((float) $q) * ((float) $h);
+                            }
+                            $ratio = 1;
+                            if ($itemSellingTotal > 0 && $itemSellingComputed > 0) {
+                                $ratio = $itemSellingTotal / $itemSellingComputed;
+                            }
+                        }
+                    @endphp
                     @foreach($p->details as $detail)
                         @php
                             $itemNo++;
@@ -426,19 +474,35 @@
 
                             $refraksiKg = 0;
                             $itemRefraksiAmount = 0;
-                            if ($hasRefraksi && $refraksiType === 'qty') {
-                                $refraksiKg = $qtyKirim * ($refraksiValue / 100);
-                                $netQty = max($qtyKirim - $refraksiKg, 0);
-                                $totalHargaItem = $netQty * $hargaSatuanDisplay;
-                                $itemRefraksiAmount = $refraksiKg * $hargaSatuanDisplay;
-                            } elseif ($hasRefraksi && $refraksiType === 'rupiah' && $totalQtyAll > 0) {
-                                $itemRefraksiAmount = ($qtyKirim / $totalQtyAll) * $refraksiAmount;
-                                $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
-                            } elseif ($hasRefraksi && $refraksiType === 'lainnya' && $computedTotalSelling > 0) {
-                                $itemRefraksiAmount = ($qtyKirim * $hargaSatuanDisplay / $computedTotalSelling) * $refraksiAmount;
-                                $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+
+                            if ($isMerge) {
+                                if ($perHasRef && $perRefType === 'qty' && $qtyInItem > 0) {
+                                    $refraksiKg = $qtyKirim * ($perRefVal / 100);
+                                    $itemRefraksiAmount = $refraksiKg * $hargaSatuanDisplay;
+                                    $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                                } elseif ($perHasRef && $perRefType === 'rupiah' && $qtyInItem > 0) {
+                                    $itemRefraksiAmount = ($qtyKirim / $qtyInItem) * $perRefAmt;
+                                    $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                                } elseif ($perHasRef && $perRefType === 'lainnya' && $itemSellingComputed > 0) {
+                                    $itemRefraksiAmount = ($qtyKirim * $hargaSatuanDisplay / $itemSellingComputed) * $perRefAmt;
+                                    $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                                } else {
+                                    $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+                                }
                             } else {
-                                $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+                                if ($hasRefraksi && $refraksiType === 'qty') {
+                                    $refraksiKg = $qtyKirim * ($refraksiValue / 100);
+                                    $itemRefraksiAmount = $refraksiKg * $hargaSatuanDisplay;
+                                    $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                                } elseif ($hasRefraksi && $refraksiType === 'rupiah' && $totalQtyAll > 0) {
+                                    $itemRefraksiAmount = ($qtyKirim / $totalQtyAll) * $refraksiAmount;
+                                    $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                                } elseif ($hasRefraksi && $refraksiType === 'lainnya' && $computedTotalSelling > 0) {
+                                    $itemRefraksiAmount = ($qtyKirim * $hargaSatuanDisplay / $computedTotalSelling) * $refraksiAmount;
+                                    $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
+                                } else {
+                                    $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
+                                }
                             }
 
                             if ($totalHargaItem < 0) $totalHargaItem = 0;
@@ -451,9 +515,7 @@
                             <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
                             <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
                             <td class="text-center">
-                                @if($hasRefraksi && $refraksiType === 'qty')
-                                    {{ number_format($refraksiKg, 2, ',', '.') }}
-                                @elseif($hasRefraksi)
+                                @if($isMerge ? $perHasRef : $hasRefraksi)
                                     Rp {{ number_format($itemRefraksiAmount, 2, ',', '.') }}
                                 @else
                                     -

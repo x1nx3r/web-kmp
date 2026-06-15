@@ -320,186 +320,209 @@
                             </div>
                         @endif
 
-                        {{-- Edit Refraksi Section --}}
-                        @if($canManage && $editMode)
+                        {{-- Edit Harga Jual & Refraksi Per Pengiriman --}}
+                        @if($canManage && $editMode && !empty($invoice->items))
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
                                 <h5 class="text-sm font-semibold text-gray-700 mb-3">
                                     <i class="fas fa-edit mr-1"></i>
-                                    Edit Harga Jual & Refraksi
+                                    Edit Harga Jual & Refraksi Per Pengiriman
                                 </h5>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                    <div class="md:col-span-2">
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Harga Jual Total</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            wire:model="invoiceForm.amount_before_refraksi"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                            placeholder="Kosongkan untuk pakai hasil hitung otomatis"  onwheel="this.blur()"
-                                        />
-                                        @error('invoiceForm.amount_before_refraksi') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                        <p class="mt-1 text-[11px] text-gray-500">
-                                            Jika diisi, nilai ini akan dipakai sebagai dasar perhitungan refraksi dan subtotal.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Tipe Refraksi</label>
-                                        <select
-                                            wire:model="invoiceForm.refraksi_type"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                        >
-                                            <option value="qty">Qty (%)</option>
-                                            <option value="rupiah">Rupiah (Rp/Kg)</option>
-                                            <option value="lainnya">Lainnya (Nominal)</option>
-                                        </select>
-                                        @error('invoiceForm.refraksi_type') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nilai Refraksi</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            wire:model="invoiceForm.refraksi_value"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                            placeholder="0 untuk nonaktif"  onwheel="this.blur()"
-                                        />
-                                        @error('invoiceForm.refraksi_value') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                    </div>
+                                <div class="space-y-4">
+                                    @foreach($invoice->items as $i => $item)
+                                        <div wire:key="refraksi-item-{{ $i }}" class="border border-yellow-200 rounded-lg p-4 bg-white">
+                                            <p class="text-sm font-semibold text-gray-800 mb-3">
+                                                <i class="fas fa-truck text-yellow-600 mr-1"></i>
+                                                {{ $item['item_name'] ?? 'Pengiriman #' . ($loop->iteration) }}
+                                            </p>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Tipe Refraksi</label>
+                                                    <select
+                                                        wire:model="refraksiPerItem.{{ $i }}.type"
+                                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                                    >
+                                                        <option value="qty">Qty (%)</option>
+                                                        <option value="rupiah">Rupiah (Rp/Kg)</option>
+                                                        <option value="lainnya">Lainnya (Nominal)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Nilai Refraksi</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        wire:model="refraksiPerItem.{{ $i }}.value"
+                                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                                        placeholder="0 untuk nonaktif"  onwheel="this.blur()"
+                                                    />
+                                                </div>
+                                            </div>
+                                            @php
+                                                $iQty = array_sum(array_column($item['details'] ?? [], 'qty'));
+                                                $iTotal = (float) ($item['amount'] ?? 0);
+                                            @endphp
+                                            <div class="mt-2 text-xs text-gray-500">
+                                                Qty: {{ number_format($iQty, 2, ',', '.') }} kg |
+                                                Harga Jual: Rp {{ number_format($iTotal, 2, ',', '.') }}
+                                            </div>
+                                        </div>
+                                    @endforeach
                                 </div>
 
                                 <button
-                                    wire:click="updateRefraksi"
+                                    wire:click="updateRefraksiPerItem"
                                     wire:loading.attr="disabled"
-                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition-colors disabled:bg-gray-400"
+                                    class="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition-colors disabled:bg-gray-400"
                                 >
-                                    <span wire:loading.remove wire:target="updateRefraksi">
+                                    <span wire:loading.remove wire:target="updateRefraksiPerItem">
                                         <i class="fas fa-save mr-1"></i>
-                                        Update Harga Jual dan Refraksi
+                                        Update Harga Jual dan Refraksi Per Pengiriman
                                     </span>
-                                    <span wire:loading wire:target="updateRefraksi">
+                                    <span wire:loading wire:target="updateRefraksiPerItem">
                                         <i class="fas fa-spinner fa-spin mr-1"></i>
                                         Menyimpan...
                                     </span>
                                 </button>
                             </div>
-                            {{-- ===== PENGELUARAN TAMBAHAN ===== --}}
+                            {{-- ===== PENGELUARAN TAMBAHAN PER PENGIRIMAN ===== --}}
                             <div class="bg-white rounded-lg border border-orange-200 overflow-hidden"
                                 wire:key="detail-expenses-{{ $invoice->id }}">
                                 <div class="px-5 py-4 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
                                     <i class="fas fa-receipt text-orange-500"></i>
                                     <div>
-                                        <h3 class="text-sm font-bold text-gray-800">Pengeluaran Tambahan</h3>
-                                        <p class="text-xs text-gray-500 mt-0.5">Truk, kuli, fee, dll — dikurangkan dari subtotal invoice</p>
+                                        <h3 class="text-sm font-bold text-gray-800">Pengeluaran Tambahan Per Pengiriman</h3>
+                                        <p class="text-xs text-gray-500 mt-0.5">Truk, kuli, fee, dll — per pengiriman, dikurangkan dari subtotal invoice</p>
                                     </div>
                                 </div>
 
                                 <div class="p-5">
-                                    @if($canManage && $editMode)
-                                        {{-- Edit form --}}
+                                    @if($canManage && $editMode && !empty($invoice->items))
                                         <div class="space-y-4">
-                                            {{-- Fixed: Truk, Kuli, Fee --}}
-                                            <div class="grid grid-cols-3 gap-3">
-                                                @foreach(['truk' => 'Truk', 'kuli' => 'Kuli', 'fee' => 'Fee'] as $key => $label)
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1.5">{{ $label }}</label>
-                                                        <div class="relative">
-                                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
-                                                            <input type="number"
-                                                                wire:model.defer="expenseForm.{{ $key }}"
-                                                                min="0" step="0.01"
-                                                                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
-                                                                placeholder="0"  onwheel="this.blur()">
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
+                                            @foreach($invoice->items as $i => $item)
+                                        <div wire:key="expense-item-{{ $i }}" class="border border-orange-200 rounded-lg p-4 bg-orange-50/30">
+                                                    <p class="text-sm font-semibold text-gray-800 mb-3">
+                                                        <i class="fas fa-truck text-orange-600 mr-1"></i>
+                                                        {{ $item['item_name'] ?? 'Pengiriman #' . ($loop->iteration) }}
+                                                    </p>
 
-                                            {{-- Dynamic others --}}
-                                            <div>
-                                                <div class="flex items-center justify-between mb-2">
-                                                    <p class="text-xs font-semibold text-gray-600">Lainnya</p>
-                                                    <button type="button" wire:click="addOtherExpenseRow"
-                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
-                                                        <i class="fas fa-plus"></i> Tambah Baris
-                                                    </button>
-                                                </div>
-                                                <div class="space-y-2">
-                                                    @forelse(($expenseForm['others'] ?? []) as $i => $row)
-                                                        <div class="grid grid-cols-12 gap-2 items-center">
-                                                            <div class="col-span-6">
-                                                                <input type="text"
-                                                                    wire:model.defer="expenseForm.others.{{ $i }}.type"
-                                                                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
-                                                                    placeholder="Nama pengeluaran (Parkir, Tol, dll)">
-                                                            </div>
-                                                            <div class="col-span-5">
+                                                    {{-- Fixed: Truk, Kuli, Fee --}}
+                                                    <div class="grid grid-cols-3 gap-3 mb-3">
+                                                        @foreach(['truk' => 'Truk', 'kuli' => 'Kuli', 'fee' => 'Fee'] as $key => $label)
+                                                            <div>
+                                                                <label class="block text-xs font-medium text-gray-600 mb-1.5">{{ $label }}</label>
                                                                 <div class="relative">
                                                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
                                                                     <input type="number"
-                                                                        wire:model.defer="expenseForm.others.{{ $i }}.amount"
+                                                                        wire:model.defer="expensePerItem.{{ $i }}.{{ $key }}"
                                                                         min="0" step="0.01"
                                                                         class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
-                                                                        placeholder="0"  onwheel="this.blur()">
+                                                                        placeholder="0" onwheel="this.blur()">
                                                                 </div>
                                                             </div>
-                                                            <div class="col-span-1 flex justify-end">
-                                                                <button type="button"
-                                                                    wire:click="removeOtherExpenseRow({{ $i }})"
-                                                                    class="w-8 h-8 flex items-center justify-center text-red-500 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition">
-                                                                    <i class="fas fa-trash text-xs"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    @empty
-                                                        <p class="text-xs text-gray-400 italic">Belum ada baris lainnya.</p>
-                                                    @endforelse
-                                                </div>
-                                            </div>
+                                                        @endforeach
+                                                    </div>
 
-                                            {{-- Preview total --}}
+                                                    {{-- Dynamic others per item --}}
+                                                    <div>
+                                                        <div class="flex items-center justify-between mb-2">
+                                                            <p class="text-xs font-semibold text-gray-600">Lainnya</p>
+                                                            <button type="button" wire:click="addOtherExpenseRow({{ $i }})"
+                                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
+                                                                <i class="fas fa-plus"></i> Tambah Baris
+                                                            </button>
+                                                        </div>
+                                                        <div class="space-y-2">
+                                                            @forelse(($expensePerItem[$i]['others'] ?? []) as $j => $row)
+                                                                <div class="grid grid-cols-12 gap-2 items-center">
+                                                                    <div class="col-span-6">
+                                                                        <input type="text"
+                                                                            wire:model.defer="expensePerItem.{{ $i }}.others.{{ $j }}.type"
+                                                                            class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
+                                                                            placeholder="Nama pengeluaran (Parkir, Tol, dll)">
+                                                                    </div>
+                                                                    <div class="col-span-5">
+                                                                        <div class="relative">
+                                                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Rp</span>
+                                                                            <input type="number"
+                                                                                wire:model.defer="expensePerItem.{{ $i }}.others.{{ $j }}.amount"
+                                                                                min="0" step="0.01"
+                                                                                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-gray-50 transition"
+                                                                                placeholder="0" onwheel="this.blur()">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-span-1 flex justify-end">
+                                                                        <button type="button"
+                                                                            wire:click="removeOtherExpenseRow({{ $i }}, {{ $j }})"
+                                                                            class="w-8 h-8 flex items-center justify-center text-red-500 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition">
+                                                                            <i class="fas fa-trash text-xs"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            @empty
+                                                                <p class="text-xs text-gray-400 italic">Belum ada baris lainnya.</p>
+                                                            @endforelse
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+
+                                            {{-- Preview total per item --}}
                                             @php
-                                                $previewTotal = floatval($expenseForm['truk'] ?? 0)
-                                                            + floatval($expenseForm['kuli'] ?? 0)
-                                                            + floatval($expenseForm['fee'] ?? 0);
-                                                foreach(($expenseForm['others'] ?? []) as $r) {
-                                                    $previewTotal += floatval($r['amount'] ?? 0);
+                                                $grandExpenseTotal = 0;
+                                                foreach($invoice->items as $ii => $iv) {
+                                                    $et = floatval($expensePerItem[$ii]['truk'] ?? 0)
+                                                        + floatval($expensePerItem[$ii]['kuli'] ?? 0)
+                                                        + floatval($expensePerItem[$ii]['fee'] ?? 0);
+                                                    foreach(($expensePerItem[$ii]['others'] ?? []) as $r) {
+                                                        $et += floatval($r['amount'] ?? 0);
+                                                    }
+                                                    $grandExpenseTotal += $et;
                                                 }
                                             @endphp
                                             <div class="flex items-center justify-between py-3 px-4 bg-orange-50 rounded-lg border border-orange-100 text-sm">
-                                                <span class="text-gray-600 font-medium">Total Pengeluaran</span>
-                                                <span class="font-bold text-orange-600">Rp {{ number_format($previewTotal, 3, ',', '.') }}</span>
+                                                <span class="text-gray-600 font-medium">Total Semua Pengeluaran</span>
+                                                <span class="font-bold text-orange-600">Rp {{ number_format($grandExpenseTotal, 3, ',', '.') }}</span>
                                             </div>
 
-                                            <button wire:click="updateExpenses" wire:loading.attr="disabled"
+                                            <button wire:click="updateExpensesPerItem" wire:loading.attr="disabled"
                                                 class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
-                                                <span wire:loading.remove wire:target="updateExpenses">
-                                                    <i class="fas fa-save mr-1.5"></i>Simpan Pengeluaran Tambahan
+                                                <span wire:loading.remove wire:target="updateExpensesPerItem">
+                                                    <i class="fas fa-save mr-1.5"></i>Simpan Pengeluaran Tambahan Per Pengiriman
                                                 </span>
-                                                <span wire:loading wire:target="updateExpenses">
+                                                <span wire:loading wire:target="updateExpensesPerItem">
                                                     <i class="fas fa-spinner fa-spin mr-1.5"></i>Menyimpan...
                                                 </span>
                                             </button>
                                         </div>
 
                                     @else
-                                        {{-- Read-only --}}
+                                        {{-- Read-only: per-pengiriman from items JSON --}}
                                         @php
-                                            $invoiceExpenses      = $invoice->expenses ?? collect();
-                                            $invoiceExpensesTotal = floatval($invoice->additional_expenses_total ?? 0);
+                                            $grandExpenseTotalRead = 0;
                                         @endphp
-
-                                        @if($invoiceExpenses->count() > 0)
-                                            <div class="space-y-2 mb-4">
-                                                @foreach($invoiceExpenses as $exp)
-                                                    <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 text-sm">
-                                                        <span class="font-medium text-gray-700 uppercase tracking-wide text-xs">{{ $exp->type }}</span>
-                                                        <span class="font-semibold text-gray-900">Rp {{ number_format($exp->amount, 3, ',', '.') }}</span>
-                                                    </div>
+                                        @if(!empty($invoice->items) && collect($invoice->items)->sum(fn($it) => count($it['expenses'] ?? [])) > 0)
+                                            <div class="space-y-3">
+                                                @foreach($invoice->items as $iv)
+                                                    @php
+                                                        $iExp = $iv['expenses'] ?? [];
+                                                        $iExpTotal = array_sum(array_column($iExp, 'amount'));
+                                                        $grandExpenseTotalRead += $iExpTotal;
+                                                    @endphp
+                                                    @if(!empty($iExp))
+                                                        <div class="border border-orange-100 rounded-lg p-3">
+                                                            <p class="text-xs font-semibold text-orange-700 mb-2">
+                                                                {{ $iv['item_name'] ?? 'Pengiriman' }}
+                                                            </p>
+                                                            @foreach($iExp as $e)
+                                                                <div class="flex items-center justify-between px-2 py-1.5 text-sm">
+                                                                    <span class="font-medium text-gray-700 uppercase tracking-wide text-xs">{{ $e['type'] }}</span>
+                                                                    <span class="font-semibold text-gray-900">Rp {{ number_format($e['amount'], 3, ',', '.') }}</span>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                 @endforeach
                                             </div>
                                         @else
@@ -511,7 +534,7 @@
 
                                         <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-sm">
                                             <span class="font-semibold text-gray-700">Total Pengeluaran</span>
-                                            <span class="font-bold text-orange-600">Rp {{ number_format($invoiceExpensesTotal, 3, ',', '.') }}</span>
+                                            <span class="font-bold text-orange-600">Rp {{ number_format($grandExpenseTotalRead, 3, ',', '.') }}</span>
                                         </div>
                                     @endif
                                 </div>
@@ -602,27 +625,43 @@
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <i class="fas fa-truck text-purple-600 mr-2"></i>
                                 Informasi Pengiriman
+                                @if($pengirimans->count() > 1)
+                                    <span class="ml-2 px-2 py-0.5 text-xs font-semibold bg-purple-200 text-purple-800 rounded-full">
+                                        {{ $pengirimans->count() }} pengiriman digabung
+                                    </span>
+                                @endif
                             </h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-sm text-gray-600">No. Pengiriman</p>
-                                    <p class="font-semibold text-gray-900">{{ $pengiriman->no_pengiriman }}</p>
+                            @foreach($pengirimans as $p)
+                                <div class="mb-4 p-4 {{ $pengirimans->count() > 1 ? 'bg-white rounded-lg border border-purple-100' : '' }}">
+                                    @if($pengirimans->count() > 1)
+                                        <p class="text-sm font-semibold text-purple-700 mb-3">
+                                            <i class="fas fa-truck mr-1"></i> Pengiriman #{{ $loop->iteration }}
+                                        </p>
+                                    @endif
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-sm text-gray-600">No. Pengiriman</p>
+                                            <p class="font-semibold text-gray-900">{{ $p->no_pengiriman }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-600">Tanggal Kirim</p>
+                                            <p class="font-semibold text-gray-900">{{ $p->tanggal_kirim->format('d M Y') }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-600">Total Qty</p>
+                                            <p class="font-semibold text-gray-900">{{ number_format($p->total_qty_kirim, 3, ',', '.') }} kg</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-600">Total Harga Jual</p>
+                                            <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPenagihan, 3, ',', '.') }}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Tanggal Kirim</p>
-                                    <p class="font-semibold text-gray-900">{{ $pengiriman->tanggal_kirim->format('d M Y') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Total Qty</p>
-                                    <p class="font-semibold text-gray-900">{{ number_format($pengiriman->total_qty_kirim, 3, ',', '.') }} kg</p>
-                                </div>
+                            @endforeach
+                            <div class="grid grid-cols-2 gap-4 pt-2 border-t border-purple-200">
                                 <div>
                                     <p class="text-sm text-gray-600">Total Harga Beli</p>
                                     <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPembayaran, 3, ',', '.') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Total Harga Jual</p>
-                                    <p class="font-semibold text-gray-900">Rp {{ number_format($subtotalPenagihan, 3, ',', '.') }}</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">Margin</p>
@@ -634,8 +673,79 @@
                             </div>
                         </div>
 
+                        {{-- Per-Pengiriman Refraksi & Expenses Breakdown --}}
+                        @if(!empty($invoice->items) && isset($invoice->items[0]['refraksi_type']))
+                            <div class="bg-white rounded-lg border border-gray-200 p-6">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <i class="fas fa-chart-pie text-gray-600 mr-2"></i>
+                                    Rincian Per Pengiriman
+                                </h3>
+                                <div class="space-y-3">
+                                    @foreach($invoice->items as $item)
+                                        @php
+                                            $iRefType = $item['refraksi_type'] ?? 'qty';
+                                            $iRefVal = (float) ($item['refraksi_value'] ?? 0);
+                                            $iRefAmt = (float) ($item['refraksi_amount'] ?? 0);
+                                            $iAmt = (float) ($item['amount'] ?? 0);
+                                            $iExp = $item['expenses'] ?? [];
+                                            $iExpTotal = array_sum(array_column($iExp, 'amount'));
+                                        @endphp
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <p class="text-sm font-semibold text-gray-800 mb-2">
+                                                <i class="fas fa-truck text-gray-500 mr-1"></i> {{ $item['item_name'] ?? 'Pengiriman' }}
+                                            </p>
+                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                                <div>
+                                                    <span class="text-gray-500">Total Harga</span>
+                                                    <p class="font-semibold">Rp {{ number_format($iAmt, 2, ',', '.') }}</p>
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-500">Refraksi</span>
+                                                    <p class="font-semibold {{ $iRefVal > 0 ? 'text-red-600' : '' }}">
+                                                        @if($iRefVal > 0)
+                                                            - Rp {{ number_format($iRefAmt, 2, ',', '.') }}
+                                                            <span class="text-gray-400">
+                                                                @if($iRefType === 'qty') ({{ $iRefVal }}%)
+                                                                @elseif($iRefType === 'rupiah') ({{ $iRefVal }}/kg)
+                                                                @else (Rp {{ number_format($iRefVal, 0, ',', '.') }})
+                                                                @endif
+                                                            </span>
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-500">Biaya Tambahan</span>
+                                                    <p class="font-semibold {{ $iExpTotal > 0 ? 'text-orange-600' : '' }}">
+                                                        {{ $iExpTotal > 0 ? '+ Rp ' . number_format($iExpTotal, 2, ',', '.') : '-' }}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-500">After Refraksi</span>
+                                                    <p class="font-semibold text-green-600">Rp {{ number_format($iAmt - $iRefAmt, 2, ',', '.') }}</p>
+                                                </div>
+                                            </div>
+                                            @if(!empty($iExp))
+                                                <div class="mt-2 pt-2 border-t border-gray-100">
+                                                    <div class="flex flex-wrap gap-1.5 text-xs">
+                                                        @foreach($iExp as $e)
+                                                            <span class="inline-flex items-center px-2 py-1 bg-orange-50 text-orange-700 rounded">
+                                                                {{ ucfirst($e['type']) }}: Rp {{ number_format($e['amount'], 2, ',', '.') }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- Bukti Foto Bongkar --}}
-                        @if($pengiriman->bukti_foto_bongkar_raw)
+                        @php $hasBongkarPhotos = $pengirimans->some(fn($p) => !empty($p->bukti_foto_bongkar_raw)); @endphp
+                        @if($hasBongkarPhotos)
                             <div class="bg-white rounded-lg border border-gray-200 p-6">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center">
@@ -644,63 +754,60 @@
                                         </span>
                                         <div>
                                             <h3 class="text-lg font-semibold text-gray-900">Bukti Foto Bongkar</h3>
-                                            @if($pengiriman->bukti_foto_bongkar_uploaded_at)
-                                                <p class="text-xs text-gray-500 mt-0.5">
-                                                    <i class="fas fa-clock mr-1"></i>
-                                                    Upload: {{ $pengiriman->bukti_foto_bongkar_uploaded_at->format('d M Y, H:i') }} WIB
-                                                    <span class="text-gray-400">({{ $pengiriman->bukti_foto_bongkar_uploaded_at->diffForHumans() }})</span>
-                                                </p>
-                                            @endif
                                         </div>
                                     </div>
                                 </div>
-                                @php
-                                    $photos = $pengiriman->bukti_foto_bongkar_array ?? [];
-                                @endphp
-                                @if(is_array($photos) && count($photos) > 0)
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        @foreach($photos as $index => $photo)
-                                            @php
-                                                $photoPath = \Illuminate\Support\Str::startsWith($photo, 'pengiriman/bukti/')
-                                                    ? $photo
-                                                    : 'pengiriman/bukti/' . ltrim($photo, '/');
-                                                $photoUrl = \Illuminate\Support\Facades\Storage::url($photoPath);
-                                            @endphp
-                                            <div class="relative group">
-                                                <img
-                                                    src="{{ $photoUrl }}"
-                                                    alt="Bukti Foto Bongkar {{ $index + 1 }}"
-                                                    class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                                    onclick="window.open('{{ $photoUrl }}', '_blank')"
-                                                    onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
-                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                                    <div class="flex space-x-2">
-                                                        <button onclick="window.open('{{ $photoUrl }}', '_blank')"
-                                                                class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
-                                                                title="Lihat gambar">
-                                                            <i class="fas fa-eye text-sm"></i>
-                                                        </button>
-                                                        <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
-                                                                class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
-                                                                title="Download gambar">
-                                                            <i class="fas fa-download text-sm"></i>
-                                                        </button>
+                                @foreach($pengirimans as $p)
+                                    @php $photos = $p->bukti_foto_bongkar_array ?? []; @endphp
+                                    @if(is_array($photos) && count($photos) > 0)
+                                        @if($pengirimans->count() > 1)
+                                            <p class="text-xs font-semibold text-indigo-600 mb-2">
+                                                <i class="fas fa-truck mr-1"></i> {{ $p->no_pengiriman }}
+                                                @if($p->bukti_foto_bongkar_uploaded_at)
+                                                    <span class="text-gray-400 font-normal">— {{ $p->bukti_foto_bongkar_uploaded_at->format('d M Y, H:i') }} WIB</span>
+                                                @endif
+                                            </p>
+                                        @endif
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 {{ !$loop->last ? 'mb-4' : '' }}">
+                                            @foreach($photos as $index => $photo)
+                                                @php
+                                                    $photoPath = \Illuminate\Support\Str::startsWith($photo, 'pengiriman/bukti/')
+                                                        ? $photo
+                                                        : 'pengiriman/bukti/' . ltrim($photo, '/');
+                                                    $photoUrl = \Illuminate\Support\Facades\Storage::url($photoPath);
+                                                @endphp
+                                                <div class="relative group">
+                                                    <img
+                                                        src="{{ $photoUrl }}"
+                                                        alt="Bukti Foto Bongkar {{ $index + 1 }}"
+                                                        class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                        onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                                        onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <div class="flex space-x-2">
+                                                            <button onclick="window.open('{{ $photoUrl }}', '_blank')"
+                                                                    class="bg-white text-blue-600 p-2 rounded-full shadow-lg hover:bg-blue-50 transition-all"
+                                                                    title="Lihat gambar">
+                                                                <i class="fas fa-eye text-sm"></i>
+                                                            </button>
+                                                            <button onclick="event.stopPropagation(); downloadImage('{{ $photoUrl }}', '{{ $photo }}');"
+                                                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                                                    title="Download gambar">
+                                                                <i class="fas fa-download text-sm"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <div class="text-center py-10 text-sm text-gray-500">
-                                        <i class="fas fa-image text-gray-300 text-3xl mb-2"></i>
-                                        <p>Tidak ada foto bukti bongkar</p>
-                                    </div>
-                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                @endforeach
                             </div>
                         @endif
 
                         {{-- Foto Tanda Terima --}}
-                        @if($pengiriman->foto_tanda_terima)
+                        @php $hasTandaTerima = $pengirimans->some(fn($p) => !empty($p->foto_tanda_terima)); @endphp
+                        @if($hasTandaTerima)
                             <div class="bg-white rounded-lg border border-gray-200 p-6">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center">
@@ -709,44 +816,49 @@
                                         </span>
                                         <div>
                                             <h3 class="text-lg font-semibold text-gray-900">Foto Tanda Terima</h3>
-                                            @if($pengiriman->foto_tanda_terima_uploaded_at)
-                                                <p class="text-xs text-gray-500 mt-0.5">
-                                                    <i class="fas fa-clock mr-1"></i>
-                                                    Upload: {{ $pengiriman->foto_tanda_terima_uploaded_at->format('d M Y, H:i') }} WIB
-                                                    <span class="text-gray-400">({{ $pengiriman->foto_tanda_terima_uploaded_at->diffForHumans() }})</span>
-                                                </p>
-                                            @endif
                                         </div>
                                     </div>
                                 </div>
-                                @php
-                                    $tandaTerimaPath = \Illuminate\Support\Str::startsWith($pengiriman->foto_tanda_terima, 'pengiriman/tanda-terima/')
-                                        ? $pengiriman->foto_tanda_terima
-                                        : 'pengiriman/tanda-terima/' . ltrim($pengiriman->foto_tanda_terima, '/');
-                                    $tandaTerimaUrl = \Illuminate\Support\Facades\Storage::url($tandaTerimaPath);
-                                @endphp
-                                <div class="relative group">
-                                    <img
-                                        src="{{ $tandaTerimaUrl }}"
-                                        alt="Foto Tanda Terima"
-                                        class="w-full h-56 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                        onclick="window.open('{{ $tandaTerimaUrl }}', '_blank')"
-                                        onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
-                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                        <div class="flex space-x-2">
-                                            <button onclick="window.open('{{ $tandaTerimaUrl }}', '_blank')"
-                                                    class="bg-white text-purple-600 p-2 rounded-full shadow-lg hover:bg-purple-50 transition-all"
-                                                    title="Lihat gambar">
-                                                <i class="fas fa-eye text-sm"></i>
-                                            </button>
-                                            <button onclick="event.stopPropagation(); downloadImage('{{ $tandaTerimaUrl }}', 'tanda_terima_{{ $pengiriman->no_pengiriman }}.jpg');"
-                                                    class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
-                                                    title="Download gambar">
-                                                <i class="fas fa-download text-sm"></i>
-                                            </button>
+                                @foreach($pengirimans as $p)
+                                    @if(!empty($p->foto_tanda_terima))
+                                        @if($pengirimans->count() > 1)
+                                            <p class="text-xs font-semibold text-purple-600 mb-2">
+                                                <i class="fas fa-truck mr-1"></i> {{ $p->no_pengiriman }}
+                                                @if($p->foto_tanda_terima_uploaded_at)
+                                                    <span class="text-gray-400 font-normal">— {{ $p->foto_tanda_terima_uploaded_at->format('d M Y, H:i') }} WIB</span>
+                                                @endif
+                                            </p>
+                                        @endif
+                                        @php
+                                            $tandaTerimaPath = \Illuminate\Support\Str::startsWith($p->foto_tanda_terima, 'pengiriman/tanda-terima/')
+                                                ? $p->foto_tanda_terima
+                                                : 'pengiriman/tanda-terima/' . ltrim($p->foto_tanda_terima, '/');
+                                            $tandaTerimaUrl = \Illuminate\Support\Facades\Storage::url($tandaTerimaPath);
+                                        @endphp
+                                        <div class="relative group {{ !$loop->last ? 'mb-4' : '' }}">
+                                            <img
+                                                src="{{ $tandaTerimaUrl }}"
+                                                alt="Foto Tanda Terima"
+                                                class="w-full h-56 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                onclick="window.open('{{ $tandaTerimaUrl }}', '_blank')"
+                                                onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjEyMCIgcj0iMzAiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMjAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R2FtYmFyIHRpZGFrIGRpdGVtdWthbjwvdGV4dD4KPC9zdmc+'; this.classList.add('opacity-50');">
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                <div class="flex space-x-2">
+                                                    <button onclick="window.open('{{ $tandaTerimaUrl }}', '_blank')"
+                                                            class="bg-white text-purple-600 p-2 rounded-full shadow-lg hover:bg-purple-50 transition-all"
+                                                            title="Lihat gambar">
+                                                        <i class="fas fa-eye text-sm"></i>
+                                                    </button>
+                                                    <button onclick="event.stopPropagation(); downloadImage('{{ $tandaTerimaUrl }}', 'tanda_terima_{{ $p->no_pengiriman }}.jpg');"
+                                                            class="bg-white text-green-600 p-2 rounded-full shadow-lg hover:bg-green-50 transition-all"
+                                                            title="Download gambar">
+                                                        <i class="fas fa-download text-sm"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
+                                    @endif
+                                @endforeach
                             </div>
                         @endif
 
@@ -767,21 +879,33 @@
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($pengiriman->details as $detail)
-                                            <tr>
-                                                <td class="px-4 py-3 text-sm text-gray-900">
-                                                    {{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}
-                                                </td>
-                                                <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    {{ number_format($detail->qty_kirim, 3, ',', '.') }} kg
-                                                </td>
-                                                <td class="px-4 py-3 text-sm text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->harga_satuan, 3, ',', '.') }}
-                                                </td>
-                                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                                                    Rp {{ number_format($detail->total_harga, 3, ',', '.') }}
-                                                </td>
-                                            </tr>
+                                        @php $detailNo = 0; @endphp
+                                        @foreach($pengirimans as $p)
+                                            @if($pengirimans->count() > 1)
+                                                <tr class="bg-purple-50">
+                                                    <td colspan="4" class="px-4 py-2 text-xs font-semibold text-purple-700">
+                                                        <i class="fas fa-truck mr-1"></i>
+                                                        {{ $p->no_pengiriman }} — {{ $p->tanggal_kirim->format('d M Y') }}
+                                                    </td>
+                                                </tr>
+                                            @endif
+                                            @foreach($p->details as $detail)
+                                                @php $detailNo++; @endphp
+                                                <tr>
+                                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                                        {{ $detail->purchaseOrderBahanBaku->nama_material_po ?? $detail->purchaseOrderBahanBaku->bahanBakuKlien->nama ?? $detail->bahanBakuSupplier->nama ?? '-' }}
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                                                        {{ number_format($detail->qty_kirim, 3, ',', '.') }} kg
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm text-gray-900 text-right">
+                                                        Rp {{ number_format($detail->harga_satuan, 3, ',', '.') }}
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
+                                                        Rp {{ number_format($detail->total_harga, 3, ',', '.') }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
                                         @endforeach
                                     </tbody>
                                 </table>

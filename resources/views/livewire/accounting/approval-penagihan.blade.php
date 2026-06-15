@@ -330,7 +330,8 @@
                     @if($activeTab === 'pending' && count($selectedApprovalIds) > 0)
                         @if($this->isMergeValid)
                             <button
-                                wire:click="showCreateMergedInvoice"
+                                wire:click="mergeInvoices"
+                                wire:confirm="Gabung {{ count($selectedApprovalIds) }} invoice menjadi satu? Invoice lama akan ditandai sebagai digabung."
                                 class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
                             >
                                 <i class="fas fa-object-group mr-1.5"></i>
@@ -443,7 +444,7 @@
                                 <div class="text-sm font-medium text-gray-900">{{ number_format($totalQty, 3, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 3, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->subtotal, 3, ',', '.') }}</div>
                             </td>
                             {{-- <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
@@ -996,51 +997,104 @@
                             </div>
                         </div>
 
-                        {{-- Edit Refraksi Section - Can edit if canManage, regardless of status --}}
+                        {{-- Per-Pengiriman Refraksi & Biaya --}}
                         @if($canManage && ($selectedData->status !== 'completed' || $editMode))
-                            <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <h5 class="text-sm font-semibold text-gray-700 mb-3">
-                                    <i class="fas fa-edit mr-1"></i>
-                                    Edit Refraksi
-                                </h5>
-
-                                <div class="grid grid-cols-2 gap-3 mb-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">
-                                            Tipe Refraksi
-                                        </label>
-                                        <select
-                                            wire:model="invoiceForm.refraksi_type"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                        >
-                                            <option value="qty">Refraksi Qty (%)</option>
-                                            <option value="rupiah">Refraksi Rupiah (Rp/kg)</option>
-                                            <option value="lainnya">Refraksi Lainnya (Manual)</option>
-                                        </select>
+                            @php $shipments = ($selectedData->invoice->pengirimans ?? collect())->isNotEmpty() ? $selectedData->invoice->pengirimans : collect([$selectedData->pengiriman]); @endphp
+                            @foreach($shipments as $s)
+                                <div class="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50/50">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <i class="fas fa-truck text-gray-400"></i>
+                                        <h5 class="text-sm font-semibold text-gray-700">{{ $s->no_pengiriman }}</h5>
+                                        <span class="text-xs text-gray-400">({{ $s->total_qty_kirim }} kg)</span>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">
-                                            Nilai Refraksi
-                                        </label>
-                                        <input
-                                            type="number"
-                                            wire:model="invoiceForm.refraksi_value"
-                                            min="0"
-                                            step="0.01"
-                                            class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="{{ ($invoiceForm['refraksi_type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : (($invoiceForm['refraksi_type'] ?? 'qty') === 'rupiah' ? '40 untuk Rp 40/kg' : '500000 untuk Rp 500.000') }}"
-                                        />
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {{-- Refraksi --}}
+                                        <div class="p-3 bg-white rounded-lg border border-gray-200">
+                                            <p class="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
+                                                <i class="fas fa-percent text-amber-500"></i> Refraksi
+                                            </p>
+                                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                                <div>
+                                                    <select
+                                                        wire:model="shipmentRefraksi.{{ $s->id }}.type"
+                                                        class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                                    >
+                                                        <option value="qty">%</option>
+                                                        <option value="rupiah">Rp/kg</option>
+                                                        <option value="lainnya">Manual</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <input
+                                                        type="number"
+                                                        wire:model="shipmentRefraksi.{{ $s->id }}.value"
+                                                        min="0"
+                                                        step="0.01"
+                                                        class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                                        placeholder="Nilai"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button
+                                                wire:click="updateShipmentRefraksi({{ $s->id }})"
+                                                class="w-full px-2 py-1.5 text-xs font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors"
+                                            >
+                                                <i class="fas fa-save mr-1"></i> Simpan Refraksi
+                                            </button>
+                                        </div>
+
+                                        {{-- Biaya --}}
+                                        <div class="p-3 bg-white rounded-lg border border-gray-200">
+                                            <p class="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
+                                                <i class="fas fa-coins text-orange-500"></i> Biaya Tambahan
+                                            </p>
+                                            <div class="space-y-1.5 mb-2">
+                                                @forelse(($shipmentExpenses[$s->id] ?? []) as $ei => $exp)
+                                                    <div class="flex gap-1">
+                                                        <input
+                                                            type="text"
+                                                            wire:model="shipmentExpenses.{{ $s->id }}.{{ $ei }}.type"
+                                                            placeholder="Jenis"
+                                                            class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            wire:model="shipmentExpenses.{{ $s->id }}.{{ $ei }}.amount"
+                                                            min="0"
+                                                            step="0.01"
+                                                            placeholder="Jumlah"
+                                                            class="w-24 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                                        />
+                                                        <button
+                                                            wire:click="removeShipmentExpense({{ $s->id }}, {{ $ei }})"
+                                                            class="px-1.5 py-1 text-xs text-red-500 hover:text-red-700"
+                                                        >
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                @empty
+                                                    <p class="text-xs text-gray-400 italic">Belum ada biaya tambahan</p>
+                                                @endforelse
+                                            </div>
+                                            <div class="flex gap-1.5">
+                                                <button
+                                                    wire:click="addShipmentExpense({{ $s->id }})"
+                                                    class="px-2 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
+                                                >
+                                                    <i class="fas fa-plus mr-1"></i> Tambah
+                                                </button>
+                                                <button
+                                                    wire:click="saveShipmentExpenses({{ $s->id }})"
+                                                    class="px-2 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
+                                                >
+                                                    <i class="fas fa-save mr-1"></i> Simpan
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-
-                                <button
-                                    wire:click="updateDiscount"
-                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
-                                >
-                                    <i class="fas fa-save mr-1"></i>
-                                    Update Refraksi
-                                </button>
-                            </div>
+                            @endforeach
                         @endif
                     </div>
 

@@ -53,6 +53,15 @@ class ApprovePenagihan extends Component
         'value' => 0,
     ];
 
+    // Per-item refraksi (indexed by items JSON index)
+    public $itemRefraksi = [];
+
+    // Per-pengiriman refraksi (for merge format items)
+    public $refraksiPerItem = [];
+
+    // Per-pengiriman expenses (for merge format items)
+    public $expensePerItem = [];
+
     // Invoice date form
     public $invoiceDate;
     public $dueDate;
@@ -123,6 +132,42 @@ class ApprovePenagihan extends Component
         // Load refraksi values from invoice
         $this->refraksiForm['type'] = $this->invoice->refraksi_type ?? 'qty';
         $this->refraksiForm['value'] = $this->invoice->refraksi_value ?? 0;
+
+        // Load per-item refraksi from invoice items JSON
+        $rawItems = $this->invoice->items ?? [];
+        $this->itemRefraksi = [];
+        foreach ($rawItems as $i => $it) {
+            $this->itemRefraksi[$i] = (float) ($it['refraksi_kg'] ?? 0);
+        }
+
+        // Initialize per-pengiriman forms from items JSON (merge format)
+        $this->refraksiPerItem = [];
+        $this->expensePerItem = [];
+        if (!empty($rawItems) && isset($rawItems[0]['item_name'])) {
+            foreach ($rawItems as $i => $item) {
+                $this->refraksiPerItem[$i] = [
+                    'type'  => $item['refraksi_type'] ?? 'qty',
+                    'value' => (float) ($item['refraksi_value'] ?? 0),
+                ];
+
+                $expenses = $item['expenses'] ?? [];
+                $truk = 0; $kuli = 0; $fee = 0; $others = [];
+                foreach ($expenses as $e) {
+                    $t = $e['type'] ?? '';
+                    $a = (float) ($e['amount'] ?? 0);
+                    if ($t === 'truk')      $truk = $a;
+                    elseif ($t === 'kuli')   $kuli = $a;
+                    elseif ($t === 'fee')    $fee = $a;
+                    else                     $others[] = ['type' => $t, 'amount' => $a];
+                }
+                $this->expensePerItem[$i] = [
+                    'truk'   => $truk,
+                    'kuli'   => $kuli,
+                    'fee'    => $fee,
+                    'others' => $others ?: [['type' => '', 'amount' => 0]],
+                ];
+            }
+        }
 
         // Load invoice dates
         $this->invoiceDate = $this->invoice->invoice_date?->format('Y-m-d');
@@ -637,6 +682,283 @@ class ApprovePenagihan extends Component
             DB::rollBack();
             session()->flash('error', 'Gagal mengupdate refraksi: ' . $e->getMessage());
         }
+    }
+
+    public function updateItemRefraksi()
+    {
+        if (!$this->ensureCanManage()) {
+            return;
+        }
+
+        if ($this->approval->status === 'completed') {
+            session()->flash('error', 'Tidak dapat mengubah refraksi item pada approval yang sudah selesai');
+            return;
+        }
+
+        $rawItems = $this->invoice->items ?? [];
+
+        if (empty($rawItems) || !isset($rawItems[0]['quantity'])) {
+            session()->flash('error', 'Format item tidak mendukung refraksi per-item');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($rawItems as $i => &$it) {
+                $refKg = max((float) ($this->itemRefraksi[$i] ?? 0), 0);
+                $qty   = (float) ($it['quantity'] ?? 0);
+                $it['refraksi_kg'] = $refKg;
+                $it['total'] = max($qty - $refKg, 0) * (float) ($it['unit_price'] ?? 0);
+            }
+
+            $this->invoice->update(['items' => $rawItems]);
+            $this->invoice->refresh();
+
+            DB::commit();
+
+            session()->flash('message', 'Refraksi per-item berhasil diupdate');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal mengupdate refraksi item: ' . $e->getMessage());
+        }
+    }
+
+    public function updateRefraksiPerItem()
+    {
+        if (!$this->ensureCanManage()) return;
+
+        if (!$this->editMode && ($this->approval->status === 'completed' || $this->approval->status === 'rejected')) {
+            session()->flash('error', 'Tidak dapat mengubah refraksi pada approval yang sudah selesai');
+            return;
+        }
+
+        $this->validate([
+            'refraksiPerItem.*.type'  => 'nullable|in:qty,rupiah,lainnya',
+            'refraksiPerItem.*.value' => 'nullable|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $rawItems = $this->invoice->items ?? [];
+            $items = $rawItems;
+
+            $totalSellingPrice  = 0;
+            $totalRefraksiAmount = 0;
+            $totalRefraksiQty    = 0;
+            $totalQty            = 0;
+
+            foreach ($items as $i => &$item) {
+                $type  = $this->refraksiPerItem[$i]['type']  ?? 'qty';
+                $value = (float) ($this->refraksiPerItem[$i]['value'] ?? 0);
+
+                $item['refraksi_type']  = $type;
+                $item['refraksi_value'] = $value;
+
+                $qty   = array_sum(array_column($item['details'] ?? [], 'qty'));
+                $total = (float) ($item['amount'] ?? 0);
+                $totalSellingPrice += $total;
+                $totalQty += $qty;
+
+                if ($value > 0) {
+                    if ($type === 'qty' && $qty > 0) {
+                        $refraksiQty             = $qty * ($value / 100);
+                        $hargaPerKg              = $total / $qty;
+                        $item['refraksi_amount']  = $refraksiQty * $hargaPerKg;
+                        $totalRefraksiQty        += $refraksiQty;
+                    } elseif ($type === 'rupiah' && $qty > 0) {
+                        $item['refraksi_amount'] = $value * $qty;
+                    } elseif ($type === 'lainnya') {
+                        $item['refraksi_amount'] = $value;
+                    }
+                } else {
+                    $item['refraksi_amount'] = 0;
+                }
+
+                $totalRefraksiAmount += $item['refraksi_amount'];
+            }
+            unset($item);
+
+            $amountAfterRefraksi = $totalSellingPrice - $totalRefraksiAmount;
+
+            // Hitung expenses dari items
+            $expensesTotal = 0;
+            foreach ($items as $item) {
+                foreach ($item['expenses'] ?? [] as $e) {
+                    $expensesTotal += (float) ($e['amount'] ?? 0);
+                }
+            }
+
+            $firstItem = $this->refraksiPerItem[0] ?? ['type' => 'qty', 'value' => 0];
+
+            $this->invoice->items = $items;
+            $this->invoice->refraksi_type          = $firstItem['type'];
+            $this->invoice->refraksi_value         = (float) $firstItem['value'];
+            $this->invoice->refraksi_amount        = $totalRefraksiAmount;
+            $this->invoice->qty_before_refraksi    = $totalQty;
+            $this->invoice->qty_after_refraksi     = $totalQty - $totalRefraksiQty;
+            $this->invoice->amount_before_refraksi = $totalSellingPrice;
+            $this->invoice->amount_after_refraksi  = $amountAfterRefraksi;
+            $this->invoice->subtotal               = $amountAfterRefraksi;
+            $this->invoice->additional_expenses_total = $expensesTotal;
+            $this->invoice->total_amount = max(0, $amountAfterRefraksi + $expensesTotal + floatval($this->invoice->tax_amount ?? 0) - floatval($this->invoice->discount_amount ?? 0));
+            $this->invoice->save();
+
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id'   => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id'    => $this->approval->invoice_id,
+                    'role'          => $role,
+                    'user_id'       => $user->id,
+                    'action'        => 'edited',
+                    'notes'         => 'Update harga jual / refraksi per pengiriman',
+                ]);
+            }
+
+            DB::commit();
+            session()->flash('message', 'Harga jual / refraksi per pengiriman berhasil diupdate');
+            $this->invoice->refresh();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal update refraksi: ' . $e->getMessage());
+        }
+    }
+
+    public function updateExpensesPerItem()
+    {
+        if (!$this->ensureCanManage()) return;
+
+        if (!$this->editMode && ($this->approval->status === 'completed' || $this->approval->status === 'rejected')) {
+            session()->flash('error', 'Tidak dapat mengubah pengeluaran pada approval yang sudah selesai');
+            return;
+        }
+
+        if (empty($this->expensePerItem)) {
+            session()->flash('error', 'Tidak ada data pengeluaran');
+            return;
+        }
+
+        // Validasi per-item
+        foreach ($this->expensePerItem as $i => $exp) {
+            foreach (['truk', 'kuli', 'fee'] as $k) {
+                if (floatval($exp[$k] ?? 0) < 0) {
+                    session()->flash('error', 'Item #' . ($i + 1) . ': ' . ucfirst($k) . ' tidak boleh negatif');
+                    return;
+                }
+            }
+            foreach (($exp['others'] ?? []) as $j => $row) {
+                $amount = floatval($row['amount'] ?? 0);
+                $type   = trim((string)($row['type'] ?? ''));
+                if ($amount < 0) {
+                    session()->flash('error', 'Item #' . ($i + 1) . ', baris #' . ($j + 1) . ': nominal tidak boleh negatif');
+                    return;
+                }
+                if ($amount > 0 && $type === '') {
+                    session()->flash('error', 'Item #' . ($i + 1) . ', baris #' . ($j + 1) . ': nama pengeluaran wajib diisi');
+                    return;
+                }
+                if ($amount > 0 && in_array(strtolower($type), ['truk', 'kuli', 'fee'], true)) {
+                    session()->flash('error', 'Item #' . ($i + 1) . ': "' . $type . '" sudah ada di opsi utama');
+                    return;
+                }
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $items = $this->invoice->items;
+            $allExpensesFlat = [];
+            $expensesTotal = 0;
+
+            foreach ($items as $i => &$item) {
+                $exp = $this->expensePerItem[$i] ?? [];
+                $itemExpenses = [];
+
+                foreach (['truk', 'kuli', 'fee'] as $type) {
+                    $amount = floatval($exp[$type] ?? 0);
+                    if ($amount > 0) {
+                        $itemExpenses[] = ['type' => $type, 'amount' => $amount];
+                        $expensesTotal += $amount;
+                    }
+                }
+
+                foreach (($exp['others'] ?? []) as $row) {
+                    $type   = trim((string)($row['type'] ?? ''));
+                    $amount = floatval($row['amount'] ?? 0);
+                    if ($type === '' || $amount <= 0) continue;
+                    $itemExpenses[] = ['type' => $type, 'amount' => $amount];
+                    $expensesTotal += $amount;
+                }
+
+                $item['expenses'] = $itemExpenses;
+                $allExpensesFlat = array_merge($allExpensesFlat, $itemExpenses);
+            }
+            unset($item);
+
+            // Recalculate invoice-level totals
+            $totalRefraksiAmount = 0;
+            $totalSellingPrice = 0;
+            foreach ($items as $item) {
+                $totalSellingPrice += (float) ($item['amount'] ?? 0);
+                $totalRefraksiAmount += (float) ($item['refraksi_amount'] ?? 0);
+            }
+            $amountAfterRefraksi = $totalSellingPrice - $totalRefraksiAmount;
+
+            $this->invoice->items = $items;
+            $this->invoice->additional_expenses_total = $expensesTotal;
+            $this->invoice->subtotal = $amountAfterRefraksi;
+            $this->invoice->total_amount = max(0, $amountAfterRefraksi + $expensesTotal + floatval($this->invoice->tax_amount ?? 0) - floatval($this->invoice->discount_amount ?? 0));
+            $this->invoice->save();
+
+            // Sync expense table (backward compat)
+            $this->invoice->expenses()->delete();
+            foreach ($allExpensesFlat as $e) {
+                $this->invoice->expenses()->create($e);
+            }
+
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $user = Auth::user();
+                $role = $this->getUserRole($user);
+                ApprovalHistory::create([
+                    'approval_type' => 'penagihan',
+                    'approval_id'   => $this->approval->id,
+                    'pengiriman_id' => $this->approval->pengiriman_id,
+                    'invoice_id'    => $this->approval->invoice_id,
+                    'role'          => $role,
+                    'user_id'       => $user->id,
+                    'action'        => 'edited',
+                    'notes'         => 'Pengeluaran tambahan per pengiriman diubah',
+                ]);
+            }
+
+            DB::commit();
+            session()->flash('message', 'Pengeluaran tambahan per pengiriman berhasil disimpan');
+            $this->invoice->refresh();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal menyimpan pengeluaran: ' . $e->getMessage());
+        }
+    }
+
+    public function addPerItemExpenseRow($itemIndex): void
+    {
+        if (!$this->ensureCanManage()) return;
+        if (!isset($this->expensePerItem[$itemIndex])) return;
+        $this->expensePerItem[$itemIndex]['others'][] = ['type' => '', 'amount' => 0];
+    }
+
+    public function removePerItemExpenseRow($itemIndex, $rowIndex): void
+    {
+        if (!$this->ensureCanManage()) return;
+        if (!isset($this->expensePerItem[$itemIndex]['others'][$rowIndex])) return;
+        array_splice($this->expensePerItem[$itemIndex]['others'], $rowIndex, 1);
+        if (empty($this->expensePerItem[$itemIndex]['others'])) {
+            $this->expensePerItem[$itemIndex]['others'][] = ['type' => '', 'amount' => 0];
+        }
+        $this->updateExpensesPerItem();
     }
 
     public function updateInvoiceNumber()

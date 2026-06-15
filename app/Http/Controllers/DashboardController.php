@@ -17,6 +17,27 @@ use App\Exports\MarginExport;
 class DashboardController extends Controller
 {
     /**
+     * Helper: tambahkan kondisi exclude pengiriman yang semua invoice-nya berstatus "digabung".
+     * Pengiriman tanpa invoice sama sekali tetap dimasukkan (pakai fallback qty * harga_jual).
+     */
+    private function applyValidInvoiceFilter($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNotExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('invoice_penagihan as ip_all')
+                    ->whereColumn('ip_all.pengiriman_id', 'pengiriman.id');
+            })
+            ->orWhereExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('invoice_penagihan as ip_valid')
+                    ->whereColumn('ip_valid.pengiriman_id', 'pengiriman.id')
+                    ->where('ip_valid.status', '!=', 'digabung');
+            });
+        });
+    }
+
+    /**
      * Normalisasi nama bahan baku agar variasi penulisan/alias tergabung dalam 1 kategori.
      */
     private function normalizeBahanBakuName(?string $name): string
@@ -281,13 +302,22 @@ class DashboardController extends Controller
         ['week' => $currentWeekOfMonth, 'startOfMonth' => $startOfMonth] = $this->getCurrentWeekOfMonth();
 
         // ========== OMSET MINGGU INI ==========
-        $omsetSistemMingguIni = DB::table('pengiriman')
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $omsetSistemMingguIniQuery = DB::table('pengiriman')
+            ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->copy()->startOfDay(), $weekEnd->copy()->endOfDay()])
-            ->whereNull('pengiriman.deleted_at')
+            ->whereNull('pengiriman.deleted_at');
+
+        $this->applyValidInvoiceFilter($omsetSistemMingguIniQuery);
+
+        $omsetSistemMingguIni = $omsetSistemMingguIniQuery
             ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
             ->groupBy('pengiriman.id')
             ->get()
@@ -298,14 +328,23 @@ class DashboardController extends Controller
         $omsetMingguIni       = $omsetSistemMingguIni + $omsetManualMingguIni;
 
         // ========== OMSET BULAN INI ==========
-        $omsetSistemBulanIni = DB::table('pengiriman')
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $omsetSistemBulanIniQuery = DB::table('pengiriman')
+            ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
             ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
-            ->whereNull('pengiriman.deleted_at')
+            ->whereNull('pengiriman.deleted_at');
+
+        $this->applyValidInvoiceFilter($omsetSistemBulanIniQuery);
+
+        $omsetSistemBulanIni = $omsetSistemBulanIniQuery
             ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
             ->groupBy('pengiriman.id')
             ->get()
@@ -314,13 +353,22 @@ class DashboardController extends Controller
         $omsetBulanIni = $omsetSistemBulanIni + $omsetManualBulanIni;
 
         // ========== OMSET TAHUN INI ==========
-        $omsetSistemTahunIni = DB::table('pengiriman')
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $omsetSistemTahunIniQuery = DB::table('pengiriman')
+            ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
-            ->whereNull('pengiriman.deleted_at')
+            ->whereNull('pengiriman.deleted_at');
+
+        $this->applyValidInvoiceFilter($omsetSistemTahunIniQuery);
+
+        $omsetSistemTahunIni = $omsetSistemTahunIniQuery
             ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
             ->groupBy('pengiriman.id')
             ->get()
@@ -334,14 +382,23 @@ class DashboardController extends Controller
         $sisaTargetSebelumnya = 0;
 
         for ($b = 1; $b < $bulanSekarang; $b++) {
-            $omsetSistemBulanLalu = DB::table('pengiriman')
-                ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            $omsetSistemBulanLaluQuery = DB::table('pengiriman')
+                ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                 ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                 ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                 ->whereYear('pengiriman.tanggal_kirim', $currentYear)
                 ->whereMonth('pengiriman.tanggal_kirim', $b)
-                ->whereNull('pengiriman.deleted_at')
+                ->whereNull('pengiriman.deleted_at');
+
+            $this->applyValidInvoiceFilter($omsetSistemBulanLaluQuery);
+
+            $omsetSistemBulanLalu = $omsetSistemBulanLaluQuery
                 ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
                 ->groupBy('pengiriman.id')
                 ->get()
@@ -364,13 +421,22 @@ class DashboardController extends Controller
             $weekStartLoop = $w == 1 ? $startOfMonth->copy() : $startOfMonth->copy()->addDays(($w - 1) * 7);
             $weekEndLoop   = $w == 4 ? $startOfMonth->copy()->endOfMonth() : $weekStartLoop->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
 
-            $omsetSistemWeek = DB::table('pengiriman')
-                ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            $omsetSistemWeekQuery = DB::table('pengiriman')
+                ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                 ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                 ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                 ->whereBetween('pengiriman.tanggal_kirim', [$weekStartLoop->startOfDay(), $weekEndLoop->endOfDay()])
-                ->whereNull('pengiriman.deleted_at')
+                ->whereNull('pengiriman.deleted_at');
+
+            $this->applyValidInvoiceFilter($omsetSistemWeekQuery);
+
+            $omsetSistemWeek = $omsetSistemWeekQuery
                 ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
                 ->groupBy('pengiriman.id')
                 ->get()
@@ -574,7 +640,12 @@ class DashboardController extends Controller
         $search = $request->get('search', '');
 
         $topKlienQuery = DB::table('pengiriman')
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
@@ -586,6 +657,8 @@ class DashboardController extends Controller
             ->whereNull('pengiriman.deleted_at')
             ->whereNull('kliens.deleted_at')
             ->groupBy('pengiriman.id', 'kliens.id', 'kliens.nama', 'kliens.cabang');
+
+        $this->applyValidInvoiceFilter($topKlienQuery);
 
         if (!empty($search)) {
             $topKlienQuery->where(fn($q) => $q->where('kliens.nama', 'like', "%{$search}%")->orWhere('kliens.cabang', 'like', "%{$search}%"));
@@ -614,8 +687,13 @@ class DashboardController extends Controller
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             $monthData = [];
             foreach ($topKlien as $klien) {
-                $omsetBulan = DB::table('pengiriman')
-                    ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                $omsetBulanQuery = DB::table('pengiriman')
+                    ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                     ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
@@ -623,7 +701,11 @@ class DashboardController extends Controller
                     ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                     ->whereYear('pengiriman.tanggal_kirim', $tahun)
                     ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-                    ->whereNull('pengiriman.deleted_at')
+                    ->whereNull('pengiriman.deleted_at');
+
+                $this->applyValidInvoiceFilter($omsetBulanQuery);
+
+                $omsetBulan = $omsetBulanQuery
                     ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
                     ->groupBy('pengiriman.id')
                     ->get()->sum('omset_pengiriman');
@@ -706,7 +788,12 @@ class DashboardController extends Controller
         $search = $request->get('search', '');
 
         $topBahanBakuRaw = DB::table('pengiriman')
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->join('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->join('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
@@ -717,6 +804,8 @@ class DashboardController extends Controller
             ->whereNull('pengiriman.deleted_at')
             ->whereNull('bahan_baku_klien.deleted_at')
             ->groupBy('pengiriman.id', 'bahan_baku_klien.id', 'bahan_baku_klien.nama');
+
+        $this->applyValidInvoiceFilter($topBahanBakuRaw);
 
         if (!empty($search)) {
             $topBahanBakuRaw->where(fn($q) => $q->where('bahan_baku_klien.nama', 'like', "%{$search}%")->orWhere('bahan_baku_klien.spesifikasi', 'like', "%{$search}%"));
@@ -739,15 +828,24 @@ class DashboardController extends Controller
         for ($bulan = 1; $bulan <= 12; $bulan++) {
             $monthData = [];
             foreach ($topBahanBaku as $bahanBaku) {
-                $omsetBulan = DB::table('pengiriman')
-                    ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                $omsetBulanQuery = DB::table('pengiriman')
+                    ->leftJoin(DB::raw('(
+                SELECT pengiriman_id, MAX(subtotal) as subtotal
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                     ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->join('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->whereIn('order_details.bahan_baku_klien_id', $bahanBaku->bahan_baku_ids)
                     ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                     ->whereYear('pengiriman.tanggal_kirim', $tahun)
                     ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-                    ->whereNull('pengiriman.deleted_at')
+                    ->whereNull('pengiriman.deleted_at');
+
+                $this->applyValidInvoiceFilter($omsetBulanQuery);
+
+                $omsetBulan = $omsetBulanQuery
                     ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
                     ->groupBy('pengiriman.id')
                     ->get()->sum('omset_pengiriman');

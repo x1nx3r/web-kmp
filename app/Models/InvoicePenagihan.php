@@ -163,12 +163,9 @@ class InvoicePenagihan extends Model
      */
     public function recalculateTotal()
     {
-        $this->tax_amount = 0;
-        $this->tax_percentage = 0;
         $this->discount_amount = $this->discount_amount ?? 0;
 
-        // total_amount follows subtotal minus discount (tax currently 0)
-        $this->total_amount = $this->subtotal - $this->discount_amount;
+        $this->total_amount = ($this->subtotal ?? 0) + ($this->tax_amount ?? 0) - $this->discount_amount;
         $this->save();
     }
 

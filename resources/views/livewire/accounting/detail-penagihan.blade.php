@@ -335,7 +335,18 @@
                                                 <i class="fas fa-truck text-yellow-600 mr-1"></i>
                                                 {{ $item['item_name'] ?? 'Pengiriman #' . ($loop->iteration) }}
                                             </p>
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Harga Jual</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        wire:model="refraksiPerItem.{{ $i }}.amount"
+                                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                                        placeholder="Total harga jual"  onwheel="this.blur()"
+                                                    />
+                                                </div>
                                                 <div>
                                                     <label class="block text-xs font-medium text-gray-700 mb-1">Tipe Refraksi</label>
                                                     <select
@@ -361,11 +372,9 @@
                                             </div>
                                             @php
                                                 $iQty = array_sum(array_column($item['details'] ?? [], 'qty'));
-                                                $iTotal = (float) ($item['amount'] ?? 0);
                                             @endphp
                                             <div class="mt-2 text-xs text-gray-500">
-                                                Qty: {{ number_format($iQty, 2, ',', '.') }} kg |
-                                                Harga Jual: Rp {{ number_format($iTotal, 2, ',', '.') }}
+                                                Qty: {{ number_format($iQty, 2, ',', '.') }} kg
                                             </div>
                                         </div>
                                     @endforeach

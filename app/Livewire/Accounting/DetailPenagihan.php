@@ -188,8 +188,9 @@ class DetailPenagihan extends Component
             if (!empty($invoiceItems)) {
                 foreach ($invoiceItems as $i => $item) {
                     $this->refraksiPerItem[$i] = [
-                        'type'  => $item['refraksi_type'] ?? 'qty',
-                        'value' => (float) ($item['refraksi_value'] ?? 0),
+                        'type'   => $item['refraksi_type'] ?? 'qty',
+                        'value'  => (float) ($item['refraksi_value'] ?? 0),
+                        'amount' => (float) ($item['amount'] ?? 0),
                     ];
 
                     $expenses = $item['expenses'] ?? [];
@@ -456,8 +457,9 @@ class DetailPenagihan extends Component
     public function updateRefraksiPerItem()
     {
         $this->validate([
-            'refraksiPerItem.*.type'  => 'nullable|in:qty,rupiah,lainnya',
-            'refraksiPerItem.*.value' => 'nullable|numeric|min:0',
+            'refraksiPerItem.*.type'   => 'nullable|in:qty,rupiah,lainnya',
+            'refraksiPerItem.*.value'  => 'nullable|numeric|min:0',
+            'refraksiPerItem.*.amount' => 'nullable|numeric|min:0',
         ]);
 
         if (!$this->canManage) {
@@ -483,7 +485,8 @@ class DetailPenagihan extends Component
                 $item['refraksi_value'] = $value;
 
                 $qty   = array_sum(array_column($item['details'] ?? [], 'qty'));
-                $total = (float) ($item['amount'] ?? 0);
+                $total = (float) ($this->refraksiPerItem[$i]['amount'] ?? $item['amount'] ?? 0);
+                $item['amount'] = $total;
                 $totalSellingPrice += $total;
                 $totalQty += $qty;
 

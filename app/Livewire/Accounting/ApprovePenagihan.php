@@ -146,8 +146,9 @@ class ApprovePenagihan extends Component
         if (!empty($rawItems) && isset($rawItems[0]['item_name'])) {
             foreach ($rawItems as $i => $item) {
                 $this->refraksiPerItem[$i] = [
-                    'type'  => $item['refraksi_type'] ?? 'qty',
-                    'value' => (float) ($item['refraksi_value'] ?? 0),
+                    'type'   => $item['refraksi_type'] ?? 'qty',
+                    'value'  => (float) ($item['refraksi_value'] ?? 0),
+                    'amount' => (float) ($item['amount'] ?? 0),
                 ];
 
                 $expenses = $item['expenses'] ?? [];
@@ -733,8 +734,9 @@ class ApprovePenagihan extends Component
         }
 
         $this->validate([
-            'refraksiPerItem.*.type'  => 'nullable|in:qty,rupiah,lainnya',
-            'refraksiPerItem.*.value' => 'nullable|numeric|min:0',
+            'refraksiPerItem.*.type'   => 'nullable|in:qty,rupiah,lainnya',
+            'refraksiPerItem.*.value'  => 'nullable|numeric|min:0',
+            'refraksiPerItem.*.amount' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -755,7 +757,8 @@ class ApprovePenagihan extends Component
                 $item['refraksi_value'] = $value;
 
                 $qty   = array_sum(array_column($item['details'] ?? [], 'qty'));
-                $total = (float) ($item['amount'] ?? 0);
+                $total = (float) ($this->refraksiPerItem[$i]['amount'] ?? $item['amount'] ?? 0);
+                $item['amount'] = $total;
                 $totalSellingPrice += $total;
                 $totalQty += $qty;
 

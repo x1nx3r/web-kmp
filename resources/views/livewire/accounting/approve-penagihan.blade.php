@@ -602,7 +602,13 @@
                                                     <i class="fas fa-truck text-amber-600 mr-1"></i>
                                                     {{ $item['item_name'] ?? 'Pengiriman #' . ($loop->iteration) }}
                                                 </p>
-                                                <div class="grid grid-cols-2 gap-2">
+                                                <div class="grid grid-cols-3 gap-2">
+                                                    <div>
+                                                        <label class="block text-xs text-gray-500 mb-1">Harga Jual</label>
+                                                        <input type="number" wire:model.defer="refraksiPerItem.{{ $i }}.amount"
+                                                            step="0.01" min="0" placeholder="Total harga jual" onwheel="this.blur()"
+                                                            class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                                                    </div>
                                                     <div>
                                                         <label class="block text-xs text-gray-500 mb-1">Tipe Refraksi</label>
                                                         <select wire:model.defer="refraksiPerItem.{{ $i }}.type"
@@ -621,11 +627,9 @@
                                                 </div>
                                                 @php
                                                     $iQty = array_sum(array_column($item['details'] ?? [], 'qty'));
-                                                    $iTotal = (float) ($item['amount'] ?? 0);
                                                 @endphp
                                                 <div class="mt-1.5 text-xs text-gray-400">
-                                                    Qty: {{ number_format($iQty, 2, ',', '.') }} kg |
-                                                    Harga Jual: Rp {{ number_format($iTotal, 2, ',', '.') }}
+                                                    Qty: {{ number_format($iQty, 2, ',', '.') }} kg
                                                 </div>
                                             </div>
                                         @endforeach

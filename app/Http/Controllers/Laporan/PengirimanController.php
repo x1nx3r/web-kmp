@@ -7,6 +7,7 @@ use App\Models\Pengiriman;
 use App\Models\PengirimanDetail;
 use App\Models\User;
 use App\Exports\PengirimanExport;
+use App\Services\ReferenceDataService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -163,13 +164,13 @@ class PengirimanController extends Controller
         $pengirimanData = $pengirimanQuery->orderBy('pengiriman.tanggal_kirim', 'desc')->paginate(15);
         
         // Get purchasing users for filter dropdown (including direktur)
-        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
         
         // Get pabrik (klien) list for filter dropdown
-        $pabrikList = \App\Models\Klien::orderBy('nama', 'asc')->get();
+        $pabrikList = ReferenceDataService::getKliens();
         
         // Get supplier list for filter dropdown
-        $supplierList = \App\Models\Supplier::orderBy('nama', 'asc')->get();
+        $supplierList = ReferenceDataService::getSuppliers();
         
         return view('pages.laporan.pengiriman', compact(
             'title', 
@@ -461,7 +462,7 @@ class PengirimanController extends Controller
             ->get();
             
         // Get all purchasing users (both manager and staff) + direktur
-        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
         
       
         

@@ -12,7 +12,7 @@ class ReferenceDataService
     public static function getKliens()
     {
         return Cache::tags(['ref'])->remember('ref:kliens', 7200, function () {
-            return Klien::orderBy('nama')->get();
+            return Klien::orderBy('nama')->orderBy('cabang')->get();
         });
     }
 

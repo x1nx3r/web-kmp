@@ -15,6 +15,7 @@ use App\Models\BahanBakuKlien;
 use App\Models\InvoicePenagihan;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Services\ChartService;
 use Illuminate\Support\Facades\Auth;
 
 class OmsetController extends Controller
@@ -379,294 +380,32 @@ class OmsetController extends Controller
 
         // ===== AJAX: omset_per_klien =====
         if ($request->ajax() && $request->get('ajax') === 'omset_per_klien') {
-            $tahun  = $request->get('tahun', Carbon::now()->year);
-            $search = $request->get('search', '');
-
-            $topKlienQuery = DB::table('pengiriman')
-                ->leftJoin(DB::raw('(
-                    SELECT pengiriman_id, MAX(subtotal) as subtotal
-                    FROM invoice_penagihan
-                    WHERE status != "digabung"
-                    GROUP BY pengiriman_id
-                ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-                ->select('kliens.id as klien_id', 'kliens.nama', 'kliens.cabang', 'pengiriman.id as pengiriman_id',
-                    DB::raw('COALESCE(
-                        MAX(invoice_penagihan.subtotal),
-                        SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
-                    ) as omset_pengiriman'))
-                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                ->whereYear('pengiriman.tanggal_kirim', $tahun)
-                ->whereNull('pengiriman.deleted_at')
-                ->whereNull('kliens.deleted_at');
-
-            $this->applyValidInvoiceFilter($topKlienQuery);
-
-            if (!empty($search)) {
-                $topKlienQuery->where(function ($q) use ($search) {
-                    $q->where('kliens.nama', 'like', '%' . $search . '%')
-                      ->orWhere('kliens.cabang', 'like', '%' . $search . '%');
-                });
-            }
-
-            $topKlienQuery->groupBy('pengiriman.id', 'kliens.id', 'kliens.nama', 'kliens.cabang');
-            $topKlienData = $topKlienQuery->get();
-
-            $topKlien = $topKlienData->groupBy('klien_id')->map(function ($items) {
-                $first = $items->first();
-                return (object)[
-                    'klien_id' => $first->klien_id,
-                    'nama'     => $first->nama,
-                    'cabang'   => $first->cabang,
-                    'total'    => $items->sum('omset_pengiriman')
-                ];
-            })->sortByDesc('total')->values();
-
-            $monthColors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#14B8A6','#F43F5E','#8B5CF6','#6366F1'];
-            $monthNames  = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-
-            $klienNames = [];
-            $datasets   = [];
-
-            foreach ($topKlien as $klien) {
-                $cabang = trim((string)($klien->cabang ?? ''));
-                $klienNames[] = (string)$klien->nama . ($cabang !== '' ? ' - ' . $cabang : '');
-            }
-
-            for ($bulan = 1; $bulan <= 12; $bulan++) {
-                $monthData = [];
-                foreach ($topKlien as $klien) {
-                    $q = DB::table('pengiriman')
-                        ->leftJoin(DB::raw('(
-                            SELECT pengiriman_id, MAX(subtotal) as subtotal
-                            FROM invoice_penagihan
-                            WHERE status != "digabung"
-                            GROUP BY pengiriman_id
-                        ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-                        ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                        ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                        ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                        ->where('orders.klien_id', $klien->klien_id)
-                        ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                        ->whereYear('pengiriman.tanggal_kirim', $tahun)
-                        ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-                        ->whereNull('pengiriman.deleted_at');
-
-                    $this->applyValidInvoiceFilter($q);
-
-                    $omsetBulanKlien = $q->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
-                        ->groupBy('pengiriman.id')
-                        ->get()->sum('omset_pengiriman');
-
-                    $monthData[] = floatval($omsetBulanKlien);
-                }
-                $datasets[] = [
-                    'label'           => $monthNames[$bulan - 1],
-                    'data'            => $monthData,
-                    'backgroundColor' => $monthColors[$bulan - 1],
-                    'borderColor'     => $monthColors[$bulan - 1],
-                    'borderWidth'     => 1
-                ];
-            }
-
-            return response()->json(['klien_names' => $klienNames, 'datasets' => $datasets]);
+            return response()->json(
+                ChartService::getOmsetPerKlienChart(
+                    $request->get('tahun', Carbon::now()->year),
+                    $request->get('search', '')
+                )
+            );
         }
 
         // ===== AJAX: omset_per_supplier =====
         if ($request->ajax() && $request->get('ajax') === 'omset_per_supplier') {
-            $tahun  = $request->get('tahun', Carbon::now()->year);
-            $search = $request->get('search', '');
-
-            $topSupplierQuery = DB::table('pengiriman')
-                ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
-                ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
-                ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                ->select('suppliers.id as supplier_id', 'suppliers.nama', 'pengiriman.id as pengiriman_id',
-                    DB::raw('COALESCE(
-                        NULLIF(MAX(approval_pembayaran.subtotal), 0),
-                        NULLIF(MAX(approval_pembayaran.amount_after_refraksi), 0),
-                        SUM(pengiriman_details.total_harga)
-                    ) as omset_pengiriman'))
-                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                ->whereYear('pengiriman.tanggal_kirim', $tahun)
-                ->whereNull('pengiriman.deleted_at')
-                ->whereNull('suppliers.deleted_at');
-
-            if (!empty($search)) {
-                $topSupplierQuery->where(function ($q) use ($search) {
-                    $q->where('suppliers.nama', 'like', '%' . $search . '%')
-                      ->orWhere('suppliers.alamat', 'like', '%' . $search . '%');
-                });
-            }
-
-            $topSupplierQuery->groupBy('pengiriman.id', 'suppliers.id', 'suppliers.nama');
-            $topSupplierData = $topSupplierQuery->get();
-
-            $topSupplier = $topSupplierData->groupBy('supplier_id')->map(function ($items) {
-                $first = $items->first();
-                return (object)[
-                    'supplier_id' => $first->supplier_id,
-                    'nama'        => $first->nama,
-                    'total'       => $items->sum('omset_pengiriman')
-                ];
-            })->sortByDesc('total')->values();
-
-            $monthColors   = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#14B8A6','#F43F5E','#8B5CF6','#6366F1'];
-            $monthNames    = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-            $supplierNames = [];
-            $datasets      = [];
-
-            foreach ($topSupplier as $supplier) {
-                $supplierNames[] = $supplier->nama;
-            }
-
-            for ($bulan = 1; $bulan <= 12; $bulan++) {
-                $monthData = [];
-                foreach ($topSupplier as $supplier) {
-                    $omsetBulanSupplier = DB::table('pengiriman')
-                        ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
-                        ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                        ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                        ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
-                        ->where('bahan_baku_supplier.supplier_id', $supplier->supplier_id)
-                        ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                        ->whereYear('pengiriman.tanggal_kirim', $tahun)
-                        ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-                        ->whereNull('pengiriman.deleted_at')
-                        ->select('pengiriman.id', DB::raw('COALESCE(NULLIF(MAX(approval_pembayaran.subtotal),0), NULLIF(MAX(approval_pembayaran.amount_after_refraksi),0), SUM(pengiriman_details.total_harga)) as omset_pengiriman'))
-                        ->groupBy('pengiriman.id')
-                        ->get()->sum('omset_pengiriman');
-
-                    $monthData[] = floatval($omsetBulanSupplier);
-                }
-                $datasets[] = [
-                    'label'           => $monthNames[$bulan - 1],
-                    'data'            => $monthData,
-                    'backgroundColor' => $monthColors[$bulan - 1],
-                    'borderColor'     => $monthColors[$bulan - 1],
-                    'borderWidth'     => 1
-                ];
-            }
-
-            return response()->json(['supplier_names' => $supplierNames, 'datasets' => $datasets]);
+            return response()->json(
+                ChartService::getOmsetPerSupplierChart(
+                    $request->get('tahun', Carbon::now()->year),
+                    $request->get('search', '')
+                )
+            );
         }
 
         // ===== AJAX: omset_per_bahan_baku =====
         if ($request->ajax() && $request->get('ajax') === 'omset_per_bahan_baku') {
-            $tahun  = $request->get('tahun', Carbon::now()->year);
-            $search = $request->get('search', '');
-
-            $topBahanBakuQuery = DB::table('bahan_baku_klien')
-                ->select(
-                    'bahan_baku_klien.nama',
-                    DB::raw('GROUP_CONCAT(DISTINCT bahan_baku_klien.id) as bahan_baku_ids'),
-                    DB::raw('COALESCE(SUM(DISTINCT invoice_data.subtotal), 0) as total')
+            return response()->json(
+                ChartService::getOmsetPerBahanBakuChart(
+                    $request->get('tahun', Carbon::now()->year),
+                    $request->get('search', '')
                 )
-                ->leftJoin(
-                    DB::raw('(
-                        SELECT DISTINCT
-                            invoice_penagihan.id as invoice_id,
-                            invoice_penagihan.subtotal,
-                            order_details.bahan_baku_klien_id
-                        FROM invoice_penagihan
-                        JOIN pengiriman ON invoice_penagihan.pengiriman_id = pengiriman.id
-                        JOIN pengiriman_details ON pengiriman.id = pengiriman_details.pengiriman_id
-                        JOIN order_details ON pengiriman_details.purchase_order_bahan_baku_id = order_details.id
-                        WHERE pengiriman.status IN ("menunggu_fisik", "menunggu_verifikasi", "berhasil")
-                            AND YEAR(pengiriman.tanggal_kirim) = ' . $tahun . '
-                            AND pengiriman.deleted_at IS NULL
-                            AND invoice_penagihan.status != "digabung"
-                    ) as invoice_data'),
-                    'bahan_baku_klien.id',
-                    '=',
-                    'invoice_data.bahan_baku_klien_id'
-                )
-                ->whereNull('bahan_baku_klien.deleted_at');
-
-            if (!empty($search)) {
-                $topBahanBakuQuery->where(function ($q) use ($search) {
-                    $q->where('bahan_baku_klien.nama', 'like', '%' . $search . '%')
-                      ->orWhere('bahan_baku_klien.spesifikasi', 'like', '%' . $search . '%');
-                });
-            }
-
-            $topBahanBakuRaw = $topBahanBakuQuery
-                ->groupBy('bahan_baku_klien.nama')
-                ->having('total', '>', 0)
-                ->orderBy('total', 'desc')
-                ->get();
-
-            $topBahanBaku = $topBahanBakuRaw
-                ->map(function ($row) {
-                    $row->nama_normalized = $this->normalizeBahanBakuName($row->nama);
-                    return $row;
-                })
-                ->groupBy('nama_normalized')
-                ->map(function ($items, $normalizedName) {
-                    $ids = $items->flatMap(function ($r) {
-                        return array_filter(array_map('trim', explode(',', (string)$r->bahan_baku_ids)));
-                    })->unique()->values()->all();
-                    return (object)[
-                        'nama'           => $normalizedName,
-                        'bahan_baku_ids' => implode(',', $ids),
-                        'total'          => $items->sum('total'),
-                    ];
-                })
-                ->sortByDesc('total')
-                ->values();
-
-            $monthColors    = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#14B8A6','#F43F5E','#8B5CF6','#6366F1'];
-            $monthNames     = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-            $bahanBakuNames = [];
-            $datasets       = [];
-
-            foreach ($topBahanBaku as $bahanBaku) {
-                $bahanBakuNames[] = $bahanBaku->nama;
-            }
-
-            for ($bulan = 1; $bulan <= 12; $bulan++) {
-                $monthData = [];
-                foreach ($topBahanBaku as $bahanBaku) {
-                    $bahanBakuIds = array_filter(array_map('trim', explode(',', (string)$bahanBaku->bahan_baku_ids)));
-
-                    $q = DB::table('pengiriman')
-                        ->leftJoin(DB::raw('(
-                            SELECT pengiriman_id, MAX(subtotal) as subtotal
-                            FROM invoice_penagihan
-                            WHERE status != "digabung"
-                            GROUP BY pengiriman_id
-                        ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-                        ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                        ->join('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                        ->whereIn('order_details.bahan_baku_klien_id', $bahanBakuIds)
-                        ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                        ->whereYear('pengiriman.tanggal_kirim', $tahun)
-                        ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-                        ->whereNull('pengiriman.deleted_at');
-
-                    $this->applyValidInvoiceFilter($q);
-
-                    $omsetBulanBB = $q->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
-                        ->groupBy('pengiriman.id')
-                        ->get()->sum('omset_pengiriman');
-
-                    $monthData[] = floatval($omsetBulanBB);
-                }
-                $datasets[] = [
-                    'label'           => $monthNames[$bulan - 1],
-                    'data'            => $monthData,
-                    'backgroundColor' => $monthColors[$bulan - 1],
-                    'borderColor'     => $monthColors[$bulan - 1],
-                    'borderWidth'     => 1
-                ];
-            }
-
-            return response()->json(['bahan_baku_names' => $bahanBakuNames, 'datasets' => $datasets]);
+            );
         }
 
         // ===== AJAX: top_klien =====

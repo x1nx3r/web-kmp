@@ -230,6 +230,75 @@ class DashboardService
         });
     }
 
+    public static function getWeeklyDeliveries(Carbon $weekStart, Carbon $weekEnd): array
+    {
+        $cacheKey = 'dashboard:deliveries:' . $weekStart->format('Ymd') . ':' . $weekEnd->format('Ymd');
+
+        return Cache::tags(['dashboard'])->remember($cacheKey, 300, function () use ($weekStart, $weekEnd) {
+            $pengirimanMingguIni = Pengiriman::with(['forecast:id,total_qty_forecast', 'order.klien', 'purchasing'])
+                ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                ->whereBetween('tanggal_kirim', [$weekStart->copy()->startOfDay(), $weekEnd->copy()->endOfDay()])
+                ->get();
+
+            $pengirimanNormalList          = [];
+            $pengirimanBongkarSebagianList = [];
+            $pengirimanNormalMingguIni          = 0;
+            $pengirimanBongkarSebagianMingguIni = 0;
+
+            foreach ($pengirimanMingguIni as $pengiriman) {
+                if ($pengiriman->forecast && $pengiriman->forecast->total_qty_forecast > 0) {
+                    $percentage = ($pengiriman->total_qty_kirim / $pengiriman->forecast->total_qty_forecast) * 100;
+
+                    $item = [
+                        'id'                 => $pengiriman->id,
+                        'po_number'          => $pengiriman->order->po_number ?? 'N/A',
+                        'tanggal_kirim'      => $pengiriman->tanggal_kirim,
+                        'klien'              => $pengiriman->order->klien->nama ?? 'N/A',
+                        'cabang'             => $pengiriman->order->klien->cabang ?? null,
+                        'total_qty_kirim'    => $pengiriman->total_qty_kirim,
+                        'total_qty_forecast' => $pengiriman->forecast->total_qty_forecast,
+                        'percentage'         => round($percentage, 2),
+                        'status'             => $pengiriman->status,
+                        'purchasing'         => $pengiriman->purchasing->nama ?? 'N/A',
+                    ];
+
+                    if ($percentage > 70) {
+                        $pengirimanNormalMingguIni++;
+                        $pengirimanNormalList[] = $item;
+                    } elseif ($percentage > 0) {
+                        $pengirimanBongkarSebagianMingguIni++;
+                        $pengirimanBongkarSebagianList[] = $item;
+                    }
+                } else {
+                    $pengirimanNormalMingguIni++;
+                    $pengirimanNormalList[] = [
+                        'id'                 => $pengiriman->id,
+                        'po_number'          => $pengiriman->order->po_number ?? 'N/A',
+                        'tanggal_kirim'      => $pengiriman->tanggal_kirim,
+                        'klien'              => $pengiriman->order->klien->nama ?? 'N/A',
+                        'cabang'             => $pengiriman->order->klien->cabang ?? null,
+                        'total_qty_kirim'    => $pengiriman->total_qty_kirim,
+                        'total_qty_forecast' => 0,
+                        'percentage'         => 0,
+                        'status'             => $pengiriman->status,
+                        'purchasing'         => $pengiriman->purchasing->nama ?? 'N/A',
+                    ];
+                }
+            }
+
+            $totalQtyPengirimanMingguIni = Pengiriman::leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->copy()->startOfDay(), $weekEnd->copy()->endOfDay()])
+                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                ->sum(DB::raw('COALESCE(invoice_penagihan.qty_after_refraksi, pengiriman.total_qty_kirim)'));
+
+            return compact(
+                'pengirimanNormalList', 'pengirimanBongkarSebagianList',
+                'pengirimanNormalMingguIni', 'pengirimanBongkarSebagianMingguIni',
+                'totalQtyPengirimanMingguIni'
+            );
+        });
+    }
+
     private static function applyValidInvoiceFilter($query)
     {
         return $query->where(function ($q) {

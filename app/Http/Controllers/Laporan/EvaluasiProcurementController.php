@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Laporan;
 use App\Exports\EvaluasiProcurementExport;
 use App\Http\Controllers\Controller;
 use App\Models\Forecast;
-use App\Models\Supplier;
-use App\Models\User;
 use App\Models\Klien;
+use App\Models\Supplier;
+use App\Services\ReferenceDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -57,9 +57,9 @@ class EvaluasiProcurementController extends Controller
                 return $this->hitungRealisasi($f, $statusRealisasi);
             });
 
-        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
-        $pabrikList      = Klien::orderBy('nama', 'asc')->get();
-        $supplierList    = Supplier::orderBy('nama', 'asc')->get();
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
+        $pabrikList      = ReferenceDataService::getKliens();
+        $supplierList    = ReferenceDataService::getSuppliers();
 
         return view('pages.laporan.evaluasi-procurement', compact(
             'title', 'activeTab', 'forecastData', 'purchasingUsers',
@@ -79,7 +79,7 @@ class EvaluasiProcurementController extends Controller
         $pabrik     = $request->get('pabrik');
         $supplier   = $request->get('supplier');
 
-        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing', 'direktur'])->get();
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
         $pabrikName      = $pabrik   ? Klien::find($pabrik)?->nama    : null;
         $supplierName    = $supplier ? Supplier::find($supplier)?->nama : null;
 

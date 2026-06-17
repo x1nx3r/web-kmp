@@ -3,6 +3,7 @@
 namespace App\Livewire\Marketing;
 
 use App\Models\BahanBakuKlien;
+use App\Models\Klien;
 use App\Models\RiwayatHargaKlien;
 use App\Services\AuthFallbackService;
 use App\Services\ReferenceDataService;

@@ -4,6 +4,7 @@ namespace App\Livewire\Accounting;
 
 use App\Models\CatatanPiutangPabrik as CatatanPiutangPabrikModel;
 use App\Models\InvoicePenagihan;
+use App\Models\Klien;
 use App\Services\ReferenceDataService;
 use App\Models\PembayaranPiutangPabrik;
 use Illuminate\Support\Facades\Auth;

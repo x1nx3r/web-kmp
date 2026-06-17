@@ -371,7 +371,15 @@
                                                 </div>
                                             </div>
                                             @php
-                                                $iQty = array_sum(array_column($item['details'] ?? [], 'qty'));
+                                                // Fallback chain sama
+                                                $iQty = 0;
+                                                $shipmentArray = $pengirimans->values();
+                                                if (isset($shipmentArray[$loop->index])) {
+                                                    $iQty = floatval($shipmentArray[$loop->index]->total_qty_kirim ?? 0);
+                                                }
+                                                if ($iQty <= 0) $iQty = floatval($item['quantity'] ?? 0);
+                                                if ($iQty <= 0) $iQty = array_sum(array_column($item['details'] ?? [], 'qty_kirim'))
+                                                                    ?: array_sum(array_column($item['details'] ?? [], 'qty'));
                                             @endphp
                                             <div class="mt-2 text-xs text-gray-500">
                                                 Qty: {{ number_format($iQty, 2, ',', '.') }} kg

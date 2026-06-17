@@ -6,6 +6,7 @@ use App\Models\Pengiriman;
 use App\Models\ApprovalPembayaran;
 use App\Services\Notifications\PengirimanNotificationService;
 use App\Services\Notifications\ApprovalPembayaranNotificationService;
+use Illuminate\Support\Facades\Cache;
 
 class PengirimanObserver
 {
@@ -14,17 +15,18 @@ class PengirimanObserver
      */
     public function created(Pengiriman $pengiriman): void
     {
+        Cache::tags(['dashboard', 'charts'])->flush();
+
         // Auto-create approval pembayaran if status is 'menunggu_fisik'
         if ($pengiriman->status === 'menunggu_fisik') {
             $this->createApprovalPembayaran($pengiriman);
         }
     }
 
-    /**
-     * Handle the Pengiriman "updated" event.
-     */
     public function updated(Pengiriman $pengiriman): void
     {
+        Cache::tags(['dashboard', 'charts'])->flush();
+
         // Check if status changed to 'menunggu_fisik'
         if ($pengiriman->isDirty('status') && $pengiriman->status === 'menunggu_fisik') {
             // Check if approval pembayaran already exists
@@ -60,7 +62,7 @@ class PengirimanObserver
      */
     public function deleted(Pengiriman $pengiriman): void
     {
-        //
+        Cache::tags(['dashboard', 'charts'])->flush();
     }
 
     /**

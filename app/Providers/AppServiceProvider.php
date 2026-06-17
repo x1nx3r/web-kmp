@@ -22,6 +22,31 @@ class AppServiceProvider extends ServiceProvider
         // Register Observers
         \App\Models\Pengiriman::observe(\App\Observers\PengirimanObserver::class);
 
+        // Register Event Listeners for Cache Invalidation
+        \App\Models\InvoicePenagihan::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+        \App\Models\InvoicePenagihan::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+
+        \App\Models\ApprovalPembayaran::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+        \App\Models\ApprovalPembayaran::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+
+        \App\Models\OrderDetail::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+        \App\Models\OrderDetail::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+
+        \App\Models\Order::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+        \App\Models\Order::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+
+        \App\Models\Klien::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());
+        \App\Models\Klien::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());
+
+        \App\Models\Supplier::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());
+        \App\Models\Supplier::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());
+
+        \App\Models\User::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['ref'])->flush());
+        \App\Models\User::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['ref'])->flush());
+
+        \App\Models\TargetOmset::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard'])->flush());
+        \App\Models\TargetOmset::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard'])->flush());
+
         // Register additional migration paths
         $this->loadMigrationsFrom([
             database_path('migrations'),

@@ -7,6 +7,7 @@ use App\Models\BahanBakuSupplier;
 use App\Models\RiwayatHargaBahanBaku;
 use App\Models\Pengiriman; // Import Pengiriman model
 use App\Models\PengirimanDetail; // Import PengirimanDetail model
+use App\Services\ReferenceDataService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -78,9 +79,7 @@ class SupplierController extends Controller
             });
 
         // Get purchasing users for PIC dropdown (jika diperlukan di form)
-        $purchasingUsers = \App\Models\User::whereIn('role', ['direktur','manager_purchasing', 'staff_purchasing'])
-            ->orderBy('nama')
-            ->get();
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
 
         return view('pages.purchasing.supplier', compact('suppliers', 'bahanBakuList', 'purchasingUsers'));
     }
@@ -96,9 +95,7 @@ class SupplierController extends Controller
         }
 
         // Get purchasing users for PIC dropdown
-        $purchasingUsers = \App\Models\User::whereIn('role', ['direktur','manager_purchasing', 'staff_purchasing'])
-            ->orderBy('nama')
-            ->get();
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
 
         return view('pages.purchasing.supplier.tambah', compact('purchasingUsers'));
     }
@@ -218,8 +215,7 @@ class SupplierController extends Controller
         }
 
         // Get purchasing users for PIC dropdown
-        $purchasingUsers = \App\Models\User::whereIn('role', ['direktur','manager_purchasing', 'staff_purchasing'])
-            ->get();
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
         
         // Get all klien for price selection dropdown
         $klienList = \App\Models\Klien::select('id', 'nama', 'cabang')

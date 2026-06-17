@@ -4,7 +4,7 @@ namespace App\Livewire\Accounting;
 
 use App\Models\CatatanPiutang as CatatanPiutangModel;
 use App\Models\PembayaranPiutang;
-use App\Models\Supplier;
+use App\Services\ReferenceDataService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -140,7 +140,7 @@ class CatatanPiutang extends Component
         }
 
         $piutangs = $this->applySorting($query)->paginate(10);
-        $suppliers = Supplier::orderBy('nama')->get();
+        $suppliers = ReferenceDataService::getSuppliers();
 
         // Summary statistics
         $totalPiutang = CatatanPiutangModel::sum('jumlah_piutang');

@@ -47,6 +47,14 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\TargetOmset::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard'])->flush());
         \App\Models\TargetOmset::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard'])->flush());
 
+        \App\Models\OmsetManual::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard'])->flush());
+        \App\Models\OmsetManual::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard'])->flush());
+
+        \App\Models\PengirimanDetail::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+        \App\Models\PengirimanDetail::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+
+        \App\Models\CompanySetting::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard'])->flush());
+
         // Register additional migration paths
         $this->loadMigrationsFrom([
             database_path('migrations'),

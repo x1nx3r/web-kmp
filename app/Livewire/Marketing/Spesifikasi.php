@@ -3,9 +3,9 @@
 namespace App\Livewire\Marketing;
 
 use App\Models\BahanBakuKlien;
-use App\Models\Klien;
 use App\Models\RiwayatHargaKlien;
 use App\Services\AuthFallbackService;
+use App\Services\ReferenceDataService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -326,7 +326,7 @@ class Spesifikasi extends Component
     {
         $query = $this->getMaterialsQuery();
         $materials = (clone $query)->paginate(15);
-        $kliens = Klien::orderBy('nama')->orderBy('cabang')->get();
+        $kliens = ReferenceDataService::getKliens();
         
         // Get unique cabangs (locations) for filter dropdown
         $cabangs = Klien::distinct('cabang')->orderBy('cabang')->pluck('cabang');

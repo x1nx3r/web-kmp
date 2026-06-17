@@ -3,8 +3,8 @@
 namespace App\Livewire\Accounting;
 
 use App\Models\CatatanPiutangPabrik as CatatanPiutangPabrikModel;
-use App\Models\Klien;
 use App\Models\InvoicePenagihan;
+use App\Services\ReferenceDataService;
 use App\Models\PembayaranPiutangPabrik;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -204,7 +204,7 @@ class CatatanPiutangPabrik extends Component
             ]
         );
 
-        $kliens = Klien::orderBy('nama')->get();
+        $kliens = ReferenceDataService::getKliens();
 
         // Summary statistics - from all completed invoices
         $allCompletedInvoices = \App\Models\InvoicePenagihan::with('pembayaranPabrik')

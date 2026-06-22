@@ -932,7 +932,7 @@ class DetailPenagihan extends Component
     private function getUserRole($user)
     {
         if ($user->role === 'manager_accounting') return 'manager_keuangan';
-        if ($user->role === 'staff_accounting')   return 'staff_accounting';
+        if ($user->role === 'staff_accounting')   return 'staff';
         if ($user->role === 'direktur')            return 'direktur';
         if ($user->role === 'superadmin')          return 'superadmin';
         return null;

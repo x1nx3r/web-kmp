@@ -145,7 +145,7 @@ class EvaluasiProcurementController extends Controller
                 'p.total_harga_kirim as p_total_harga_kirim',
                 'p.total_qty_kirim as p_total_qty_kirim',
                 DB::raw('COALESCE(
-                    MAX(ip.subtotal),
+                    MAX(ip.amount_after_refraksi),
                     SUM(pd.qty_kirim * od.harga_jual)
                 ) as realisasi_amount'),
                 DB::raw('COALESCE(

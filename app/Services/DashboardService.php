@@ -15,7 +15,7 @@ class DashboardService
 {
     public static function getSummaryMetrics(Carbon $weekStart, Carbon $weekEnd)
     {
-        $currentYear = Carbon::now()->year;
+        $currentYear  = Carbon::now()->year;
         $currentMonth = Carbon::now()->month;
 
         $cacheKey = 'dashboard:summary:' . $weekStart->format('Ymd') . ':' . $weekEnd->format('Ymd') . ':' . $currentYear . ':' . $currentMonth;
@@ -27,12 +27,10 @@ class DashboardService
             $targetBulanan  = $targetOmset->target_bulanan  ?? 0;
             $targetTahunan  = $targetOmset->target_tahunan  ?? 0;
 
-            // Helper variables
-            $today = Carbon::now();
-            $dayOfMonth = $today->day;
+            $today        = Carbon::now();
+            $dayOfMonth   = $today->day;
             $startOfMonth = Carbon::now()->startOfMonth();
 
-            // Calculate current week of month
             if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
                 $currentWeekOfMonth = 1;
             } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
@@ -43,14 +41,26 @@ class DashboardService
                 $currentWeekOfMonth = 4;
             }
 
+            // Subquery invoice yang dipakai berulang — sudah sertakan amount_after_refraksi
+            $invoiceSubquery = '(
+                SELECT pengiriman_id,
+                       MAX(subtotal) as subtotal,
+                       MAX(amount_after_refraksi) as amount_after_refraksi
+                FROM invoice_penagihan
+                WHERE status != "digabung"
+                GROUP BY pengiriman_id
+            ) as invoice_penagihan';
+
+            // COALESCE omset: prioritas amount_after_refraksi → subtotal → fallback qty×harga_jual
+            $omsetExpr = DB::raw('COALESCE(
+                NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0),
+                NULLIF(MAX(invoice_penagihan.subtotal), 0),
+                SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+            ) as omset_pengiriman');
+
             // ========== OMSET MINGGU INI ==========
             $omsetSistemMingguIniQuery = DB::table('pengiriman')
-                ->leftJoin(DB::raw('(
-                    SELECT pengiriman_id, MAX(subtotal) as subtotal
-                    FROM invoice_penagihan
-                    WHERE status != "digabung"
-                    GROUP BY pengiriman_id
-                ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                ->leftJoin(DB::raw($invoiceSubquery), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                 ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                 ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
@@ -60,7 +70,7 @@ class DashboardService
             self::applyValidInvoiceFilter($omsetSistemMingguIniQuery);
 
             $omsetSistemMingguIni = $omsetSistemMingguIniQuery
-                ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
+                ->select('pengiriman.id', $omsetExpr)
                 ->groupBy('pengiriman.id')
                 ->get()
                 ->sum('omset_pengiriman');
@@ -71,12 +81,7 @@ class DashboardService
 
             // ========== OMSET BULAN INI ==========
             $omsetSistemBulanIniQuery = DB::table('pengiriman')
-                ->leftJoin(DB::raw('(
-                    SELECT pengiriman_id, MAX(subtotal) as subtotal
-                    FROM invoice_penagihan
-                    WHERE status != "digabung"
-                    GROUP BY pengiriman_id
-                ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                ->leftJoin(DB::raw($invoiceSubquery), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                 ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                 ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
@@ -87,7 +92,7 @@ class DashboardService
             self::applyValidInvoiceFilter($omsetSistemBulanIniQuery);
 
             $omsetSistemBulanIni = $omsetSistemBulanIniQuery
-                ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
+                ->select('pengiriman.id', $omsetExpr)
                 ->groupBy('pengiriman.id')
                 ->get()
                 ->sum('omset_pengiriman');
@@ -96,12 +101,7 @@ class DashboardService
 
             // ========== OMSET TAHUN INI ==========
             $omsetSistemTahunIniQuery = DB::table('pengiriman')
-                ->leftJoin(DB::raw('(
-                    SELECT pengiriman_id, MAX(subtotal) as subtotal
-                    FROM invoice_penagihan
-                    WHERE status != "digabung"
-                    GROUP BY pengiriman_id
-                ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                ->leftJoin(DB::raw($invoiceSubquery), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                 ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                 ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
@@ -111,7 +111,7 @@ class DashboardService
             self::applyValidInvoiceFilter($omsetSistemTahunIniQuery);
 
             $omsetSistemTahunIni = $omsetSistemTahunIniQuery
-                ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
+                ->select('pengiriman.id', $omsetExpr)
                 ->groupBy('pengiriman.id')
                 ->get()
                 ->sum('omset_pengiriman');
@@ -124,12 +124,7 @@ class DashboardService
 
             for ($b = 1; $b < $currentMonth; $b++) {
                 $omsetSistemBulanLaluQuery = DB::table('pengiriman')
-                    ->leftJoin(DB::raw('(
-                        SELECT pengiriman_id, MAX(subtotal) as subtotal
-                        FROM invoice_penagihan
-                        WHERE status != "digabung"
-                        GROUP BY pengiriman_id
-                    ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin(DB::raw($invoiceSubquery), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                     ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
@@ -140,7 +135,7 @@ class DashboardService
                 self::applyValidInvoiceFilter($omsetSistemBulanLaluQuery);
 
                 $omsetSistemBulanLalu = $omsetSistemBulanLaluQuery
-                    ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
+                    ->select('pengiriman.id', $omsetExpr)
                     ->groupBy('pengiriman.id')
                     ->get()
                     ->sum('omset_pengiriman');
@@ -163,12 +158,7 @@ class DashboardService
                 $weekEndLoop   = $w == 4 ? $startOfMonth->copy()->endOfMonth() : $weekStartLoop->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
 
                 $omsetSistemWeekQuery = DB::table('pengiriman')
-                    ->leftJoin(DB::raw('(
-                        SELECT pengiriman_id, MAX(subtotal) as subtotal
-                        FROM invoice_penagihan
-                        WHERE status != "digabung"
-                        GROUP BY pengiriman_id
-                    ) as invoice_penagihan'), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin(DB::raw($invoiceSubquery), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
                     ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
@@ -178,23 +168,23 @@ class DashboardService
                 self::applyValidInvoiceFilter($omsetSistemWeekQuery);
 
                 $omsetSistemWeek = $omsetSistemWeekQuery
-                    ->select('pengiriman.id', DB::raw('COALESCE(MAX(invoice_penagihan.subtotal), SUM(pengiriman_details.qty_kirim * order_details.harga_jual)) as omset_pengiriman'))
+                    ->select('pengiriman.id', $omsetExpr)
                     ->groupBy('pengiriman.id')
                     ->get()
                     ->sum('omset_pengiriman');
 
-                $omsetManualWeek  = $omsetManualBulanIni / 4;
-                $omsetTotalWeek   = $omsetSistemWeek + $omsetManualWeek;
-                $targetWeek       = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
-                $selisihWeek      = $omsetTotalWeek - $targetWeek;
+                $omsetManualWeek              = $omsetManualBulanIni / 4;
+                $omsetTotalWeek               = $omsetSistemWeek + $omsetManualWeek;
+                $targetWeek                   = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
+                $selisihWeek                  = $omsetTotalWeek - $targetWeek;
                 $sisaTargetMingguanSebelumnya = $selisihWeek < 0 ? abs($selisihWeek) : 0;
             }
 
             $targetMingguanAdjusted = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
 
             $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;
-            $progressBulan  = $targetBulananAdjusted > 0  ? ($omsetBulanIni  / $targetBulananAdjusted)  * 100 : 0;
-            $progressTahun  = $targetTahunan > 0           ? ($omsetTahunIni  / $targetTahunan)           * 100 : 0;
+            $progressBulan  = $targetBulananAdjusted  > 0 ? ($omsetBulanIni  / $targetBulananAdjusted)  * 100 : 0;
+            $progressTahun  = $targetTahunan          > 0 ? ($omsetTahunIni  / $targetTahunan)          * 100 : 0;
 
             // ========== OUTSTANDING PO ==========
             $totalOutstanding = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
@@ -208,24 +198,24 @@ class DashboardService
             $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])->count();
 
             return [
-                'targetMingguan' => $targetMingguan,
-                'targetBulanan' => $targetBulanan,
-                'targetTahunan' => $targetTahunan,
+                'targetMingguan'         => $targetMingguan,
+                'targetBulanan'          => $targetBulanan,
+                'targetTahunan'          => $targetTahunan,
                 'targetMingguanAdjusted' => $targetMingguanAdjusted,
-                'targetBulananAdjusted' => $targetBulananAdjusted,
-                'omsetMingguIni' => $omsetMingguIni,
-                'omsetBulanIni' => $omsetBulanIni,
-                'omsetTahunIni' => $omsetTahunIni,
-                'omsetSistemMingguIni' => $omsetSistemMingguIni,
-                'omsetManualMingguIni' => $omsetManualMingguIni,
-                'omsetSistemBulanIni' => $omsetSistemBulanIni,
-                'omsetManualBulanIni' => $omsetManualBulanIni,
-                'progressMinggu' => $progressMinggu,
-                'progressBulan' => $progressBulan,
-                'progressTahun' => $progressTahun,
-                'totalOutstanding' => $totalOutstanding,
-                'totalQtyOutstanding' => $totalQtyOutstanding,
-                'poBerjalan' => $poBerjalan,
+                'targetBulananAdjusted'  => $targetBulananAdjusted,
+                'omsetMingguIni'         => $omsetMingguIni,
+                'omsetBulanIni'          => $omsetBulanIni,
+                'omsetTahunIni'          => $omsetTahunIni,
+                'omsetSistemMingguIni'   => $omsetSistemMingguIni,
+                'omsetManualMingguIni'   => $omsetManualMingguIni,
+                'omsetSistemBulanIni'    => $omsetSistemBulanIni,
+                'omsetManualBulanIni'    => $omsetManualBulanIni,
+                'progressMinggu'         => $progressMinggu,
+                'progressBulan'          => $progressBulan,
+                'progressTahun'          => $progressTahun,
+                'totalOutstanding'       => $totalOutstanding,
+                'totalQtyOutstanding'    => $totalQtyOutstanding,
+                'poBerjalan'             => $poBerjalan,
             ];
         });
     }
@@ -240,8 +230,8 @@ class DashboardService
                 ->whereBetween('tanggal_kirim', [$weekStart->copy()->startOfDay(), $weekEnd->copy()->endOfDay()])
                 ->get();
 
-            $pengirimanNormalList          = [];
-            $pengirimanBongkarSebagianList = [];
+            $pengirimanNormalList               = [];
+            $pengirimanBongkarSebagianList      = [];
             $pengirimanNormalMingguIni          = 0;
             $pengirimanBongkarSebagianMingguIni = 0;
 

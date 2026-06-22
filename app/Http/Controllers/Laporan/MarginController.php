@@ -28,7 +28,6 @@ class MarginController extends Controller
         $sumberHargaJual    = '-';
 
         if ($p->invoicePenagihan) {
-            // Prioritas amount: subtotal → amount_after_refraksi
             $amountJual = $toFloat($p->invoicePenagihan->amount_after_refraksi) > 0
                 ? $toFloat($p->invoicePenagihan->amount_after_refraksi)
                 : $toFloat($p->invoicePenagihan->subtotal);

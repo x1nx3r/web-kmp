@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Services\ChartService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class OmsetController extends Controller
 {
@@ -89,6 +90,71 @@ class OmsetController extends Controller
         return $q->get()->sum('omset_pengiriman');
     }
 
+    /**
+     * ====== OPTIMIZED CORE ======
+     *
+     * Menghitung omset sistem per-pengiriman lalu diagregasi per hari dalam SATU query,
+     * mencakup rentang tanggal yang diminta ($from - $to inklusif).
+     *
+     * Ini menggantikan puluhan pemanggilan $sumOmset(...) yang masing-masing full
+     * JOIN + subquery, dengan satu kali JOIN besar yang hasilnya dipecah per-hari
+     * di level SQL (GROUP BY pengiriman.id lalu GROUP BY tanggal di query luar).
+     *
+     * Return: array tanggal ('Y-m-d') => total omset hari itu (float)
+     */
+    private function omsetHarianDalamRentang(Carbon $from, Carbon $to): array
+    {
+        $sub = DB::table('pengiriman')
+            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+            ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->whereNull('pengiriman.deleted_at')
+            ->whereBetween('pengiriman.tanggal_kirim', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->select(
+                'pengiriman.id',
+                DB::raw('DATE(pengiriman.tanggal_kirim) as tgl'),
+                $this->omsetExpr()
+            )
+            ->groupBy('pengiriman.id', DB::raw('DATE(pengiriman.tanggal_kirim)'));
+
+        $this->applyValidInvoiceFilter($sub);
+
+        // Agregasi per tanggal dari hasil per-pengiriman di atas (subquery)
+        $rows = DB::query()
+            ->fromSub($sub, 't')
+            ->select('tgl', DB::raw('SUM(omset_pengiriman) as total'))
+            ->groupBy('tgl')
+            ->get();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[$row->tgl] = (float) $row->total;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Jumlahkan omset harian dari hasil omsetHarianDalamRentang() untuk sub-rentang tertentu.
+     */
+    private function sumOmsetHarian(array $omsetHarian, Carbon $from, Carbon $to): float
+    {
+        $total = 0.0;
+        $cursor = $from->copy()->startOfDay();
+        $end = $to->copy()->startOfDay();
+
+        while ($cursor->lte($end)) {
+            $key = $cursor->format('Y-m-d');
+            if (isset($omsetHarian[$key])) {
+                $total += $omsetHarian[$key];
+            }
+            $cursor->addDay();
+        }
+
+        return $total;
+    }
+
     public function index(Request $request)
     {
         $title     = 'Omset';
@@ -104,7 +170,7 @@ class OmsetController extends Controller
             $selectedYearTarget = $availableYearsTarget[0] ?? Carbon::now()->year;
         }
 
-        // ===== Helper closure: base query dengan join standar =====
+        // ===== Helper closure: base query dengan join standar (dipakai di luar cache path, mis. all-time) =====
         $baseOmsetQuery = function () {
             $q = DB::table('pengiriman')
                 ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
@@ -116,7 +182,7 @@ class OmsetController extends Controller
             return $q;
         };
 
-        // ===== Helper closure: eksekusi query dan sum omset =====
+        // ===== Helper closure: eksekusi query dan sum omset (fallback lama, dipakai minimal) =====
         $sumOmset = function ($q) {
             return $q->select('pengiriman.id', $this->omsetExpr())
                 ->groupBy('pengiriman.id')
@@ -124,22 +190,55 @@ class OmsetController extends Controller
                 ->sum('omset_pengiriman');
         };
 
+        // ========================================================================
+        // OPTIMIZED: satu kali tarik omset harian untuk rentang yang relevan,
+        // lalu semua sum per-hari/minggu/bulan/tahun dihitung dari array di memory
+        // (bukan query ulang per bulan/minggu seperti versi sebelumnya).
+        //
+        // Rentang yang perlu ditutupi:
+        //  - $selectedYearTarget penuh (utk rekapBulanan, target analysis, summary tahun tsb)
+        //  - Carbon::now()->year penuh (utk omset bulan ini/minggu ini "summary" versi current year,
+        //    kalau beda dari selectedYearTarget)
+        // Semua di-cache 10 menit per tahun agar re-render halaman/AJAX berikutnya tidak query ulang.
+        // ========================================================================
+        $currentYear = Carbon::now()->year;
+
+        $getOmsetHarianTahun = function (int $tahun) {
+            $cacheKey = "omset:harian:{$tahun}";
+            return Cache::remember($cacheKey, 600, function () use ($tahun) {
+                $from = Carbon::create($tahun, 1, 1)->startOfDay();
+                $to   = Carbon::create($tahun, 12, 31)->endOfDay();
+                return $this->omsetHarianDalamRentang($from, $to);
+            });
+        };
+
+        $omsetHarianSelectedYear = $getOmsetHarianTahun((int) $selectedYearTarget);
+        $omsetHarianCurrentYear  = ($selectedYearTarget == $currentYear)
+            ? $omsetHarianSelectedYear
+            : $getOmsetHarianTahun($currentYear);
+
         // ========== TOTAL OMSET (all time) ==========
-        $totalOmsetSistem = $sumOmset($baseOmsetQuery());
+        // All-time tetap query terpisah (tidak dibatasi tahun), tapi di-cache agar tidak
+        // dieksekusi ulang tiap request.
+        $totalOmsetSistem = Cache::remember('omset:total_sistem_all_time', 600, function () use ($baseOmsetQuery, $sumOmset) {
+            return $sumOmset($baseOmsetQuery());
+        });
         $totalOmsetManual = OmsetManual::sum('omset_manual') ?? 0;
         $totalOmset       = $totalOmsetSistem + $totalOmsetManual;
 
         // ========== SUMMARY CARDS (SELECTED YEAR TARGET) ==========
-        $omsetTahunIniSistemSummary = $sumOmset(
-            $baseOmsetQuery()->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
+        $omsetTahunIniSistemSummary = $this->sumOmsetHarian(
+            $omsetHarianSelectedYear,
+            Carbon::create($selectedYearTarget, 1, 1),
+            Carbon::create($selectedYearTarget, 12, 31)
         );
         $omsetTahunIniManualSummary = OmsetManual::where('tahun', $selectedYearTarget)->sum('omset_manual') ?? 0;
         $omsetTahunIniSummary       = $omsetTahunIniSistemSummary + $omsetTahunIniManualSummary;
 
-        $omsetBulanIniSistemSummary = $sumOmset(
-            $baseOmsetQuery()
-                ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
-                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
+        $omsetBulanIniSistemSummary = $this->sumOmsetHarian(
+            $omsetHarianCurrentYear,
+            Carbon::now()->startOfMonth(),
+            Carbon::now()->endOfMonth()
         );
         $omsetBulanIniManualSummary = OmsetManual::where('tahun', Carbon::now()->year)
             ->where('bulan', Carbon::now()->month)
@@ -147,16 +246,14 @@ class OmsetController extends Controller
         $omsetBulanIniSummary = $omsetBulanIniSistemSummary + $omsetBulanIniManualSummary;
 
         // ========== TARGET ANALYSIS (SELECTED YEAR) ==========
-        $omsetSistemTahunIni = $sumOmset(
-            $baseOmsetQuery()->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-        );
-        $omsetManualTahunIni = OmsetManual::where('tahun', $selectedYearTarget)->sum('omset_manual') ?? 0;
-        $omsetTahunIni       = $omsetSistemTahunIni + $omsetManualTahunIni;
+        $omsetSistemTahunIni = $omsetTahunIniSistemSummary; // sama persis dgn summary di atas
+        $omsetManualTahunIni = $omsetTahunIniManualSummary;
+        $omsetTahunIni       = $omsetTahunIniSummary;
 
-        $omsetSistemBulanIni = $sumOmset(
-            $baseOmsetQuery()
-                ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
+        $omsetSistemBulanIni = $this->sumOmsetHarian(
+            $omsetHarianSelectedYear,
+            Carbon::create($selectedYearTarget, Carbon::now()->month, 1),
+            Carbon::create($selectedYearTarget, Carbon::now()->month, 1)->endOfMonth()
         );
         $omsetManualBulanIni = OmsetManual::where('tahun', $selectedYearTarget)
             ->where('bulan', Carbon::now()->month)
@@ -197,23 +294,22 @@ class OmsetController extends Controller
             $endOfWeek = $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
         }
 
-        $omsetSistemMingguIni = $sumOmset(
-            $baseOmsetQuery()->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
-        );
+        $omsetSistemMingguIni = $this->sumOmsetHarian($omsetHarianCurrentYear, $startOfWeek, $endOfWeek);
         $omsetManualMingguIni = $omsetManualBulanIni / 4;
         $omsetMingguIni       = $omsetSistemMingguIni + $omsetManualMingguIni;
 
         // ========== TARGET ADJUSTED (carry forward bulanan) ==========
+        // Logika carry-forward TIDAK diubah — hanya sumber omset bulanannya sekarang
+        // diambil dari array $omsetHarianSelectedYear (in-memory), bukan query per iterasi.
         $bulanSekarang        = Carbon::now()->month;
         $sisaTargetSebelumnya = 0;
 
         if ($selectedYearTarget == Carbon::now()->year) {
             for ($b = 1; $b < $bulanSekarang; $b++) {
-                $omsetSistemBulanLalu = $sumOmset(
-                    $baseOmsetQuery()
-                        ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-                        ->whereMonth('pengiriman.tanggal_kirim', $b)
-                );
+                $monthStart = Carbon::create($selectedYearTarget, $b, 1);
+                $monthEnd   = $monthStart->copy()->endOfMonth();
+
+                $omsetSistemBulanLalu = $this->sumOmsetHarian($omsetHarianSelectedYear, $monthStart, $monthEnd);
                 $omsetManualBulanLalu = OmsetManual::where('tahun', $selectedYearTarget)
                     ->where('bulan', $b)
                     ->value('omset_manual') ?? 0;
@@ -235,9 +331,7 @@ class OmsetController extends Controller
                 $weekStart = $w == 1 ? $startOfMonth->copy() : $startOfMonth->copy()->addDays(($w - 1) * 7);
                 $weekEnd   = $w == 4 ? $startOfMonth->copy()->endOfMonth() : $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
 
-                $omsetSistemWeek = $sumOmset(
-                    $baseOmsetQuery()->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
-                );
+                $omsetSistemWeek = $this->sumOmsetHarian($omsetHarianCurrentYear, $weekStart, $weekEnd);
                 $omsetManualWeek              = $omsetManualBulanIni / 4;
                 $omsetTotalWeek               = $omsetSistemWeek + $omsetManualWeek;
                 $targetWeek                   = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
@@ -253,15 +347,16 @@ class OmsetController extends Controller
         $progressTahun  = $targetTahunan          > 0 ? ($omsetTahunIni  / $targetTahunan)          * 100 : 0;
 
         // ========== REKAP BULANAN ==========
+        // Sebelumnya: 12 query bulanan + (sampai 4 query mingguan x 12 bulan) = puluhan query.
+        // Sekarang: semua diambil dari $omsetHarianSelectedYear (1 query yang sudah di-cache).
         $rekapBulanan        = [];
         $sisaTargetAkumulasi = 0;
 
         for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $omsetSistem = $sumOmset(
-                $baseOmsetQuery()
-                    ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-                    ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-            );
+            $monthStart = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
+            $monthEnd   = $monthStart->copy()->endOfMonth();
+
+            $omsetSistem = $this->sumOmsetHarian($omsetHarianSelectedYear, $monthStart, $monthEnd);
 
             $omsetManualData = OmsetManual::where('tahun', $selectedYearTarget)->where('bulan', $bulan)->first();
             $omsetManual     = $omsetManualData ? (float)$omsetManualData->omset_manual : 0;
@@ -281,8 +376,8 @@ class OmsetController extends Controller
             $targetMingguanBaseFlat = $targetBulananFlat / 4;
             $omsetManualPerMinggu   = $omsetManual / 4;
             $mingguanDetail         = [];
-            $startDate              = Carbon::create($selectedYearTarget, $bulan, 1)->startOfDay();
-            $endDate                = $startDate->copy()->endOfMonth();
+            $startDate              = $monthStart->copy();
+            $endDate                = $monthEnd->copy();
             $sisaTargetMingguanAkumulasi = 0;
 
             for ($minggu = 1; $minggu <= 4; $minggu++) {
@@ -300,9 +395,7 @@ class OmsetController extends Controller
 
                 if ($weekStart > $endDate) break;
 
-                $omsetSistemMinggu = $sumOmset(
-                    $baseOmsetQuery()->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
-                );
+                $omsetSistemMinggu = $this->sumOmsetHarian($omsetHarianSelectedYear, $weekStart, $weekEnd);
                 $omsetMinggu           = $omsetSistemMinggu + $omsetManualPerMinggu;
                 $targetMingguIniFlat   = $targetMingguanBaseFlat;
                 $progressMingguIni     = $targetMingguIniFlat > 0 ? ($omsetMinggu / $targetMingguIniFlat) * 100 : 0;
@@ -374,11 +467,11 @@ class OmsetController extends Controller
             $tahun = $request->get('tahun', Carbon::now()->year);
             $bulan = $request->get('bulan', Carbon::now()->month);
 
-            $omsetSistem = $sumOmset(
-                $baseOmsetQuery()
-                    ->whereYear('pengiriman.tanggal_kirim', $tahun)
-                    ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-            );
+            $omsetHarianTahunIni = $getOmsetHarianTahun((int) $tahun);
+            $monthStart = Carbon::create($tahun, $bulan, 1);
+            $monthEnd   = $monthStart->copy()->endOfMonth();
+
+            $omsetSistem = $this->sumOmsetHarian($omsetHarianTahunIni, $monthStart, $monthEnd);
 
             return response()->json(['omset_sistem' => $omsetSistem]);
         }
@@ -714,6 +807,10 @@ class OmsetController extends Controller
             ]);
 
             TargetOmset::setTarget($request->tahun, $request->target_tahunan, Auth::user()->nama ?? 'System');
+
+            // Target berubah -> nilai rekap yang bergantung pada target tidak lagi valid,
+            // tapi cache omset harian tidak terpengaruh (target bukan bagian dari cache itu).
+            // Tidak perlu forget cache omset harian di sini.
 
             return response()->json(['success' => true, 'message' => 'Target omset berhasil disimpan']);
         } catch (\Exception $e) {

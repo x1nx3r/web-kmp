@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 
+
 class PurchaseOrderController extends Controller
 {
     public function index(Request $request)
@@ -30,98 +31,93 @@ class PurchaseOrderController extends Controller
                 $query->whereYear('tanggal_order', Carbon::now()->year);
             } elseif ($periode === 'bulan_ini') {
                 $query->whereYear('tanggal_order', Carbon::now()->year)
-                      ->whereMonth('tanggal_order', Carbon::now()->month);
+                    ->whereMonth('tanggal_order', Carbon::now()->month);
             } elseif ($periode === 'custom' && $startDate && $endDate) {
                 $query->whereBetween('tanggal_order', [$startDate, $endDate]);
             }
             // 'all' = no date filter
         };
         
-        // ========== SUMMARY STATISTICS - NO FILTER ==========
-        
-        // Total Outstanding (dikonfirmasi & diproses — termasuk yg closed internal)
-        $totalOutstanding = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
-            ->sum('order_details.total_harga');
-        
-        // Total Qty Outstanding
-        $totalQtyOutstanding = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
-            ->sum('order_details.qty');
-        
-        // PO Berjalan (dikonfirmasi & diproses — termasuk yg closed internal)
-        $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])
-            ->count();
-        
-        // Rata-rata Nilai per PO (untuk PO yang berjalan) - Balanced Contractual Math
-        $totalNilaiPOBerjalan = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
-            ->whereNull('order_details.deleted_at')
-            ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
-        $avgNilaiPerPO = $poBerjalan > 0 ? $totalNilaiPOBerjalan / $poBerjalan : 0;
-        
-        // For percentage calculations (dikonfirmasi, diproses, selesai) - Dynamic Alignment
-        $totalNilaiPOForPercentage = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
-            ->where($dateFilterQuery)
-            ->whereNull('order_details.deleted_at')
-            ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
-        
-        // ========== PO BY STATUS (All statuses) - NO FILTER ==========
-        $poByStatus = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->select('orders.status', 
-                DB::raw('COUNT(DISTINCT orders.id) as total'), 
-                DB::raw('SUM(COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual) as nilai'))
-            ->whereNull('order_details.deleted_at')
-            ->groupBy('orders.status')
-            ->get();
-        
-        // Get PO details for each status (for modal) - hanya nomor PO, klien, dan tanggal
-        $poDetailsByStatus = [];
-        foreach ($poByStatus as $statusData) {
-            $poDetails = Order::with('klien')
-                ->where('status', $statusData->status)
+        // =====================================================================
+        // BAGIAN A: DATA TANPA FILTER TANGGAL (cache 5 menit, sama untuk semua user)
+        // =====================================================================
+        $noFilterData = \Illuminate\Support\Facades\Cache::remember('po_report:nofilter', 300, function () {
+            
+            // ---------- Total Outstanding (dikonfirmasi & diproses) ----------
+            $totalOutstanding = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->sum('order_details.total_harga');
+            
+            $totalQtyOutstanding = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->sum('order_details.qty');
+            
+            $poBerjalan = Order::whereIn('status', ['dikonfirmasi', 'diproses'])->count();
+            
+            // Rata-rata Nilai per PO
+            $totalNilaiPOBerjalan = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->whereNull('order_details.deleted_at')
+                ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
+            $avgNilaiPerPO = $poBerjalan > 0 ? $totalNilaiPOBerjalan / $poBerjalan : 0;
+            
+            // ---------- PO BY STATUS ----------
+            $poByStatus = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->select('orders.status', 
+                    DB::raw('COUNT(DISTINCT orders.id) as total'), 
+                    DB::raw('SUM(COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual) as nilai'))
+                ->whereNull('order_details.deleted_at')
+                ->groupBy('orders.status')
+                ->get();
+            
+            // PO details per status (untuk modal) — 1 query, dikelompokkan di PHP (bukan loop query)
+            $allStatusList = $poByStatus->pluck('status')->all();
+            $ordersByStatusRaw = Order::with('klien')
+                ->whereIn('status', $allStatusList)
                 ->orderBy('po_number')
                 ->get()
-                ->map(function($order) {
-                    return [
-                        'po_number' => $order->po_number ?: $order->no_order,
-                        'klien_nama' => $order->klien->nama ?? '-',
-                        'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-'
-                    ];
-                })
-                ->toArray();
+                ->groupBy('status');
+
+            $poDetailsByStatus = [];
+            foreach ($allStatusList as $statusKey) {
+                $poDetailsByStatus[$statusKey] = ($ordersByStatusRaw->get($statusKey) ?? collect())
+                    ->map(function($order) {
+                        return [
+                            'po_number' => $order->po_number ?: $order->no_order,
+                            'klien_nama' => $order->klien->nama ?? '-',
+                            'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d/m/Y') : '-'
+                        ];
+                    })
+                    ->toArray();
+            }
             
-            $poDetailsByStatus[$statusData->status] = $poDetails;
-        }
-        
-        // ========== PO BY PRIORITY (dikonfirmasi & diproses only) - NO FILTER ==========
-        $poByPriority = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->select('orders.priority', 
-                DB::raw('COUNT(DISTINCT orders.id) as total'), 
-                DB::raw('SUM(COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual) as nilai'))
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
-            ->whereNull('order_details.deleted_at')
-            ->groupBy('orders.priority')
-            ->get();
-        
-        // Get PO details for each priority — per item (matching outstanding detail logic)
-        $poDetailsByPriority = [];
-        foreach ($poByPriority as $priorityData) {
-            $itemRows = DB::table('order_details')
+            // ---------- PO BY PRIORITY (dikonfirmasi & diproses only) ----------
+            $poByPriority = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->select('orders.priority', 
+                    DB::raw('COUNT(DISTINCT orders.id) as total'), 
+                    DB::raw('SUM(COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual) as nilai'))
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
+                ->whereNull('order_details.deleted_at')
+                ->groupBy('orders.priority')
+                ->get();
+            
+            // Item rows per priority — 1 query untuk semua priority sekaligus
+            $priorityList = $poByPriority->pluck('priority')->all();
+
+            $allItemRows = DB::table('order_details')
                 ->join('orders', 'order_details.order_id', '=', 'orders.id')
                 ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
                 ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
-                ->where('orders.priority', $priorityData->priority)
+                ->whereIn('orders.priority', $priorityList)
                 ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
                 ->whereNotIn('order_details.status', ['selesai'])
                 ->whereNull('order_details.deleted_at')
                 ->select(
                     'orders.id as order_id',
+                    'orders.priority',
                     DB::raw("COALESCE(orders.po_number, orders.no_order) as po_number"),
                     'kliens.nama as klien_nama',
                     'kliens.cabang',
@@ -135,75 +131,206 @@ class PurchaseOrderController extends Controller
                 ->orderBy('orders.po_number')
                 ->orderBy('kliens.nama')
                 ->get()
-                ->map(function($row) {
-                    return [
-                        'po_number'    => $row->po_number,
-                        'klien_nama'   => $row->klien_nama,
-                        'cabang'       => $row->cabang ?? '-',
-                        'tanggal_order'=> $row->po_end_date ? Carbon::parse($row->po_end_date)->format('d/m/Y') : '-',
-                        'bahan_baku'   => $row->bahan_baku,
-                        'total_qty'    => (float) $row->total_qty,
-                        'harga_jual'   => (float) $row->harga_jual,
-                        'total_amount' => (float) $row->total_amount,
-                        'status'       => $row->status,
-                    ];
-                })
-                ->toArray();
+                ->groupBy('priority');
 
-            $poDetailsByPriority[$priorityData->priority] = $itemRows;
-        }
+            $poDetailsByPriority = [];
+            foreach ($poByPriority as $priorityData) {
+                $rows = ($allItemRows->get($priorityData->priority) ?? collect())
+                    ->map(function($row) {
+                        return [
+                            'po_number'    => $row->po_number,
+                            'klien_nama'   => $row->klien_nama,
+                            'cabang'       => $row->cabang ?? '-',
+                            'tanggal_order'=> $row->po_end_date ? Carbon::parse($row->po_end_date)->format('d/m/Y') : '-',
+                            'bahan_baku'   => $row->bahan_baku,
+                            'total_qty'    => (float) $row->total_qty,
+                            'harga_jual'   => (float) $row->harga_jual,
+                            'total_amount' => (float) $row->total_amount,
+                            'status'       => $row->status,
+                        ];
+                    })
+                    ->toArray();
 
-        // Recalculate poByPriority->nilai from order_details (to match detail rows total)
-        foreach ($poByPriority as $priorityData) {
-            $nilaiFromDetails = DB::table('order_details')
-                ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->where('orders.priority', $priorityData->priority)
+                $poDetailsByPriority[$priorityData->priority] = $rows;
+
+                // Recalculate nilai dari data yang SUDAH diambil (tanpa query ulang ke DB)
+                $priorityData->nilai = array_sum(array_column($rows, 'total_amount'));
+            }
+            
+            // ---------- PO TREND BY MONTH (12 bulan terakhir) ----------
+            $poTrendByMonth = [];
+            $monthLabels = [];
+            for ($i = 11; $i >= 0; $i--) {
+                $date = Carbon::now()->subMonths($i);
+                $monthLabels[] = $date->format('M Y');
+                
+                $data = DB::table('orders')
+                    ->whereNull('orders.deleted_at')
+                    ->whereYear('orders.tanggal_order', $date->year)
+                    ->whereMonth('orders.tanggal_order', $date->month)
+                    ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+                    ->select(
+                        DB::raw('COUNT(DISTINCT orders.id) as total_po'),
+                        DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai')
+                    )
+                    ->first();
+                
+                $poTrendByMonth[] = [
+                    'month' => $date->format('M Y'),
+                    'total_po' => $data->total_po ?? 0,
+                    'total_nilai' => floatval($data->total_nilai ?? 0)
+                ];
+            }
+            
+            // ---------- RECENT POs ----------
+            $recentPOs = Order::with(['klien', 'creator'])
+                ->whereIn('status', ['dikonfirmasi', 'diproses'])
+                ->orderBy('tanggal_order', 'desc')
+                ->limit(10)
+                ->get();
+            
+            // ---------- OUTSTANDING CHART ----------
+            $outstandingChartData = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
                 ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
                 ->whereNotIn('order_details.status', ['selesai'])
                 ->whereNull('order_details.deleted_at')
-                ->sum(DB::raw("COALESCE(NULLIF(order_details.total_harga, 0), order_details.qty * order_details.harga_jual)"));
-            $priorityData->nilai = (float) $nilaiFromDetails;
-        }
-        
-        // ========== PO BY CLIENT (dikonfirmasi, diproses, selesai) - WITH FILTER ==========
-        $poByClient = Order::select(
-                'kliens.id as klien_id',
-                'kliens.nama as klien_nama',
-                'kliens.cabang',
-                DB::raw('COUNT(orders.id) as total_po'),
-                DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
-                DB::raw('SUM((SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL)) as total_qty'),
-                DB::raw('MAX(orders.tanggal_order) as last_order_date'),
-                DB::raw('MIN(orders.tanggal_order) as first_order_date'),
-                DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
-                DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
-                DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN (SELECT SUM(COALESCE(od.original_qty, od.qty) * od.harga_jual) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL) ELSE 0 END) as outstanding_amount"),
-                DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN (SELECT SUM(COALESCE(od.original_qty, od.qty)) FROM order_details od WHERE od.order_id = orders.id AND od.deleted_at IS NULL) ELSE 0 END) as outstanding_qty")
-            )
-            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                ->select(
+                    'orders.po_number',
+                    'orders.no_order',
+                    'kliens.nama as klien_nama',
+                    'orders.status as order_status',
+                    DB::raw('COUNT(order_details.id) as total_items'),
+                    DB::raw('SUM(order_details.total_harga) as total_nilai'),
+                    DB::raw('SUM(order_details.qty) as total_qty'),
+                    DB::raw('GROUP_CONCAT(DISTINCT bahan_baku_klien.nama SEPARATOR ", ") as nama_material')
+                )
+                ->groupBy('orders.id', 'orders.po_number', 'orders.no_order', 'kliens.nama', 'orders.status')
+                ->orderBy('total_nilai', 'desc')
+                ->get()
+                ->map(function($item) {
+                    $item->display_name = $item->po_number ?: $item->no_order;
+                    return $item;
+                });
+            
+            $totalOutstandingChart = $outstandingChartData->sum('total_nilai');
+            
+            return [
+                'totalOutstanding'      => $totalOutstanding,
+                'totalQtyOutstanding'   => $totalQtyOutstanding,
+                'poBerjalan'            => $poBerjalan,
+                'avgNilaiPerPO'         => $avgNilaiPerPO,
+                'poByStatus'            => $poByStatus,
+                'poDetailsByStatus'     => $poDetailsByStatus,
+                'poByPriority'          => $poByPriority,
+                'poDetailsByPriority'   => $poDetailsByPriority,
+                'poTrendByMonth'        => $poTrendByMonth,
+                'monthLabels'           => $monthLabels,
+                'recentPOs'             => $recentPOs,
+                'outstandingChartData'  => $outstandingChartData,
+                'totalOutstandingChart' => $totalOutstandingChart,
+            ];
+        });
+
+        extract($noFilterData);
+        // Sekarang tersedia: $totalOutstanding, $totalQtyOutstanding, $poBerjalan, $avgNilaiPerPO,
+        // $poByStatus, $poDetailsByStatus, $poByPriority, $poDetailsByPriority,
+        // $poTrendByMonth, $monthLabels, $recentPOs, $outstandingChartData, $totalOutstandingChart
+
+        // For percentage calculations (dikonfirmasi, diproses, selesai) - tetap tergantung filter tanggal
+        $totalNilaiPOForPercentage = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
             ->where($dateFilterQuery)
-            ->groupBy('kliens.id', 'kliens.nama', 'kliens.cabang')
-            ->orderBy('total_nilai', 'desc')
-            ->get()
-            ->map(function($item) use ($totalNilaiPOForPercentage) {
-                $item->percentage = $totalNilaiPOForPercentage > 0 ? ($item->total_nilai / $totalNilaiPOForPercentage) * 100 : 0;
-                $item->avg_nilai_per_po = $item->total_po > 0 ? $item->total_nilai / $item->total_po : 0;
-                return $item;
-            });
-        
-        // ========== PO DETAILS BY CLIENT (for expandable list) ==========
-        $poDetailsByClient = [];
-        foreach ($poByClient as $client) {
-            $poDetails = Order::with(['orderDetails.bahanBakuKlien'])
-                ->where('klien_id', $client->klien_id)
-                ->whereIn('status', ['dikonfirmasi', 'diproses', 'selesai'])
+            ->whereNull('order_details.deleted_at')
+            ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
+
+        // =====================================================================
+        // BAGIAN B: DATA YANG TERGANTUNG FILTER TANGGAL (cache per kombinasi filter, 3 menit)
+        // =====================================================================
+        $filterCacheKey = 'po_report:filtered:' . md5($periode . '|' . $startDate . '|' . $endDate);
+
+        $filteredData = \Illuminate\Support\Facades\Cache::remember($filterCacheKey, 180, function () use ($dateFilterQuery, $totalNilaiPOForPercentage) {
+
+            // ---------- PO BY CLIENT (tanpa correlated subquery bertingkat) ----------
+            $odAgg = DB::table('order_details')
+                ->select(
+                    'order_id',
+                    DB::raw('SUM(COALESCE(original_qty, qty)) as total_qty'),
+                    DB::raw('SUM(COALESCE(original_qty, qty) * harga_jual) as total_nilai_calc')
+                )
+                ->whereNull('deleted_at')
+                ->groupBy('order_id');
+
+            $poByClient = Order::query()
+                ->joinSub($odAgg, 'od_agg', function($join) {
+                    $join->on('od_agg.order_id', '=', 'orders.id');
+                })
+                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                ->select(
+                    'kliens.id as klien_id',
+                    'kliens.nama as klien_nama',
+                    'kliens.cabang',
+                    DB::raw('COUNT(orders.id) as total_po'),
+                    DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
+                    DB::raw('SUM(od_agg.total_qty) as total_qty'),
+                    DB::raw('MAX(orders.tanggal_order) as last_order_date'),
+                    DB::raw('MIN(orders.tanggal_order) as first_order_date'),
+                    DB::raw("SUM(CASE WHEN orders.status = 'dikonfirmasi' THEN 1 ELSE 0 END) as status_dikonfirmasi"),
+                    DB::raw("SUM(CASE WHEN orders.status = 'diproses' THEN 1 ELSE 0 END) as status_diproses"),
+                    DB::raw("SUM(CASE WHEN orders.status = 'selesai' THEN 1 ELSE 0 END) as status_selesai"),
+                    DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN od_agg.total_nilai_calc ELSE 0 END) as outstanding_amount"),
+                    DB::raw("SUM(CASE WHEN orders.status IN ('dikonfirmasi', 'diproses') THEN od_agg.total_qty ELSE 0 END) as outstanding_qty")
+                )
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
                 ->where($dateFilterQuery)
-                ->orderBy('tanggal_order', 'desc')
+                ->groupBy('kliens.id', 'kliens.nama', 'kliens.cabang')
+                ->orderBy('total_nilai', 'desc')
                 ->get()
-                ->map(function($order) {
-                    // Get materials list
+                ->map(function($item) use ($totalNilaiPOForPercentage) {
+                    $item->percentage = $totalNilaiPOForPercentage > 0 ? ($item->total_nilai / $totalNilaiPOForPercentage) * 100 : 0;
+                    $item->avg_nilai_per_po = $item->total_po > 0 ? $item->total_nilai / $item->total_po : 0;
+                    return $item;
+                });
+            
+            // ---------- PO DETAILS BY CLIENT (2 query total, bukan N+1) ----------
+            $klienIds = $poByClient->pluck('klien_id')->all();
+
+            $allOrdersForClients = collect();
+            $allMaterialsForClients = collect();
+
+            if (!empty($klienIds)) {
+                $allOrdersForClients = Order::with(['orderDetails.bahanBakuKlien'])
+                    ->whereIn('klien_id', $klienIds)
+                    ->whereIn('status', ['dikonfirmasi', 'diproses', 'selesai'])
+                    ->where($dateFilterQuery)
+                    ->orderBy('tanggal_order', 'desc')
+                    ->get()
+                    ->groupBy('klien_id');
+
+                $allMaterialsForClients = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                    ->join('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
+                    ->whereIn('orders.klien_id', $klienIds)
+                    ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+                    ->where($dateFilterQuery)
+                    ->select(
+                        'orders.klien_id',
+                        'bahan_baku_klien.nama',
+                        DB::raw('SUM(order_details.qty) as total_qty'),
+                        DB::raw('SUM(order_details.total_harga) as total_nilai')
+                    )
+                    ->groupBy('orders.klien_id', 'bahan_baku_klien.id', 'bahan_baku_klien.nama')
+                    ->orderBy('total_nilai', 'desc')
+                    ->get()
+                    ->groupBy('klien_id');
+            }
+
+            $poDetailsByClient = [];
+            foreach ($poByClient as $client) {
+                $ordersForClient = $allOrdersForClients->get($client->klien_id, collect());
+
+                $poDetails = $ordersForClient->map(function($order) {
                     $materials = $order->orderDetails
                         ->pluck('bahanBakuKlien.nama')
                         ->filter()
@@ -222,110 +349,49 @@ class PurchaseOrderController extends Controller
                         'materials' => implode(', ', $materials) ?: '-',
                         'materials_count' => count($materials),
                     ];
+                })->toArray();
+                
+                $clientMaterials = $allMaterialsForClients->get($client->klien_id, collect())->toArray();
+                
+                $poDetailsByClient[$client->klien_id] = [
+                    'orders' => $poDetails,
+                    'materials' => $clientMaterials,
+                ];
+            }
+
+            // ---------- ORDER WINNERS ----------
+            $orderWinners = DB::table('order_winners')
+                ->join('orders', 'order_winners.order_id', '=', 'orders.id')
+                ->join('users', 'order_winners.user_id', '=', 'users.id')
+                ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
+                ->where(function($query) use ($dateFilterQuery) {
+                    $dateFilterQuery($query);
                 })
-                ->toArray();
-            
-            // Get unique materials for this client
-            $clientMaterials = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->join('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
-                ->where('orders.klien_id', $client->klien_id)
-                ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
-                ->where($dateFilterQuery)
-                ->select('bahan_baku_klien.nama', DB::raw('SUM(order_details.qty) as total_qty'), DB::raw('SUM(order_details.total_harga) as total_nilai'))
-                ->groupBy('bahan_baku_klien.id', 'bahan_baku_klien.nama')
-                ->orderBy('total_nilai', 'desc')
-                ->get()
-                ->toArray();
-            
-            $poDetailsByClient[$client->klien_id] = [
-                'orders' => $poDetails,
-                'materials' => $clientMaterials,
-            ];
-        }
-        
-        // ========== PO TREND BY MONTH (dikonfirmasi, diproses & selesai) - NO FILTER ==========
-        // Uses the new original_total_amount field which is immutable during shipments.
-        $poTrendByMonth = [];
-        $monthLabels = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $date = Carbon::now()->subMonths($i);
-            $monthLabels[] = $date->format('M Y');
-            
-            $data = DB::table('orders')
-                ->whereNull('orders.deleted_at')
-                ->whereYear('orders.tanggal_order', $date->year)
-                ->whereMonth('orders.tanggal_order', $date->month)
-                ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
                 ->select(
+                    'users.id as user_id',
+                    'users.nama as marketing_nama',
                     DB::raw('COUNT(DISTINCT orders.id) as total_po'),
-                    DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai')
+                    DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
+                    DB::raw('AVG(COALESCE(orders.original_total_amount, orders.total_amount)) as avg_nilai')
                 )
-                ->first();
-            
-            $poTrendByMonth[] = [
-                'month' => $date->format('M Y'),
-                'total_po' => $data->total_po ?? 0,
-                'total_nilai' => floatval($data->total_nilai ?? 0)
+                ->groupBy('users.id', 'users.nama')
+                ->orderBy('total_nilai', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(function($item) use ($totalNilaiPOForPercentage) {
+                    $item->percentage = $totalNilaiPOForPercentage > 0 ? ($item->total_nilai / $totalNilaiPOForPercentage) * 100 : 0;
+                    return $item;
+                });
+
+            return [
+                'poByClient'         => $poByClient,
+                'poDetailsByClient'  => $poDetailsByClient,
+                'orderWinners'       => $orderWinners,
             ];
-        }
-        
-        // ========== RECENT POs (dikonfirmasi & diproses only) - NO FILTER ==========
-        $recentPOs = Order::with(['klien', 'creator'])
-            ->whereIn('status', ['dikonfirmasi', 'diproses'])
-            ->orderBy('tanggal_order', 'desc')
-            ->limit(10)
-            ->get();
-        
-        // ========== ORDER WINNERS (dikonfirmasi, diproses, selesai) - WITH FILTER ==========
-        $orderWinners = DB::table('order_winners')
-            ->join('orders', 'order_winners.order_id', '=', 'orders.id')
-            ->join('users', 'order_winners.user_id', '=', 'users.id')
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses', 'selesai'])
-            ->where(function($query) use ($dateFilterQuery) {
-                $dateFilterQuery($query);
-            })
-            ->select(
-                'users.id as user_id',
-                'users.nama as marketing_nama',
-                DB::raw('COUNT(DISTINCT orders.id) as total_po'),
-                DB::raw('SUM(COALESCE(orders.original_total_amount, orders.total_amount)) as total_nilai'),
-                DB::raw('AVG(COALESCE(orders.original_total_amount, orders.total_amount)) as avg_nilai')
-            )
-            ->groupBy('users.id', 'users.nama')
-            ->orderBy('total_nilai', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function($item) use ($totalNilaiPOForPercentage) {
-                $item->percentage = $totalNilaiPOForPercentage > 0 ? ($item->total_nilai / $totalNilaiPOForPercentage) * 100 : 0;
-                return $item;
-            });
-        
-        // ========== OUTSTANDING CHART (dikonfirmasi & diproses only — untuk chart) - NO FILTER ==========
-        $outstandingChartData = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-            ->leftJoin('bahan_baku_klien', 'order_details.bahan_baku_klien_id', '=', 'bahan_baku_klien.id')
-            ->whereIn('orders.status', ['dikonfirmasi', 'diproses'])
-            ->whereNotIn('order_details.status', ['selesai'])
-            ->whereNull('order_details.deleted_at')
-            ->select(
-                'orders.po_number',
-                'orders.no_order',
-                'kliens.nama as klien_nama',
-                'orders.status as order_status',
-                DB::raw('COUNT(order_details.id) as total_items'),
-                DB::raw('SUM(order_details.total_harga) as total_nilai'),
-                DB::raw('SUM(order_details.qty) as total_qty'),
-                DB::raw('GROUP_CONCAT(DISTINCT bahan_baku_klien.nama SEPARATOR ", ") as nama_material')
-            )
-            ->groupBy('orders.id', 'orders.po_number', 'orders.no_order', 'kliens.nama', 'orders.status')
-            ->orderBy('total_nilai', 'desc')
-            ->get()
-            ->map(function($item) {
-                $item->display_name = $item->po_number ?: $item->no_order;
-                return $item;
-            });
-        
-        $totalOutstandingChart = $outstandingChartData->sum('total_nilai');
+        });
+
+        extract($filteredData);
+        // Sekarang tersedia: $poByClient, $poDetailsByClient, $orderWinners
         
         return view('pages.laporan.purchase-order', compact(
             'title', 

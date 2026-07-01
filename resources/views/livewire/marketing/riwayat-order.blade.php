@@ -338,33 +338,6 @@
         {{-- Orders Grid --}}
         <div class="space-y-6">
             @forelse($orders as $order)
-                @php
-                    // Calculate outstanding (remaining/unshipped) qty and amount
-                    $outstandingSummary = [];
-                    $outstandingAmount = 0;
-                    $outstandingQtyTotal = 0;
-
-                    foreach ($order->orderDetails as $detail) {
-                        $totalQty = $detail->qty ?? 0;
-                        $shippedQty = $detail->total_shipped_quantity ?? 0;
-                        $remainingQty = $totalQty - $shippedQty;
-                        $hargaJual = $detail->harga_jual ?? 0;
-                        $unitKey = $detail->satuan ?: 'unit';
-
-                        // Add to summary by unit - only remaining/outstanding quantity
-                        $outstandingSummary[$unitKey] = ($outstandingSummary[$unitKey] ?? 0) + $remainingQty;
-                        $outstandingQtyTotal += $remainingQty;
-                        // Outstanding amount = remaining qty × selling price
-                        $outstandingAmount += ($remainingQty * $hargaJual);
-                    }
-
-                    // Format display untuk outstanding qty
-                    $outstandingDisplay = collect($outstandingSummary)
-                        ->map(function ($qty, $unit) {
-                            return number_format($qty, 0, ',', '.') . ' ' . $unit;
-                        })
-                        ->implode(' | ');
-                @endphp
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     {{-- Order Header --}}
                     <div class="p-4 border-b border-gray-200">

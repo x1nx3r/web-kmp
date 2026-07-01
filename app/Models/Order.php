@@ -211,25 +211,44 @@ class Order extends Model
         return $query->where("priority", "rendah");
     }
 
-    /**
-     * Computed Properties
-     */
+    private ?array $orderDetailAggregates = null;
+
+    private function getOrderDetailAggregates(): array
+    {
+        if ($this->orderDetailAggregates !== null) {
+            return $this->orderDetailAggregates;
+        }
+
+        $contractAmount = 0;
+        $totalAmount = 0;
+        $originalQtySum = 0;
+        $totalQty = 0;
+        $totalShipped = 0;
+
+        foreach ($this->orderDetails as $detail) {
+            $originalQty = $detail->original_qty ?? $detail->qty;
+            $qty = $detail->qty ?? 0;
+            $hargaJual = $detail->harga_jual ?? 0;
+
+            $contractAmount += $originalQty * $hargaJual;
+            $totalAmount += $qty * $hargaJual;
+            $originalQtySum += $originalQty;
+            $totalQty += $qty;
+            $totalShipped += $detail->qty_shipped ?? 0;
+        }
+
+        $this->orderDetailAggregates = compact("contractAmount", "totalAmount", "originalQtySum", "totalQty", "totalShipped");
+        return $this->orderDetailAggregates;
+    }
+
     public function getContractAmountAttribute(): float
     {
-        // Calculate the contractual baseline: Original Qty @ Current Price
-        // This ensures the baseline is accurate even if the price is corrected later.
-        return (float) $this->orderDetails->sum(function($detail) {
-            return ($detail->original_qty ?? $detail->qty) * $detail->harga_jual;
-        });
+        return (float) $this->getOrderDetailAggregates()["contractAmount"];
     }
 
     public function getTotalAmountAttribute(): float
     {
-        // Calculate the current operational total accurately from details
-        // Foregoing the buggy orders.total_amount database column.
-        return (float) $this->orderDetails->sum(function($detail) {
-            return $detail->qty * $detail->harga_jual;
-        });
+        return (float) $this->getOrderDetailAggregates()["totalAmount"];
     }
 
     public function getIsShrunkAttribute(): bool
@@ -254,19 +273,17 @@ class Order extends Model
 
     public function getOriginalQtySumAttribute(): float
     {
-        return $this->orderDetails->sum(function($detail) {
-            return $detail->original_qty ?? $detail->qty;
-        });
+        return (float) $this->getOrderDetailAggregates()["originalQtySum"];
     }
 
     public function getCompletionPercentageAttribute(): float
     {
-        if ($this->total_qty == 0) {
+        $aggregates = $this->getOrderDetailAggregates();
+        if ($aggregates["totalQty"] == 0) {
             return 0;
         }
 
-        $totalShipped = $this->orderDetails->sum("qty_shipped");
-        return round(($totalShipped / $this->total_qty) * 100, 2);
+        return round(($aggregates["totalShipped"] / $aggregates["totalQty"]) * 100, 2);
     }
 
     public function getPoDocumentUrlAttribute(): ?string
@@ -365,14 +382,14 @@ class Order extends Model
      */
     public function getFulfillmentPercentage(): float
     {
-        if ($this->total_qty == 0) {
+        $totalQty = $this->total_qty;
+        if ($totalQty == 0) {
             return 0;
         }
 
-        // Calculate shipped qty as: original total_qty - remaining qty in order_details
-        $remainingQty = $this->orderDetails->sum("qty");
-        $shippedQty = $this->total_qty - $remainingQty;
-        return round(($shippedQty / $this->total_qty) * 100, 2);
+        $aggregates = $this->getOrderDetailAggregates();
+        $shippedQty = $totalQty - $aggregates["totalQty"];
+        return round(($shippedQty / $totalQty) * 100, 2);
     }
 
     /**
@@ -389,9 +406,8 @@ class Order extends Model
      */
     public function getShippedQty(): float
     {
-        // Shipped qty = original total_qty - remaining qty in order_details
-        $remainingQty = $this->orderDetails->sum("qty");
-        return $this->total_qty - $remainingQty;
+        $aggregates = $this->getOrderDetailAggregates();
+        return $this->total_qty - $aggregates["totalQty"];
     }
 
     /**

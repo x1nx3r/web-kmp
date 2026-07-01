@@ -329,7 +329,7 @@ class RiwayatOrder extends Component
 
     private function getOrders()
     {
-        return Order::query()
+        $orders = Order::query()
             ->with([
                 "klien",
                 "creator",
@@ -337,9 +337,7 @@ class RiwayatOrder extends Component
                     $query->with([
                         "bahanBakuKlien",
                         "orderSuppliers" => function ($supplierQuery) {
-                            $supplierQuery
-                                ->with("supplier.picPurchasing")
-                                ->orderBy("price_rank");
+                            $supplierQuery->orderBy("price_rank");
                         },
                         "recommendedSupplier",
                     ]);
@@ -372,8 +370,6 @@ class RiwayatOrder extends Component
                 $query->where("priority", $this->priorityFilter);
             })
             ->when($this->materialFilter, function (Builder $query) {
-                // Filter orders by material name (case-insensitive).
-                // We look up the related bahanBakuKlien for each orderDetail and compare LOWER(nama)
                 $query->whereHas("orderDetails", function (Builder $q) {
                     $q->whereHas("bahanBakuKlien", function (Builder $bq) {
                         $bq->whereRaw("LOWER(nama) = ?", [
@@ -392,7 +388,6 @@ class RiwayatOrder extends Component
             ->when($this->sortBy, function (Builder $query) {
                 switch ($this->sortBy) {
                     case "priority_desc":
-                        // Sort by priority: tinggi > sedang > rendah
                         $query
                             ->orderByRaw(
                                 "FIELD(priority, 'tinggi', 'sedang', 'rendah')",
@@ -400,7 +395,6 @@ class RiwayatOrder extends Component
                             ->orderBy("tanggal_order", "desc");
                         break;
                     case "priority_asc":
-                        // Sort by priority: rendah > sedang > tinggi
                         $query
                             ->orderByRaw(
                                 "FIELD(priority, 'rendah', 'sedang', 'tinggi')",
@@ -408,7 +402,6 @@ class RiwayatOrder extends Component
                             ->orderBy("tanggal_order", "desc");
                         break;
                     case "client_asc":
-                        // Sort by client (klien.nama) A → Z using correlated subquery (case-insensitive)
                         $query
                             ->orderByRaw(
                                 "
@@ -418,7 +411,6 @@ class RiwayatOrder extends Component
                             ->orderBy("tanggal_order", "desc");
                         break;
                     case "client_desc":
-                        // Sort by client (klien.nama) Z → A (case-insensitive)
                         $query
                             ->orderByRaw(
                                 "
@@ -428,8 +420,6 @@ class RiwayatOrder extends Component
                             ->orderBy("tanggal_order", "desc");
                         break;
                     case "material_asc":
-                        // Sort by material name (minimal alphabetic bahan_baku_klien.nama) A → Z (case-insensitive)
-                        // Note: correct table name is `bahan_baku_klien` and we lower the value for case-insensitive ordering.
                         $query
                             ->orderByRaw(
                                 "
@@ -443,7 +433,6 @@ class RiwayatOrder extends Component
                             ->orderBy("tanggal_order", "desc");
                         break;
                     case "material_desc":
-                        // Sort by material name (minimal alphabetic) Z → A (case-insensitive)
                         $query
                             ->orderByRaw(
                                 "
@@ -475,7 +464,6 @@ class RiwayatOrder extends Component
                         $query->orderBy("status", "desc");
                         break;
                     default:
-                        // Default to priority desc
                         $query
                             ->orderByRaw(
                                 "FIELD(priority, 'tinggi', 'sedang', 'rendah')",
@@ -484,6 +472,14 @@ class RiwayatOrder extends Component
                 }
             })
             ->paginate($this->perPage);
+
+        if (!empty($this->expandedOrders)) {
+            $orders->load([
+                "orderDetails.orderSuppliers.supplier.picPurchasing",
+            ]);
+        }
+
+        return $orders;
     }
 
     private function getStatusCounts()
@@ -497,33 +493,33 @@ class RiwayatOrder extends Component
             },
         );
 
+        $total = (clone $baseQuery)->count();
+        $grouped = (clone $baseQuery)
+            ->selectRaw("status, COUNT(*) as count")
+            ->groupBy("status")
+            ->pluck("count", "status");
+
         return [
-            "all" => (clone $baseQuery)->count(),
-            "draft" => (clone $baseQuery)->where("status", "draft")->count(),
-            "dikonfirmasi" => (clone $baseQuery)
-                ->where("status", "dikonfirmasi")
-                ->count(),
-            "diproses" => (clone $baseQuery)
-                ->where("status", "diproses")
-                ->count(),
-            "selesai" => (clone $baseQuery)
-                ->where("status", "selesai")
-                ->count(),
-            "dibatalkan" => (clone $baseQuery)
-                ->where("status", "dibatalkan")
-                ->count(),
+            "all" => $total,
+            "draft" => $grouped["draft"] ?? 0,
+            "dikonfirmasi" => $grouped["dikonfirmasi"] ?? 0,
+            "diproses" => $grouped["diproses"] ?? 0,
+            "selesai" => $grouped["selesai"] ?? 0,
+            "dibatalkan" => $grouped["dibatalkan"] ?? 0,
         ];
     }
 
     public function getAvailableYears()
     {
-        $oldestOrder = Order::orderBy("tanggal_order", "asc")->first();
-        $oldestYear = $oldestOrder
-            ? $oldestOrder->tanggal_order->year
-            : now()->year;
-        $currentYear = now()->year;
+        return \Illuminate\Support\Facades\Cache::remember("riwayat-order-available-years", 3600, function () {
+            $oldestOrder = Order::orderBy("tanggal_order", "asc")->first();
+            $oldestYear = $oldestOrder
+                ? $oldestOrder->tanggal_order->year
+                : now()->year;
+            $currentYear = now()->year;
 
-        return range($currentYear, $oldestYear);
+            return range($currentYear, $oldestYear);
+        });
     }
 
     public function getMonthName($month)
@@ -551,7 +547,7 @@ class RiwayatOrder extends Component
         return view("livewire.marketing.riwayat-order", [
             "orders" => $this->getOrders(),
             "statusCounts" => $this->getStatusCounts(),
-            "kliens" => Klien::orderBy("nama")->get(),
+            "kliens" => \Illuminate\Support\Facades\Cache::remember("riwayat-order-kliens", 3600, fn() => Klien::orderBy("nama")->get(["id", "nama", "cabang"])),
             // Provide a deduplicated, case-insensitive list of material names.
             // We return only the material names (string) so the select will use the name as the value.
             "materials" => \Illuminate\Support\Facades\DB::table(

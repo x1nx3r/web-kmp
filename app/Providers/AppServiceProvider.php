@@ -32,11 +32,23 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\OrderDetail::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
         \App\Models\OrderDetail::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
 
-        \App\Models\Order::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
-        \App\Models\Order::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush());
+        \App\Models\Order::saved(function () {
+            \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush();
+            \Illuminate\Support\Facades\Cache::forget('riwayat-order-available-years');
+        });
+        \App\Models\Order::deleted(function () {
+            \Illuminate\Support\Facades\Cache::tags(['dashboard', 'charts'])->flush();
+            \Illuminate\Support\Facades\Cache::forget('riwayat-order-available-years');
+        });
 
-        \App\Models\Klien::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());
-        \App\Models\Klien::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());
+        \App\Models\Klien::saved(function () {
+            \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush();
+            \Illuminate\Support\Facades\Cache::forget('riwayat-order-kliens');
+        });
+        \App\Models\Klien::deleted(function () {
+            \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush();
+            \Illuminate\Support\Facades\Cache::forget('riwayat-order-kliens');
+        });
 
         \App\Models\Supplier::saved(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());
         \App\Models\Supplier::deleted(fn() => \Illuminate\Support\Facades\Cache::tags(['ref', 'charts'])->flush());

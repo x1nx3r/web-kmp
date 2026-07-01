@@ -338,7 +338,7 @@
         {{-- Orders Grid --}}
         <div class="space-y-6">
             @forelse($orders as $order)
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div wire:key="order-{{ $order->id }}" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     {{-- Order Header --}}
                     <div class="p-4 border-b border-gray-200">
                         <div class="flex items-center justify-between">
@@ -731,7 +731,7 @@
 
     {{-- Delete Confirmation Modal --}}
     @if($showDeleteModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div wire:key="delete-modal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="cancelDelete"></div>
             <div class="flex items-center justify-center min-h-screen p-4">
                 <div class="relative bg-white rounded-xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
@@ -810,7 +810,7 @@
 
     {{-- Complete Confirmation Modal --}}
     @if($showCompleteModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div wire:key="complete-modal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="cancelComplete"></div>
             <div class="flex items-center justify-center min-h-screen p-4">
                 <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
@@ -860,7 +860,7 @@
 
     {{-- Cancel Confirmation Modal --}}
     @if($showCancelModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div wire:key="cancel-modal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="cancelCancelation"></div>
             <div class="flex items-center justify-center min-h-screen p-4">
                 <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">

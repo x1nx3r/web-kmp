@@ -106,8 +106,15 @@ class ApprovalPembayaran extends Component
 
         // Filter by search
         if ($this->search) {
-            $query->whereHas('pengiriman', function ($q) {
-                $q->where('no_pengiriman', 'like', '%' . $this->search . '%');
+            $searchTerm = $this->search;
+            $query->whereHas('pengiriman', function ($q) use ($searchTerm) {
+                $q->where('no_pengiriman', 'like', '%' . $searchTerm . '%')
+                ->orWhereHas('purchaseOrder', function ($poQ) use ($searchTerm) {
+                    $poQ->where('po_number', 'like', '%' . $searchTerm . '%')
+                        ->orWhereHas('klien', function ($klienQ) use ($searchTerm) {
+                            $klienQ->where('nama', 'like', '%' . $searchTerm . '%');
+                        });
+                });
             });
         }
 

@@ -419,8 +419,9 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1.5">Nilai Refraksi</label>
                                 <input type="number" wire:model="refraksiForm.value" min="0" step="0.01"
-                                    class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-gray-50"
-                                    placeholder="{{ ($refraksiForm['type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : '40 untuk Rp 40/kg' }}"  onwheel="this.blur()" />
+                                    class="..."
+                                    placeholder="{{ ($refraksiForm['type'] ?? 'qty') === 'qty' ? '1 untuk 1%' : '40 untuk Rp 40/kg (gunakan titik utk desimal, cth: 40.5)' }}"
+                                    onwheel="this.blur()" />
                             </div>
                         </div>
 

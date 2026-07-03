@@ -212,11 +212,18 @@ class ApprovalPenagihan extends Component
         }
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->whereHas('pengiriman', function ($subQ) {
-                    $subQ->where('no_pengiriman', 'like', '%' . $this->search . '%');
-                })->orWhereHas('invoice', function ($subQ) {
-                    $subQ->where('invoice_number', 'like', '%' . $this->search . '%');
+            $searchTerm = $this->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->whereHas('pengiriman', function ($subQ) use ($searchTerm) {
+                    $subQ->where('no_pengiriman', 'like', '%' . $searchTerm . '%')
+                        ->orWhereHas('purchaseOrder', function ($poQ) use ($searchTerm) {
+                            $poQ->where('po_number', 'like', '%' . $searchTerm . '%');
+                        });
+                })->orWhereHas('invoice', function ($subQ) use ($searchTerm) {
+                    $subQ->where('invoice_number', 'like', '%' . $searchTerm . '%')
+                        ->orWhere('customer_name', 'like', '%' . $searchTerm . '%');
+                })->orWhereHas('invoice.pengirimans.purchaseOrder', function ($poQ) use ($searchTerm) {
+                    $poQ->where('po_number', 'like', '%' . $searchTerm . '%');
                 });
             });
         }

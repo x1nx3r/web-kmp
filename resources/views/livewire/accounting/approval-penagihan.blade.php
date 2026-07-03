@@ -268,7 +268,7 @@
                     <input
                         type="text"
                         wire:model.live.debounce.500ms="search"
-                        placeholder="Cari nomor pengiriman atau invoice..."
+                        placeholder="Silahkan Cari..."
                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                 </div>
@@ -357,7 +357,7 @@
                             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 40px;"></th>
                         @endif
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengiriman</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. PO</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
@@ -388,20 +388,22 @@
                                 @php
                                     $allShipments = $approval->invoice->pengirimans ?? collect();
                                     $isMergedRow = $allShipments->count() > 1;
+                                    $shipmentsForPo = $isMergedRow ? $allShipments : collect([$approval->pengiriman]);
+                                    $poNumbers = $shipmentsForPo->pluck('purchaseOrder.po_number')->filter()->unique();
                                 @endphp
+                                @if($poNumbers->count() > 0)
+                                    <div class="text-sm font-medium text-gray-900">{{ $poNumbers->first() }}</div>
+                                    @if($poNumbers->count() > 1)
+                                        <div class="text-xs text-gray-500">+{{ $poNumbers->count() - 1 }} lainnya</div>
+                                    @endif
+                                @else
+                                    <div class="text-sm text-gray-400 italic">-</div>
+                                @endif
+
                                 @if($isMergedRow)
-                                    <div class="space-y-1">
-                                        @foreach($allShipments as $s)
-                                            <div class="text-sm font-medium text-gray-900">{{ $s->no_pengiriman }}</div>
-                                            <div class="text-xs text-gray-500">{{ $s->tanggal_kirim->format('d M Y') }}</div>
-                                        @endforeach
-                                    </div>
                                     <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700">
                                         <i class="fas fa-object-group mr-1"></i> Gabungan {{ $allShipments->count() }} Kiriman
                                     </span>
-                                @else
-                                    <div class="text-sm font-medium text-gray-900">{{ $approval->pengiriman->no_pengiriman }}</div>
-                                    <div class="text-xs text-gray-500">{{ $approval->pengiriman->tanggal_kirim->format('d M Y') }}</div>
                                 @endif
                             </td>
                             <td class="px-6 py-4">

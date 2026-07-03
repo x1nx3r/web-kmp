@@ -85,7 +85,7 @@
                     <input
                         type="text"
                         wire:model.live.debounce.500ms="search"
-                        placeholder="Cari nomor pengiriman..."
+                        placeholder="Silahkan Cari..."
                         class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                 </div>

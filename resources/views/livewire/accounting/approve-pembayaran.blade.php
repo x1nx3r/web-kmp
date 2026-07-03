@@ -444,7 +444,7 @@
                                                        class="w-full {{ $refraksiForm['type'] === 'qty' ? 'pr-8 pl-3' : 'pl-9 pr-3' }} py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-300 focus:border-green-500 transition"
                                                        placeholder="0"
                                                        oninput="formatCurrencyRefraksi(this,'refraksi_value_hidden','{{ $refraksiForm['type'] }}')"
-                                                       onblur="autoSaveRefraksi()">
+                                                        onblur="formatCurrencyRefraksiBlur(this,'{{ $refraksiForm['type'] }}');autoSaveRefraksi()"> 
                                             </div>
                                             <input type="hidden" wire:model.defer="refraksiForm.value" id="refraksi_value_hidden">
                                         </div>
@@ -818,10 +818,24 @@ function formatCurrencyRefraksi(el, hiddenId, type) {
         if (h) { h.value = v; h.dispatchEvent(new Event('input', { bubbles: true })); }
         el.value = v;
     } else {
-        const v = el.value.replace(/[^0-9]/g, '');
-        if (h) { h.value = v; h.dispatchEvent(new Event('input', { bubbles: true })); }
-        el.value = v ? parseInt(v).toLocaleString('id-ID') : '';
+        // Sanitasi saja saat mengetik, JANGAN format ribuan di sini (biar koma tidak tabrakan sama titik ribuan)
+        let v = el.value.replace(/[^0-9,]/g, '');
+        const parts = v.split(','); if (parts.length > 2) v = parts[0] + ',' + parts.slice(1).join('');
+
+        // simpan versi dengan titik sebagai decimal separator untuk hidden/backend
+        const hiddenValue = v.replace(',', '.');
+        if (h) { h.value = hiddenValue; h.dispatchEvent(new Event('input', { bubbles: true })); }
+
+        el.value = v; // biarkan apa adanya saat masih fokus/mengetik
     }
+}
+
+function formatCurrencyRefraksiBlur(el, type) {
+    if (type === 'qty') return;
+    let v = el.value.replace(/[^0-9,]/g, '');
+    const [intPart, decPart] = v.split(',');
+    const intFormatted = intPart ? parseInt(intPart, 10).toLocaleString('id-ID') : '';
+    el.value = decPart !== undefined ? intFormatted + ',' + decPart : intFormatted;
 }
 
 let piutangTimer, refraksiTimer;
@@ -846,7 +860,13 @@ document.addEventListener('livewire:initialized', () => {
         const rh = document.getElementById('refraksi_value_hidden');
         if (rd && rh?.value) {
             const type = @this.get('refraksiForm.type');
-            rd.value = type === 'qty' ? rh.value : (parseInt(rh.value.replace(/[^0-9]/g, '')) || '').toLocaleString?.('id-ID') ?? rh.value;
+            if (type === 'qty') {
+                rd.value = rh.value;
+            } else {
+                const [intPart, decPart] = String(rh.value).split('.');
+                const intFormatted = intPart ? parseInt(intPart, 10).toLocaleString('id-ID') : '';
+                rd.value = decPart !== undefined ? intFormatted + ',' + decPart : intFormatted;
+            }
         }
     });
 });

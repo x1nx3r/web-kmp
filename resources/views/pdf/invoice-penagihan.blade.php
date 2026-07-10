@@ -380,7 +380,7 @@
                     @php
                         $qty       = (float) ($it['quantity'] ?? 0);
                         $refKg     = (float) ($it['refraksi_kg'] ?? 0);
-                        $unitPrice = (float) ($it['unit_price'] ?? 0) * $ratio;
+                        $unitPrice = (float) ($it['unit_price'] ?? 0); // langsung dari items, tanpa ratio
 
                         // Fallback: distribute invoice-level refraksi per item
                         $itemRefraksiRp = $refKg * $unitPrice;
@@ -395,8 +395,10 @@
                             }
                         }
 
-                        $total = ($qty * $unitPrice) - $itemRefraksiRp;
-                        if ($total < 0) $total = 0;
+                        // Gunakan total dari data kalau tersedia, kalau tidak hitung manual
+                        $total = isset($it['total']) 
+                            ? (float) $it['total'] 
+                            : max(0, ($qty * $unitPrice) - $itemRefraksiRp);
                     @endphp
                     <tr>
                         <td class="text-center">{{ $index + 1 }}</td>

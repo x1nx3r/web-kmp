@@ -395,7 +395,6 @@
                             }
                         }
 
-                        // Gunakan total dari data kalau tersedia, kalau tidak hitung manual
                         $total = $qty * $unitPrice;
                     @endphp
                     <tr>
@@ -490,7 +489,15 @@
                                     $totalHargaItem = $qtyKirim * $hargaSatuanDisplay;
                                 }
                             } else {
-                                if ($hasRefraksi && $refraksiType === 'qty') {
+                                $isSingleItemInvoice = !$isMerge && $pengirimans->count() === 1 && $p->details->count() === 1;
+
+                                if ($isSingleItemInvoice && $invoice->qty_after_refraksi > 0) {
+                                    // Pakai qty_after_refraksi langsung dari invoice (sumber kebenaran)
+                                    $qtyAfterRefraksiItem = min((float) $invoice->qty_after_refraksi, $qtyKirim);
+                                    $refraksiKg = max(0, $qtyKirim - $qtyAfterRefraksiItem);
+                                    $itemRefraksiAmount = $refraksiKg * $hargaSatuanDisplay;
+                                    $totalHargaItem = $qtyAfterRefraksiItem * $hargaSatuanDisplay;
+                                } elseif ($hasRefraksi && $refraksiType === 'qty') {
                                     $refraksiKg = $qtyKirim * ($refraksiValue / 100);
                                     $itemRefraksiAmount = $refraksiKg * $hargaSatuanDisplay;
                                     $totalHargaItem = ($qtyKirim * $hargaSatuanDisplay) - $itemRefraksiAmount;
@@ -515,7 +522,7 @@
                             <td class="text-center">{{ number_format($qtyKirim, 2, ',', '.') }}</td>
                             <td class="text-center">Rp {{ number_format($hargaSatuanDisplay, 2, ',', '.') }}</td>
                             <td class="text-center">
-                                @if($isMerge ? $perHasRef : $hasRefraksi)
+                                @if($isMerge ? $perHasRef : ($hasRefraksi || $itemRefraksiAmount > 0))
                                     Rp {{ number_format($itemRefraksiAmount, 2, ',', '.') }}
                                 @else
                                     -

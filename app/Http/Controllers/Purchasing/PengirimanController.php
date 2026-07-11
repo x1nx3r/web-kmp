@@ -202,6 +202,33 @@ class PengirimanController extends Controller
         $approval->save();
     }
 
+    /**
+     * Sinkronkan InvoicePenagihan (single atau merged) yang terhubung dengan $pengiriman
+     * setiap kali pengiriman ini di-submit ulang (revisi). Kegagalan sinkronisasi TIDAK
+     * boleh membatalkan submit pengiriman itu sendiri — cukup dicatat di log.
+     */
+    private function syncInvoicePenagihanIfExists(Pengiriman $pengiriman): void
+    {
+        try {
+            $pengiriman->loadMissing(['invoicePenagihan', 'mergedInvoicePenagihan']);
+
+            $invoice = $pengiriman->invoicePenagihan ?? $pengiriman->mergedInvoicePenagihan;
+
+            if (!$invoice) {
+                return;
+            }
+
+            $invoice->recalculateFromShipments($pengiriman);
+
+            Log::info("Invoice Penagihan #{$invoice->id} disinkronkan otomatis setelah revisi Pengiriman #{$pengiriman->id}", [
+                'invoice_id' => $invoice->id,
+                'pengiriman_id' => $pengiriman->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Gagal sinkronisasi Invoice Penagihan untuk Pengiriman #{$pengiriman->id}: " . $e->getMessage());
+        }
+    }
+
     private function loadPengirimanForModal(int $id, ?string $status = null)
     {
         $query = Pengiriman::with([
@@ -618,6 +645,8 @@ class PengirimanController extends Controller
             if ($pengiriman->approvalPembayaran) {
                 $this->populateApprovalFromRequest($pengiriman->approvalPembayaran, $pengiriman, $request);
             }
+
+            $this->syncInvoicePenagihanIfExists($pengiriman);
 
             DB::commit();
 

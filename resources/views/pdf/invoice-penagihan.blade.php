@@ -396,9 +396,7 @@
                         }
 
                         // Gunakan total dari data kalau tersedia, kalau tidak hitung manual
-                        $total = isset($it['total']) 
-                            ? (float) $it['total'] 
-                            : max(0, ($qty * $unitPrice) - $itemRefraksiRp);
+                        $total = $qty * $unitPrice;
                     @endphp
                     <tr>
                         <td class="text-center">{{ $index + 1 }}</td>

@@ -124,6 +124,14 @@ class OmsetController extends Controller
                 ->sum('omset_pengiriman');
         };
 
+        // ========== BLOK KALKULASI BERAT (di-cache 120 detik) ==========
+        // Blok ini menjalankan puluhan query agregat (total, summary, target
+        // analysis, rekap bulanan per minggu). Di-cache per tahun supaya
+        // request yang datang beruntun tidak menghantam DB berkali-kali.
+        $cacheKeyIndex = 'omset:index_heavy_block:' . $selectedYearTarget . ':' . Carbon::now()->format('Y-m-d');
+        $heavyBlockResult = \Illuminate\Support\Facades\Cache::remember($cacheKeyIndex, 120, function () use (
+            $baseOmsetQuery, $sumOmset, $selectedYearTarget
+        ) {
         // ========== TOTAL OMSET (all time) ==========
         $totalOmsetSistem = $sumOmset($baseOmsetQuery());
         $totalOmsetManual = OmsetManual::sum('omset_manual') ?? 0;
@@ -335,6 +343,44 @@ class OmsetController extends Controller
             ];
         }
 
+        // Kembalikan semua variabel yang dipakai di luar blok cache ini
+        // (untuk view non-AJAX maupun response AJAX di bawah).
+        return [
+            'totalOmset'             => $totalOmset,
+            'omsetTahunIniSummary'   => $omsetTahunIniSummary,
+            'omsetBulanIniSummary'   => $omsetBulanIniSummary,
+            'omsetTahunIni'          => $omsetTahunIni,
+            'omsetBulanIni'          => $omsetBulanIni,
+            'omsetMingguIni'         => $omsetMingguIni,
+            'targetTahunan'          => $targetTahunan,
+            'targetBulanan'          => $targetBulanan,
+            'targetMingguan'         => $targetMingguan,
+            'targetBulananAdjusted'  => $targetBulananAdjusted,
+            'targetMingguanAdjusted' => $targetMingguanAdjusted,
+            'progressMinggu'         => $progressMinggu,
+            'progressBulan'          => $progressBulan,
+            'progressTahun'          => $progressTahun,
+            'rekapBulanan'           => $rekapBulanan,
+        ];
+        }); // akhir Cache::remember blok kalkulasi berat
+
+        // Extract hasil dari cache/kalkulasi ke variabel lokal seperti semula
+        $totalOmset             = $heavyBlockResult['totalOmset'];
+        $omsetTahunIniSummary   = $heavyBlockResult['omsetTahunIniSummary'];
+        $omsetBulanIniSummary   = $heavyBlockResult['omsetBulanIniSummary'];
+        $omsetTahunIni          = $heavyBlockResult['omsetTahunIni'];
+        $omsetBulanIni          = $heavyBlockResult['omsetBulanIni'];
+        $omsetMingguIni         = $heavyBlockResult['omsetMingguIni'];
+        $targetTahunan          = $heavyBlockResult['targetTahunan'];
+        $targetBulanan          = $heavyBlockResult['targetBulanan'];
+        $targetMingguan         = $heavyBlockResult['targetMingguan'];
+        $targetBulananAdjusted  = $heavyBlockResult['targetBulananAdjusted'];
+        $targetMingguanAdjusted = $heavyBlockResult['targetMingguanAdjusted'];
+        $progressMinggu         = $heavyBlockResult['progressMinggu'];
+        $progressBulan          = $heavyBlockResult['progressBulan'];
+        $progressTahun          = $heavyBlockResult['progressTahun'];
+        $rekapBulanan           = $heavyBlockResult['rekapBulanan'];
+
         // ========== FILTER PERIODE ==========
         $periode          = $request->get('periode_marketing', 'all');
         $periodeProcurement = $request->get('periode_procurement', 'all');
@@ -415,128 +461,144 @@ class OmsetController extends Controller
 
         // ===== AJAX: top_klien =====
         if ($request->ajax() && $request->get('ajax') === 'top_klien') {
-            $topKlienQuery = DB::table('pengiriman')
-                ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-                ->select(
-                    'kliens.id as klien_id', 'kliens.nama', 'kliens.cabang', 'pengiriman.id as pengiriman_id',
-                    $this->omsetExpr()
-                )
-                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                ->whereNull('pengiriman.deleted_at')
-                ->whereNull('kliens.deleted_at');
+            $cacheKeyTopKlien = 'omset:top_klien:' . $periodeKlien . ':' . $request->get('start_date_klien') . ':' . $request->get('end_date_klien');
 
-            $this->applyValidInvoiceFilter($topKlienQuery);
-            $this->applyPeriodeFilter($topKlienQuery, $periodeKlien, $request, 'klien');
+            $data = \Illuminate\Support\Facades\Cache::remember($cacheKeyTopKlien, 60, function () use ($periodeKlien, $request) {
+                $topKlienQuery = DB::table('pengiriman')
+                    ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                    ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                    ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+                    ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
+                    ->select(
+                        'kliens.id as klien_id', 'kliens.nama', 'kliens.cabang', 'pengiriman.id as pengiriman_id',
+                        $this->omsetExpr()
+                    )
+                    ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                    ->whereNull('pengiriman.deleted_at')
+                    ->whereNull('kliens.deleted_at');
 
-            $topKlienQuery->groupBy('pengiriman.id', 'kliens.id', 'kliens.nama', 'kliens.cabang');
-            $topKlienData = $topKlienQuery->get();
+                $this->applyValidInvoiceFilter($topKlienQuery);
+                $this->applyPeriodeFilter($topKlienQuery, $periodeKlien, $request, 'klien');
 
-            $topKlien = $topKlienData->groupBy('klien_id')->map(function ($items) {
-                $first = $items->first();
-                return (object)['nama' => $first->nama, 'cabang' => $first->cabang, 'total' => $items->sum('omset_pengiriman')];
-            })->sortByDesc('total')->values();
+                $topKlienQuery->groupBy('pengiriman.id', 'kliens.id', 'kliens.nama', 'kliens.cabang');
+                $topKlienData = $topKlienQuery->get();
 
-            $data = $topKlien->map(function ($item) {
-                return ['nama' => $item->nama ?? 'Unknown', 'cabang' => $item->cabang, 'total' => floatval($item->total ?? 0)];
-            })->filter(fn($item) => $item['total'] > 0)->values();
+                $topKlien = $topKlienData->groupBy('klien_id')->map(function ($items) {
+                    $first = $items->first();
+                    return (object)['nama' => $first->nama, 'cabang' => $first->cabang, 'total' => $items->sum('omset_pengiriman')];
+                })->sortByDesc('total')->values();
+
+                return $topKlien->map(function ($item) {
+                    return ['nama' => $item->nama ?? 'Unknown', 'cabang' => $item->cabang, 'total' => floatval($item->total ?? 0)];
+                })->filter(fn($item) => $item['total'] > 0)->values();
+            });
 
             return response()->json($data);
         }
 
         // ===== AJAX: top_supplier =====
         if ($request->ajax() && $request->get('ajax') === 'top_supplier') {
-            $topSupplierQuery = DB::table('pengiriman')
-                ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
-                ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
-                ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                ->select(
-                    'suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 'pengiriman.id as pengiriman_id',
-                    DB::raw('COALESCE(
-                        NULLIF(MAX(approval_pembayaran.subtotal), 0),
-                        NULLIF(MAX(approval_pembayaran.amount_after_refraksi), 0),
-                        SUM(pengiriman_details.total_harga)
-                    ) as omset_pengiriman')
-                )
-                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                ->whereNull('pengiriman.deleted_at')
-                ->whereNull('suppliers.deleted_at');
+            $cacheKeyTopSupplier = 'omset:top_supplier:' . $periodeSupplier . ':' . $request->get('start_date_supplier') . ':' . $request->get('end_date_supplier');
 
-            $this->applyPeriodeFilter($topSupplierQuery, $periodeSupplier, $request, 'supplier');
-            $topSupplierQuery->groupBy('pengiriman.id', 'suppliers.id', 'suppliers.nama', 'suppliers.alamat');
+            $data = \Illuminate\Support\Facades\Cache::remember($cacheKeyTopSupplier, 60, function () use ($periodeSupplier, $request) {
+                $topSupplierQuery = DB::table('pengiriman')
+                    ->leftJoin('approval_pembayaran', 'pengiriman.id', '=', 'approval_pembayaran.pengiriman_id')
+                    ->join('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                    ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                    ->join('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
+                    ->join('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+                    ->select(
+                        'suppliers.id as supplier_id', 'suppliers.nama', 'suppliers.alamat', 'pengiriman.id as pengiriman_id',
+                        DB::raw('COALESCE(
+                            NULLIF(MAX(approval_pembayaran.subtotal), 0),
+                            NULLIF(MAX(approval_pembayaran.amount_after_refraksi), 0),
+                            SUM(pengiriman_details.total_harga)
+                        ) as omset_pengiriman')
+                    )
+                    ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                    ->whereNull('pengiriman.deleted_at')
+                    ->whereNull('suppliers.deleted_at');
 
-            $topSupplierData = $topSupplierQuery->get();
-            $topSupplier     = $topSupplierData->groupBy('supplier_id')->map(function ($items) {
-                $first = $items->first();
-                return (object)['nama' => $first->nama, 'alamat' => $first->alamat, 'total' => $items->sum('omset_pengiriman')];
-            })->sortByDesc('total')->values();
+                $this->applyPeriodeFilter($topSupplierQuery, $periodeSupplier, $request, 'supplier');
+                $topSupplierQuery->groupBy('pengiriman.id', 'suppliers.id', 'suppliers.nama', 'suppliers.alamat');
 
-            $data = $topSupplier->map(function ($item) {
-                return ['nama' => $item->nama, 'cabang' => $item->alamat, 'total' => floatval($item->total ?? 0)];
-            })->filter(fn($item) => $item['total'] > 0)->values();
+                $topSupplierData = $topSupplierQuery->get();
+                $topSupplier     = $topSupplierData->groupBy('supplier_id')->map(function ($items) {
+                    $first = $items->first();
+                    return (object)['nama' => $first->nama, 'alamat' => $first->alamat, 'total' => $items->sum('omset_pengiriman')];
+                })->sortByDesc('total')->values();
+
+                return $topSupplier->map(function ($item) {
+                    return ['nama' => $item->nama, 'cabang' => $item->alamat, 'total' => floatval($item->total ?? 0)];
+                })->filter(fn($item) => $item['total'] > 0)->values();
+            });
 
             return response()->json($data);
         }
 
         // ===== AJAX: marketing =====
         if ($request->ajax() && $request->get('ajax') === 'marketing') {
-            $omsetMarketingQuery = DB::table('pengiriman')
-                ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
-                ->join('users', 'order_winners.user_id', '=', 'users.id')
-                ->select('order_winners.user_id', 'users.nama', 'pengiriman.id as pengiriman_id', $this->omsetExpr())
-                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil']);
+            $cacheKeyMarketing = 'omset:marketing:' . $periode . ':' . $request->get('start_date_marketing') . ':' . $request->get('end_date_marketing');
 
-            $this->applyValidInvoiceFilter($omsetMarketingQuery);
-            $this->applyPeriodeFilter($omsetMarketingQuery, $periode, $request, 'marketing');
+            $data = \Illuminate\Support\Facades\Cache::remember($cacheKeyMarketing, 60, function () use ($periode, $request) {
+                $omsetMarketingQuery = DB::table('pengiriman')
+                    ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                    ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                    ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+                    ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
+                    ->join('users', 'order_winners.user_id', '=', 'users.id')
+                    ->select('order_winners.user_id', 'users.nama', 'pengiriman.id as pengiriman_id', $this->omsetExpr())
+                    ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil']);
 
-            $omsetMarketingQuery->groupBy('pengiriman.id', 'order_winners.user_id', 'users.nama');
-            $omsetMarketingData = $omsetMarketingQuery->get();
+                $this->applyValidInvoiceFilter($omsetMarketingQuery);
+                $this->applyPeriodeFilter($omsetMarketingQuery, $periode, $request, 'marketing');
 
-            $omsetMarketing = $omsetMarketingData->groupBy('user_id')->map(function ($items) {
-                $first = $items->first();
-                return (object)['nama' => $first->nama, 'total' => $items->sum('omset_pengiriman')];
-            })->values();
+                $omsetMarketingQuery->groupBy('pengiriman.id', 'order_winners.user_id', 'users.nama');
+                $omsetMarketingData = $omsetMarketingQuery->get();
 
-            $data = $omsetMarketing->map(fn($item) => [
-                'nama'  => $item->nama ?? 'Unknown',
-                'total' => floatval($item->total ?? 0),
-            ])->filter(fn($item) => $item['total'] > 0)->values();
+                $omsetMarketing = $omsetMarketingData->groupBy('user_id')->map(function ($items) {
+                    $first = $items->first();
+                    return (object)['nama' => $first->nama, 'total' => $items->sum('omset_pengiriman')];
+                })->values();
+
+                return $omsetMarketing->map(fn($item) => [
+                    'nama'  => $item->nama ?? 'Unknown',
+                    'total' => floatval($item->total ?? 0),
+                ])->filter(fn($item) => $item['total'] > 0)->values();
+            });
 
             return response()->json($data);
         }
 
         // ===== AJAX: procurement =====
         if ($request->ajax() && $request->get('ajax') === 'procurement') {
-            $omsetProcurementQuery = DB::table('pengiriman')
-                ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-                ->select('pengiriman.purchasing_id', 'pengiriman.id as pengiriman_id', $this->omsetExpr())
-                ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil']);
+            $cacheKeyProcurement = 'omset:procurement_ajax:' . $periodeProcurement . ':' . $request->get('start_date_procurement') . ':' . $request->get('end_date_procurement');
 
-            $this->applyValidInvoiceFilter($omsetProcurementQuery);
-            $this->applyPeriodeFilter($omsetProcurementQuery, $periodeProcurement, $request, 'procurement');
+            $data = \Illuminate\Support\Facades\Cache::remember($cacheKeyProcurement, 60, function () use ($periodeProcurement, $request) {
+                $omsetProcurementQuery = DB::table('pengiriman')
+                    ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                    ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+                    ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+                    ->select('pengiriman.purchasing_id', 'pengiriman.id as pengiriman_id', $this->omsetExpr())
+                    ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil']);
 
-            $omsetProcurementQuery->groupBy('pengiriman.id', 'pengiriman.purchasing_id');
-            $omsetProcurementDataRaw = $omsetProcurementQuery->get();
+                $this->applyValidInvoiceFilter($omsetProcurementQuery);
+                $this->applyPeriodeFilter($omsetProcurementQuery, $periodeProcurement, $request, 'procurement');
 
-            $omsetProcurementData = $omsetProcurementDataRaw->groupBy('purchasing_id')->map(function ($items) {
-                return (object)['purchasing_id' => $items->first()->purchasing_id, 'total' => $items->sum('omset_pengiriman')];
-            })->values();
+                $omsetProcurementQuery->groupBy('pengiriman.id', 'pengiriman.purchasing_id');
+                $omsetProcurementDataRaw = $omsetProcurementQuery->get();
 
-            $data = $omsetProcurementData->map(function ($item) {
-                $purchasing = \App\Models\User::find($item->purchasing_id);
-                return ['nama' => $purchasing ? $purchasing->nama : 'Unknown', 'total' => floatval($item->total ?? 0)];
-            })->filter(fn($item) => $item['total'] > 0)->values();
+                $omsetProcurementData = $omsetProcurementDataRaw->groupBy('purchasing_id')->map(function ($items) {
+                    return (object)['purchasing_id' => $items->first()->purchasing_id, 'total' => $items->sum('omset_pengiriman')];
+                })->values();
+
+                return $omsetProcurementData->map(function ($item) {
+                    $purchasing = \App\Models\User::find($item->purchasing_id);
+                    return ['nama' => $purchasing ? $purchasing->nama : 'Unknown', 'total' => floatval($item->total ?? 0)];
+                })->filter(fn($item) => $item['total'] > 0)->values();
+            });
 
             return response()->json($data);
         }
@@ -814,7 +876,8 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
+        $details = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         return response()->json($details);
     }
 
@@ -853,7 +916,8 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        $details     = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
+        $details     = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         $groupedData = $details->groupBy('marketing_nama');
 
         $pdf = \PDF::loadView('pages.laporan.pdf.omset-marketing', [
@@ -861,7 +925,8 @@ class OmsetController extends Controller
             'periode'      => $periode,
             'startDate'    => $startDate,
             'endDate'      => $endDate,
-            'totalOverall' => $details->sum('total_nilai'),
+            // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
+            'totalOverall' => $details->sum('omset_pengiriman'),
         ]);
 
         return $pdf->download('Omset_Marketing_' . date('Y-m-d') . '.pdf');
@@ -905,7 +970,8 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        $details = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
+        $details = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         return response()->json($details);
     }
 
@@ -943,7 +1009,8 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        $details     = $query->orderBy('users.nama')->orderBy('total_nilai', 'desc')->get();
+        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
+        $details     = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         $groupedData = $details->groupBy('purchasing_nama');
 
         $pdf = \PDF::loadView('pages.laporan.pdf.omset-procurement', [
@@ -951,7 +1018,8 @@ class OmsetController extends Controller
             'periode'      => $periode,
             'startDate'    => $startDate,
             'endDate'      => $endDate,
-            'totalOverall' => $details->sum('total_nilai'),
+            // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
+            'totalOverall' => $details->sum('omset_pengiriman'),
         ]);
 
         return $pdf->download('Omset_Procurement_' . date('Y-m-d') . '.pdf');
@@ -1028,20 +1096,30 @@ class OmsetController extends Controller
                 ]);
             }
 
+            // OPTIMASI: hitung omset semua user sekaligus dalam 1 query batch,
+            // bukan 1 query terpisah per user (N+1) seperti sebelumnya.
+            $userIds = $procurementTargets->pluck('user_id')->unique()->values()->all();
+
+            if ($minggu && $bulan) {
+                $actualOmsetMap = $this->calculateProcurementOmsetBatch($userIds, $tahun, $bulan, $minggu);
+            } elseif ($bulan) {
+                $actualOmsetMap = $this->calculateProcurementOmsetBatch($userIds, $tahun, $bulan);
+            } else {
+                $actualOmsetMap = $this->calculateProcurementOmsetBatch($userIds, $tahun);
+            }
+
             $data = [];
             foreach ($procurementTargets as $target) {
                 $userId = $target->user_id;
 
                 if ($minggu && $bulan) {
                     $targetAmount = $target->calculateTargetAmount($targetOmset, 'weekly');
-                    $actualOmset  = $this->calculateProcurementOmset($userId, $tahun, $bulan, $minggu);
                 } elseif ($bulan) {
                     $targetAmount = $target->calculateTargetAmount($targetOmset, 'monthly');
-                    $actualOmset  = $this->calculateProcurementOmset($userId, $tahun, $bulan);
                 } else {
                     $targetAmount = $target->calculateTargetAmount($targetOmset, 'yearly');
-                    $actualOmset  = $this->calculateProcurementOmset($userId, $tahun);
                 }
+                $actualOmset = $actualOmsetMap[$userId] ?? 0;
 
                 $progress = $targetAmount > 0 ? ($actualOmset / $targetAmount) * 100 : 0;
                 $selisih  = $actualOmset - $targetAmount;
@@ -1071,6 +1149,54 @@ class OmsetController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * OPTIMASI: versi batch dari calculateProcurementOmset() — menghitung omset
+     * untuk banyak user sekaligus dalam 1 query, alih-alih 1 query per user.
+     * Return: [user_id => total_omset]
+     */
+    private function calculateProcurementOmsetBatch(array $userIds, $tahun, $bulan = null, $minggu = null): array
+    {
+        if (empty($userIds)) {
+            return [];
+        }
+
+        $query = DB::table('pengiriman')
+            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+            ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+            ->whereIn('pengiriman.purchasing_id', $userIds)
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->whereNull('pengiriman.deleted_at')
+            ->whereYear('pengiriman.tanggal_kirim', $tahun);
+
+        $this->applyValidInvoiceFilter($query);
+
+        if ($bulan) {
+            $query->whereMonth('pengiriman.tanggal_kirim', $bulan);
+        }
+
+        if ($minggu && $bulan) {
+            $startOfMonth = Carbon::create($tahun, $bulan, 1)->startOfDay();
+            $startOfWeek  = $minggu == 1 ? $startOfMonth->copy() : $startOfMonth->copy()->addDays(($minggu - 1) * 7);
+            $endOfWeek    = $minggu == 4
+                ? $startOfMonth->copy()->endOfMonth()
+                : $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+            $query->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()]);
+        }
+
+        $rows = $query
+            ->select('pengiriman.id', 'pengiriman.purchasing_id', $this->omsetExpr())
+            ->groupBy('pengiriman.id', 'pengiriman.purchasing_id')
+            ->get();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[$row->purchasing_id] = ($result[$row->purchasing_id] ?? 0) + (float)$row->omset_pengiriman;
+        }
+
+        return $result;
     }
 
     private function calculateProcurementOmset($userId, $tahun, $bulan = null, $minggu = null)

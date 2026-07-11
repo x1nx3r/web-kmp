@@ -17,12 +17,29 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PengirimanController extends Controller
 {
+    // Konstanta untuk menghindari Hardcoded String & Magic Numbers
+    private const STATUS_BERHASIL = 'berhasil';
+    private const STATUS_GAGAL = 'gagal';
+    private const STATUS_MENUNGGU_FISIK = 'menunggu_fisik';
+    private const STATUS_MENUNGGU_VERIFIKASI = 'menunggu_verifikasi';
+    
+    private const BONGKAR_THRESHOLD = 70;
+    private const PAGINATION_LIMIT = 15;
+
     public function index(Request $request)
     {
+        // Validasi input parameter untuk keamanan
+        $request->validate([
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date',
+            'pie_start_date' => 'nullable|date',
+            'pie_end_date'   => 'nullable|date',
+            'year'           => 'nullable|integer',
+        ]);
+
         $title = 'Pengiriman';
         $activeTab = 'pengiriman';
         
-        // Get filter parameters
         $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', now()->endOfMonth()->format('Y-m-d'));
         $status = $request->get('status');
@@ -31,7 +48,98 @@ class PengirimanController extends Controller
         $pabrik = $request->get('pabrik');
         $supplier = $request->get('supplier');
         
-        // Calculate weekly statistics - mengikuti logic dari dashboard (pembagian bulan menjadi 4 minggu)
+        $weekDates = $this->calculateWeekDates();
+        
+        $weeklyStats = $this->getWeeklyStats($weekDates['start'], $weekDates['end']);
+        $yearlyStats = $this->getYearlyStats(now()->year);
+        $totalStats = $this->getTotalStats();
+        
+        $pieChartFilter = $request->get('pie_filter', 'bulan_ini');
+        $pieChartDates = $this->resolvePieChartDates($request, $pieChartFilter);
+        $pieChartData = $this->getPieChartData($pieChartFilter, $pieChartDates['start'], $pieChartDates['end']);
+        
+        $yearRange = $this->getYearRange();
+        $selectedYear = $request->get('year', now()->year);
+        $chartData = $this->getYearlyChartData($selectedYear);
+        
+        $pengirimanData = $this->getPaginatedPengiriman(
+            $startDate, $endDate, $status, $purchasing, $search, $pabrik, $supplier
+        );
+        
+        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
+        $pabrikList = ReferenceDataService::getKliens();
+        $supplierList = ReferenceDataService::getSuppliers();
+        
+        return view('pages.laporan.pengiriman', compact(
+            'title', 'activeTab', 'weeklyStats', 'yearlyStats', 'totalStats',
+            'chartData', 'yearRange', 'pengirimanData', 'purchasingUsers',
+            'pabrikList', 'supplierList', 'startDate', 'endDate', 'status',
+            'purchasing', 'search', 'pabrik', 'supplier', 'pieChartFilter',
+            'pieChartData'
+        ) + [
+            'pieChartStartDate' => $pieChartDates['start'],
+            'pieChartEndDate' => $pieChartDates['end'],
+        ]);
+    }
+
+    /**
+     * Memusatkan query logic "smart date filter" agar tidak redundant
+     */
+    private function applyDateFilter($query, $startDate, $endDate)
+    {
+        return $query->where(function($q) use ($startDate, $endDate) {
+            $q->where(function($subq) use ($startDate, $endDate) {
+                // Pengiriman normal (bukan gagal)
+                $subq->where('pengiriman.status', '!=', self::STATUS_GAGAL)
+                     ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+            })->orWhere(function($subq) use ($startDate, $endDate) {
+                // Pengiriman gagal yang PUNYA tanggal_kirim
+                $subq->where('pengiriman.status', self::STATUS_GAGAL)
+                     ->whereNotNull('pengiriman.tanggal_kirim')
+                     ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+            })->orWhere(function($subq) use ($startDate, $endDate) {
+                // Pengiriman gagal yang TIDAK punya tanggal_kirim
+                $subq->where('pengiriman.status', self::STATUS_GAGAL)
+                     ->whereNull('pengiriman.tanggal_kirim')
+                     ->whereBetween('pengiriman.updated_at', [$startDate, $endDate]);
+            });
+        });
+    }
+
+    private function getPaginatedPengiriman($startDate, $endDate, $status, $purchasing, $search, $pabrik, $supplier)
+    {
+        $query = Pengiriman::with(['purchasing', 'purchaseOrder', 'pengirimanDetails.bahanBakuSupplier', 'invoicePenagihan'])
+            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->leftJoin('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->select('pengiriman.*', 
+                'orders.po_number',
+                DB::raw('CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.qty_after_refraksi IS NOT NULL THEN invoice_penagihan.qty_after_refraksi ELSE pengiriman.total_qty_kirim END as display_qty'),
+                DB::raw('CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.amount_after_refraksi IS NOT NULL THEN invoice_penagihan.amount_after_refraksi ELSE pengiriman.total_harga_kirim END as display_harga')
+            );
+            
+        $query = $this->applyDateFilter($query, $startDate, $endDate);
+        
+        if ($status) $query->where('pengiriman.status', $status);
+        if ($purchasing) $query->where('pengiriman.purchasing_id', $purchasing);
+        
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('pengiriman.no_pengiriman', 'like', "%{$search}%")
+                  ->orWhere('orders.po_number', 'like', "%{$search}%");
+            });
+        }
+        if ($pabrik) {
+            $query->whereHas('order.klien', fn($q) => $q->where('id', $pabrik));
+        }
+        if ($supplier) {
+            $query->whereHas('pengirimanDetails.bahanBakuSupplier.supplier', fn($q) => $q->where('id', $supplier));
+        }
+        
+        return $query->orderBy('pengiriman.tanggal_kirim', 'desc')->paginate(self::PAGINATION_LIMIT);
+    }
+    
+    private function calculateWeekDates(): array
+    {
         $startOfMonth = Carbon::now()->startOfMonth();
         $currentWeekOfMonth = 1;
         $tempDate = $startOfMonth->copy();
@@ -41,180 +149,41 @@ class PengirimanController extends Controller
         }
         $currentWeekOfMonth = min($currentWeekOfMonth, 4);
         
-        // Calculate date range for this week based on month divisions
-        if ($currentWeekOfMonth == 1) {
-            $weekStart = $startOfMonth->copy();
-        } else {
-            $weekStart = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
-        }
+        $weekStart = ($currentWeekOfMonth == 1) ? $startOfMonth->copy() : $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+        $weekEnd = ($currentWeekOfMonth == 4) ? $startOfMonth->copy()->endOfMonth() : $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
         
-        if ($currentWeekOfMonth == 4) {
-            $weekEnd = $startOfMonth->copy()->endOfMonth();
-        } else {
-            $weekEnd = $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
-        }
-        
-        $weeklyStats = $this->getWeeklyStats($weekStart, $weekEnd);
-        $yearlyStats = $this->getYearlyStats(now()->year);
-        $totalStats = $this->getTotalStats();
-        
-        // Get pie chart filter parameter (default: bulan_ini)
-        $pieChartFilter = $request->get('pie_filter', 'bulan_ini');
-        $pieChartStartDate = null;
-        $pieChartEndDate = null;
-        
-        // Determine date range for pie chart based on filter
-        switch ($pieChartFilter) {
-            case 'semua':
-                // All data - no date filter
-                break;
+        return ['start' => $weekStart, 'end' => $weekEnd];
+    }
+
+    private function resolvePieChartDates(Request $request, string $filter): array
+    {
+        $start = null;
+        $end = null;
+        switch ($filter) {
             case 'bulan_ini':
-                $pieChartStartDate = now()->startOfMonth()->format('Y-m-d');
-                $pieChartEndDate = now()->endOfMonth()->format('Y-m-d');
+                $start = now()->startOfMonth()->format('Y-m-d');
+                $end = now()->endOfMonth()->format('Y-m-d');
                 break;
             case 'tahun_ini':
-                $pieChartStartDate = now()->startOfYear()->format('Y-m-d');
-                $pieChartEndDate = now()->endOfYear()->format('Y-m-d');
+                $start = now()->startOfYear()->format('Y-m-d');
+                $end = now()->endOfYear()->format('Y-m-d');
                 break;
             case 'range':
-                $pieChartStartDate = $request->get('pie_start_date', now()->startOfMonth()->format('Y-m-d'));
-                $pieChartEndDate = $request->get('pie_end_date', now()->endOfMonth()->format('Y-m-d'));
+                $start = $request->get('pie_start_date', now()->startOfMonth()->format('Y-m-d'));
+                $end = $request->get('pie_end_date', now()->endOfMonth()->format('Y-m-d'));
                 break;
         }
-        
-        // Get pie chart data
-        $pieChartData = $this->getPieChartData($pieChartFilter, $pieChartStartDate, $pieChartEndDate);
-        
-        // Get year range from tanggal_kirim
-        $yearRange = $this->getYearRange();
-        
-        // Get selected year or default to current year
-        $selectedYear = $request->get('year', now()->year);
-        
-        // Get yearly chart data for purchasing PIC
-        $chartData = $this->getYearlyChartData($selectedYear);
-        
-        // Get paginated pengiriman data with filters
-        // Untuk status berhasil, join dengan invoice_penagihan untuk ambil qty dan harga setelah refraksi
-        $pengirimanQuery = Pengiriman::with(['purchasing', 'purchaseOrder', 'pengirimanDetails.bahanBakuSupplier', 'invoicePenagihan'])
-            ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->leftJoin('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-            ->select('pengiriman.*', 
-                'orders.po_number',
-                DB::raw('CASE 
-                    WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
-                    THEN invoice_penagihan.qty_after_refraksi 
-                    ELSE pengiriman.total_qty_kirim 
-                END as display_qty'),
-                DB::raw('CASE 
-                    WHEN pengiriman.status = "berhasil" AND invoice_penagihan.amount_after_refraksi IS NOT NULL 
-                    THEN invoice_penagihan.amount_after_refraksi 
-                    ELSE pengiriman.total_harga_kirim 
-                END as display_harga')
-            )
-            // Filter tanggal: logic smart untuk pengiriman gagal
-            ->where(function($query) use ($startDate, $endDate) {
-                $query->where(function($q) use ($startDate, $endDate) {
-                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
-                    $q->where('pengiriman.status', '!=', 'gagal')
-                      ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
-                })->orWhere(function($q) use ($startDate, $endDate) {
-                    // Pengiriman gagal yang PUNYA tanggal_kirim - tetap pakai tanggal_kirim
-                    $q->where('pengiriman.status', 'gagal')
-                      ->whereNotNull('pengiriman.tanggal_kirim')
-                      ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
-                })->orWhere(function($q) use ($startDate, $endDate) {
-                    // Pengiriman gagal yang TIDAK punya tanggal_kirim - pakai updated_at
-                    $q->where('pengiriman.status', 'gagal')
-                      ->whereNull('pengiriman.tanggal_kirim')
-                      ->whereBetween('pengiriman.updated_at', [$startDate, $endDate]);
-                });
-            });
-        
-        // Apply filters
-        if ($status) {
-            $pengirimanQuery->where('pengiriman.status', $status);
-        }
-        
-        if ($purchasing) {
-            $pengirimanQuery->where('pengiriman.purchasing_id', $purchasing);
-        }
-        
-        if ($search) {
-            $pengirimanQuery->where(function($q) use ($search) {
-                $q->where('pengiriman.no_pengiriman', 'like', "%{$search}%")
-                  ->orWhere('orders.po_number', 'like', "%{$search}%");
-            });
-        }
-        
-        // Filter by pabrik (klien)
-        if ($pabrik) {
-            $pengirimanQuery->whereHas('order.klien', function($q) use ($pabrik) {
-                $q->where('id', $pabrik);
-            });
-        }
-        
-        // Filter by supplier
-        if ($supplier) {
-            $pengirimanQuery->whereHas('pengirimanDetails.bahanBakuSupplier.supplier', function($q) use ($supplier) {
-                $q->where('id', $supplier);
-            });
-        }
-        
-        $pengirimanData = $pengirimanQuery->orderBy('pengiriman.tanggal_kirim', 'desc')->paginate(15);
-        
-        // Get purchasing users for filter dropdown (including direktur)
-        $purchasingUsers = ReferenceDataService::getPurchasingUsers();
-        
-        // Get pabrik (klien) list for filter dropdown
-        $pabrikList = ReferenceDataService::getKliens();
-        
-        // Get supplier list for filter dropdown
-        $supplierList = ReferenceDataService::getSuppliers();
-        
-        return view('pages.laporan.pengiriman', compact(
-            'title', 
-            'activeTab',
-            'weeklyStats',
-            'yearlyStats',
-            'totalStats',
-            'chartData',
-            'yearRange',
-            'pengirimanData',
-            'purchasingUsers',
-            'pabrikList',
-            'supplierList',
-            'startDate',
-            'endDate',
-            'status',
-            'purchasing',
-            'search',
-            'pabrik',
-            'supplier',
-            'pieChartFilter',
-            'pieChartStartDate',
-            'pieChartEndDate',
-            'pieChartData'
-        ));
+        return ['start' => $start, 'end' => $end];
     }
     
-    private function getYearRange()
+    private function getYearRange(): array
     {
-        // Get min and max year from tanggal_kirim
-        $minYear = Pengiriman::whereNotNull('tanggal_kirim')
-            ->min(DB::raw('YEAR(tanggal_kirim)'));
-        
-        $maxYear = Pengiriman::whereNotNull('tanggal_kirim')
-            ->max(DB::raw('YEAR(tanggal_kirim)'));
-        
-        // Fallback if no data
-        if (!$minYear || !$maxYear) {
-            $minYear = now()->year - 2;
-            $maxYear = now()->year;
-        }
-        
-        // Ensure maxYear is at least current year (to allow navigating to current year even if no data yet)
-        $maxYear = max((int) $maxYear, now()->year);
+        $range = Pengiriman::whereNotNull('tanggal_kirim')
+            ->selectRaw('MIN(YEAR(tanggal_kirim)) as min_year, MAX(YEAR(tanggal_kirim)) as max_year')
+            ->first();
+            
+        $minYear = $range->min_year ?? (now()->year - 2);
+        $maxYear = max((int) ($range->max_year ?? now()->year), now()->year);
         
         return [
             'min_year' => (int) $minYear,
@@ -222,119 +191,77 @@ class PengirimanController extends Controller
         ];
     }
     
-    private function getPieChartData($filter, $startDate, $endDate)
+    private function getPieChartData($filter, $startDate, $endDate): array
     {
-        // Build base query for status berhasil, menunggu_fisik, menunggu_verifikasi
-        $query = Pengiriman::with('forecast')
-            ->whereIn('pengiriman.status', ['berhasil', 'menunggu_fisik', 'menunggu_verifikasi']);
-        
-        // Apply date filter if not 'semua' - gunakan tanggal_kirim untuk pengiriman normal
+        // Query Gagal
+        $gagalQuery = Pengiriman::where('pengiriman.status', self::STATUS_GAGAL);
         if ($filter !== 'semua' && $startDate && $endDate) {
-            $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
+            $gagalQuery = $this->applyDateFilter($gagalQuery, $startDate, $endDate);
         }
-        
-        $pengirimanData = $query->get();
-        
-        $normal = 0;      // >70%
-        $bongkar = 0;     // ≤70%
-        $gagal = 0;
-        
-        // Count normal and bongkar sebagian
-        foreach ($pengirimanData as $pengiriman) {
-            if ($pengiriman->forecast) {
-                $totalQtyForecast = (float) $pengiriman->forecast->total_qty_forecast;
-                $totalQtyKirim = (float) $pengiriman->total_qty_kirim;
-                
-                if ($totalQtyForecast > 0) {
-                    $percentage = ($totalQtyKirim / $totalQtyForecast) * 100;
-                    
-                    if ($percentage > 70) {
-                        $normal++;
-                    } else {
-                        $bongkar++;
-                    }
-                } else {
-                    // If no forecast data, count as normal
-                    $normal++;
-                }
-            } else {
-                // If no forecast, count as normal
-                $normal++;
-            }
-        }
-        
-        // Count gagal (cancelled/failed pengiriman) - logic smart
-        $gagalQuery = Pengiriman::where('pengiriman.status', 'gagal');
-        
+        $gagalCount = $gagalQuery->count();
+
+        // Query Normal & Bongkar (Optimized Database Aggregation)
+        $nbQuery = Pengiriman::leftJoin('forecasts', 'pengiriman.forecast_id', '=', 'forecasts.id')
+            ->whereIn('pengiriman.status', [self::STATUS_BERHASIL, self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI]);
+            
         if ($filter !== 'semua' && $startDate && $endDate) {
-            $gagalQuery->where(function($q) use ($startDate, $endDate) {
-                $q->where(function($subq) use ($startDate, $endDate) {
-                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
-                    $subq->whereNotNull('pengiriman.tanggal_kirim')
-                         ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
-                })->orWhere(function($subq) use ($startDate, $endDate) {
-                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
-                    $subq->whereNull('pengiriman.tanggal_kirim')
-                         ->whereBetween('pengiriman.updated_at', [$startDate, $endDate]);
-                });
-            });
+            $nbQuery->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
         
-        $gagal = $gagalQuery->count();
-        
-        $total = $normal + $bongkar + $gagal;
+        $nbStats = $nbQuery->selectRaw("
+            SUM(CASE 
+                WHEN forecasts.id IS NULL OR forecasts.total_qty_forecast IS NULL OR forecasts.total_qty_forecast = 0 THEN 1
+                WHEN (pengiriman.total_qty_kirim / forecasts.total_qty_forecast * 100) > ? THEN 1
+                ELSE 0
+            END) as normal_count,
+            SUM(CASE 
+                WHEN forecasts.id IS NOT NULL AND forecasts.total_qty_forecast > 0 
+                     AND (pengiriman.total_qty_kirim / forecasts.total_qty_forecast * 100) <= ? THEN 1
+                ELSE 0
+            END) as bongkar_count
+        ", [self::BONGKAR_THRESHOLD, self::BONGKAR_THRESHOLD])->first();
+
+        $normalCount = (int) ($nbStats->normal_count ?? 0);
+        $bongkarCount = (int) ($nbStats->bongkar_count ?? 0);
+        $total = $normalCount + $bongkarCount + $gagalCount;
         
         return [
-            'normal' => $normal,
-            'bongkar' => $bongkar,
-            'gagal' => $gagal,
+            'normal' => $normalCount,
+            'bongkar' => $bongkarCount,
+            'gagal' => $gagalCount,
             'total' => $total,
-            'normal_percentage' => $total > 0 ? round(($normal / $total) * 100, 1) : 0,
-            'bongkar_percentage' => $total > 0 ? round(($bongkar / $total) * 100, 1) : 0,
-            'gagal_percentage' => $total > 0 ? round(($gagal / $total) * 100, 1) : 0,
+            'normal_percentage' => $total > 0 ? round(($normalCount / $total) * 100, 1) : 0,
+            'bongkar_percentage' => $total > 0 ? round(($bongkarCount / $total) * 100, 1) : 0,
+            'gagal_percentage' => $total > 0 ? round(($gagalCount / $total) * 100, 1) : 0,
         ];
     }
     
-    private function getWeeklyStats($weekStart, $weekEnd)
+    private function getWeeklyStats($weekStart, $weekEnd): array
     {
-        // Untuk pengiriman: logic smart untuk gagal
-        $countData = Pengiriman::where(function($query) use ($weekStart, $weekEnd) {
-                $query->where(function($q) use ($weekStart, $weekEnd) {
-                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
-                    $q->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                      ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
-                })->orWhere(function($q) use ($weekStart, $weekEnd) {
-                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
-                    $q->where('pengiriman.status', 'gagal')
-                      ->whereNotNull('pengiriman.tanggal_kirim')
-                      ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
-                })->orWhere(function($q) use ($weekStart, $weekEnd) {
-                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
-                    $q->where('pengiriman.status', 'gagal')
-                      ->whereNull('pengiriman.tanggal_kirim')
-                      ->whereBetween('pengiriman.updated_at', [$weekStart, $weekEnd]);
-                });
-            })
-            ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
-            ->first();
+        $baseQuery = Pengiriman::query();
+        $countQuery = clone $baseQuery;
         
+        $countQuery->where(function($q) use ($weekStart, $weekEnd) {
+            $q->where(function($subq) use ($weekStart, $weekEnd) {
+                $subq->whereIn('pengiriman.status', [self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI, self::STATUS_BERHASIL])
+                     ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
+            })->orWhere(function($subq) use ($weekStart, $weekEnd) {
+                $subq->where('pengiriman.status', self::STATUS_GAGAL)
+                     ->whereNotNull('pengiriman.tanggal_kirim')
+                     ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
+            })->orWhere(function($subq) use ($weekStart, $weekEnd) {
+                $subq->where('pengiriman.status', self::STATUS_GAGAL)
+                     ->whereNull('pengiriman.tanggal_kirim')
+                     ->whereBetween('pengiriman.updated_at', [$weekStart, $weekEnd]);
+            });
+        });
+        $countData = $countQuery->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')->first();
         
-        // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
-        $tonaseData = Pengiriman::where(function($query) use ($weekStart, $weekEnd) {
-                // Hanya pengiriman berhasil/menunggu yang punya tonase (bukan gagal)
-                $query->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                      ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd]);
-            })
+        $tonaseQuery = clone $baseQuery;
+        $tonaseData = $tonaseQuery->whereIn('pengiriman.status', [self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI, self::STATUS_BERHASIL])
+            ->whereBetween('pengiriman.tanggal_kirim', [$weekStart, $weekEnd])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->selectRaw('
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.qty_after_refraksi 
-                        ELSE pengiriman.total_qty_kirim 
-                    END
-                ), 0) as total_tonase
-            ')
+            ->selectRaw('COALESCE(SUM(CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.qty_after_refraksi IS NOT NULL THEN invoice_penagihan.qty_after_refraksi ELSE pengiriman.total_qty_kirim END), 0) as total_tonase')
             ->first();
             
         return [
@@ -345,42 +272,29 @@ class PengirimanController extends Controller
         ];
     }
     
-    private function getYearlyStats($year)
+    private function getYearlyStats($year): array
     {
-        // Untuk pengiriman: count all status dengan filter tanggal yang smart
-        $countData = Pengiriman::where(function($query) use ($year) {
-                $query->where(function($q) use ($year) {
-                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
-                    $q->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                      ->whereYear('pengiriman.tanggal_kirim', $year);
-                })->orWhere(function($q) use ($year) {
-                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
-                    $q->where('pengiriman.status', 'gagal')
-                      ->whereNotNull('pengiriman.tanggal_kirim')
-                      ->whereYear('pengiriman.tanggal_kirim', $year);
-                })->orWhere(function($q) use ($year) {
-                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
-                    $q->where('pengiriman.status', 'gagal')
-                      ->whereNull('pengiriman.tanggal_kirim')
-                      ->whereYear('pengiriman.updated_at', $year);
-                });
-            })
-            ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
-            ->first();
+        $countQuery = Pengiriman::query();
+        $countQuery->where(function($q) use ($year) {
+            $q->where(function($subq) use ($year) {
+                $subq->whereIn('pengiriman.status', [self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI, self::STATUS_BERHASIL])
+                     ->whereYear('pengiriman.tanggal_kirim', $year);
+            })->orWhere(function($subq) use ($year) {
+                $subq->where('pengiriman.status', self::STATUS_GAGAL)
+                     ->whereNotNull('pengiriman.tanggal_kirim')
+                     ->whereYear('pengiriman.tanggal_kirim', $year);
+            })->orWhere(function($subq) use ($year) {
+                $subq->where('pengiriman.status', self::STATUS_GAGAL)
+                     ->whereNull('pengiriman.tanggal_kirim')
+                     ->whereYear('pengiriman.updated_at', $year);
+            });
+        });
+        $countData = $countQuery->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')->first();
         
-        // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
         $tonaseData = Pengiriman::whereYear('pengiriman.tanggal_kirim', $year)
-            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->whereIn('pengiriman.status', [self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI, self::STATUS_BERHASIL])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->selectRaw('
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.qty_after_refraksi 
-                        ELSE pengiriman.total_qty_kirim 
-                    END
-                ), 0) as total_tonase
-            ')
+            ->selectRaw('COALESCE(SUM(CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.qty_after_refraksi IS NOT NULL THEN invoice_penagihan.qty_after_refraksi ELSE pengiriman.total_qty_kirim END), 0) as total_tonase')
             ->first();
             
         return [
@@ -390,25 +304,15 @@ class PengirimanController extends Controller
         ];
     }
     
-    private function getTotalStats()
+    private function getTotalStats(): array
     {
-        // Untuk pengiriman: menunggu_fisik, menunggu_verifikasi, berhasil, gagal
-        $countData = Pengiriman::whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil', 'gagal'])
+        $countData = Pengiriman::whereIn('pengiriman.status', [self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI, self::STATUS_BERHASIL, self::STATUS_GAGAL])
             ->selectRaw('COUNT(DISTINCT pengiriman.id) as total_pengiriman')
             ->first();
         
-        // Untuk tonase: menunggu_fisik, menunggu_verifikasi, berhasil (tanpa gagal & pending)
-        $tonaseData = Pengiriman::whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        $tonaseData = Pengiriman::whereIn('pengiriman.status', [self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI, self::STATUS_BERHASIL])
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->selectRaw('
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = "berhasil" AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.qty_after_refraksi 
-                        ELSE pengiriman.total_qty_kirim 
-                    END
-                ), 0) as total_tonase
-            ')
+            ->selectRaw('COALESCE(SUM(CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.qty_after_refraksi IS NOT NULL THEN invoice_penagihan.qty_after_refraksi ELSE pengiriman.total_qty_kirim END), 0) as total_tonase')
             ->first();
             
         return [
@@ -417,25 +321,18 @@ class PengirimanController extends Controller
         ];
     }
     
-    
-    private function getYearlyChartData($year)
+    private function getYearlyChartData($year): array
     {
-        $totalPengiriman = Pengiriman::count();
-        
-        // Get monthly data for the specified year - logic smart untuk pengiriman gagal
         $monthlyData = Pengiriman::where(function($query) use ($year) {
                 $query->where(function($q) use ($year) {
-                    // Pengiriman normal (bukan gagal) - pakai tanggal_kirim
-                    $q->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+                    $q->whereIn('pengiriman.status', [self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI, self::STATUS_BERHASIL])
                       ->whereYear('pengiriman.tanggal_kirim', $year);
                 })->orWhere(function($q) use ($year) {
-                    // Pengiriman gagal dengan tanggal_kirim - pakai tanggal_kirim
-                    $q->where('pengiriman.status', 'gagal')
+                    $q->where('pengiriman.status', self::STATUS_GAGAL)
                       ->whereNotNull('pengiriman.tanggal_kirim')
                       ->whereYear('pengiriman.tanggal_kirim', $year);
                 })->orWhere(function($q) use ($year) {
-                    // Pengiriman gagal tanpa tanggal_kirim - pakai updated_at
-                    $q->where('pengiriman.status', 'gagal')
+                    $q->where('pengiriman.status', self::STATUS_GAGAL)
                       ->whereNull('pengiriman.tanggal_kirim')
                       ->whereYear('pengiriman.updated_at', $year);
                 });
@@ -443,31 +340,20 @@ class PengirimanController extends Controller
             ->leftJoin('invoice_penagihan', 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
             ->selectRaw("
                 CASE 
-                    WHEN pengiriman.status = 'gagal' AND pengiriman.tanggal_kirim IS NULL 
-                    THEN MONTH(pengiriman.updated_at)
+                    WHEN pengiriman.status = '".self::STATUS_GAGAL."' AND pengiriman.tanggal_kirim IS NULL THEN MONTH(pengiriman.updated_at)
                     ELSE MONTH(pengiriman.tanggal_kirim)
                 END as month,
                 pengiriman.purchasing_id,
                 COUNT(DISTINCT pengiriman.id) as total_pengiriman,
-                COALESCE(SUM(
-                    CASE 
-                        WHEN pengiriman.status = 'berhasil' AND invoice_penagihan.qty_after_refraksi IS NOT NULL 
-                        THEN invoice_penagihan.qty_after_refraksi 
-                        ELSE pengiriman.total_qty_kirim 
-                    END
-                ), 0) as total_tonase
+                COALESCE(SUM(CASE WHEN pengiriman.status = '".self::STATUS_BERHASIL."' AND invoice_penagihan.qty_after_refraksi IS NOT NULL THEN invoice_penagihan.qty_after_refraksi ELSE pengiriman.total_qty_kirim END), 0) as total_tonase
             ")
             ->groupBy(['month', 'pengiriman.purchasing_id'])
             ->with('purchasing')
             ->get();
             
-        // Get all purchasing users (both manager and staff) + direktur
         $purchasingUsers = ReferenceDataService::getPurchasingUsers();
-        
-      
-        
-        // Initialize chart data structure
         $chartData = [];
+        
         foreach ($purchasingUsers as $user) {
             $userName = $user->nama ?? $user->name ?? 'Unknown User';
             $chartData[$userName] = [
@@ -476,10 +362,9 @@ class PengirimanController extends Controller
             ];
         }
         
-        // Process real data
         foreach ($monthlyData as $data) {
             if ($data->purchasing) {
-                $month = $data->month - 1; // Convert to 0-based index
+                $month = $data->month - 1; 
                 $userName = $data->purchasing->nama ?? $data->purchasing->name ?? 'Unknown User';
                 
                 if (isset($chartData[$userName])) {
@@ -497,193 +382,147 @@ class PengirimanController extends Controller
     }
     
     public function export(Request $request)
-{
-    try {
-        // Get filter parameters
-        $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->endOfMonth()->format('Y-m-d'));
-        $status = $request->get('status');
-        $purchasing = $request->get('purchasing');
-        $search = $request->get('search');
-        $pabrik = $request->get('pabrik');
-        $supplier = $request->get('supplier');
+    {
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date'
+        ]);
 
-        // Get purchasing users for filter information
-        $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])->get();
-        
-        // Get pabrik and supplier names for filter information
-        $pabrikName = null;
-        if ($pabrik) {
-            $pabrikModel = \App\Models\Klien::find($pabrik);
-            $pabrikName = $pabrikModel ? $pabrikModel->nama : null;
+        try {
+            $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
+            $endDate = $request->get('end_date', now()->endOfMonth()->format('Y-m-d'));
+            $status = $request->get('status');
+            $purchasing = $request->get('purchasing');
+            $search = $request->get('search');
+            $pabrik = $request->get('pabrik');
+            $supplier = $request->get('supplier');
+
+            $purchasingUsers = User::whereIn('role', ['manager_purchasing', 'staff_purchasing'])->get();
+            
+            $pabrikName = $pabrik ? (\App\Models\Klien::find($pabrik)->nama ?? null) : null;
+            $supplierName = $supplier ? (\App\Models\Supplier::find($supplier)->nama ?? null) : null;
+
+            $pengirimanCount = Pengiriman::whereBetween('tanggal_kirim', [$startDate, $endDate])->count();
+            if ($pengirimanCount === 0) {
+                return redirect()->back()->with('error', 'Tidak ada data pengiriman pada periode ' . date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)));
+            }
+
+            $filename = 'Laporan_Pengiriman_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+
+            return Excel::download(
+                new PengirimanExport($startDate, $endDate, $status, $purchasing, $search, $purchasingUsers, $pabrik, $pabrikName, $supplier, $supplierName),
+                $filename
+            );
+        } catch (\Exception $e) {
+            Log::error('Export Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error saat export: ' . $e->getMessage());
         }
-        
-        $supplierName = null;
-        if ($supplier) {
-            $supplierModel = \App\Models\Supplier::find($supplier);
-            $supplierName = $supplierModel ? $supplierModel->nama : null;
-        }
-
-        // Debug: Check if data exists
-        $pengirimanCount = Pengiriman::whereBetween('tanggal_kirim', [$startDate, $endDate])->count();
-        
-        if ($pengirimanCount === 0) {
-            // Redirect back dengan pesan error (bukan JSON response)
-            return redirect()->back()->with('error', 'Tidak ada data pengiriman pada periode ' . date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)));
-        }
-
-        // Generate filename with current datetime
-        $filename = 'Laporan_Pengiriman_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-
-        // Export menggunakan Laravel Excel
-        return Excel::download(
-            new PengirimanExport($startDate, $endDate, $status, $purchasing, $search, $purchasingUsers, $pabrik, $pabrikName, $supplier, $supplierName),
-            $filename
-        );
-        
-    } catch (\Exception $e) {
-        Log::error('Export Error: ' . $e->getMessage());
-        
-        // Redirect back dengan pesan error (bukan JSON response)
-        return redirect()->back()->with('error', 'Error saat export: ' . $e->getMessage());
     }
-}
-    
+
     /**
-     * Get pie chart details based on time filter
+     * Memusatkan query dasar untuk kebutuhan laporan detail pie chart
      */
+    private function getBasePieChartDetailQuery($filter, $startDate, $endDate)
+    {
+        $query = Pengiriman::leftJoin('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
+            ->leftJoin('forecasts', 'pengiriman.forecast_id', '=', 'forecasts.id')
+            ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+            ->leftJoin('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
+            ->leftJoin('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
+            ->select(
+                'pengiriman.id', 'pengiriman.status', 'pengiriman.total_qty_kirim', 
+                'pengiriman.tanggal_kirim', 'pengiriman.updated_at', 'orders.po_number',
+                DB::raw('GROUP_CONCAT(DISTINCT suppliers.nama SEPARATOR ", ") as supplier_nama'),
+                'forecasts.total_qty_forecast'
+            )
+            ->groupBy(
+                'pengiriman.id', 'pengiriman.status', 'pengiriman.total_qty_kirim', 
+                'pengiriman.tanggal_kirim', 'pengiriman.updated_at', 'orders.po_number', 
+                'forecasts.total_qty_forecast'
+            );
+            
+        if ($filter !== 'semua' && $startDate && $endDate) {
+            $query = $this->applyDateFilter($query, $startDate, $endDate);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Mengatur formatting data per baris untuk report
+     */
+    private function formatPieChartDetailRow($pengiriman, bool $forPdf = false): ?array
+    {
+        if (!in_array($pengiriman->status, [self::STATUS_GAGAL, self::STATUS_BERHASIL, self::STATUS_MENUNGGU_FISIK, self::STATUS_MENUNGGU_VERIFIKASI])) {
+            return null; // Skip pending/other status
+        }
+
+        $kategori = '';
+        $statusLabel = '';
+
+        if ($pengiriman->status === self::STATUS_GAGAL) {
+            $kategori = 'gagal';
+            $statusLabel = 'Ditolak';
+        } else {
+            $totalQtyForecast = (float) $pengiriman->total_qty_forecast;
+            $totalQtyKirim = (float) $pengiriman->total_qty_kirim;
+            
+            if ($totalQtyForecast > 0) {
+                $percentage = ($totalQtyKirim / $totalQtyForecast) * 100;
+                if ($percentage > self::BONGKAR_THRESHOLD) {
+                    $kategori = 'normal';
+                    $statusLabel = 'Normal (' . round($percentage, 1) . '%)';
+                } else {
+                    $kategori = 'bongkar';
+                    $statusLabel = 'Bongkar Sebagian (' . round($percentage, 1) . '%)';
+                }
+            } else {
+                $kategori = 'normal';
+                $statusLabel = 'Normal (No Forecast)';
+            }
+        }
+
+        $displayDate = null;
+        if ($pengiriman->status === self::STATUS_GAGAL) {
+            if ($pengiriman->tanggal_kirim) {
+                $displayDate = $forPdf ? $pengiriman->tanggal_kirim->format('d/m/Y') : $pengiriman->tanggal_kirim->format('Y-m-d');
+            } else {
+                $dateObj = $pengiriman->updated_at ? Carbon::parse($pengiriman->updated_at) : null;
+                $displayDate = $dateObj ? ($forPdf ? $dateObj->format('d/m/Y') : $dateObj->format('Y-m-d')) : ($forPdf ? '-' : null);
+            }
+        } else {
+            if ($pengiriman->tanggal_kirim) {
+                $displayDate = $forPdf ? $pengiriman->tanggal_kirim->format('d/m/Y') : $pengiriman->tanggal_kirim->format('Y-m-d');
+            } else {
+                 $displayDate = $forPdf ? '-' : null;
+            }
+        }
+
+        return [
+            'id' => $pengiriman->id,
+            'po_number' => $pengiriman->po_number ?? '-',
+            'supplier' => $pengiriman->supplier_nama ?? '-',
+            'tanggal_kirim' => $displayDate,
+            'qty_forecast' => $pengiriman->total_qty_forecast ? (float) $pengiriman->total_qty_forecast : 0,
+            'qty_pengiriman' => (float) $pengiriman->total_qty_kirim,
+            'status_label' => $statusLabel,
+            'kategori' => $kategori,
+            'status_pengiriman' => $pengiriman->status
+        ];
+    }
+    
     public function getPieChartDetails(Request $request)
     {
         try {
             $filter = $request->get('filter', 'bulan_ini');
-            $startDate = $request->get('start_date');
-            $endDate = $request->get('end_date');
+            $dates = $this->resolvePieChartDates($request, $filter);
             
-            // Determine date range based on filter
-            if ($filter !== 'semua') {
-                switch ($filter) {
-                    case 'bulan_ini':
-                        $startDate = now()->startOfMonth()->format('Y-m-d');
-                        $endDate = now()->endOfMonth()->format('Y-m-d');
-                        break;
-                    case 'tahun_ini':
-                        $startDate = now()->startOfYear()->format('Y-m-d');
-                        $endDate = now()->endOfYear()->format('Y-m-d');
-                        break;
-                    // 'range' uses the provided start/end dates
-                }
-            }
-            
+            $pengirimanData = $this->getBasePieChartDetailQuery($filter, $dates['start'], $dates['end'])->get();
             $details = [];
             
-            // Get all pengiriman with joins - supplier diambil dari pengiriman_details
-            $query = Pengiriman::leftJoin('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                ->leftJoin('forecasts', 'pengiriman.forecast_id', '=', 'forecasts.id')
-                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
-                ->leftJoin('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                ->select(
-                    'pengiriman.id',
-                    'pengiriman.status',
-                    'pengiriman.total_qty_kirim',
-                    'pengiriman.tanggal_kirim',
-                    'pengiriman.updated_at',
-                    'orders.po_number',
-                    DB::raw('GROUP_CONCAT(DISTINCT suppliers.nama SEPARATOR ", ") as supplier_nama'),
-                    'forecasts.total_qty_forecast'
-                )
-                ->groupBy(
-                    'pengiriman.id',
-                    'pengiriman.status',
-                    'pengiriman.total_qty_kirim',
-                    'pengiriman.tanggal_kirim',
-                    'pengiriman.updated_at',
-                    'orders.po_number',
-                    'forecasts.total_qty_forecast'
-                );
-            
-            // Apply date filter dengan logic smart untuk pengiriman gagal
-            if ($filter !== 'semua' && $startDate && $endDate) {
-                $query->where(function($q) use ($startDate, $endDate) {
-                    $q->where(function($subq) use ($startDate, $endDate) {
-                        // Pengiriman normal (bukan gagal) - gunakan tanggal_kirim
-                        $subq->where('pengiriman.status', '!=', 'gagal')
-                             ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
-                    })->orWhere(function($subq) use ($startDate, $endDate) {
-                        // Pengiriman gagal dengan tanggal_kirim - gunakan tanggal_kirim
-                        $subq->where('pengiriman.status', 'gagal')
-                             ->whereNotNull('pengiriman.tanggal_kirim')
-                             ->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
-                    })->orWhere(function($subq) use ($startDate, $endDate) {
-                        // Pengiriman gagal tanpa tanggal_kirim - gunakan updated_at
-                        $subq->where('pengiriman.status', 'gagal')
-                             ->whereNull('pengiriman.tanggal_kirim')
-                             ->whereBetween('pengiriman.updated_at', [$startDate, $endDate]);
-                    });
-                });
-            }
-            
-            $pengirimanData = $query->get();
-            
             foreach ($pengirimanData as $pengiriman) {
-                $kategori = '';
-                $statusLabel = '';
-                
-                if ($pengiriman->status === 'gagal') {
-                    $kategori = 'gagal';
-                    $statusLabel = 'Ditolak';
-                } else if (in_array($pengiriman->status, ['berhasil', 'menunggu_fisik', 'menunggu_verifikasi'])) {
-                    if ($pengiriman->total_qty_forecast) {
-                        $totalQtyForecast = (float) $pengiriman->total_qty_forecast;
-                        $totalQtyKirim = (float) $pengiriman->total_qty_kirim;
-                        
-                        if ($totalQtyForecast > 0) {
-                            $percentage = ($totalQtyKirim / $totalQtyForecast) * 100;
-                            
-                            if ($percentage > 70) {
-                                $kategori = 'normal';
-                                $statusLabel = 'Normal (' . round($percentage, 1) . '%)';
-                            } else {
-                                $kategori = 'bongkar';
-                                $statusLabel = 'Bongkar Sebagian (' . round($percentage, 1) . '%)';
-                            }
-                        } else {
-                            $kategori = 'normal';
-                            $statusLabel = 'Normal (No Forecast)';
-                        }
-                    } else {
-                        $kategori = 'normal';
-                        $statusLabel = 'Normal (No Forecast)';
-                    }
-                } else {
-                    // Skip pending status
-                    continue;
-                }
-                
-                // Gunakan logic smart untuk display tanggal
-                $displayDate = null;
-                if ($pengiriman->status === 'gagal') {
-                    // Pengiriman gagal: prioritaskan tanggal_kirim, fallback ke updated_at
-                    if ($pengiriman->tanggal_kirim) {
-                        $displayDate = $pengiriman->tanggal_kirim->format('Y-m-d');
-                    } else {
-                        $displayDate = $pengiriman->updated_at ? \Carbon\Carbon::parse($pengiriman->updated_at)->format('Y-m-d') : null;
-                    }
-                } else {
-                    $displayDate = $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('Y-m-d') : null;
-                }
-                
-                $details[] = [
-                    'id' => $pengiriman->id,
-                    'po_number' => $pengiriman->po_number ?? '-',
-                    'supplier' => $pengiriman->supplier_nama ?? '-',
-                    'tanggal_kirim' => $displayDate,
-                    'qty_forecast' => $pengiriman->total_qty_forecast ? (float) $pengiriman->total_qty_forecast : 0,
-                    'qty_pengiriman' => (float) $pengiriman->total_qty_kirim,
-                    'status_label' => $statusLabel,
-                    'kategori' => $kategori,
-                    'status_pengiriman' => $pengiriman->status
-                ];
+                $formatted = $this->formatPieChartDetailRow($pengiriman, false);
+                if ($formatted) $details[] = $formatted;
             }
             
             return response()->json([
@@ -693,8 +532,6 @@ class PengirimanController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Pie Chart Details Error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            
             return response()->json([
                 'success' => false,
                 'error' => 'Gagal memuat data: ' . $e->getMessage(),
@@ -703,122 +540,28 @@ class PengirimanController extends Controller
         }
     }
     
-    /**
-     * Export pie chart details to PDF
-     */
     public function exportPieChartPDF(Request $request)
     {
         try {
             $filter = $request->get('filter', 'bulan_ini');
-            $startDate = $request->get('start_date');
-            $endDate = $request->get('end_date');
+            $dates = $this->resolvePieChartDates($request, $filter);
+            $startDate = $dates['start'];
+            $endDate = $dates['end'];
             
-            $dateField = 'pengiriman.tanggal_kirim';
-            
-            // Determine date range based on filter
-            if ($filter !== 'semua') {
-                switch ($filter) {
-                    case 'bulan_ini':
-                        $startDate = now()->startOfMonth()->format('Y-m-d');
-                        $endDate = now()->endOfMonth()->format('Y-m-d');
-                        break;
-                    case 'tahun_ini':
-                        $startDate = now()->startOfYear()->format('Y-m-d');
-                        $endDate = now()->endOfYear()->format('Y-m-d');
-                        break;
-                    // 'range' uses the provided start/end dates
-                }
-            }
-            
-            // Get all pengiriman with joins
-            $query = Pengiriman::leftJoin('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
-                ->leftJoin('forecasts', 'pengiriman.forecast_id', '=', 'forecasts.id')
-                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-                ->leftJoin('bahan_baku_supplier', 'pengiriman_details.bahan_baku_supplier_id', '=', 'bahan_baku_supplier.id')
-                ->leftJoin('suppliers', 'bahan_baku_supplier.supplier_id', '=', 'suppliers.id')
-                ->select(
-                    'pengiriman.id',
-                    'pengiriman.status',
-                    'pengiriman.total_qty_kirim',
-                    'pengiriman.tanggal_kirim',
-                    'orders.po_number',
-                    DB::raw('GROUP_CONCAT(DISTINCT suppliers.nama SEPARATOR ", ") as supplier_nama'),
-                    'forecasts.total_qty_forecast'
-                )
-                ->groupBy(
-                    'pengiriman.id',
-                    'pengiriman.status',
-                    'pengiriman.total_qty_kirim',
-                    'pengiriman.tanggal_kirim',
-                    'orders.po_number',
-                    'forecasts.total_qty_forecast'
-                );
-            
-            if ($filter !== 'semua' && $startDate && $endDate) {
-                $query->whereBetween($dateField, [$startDate, $endDate]);
-            }
-            
-            $pengirimanData = $query->get();
+            $pengirimanData = $this->getBasePieChartDetailQuery($filter, $startDate, $endDate)->get();
             
             $details = [];
-            $normalCount = 0;
-            $bongkarCount = 0;
-            $gagalCount = 0;
+            $summary = ['normal' => 0, 'bongkar' => 0, 'gagal' => 0, 'total' => 0];
             
             foreach ($pengirimanData as $pengiriman) {
-                $kategori = '';
-                $statusLabel = '';
-                
-                if ($pengiriman->status === 'gagal') {
-                    $kategori = 'gagal';
-                    $statusLabel = 'Ditolak';
-                    $gagalCount++;
-                } else if (in_array($pengiriman->status, ['berhasil', 'menunggu_fisik', 'menunggu_verifikasi'])) {
-                    if ($pengiriman->total_qty_forecast) {
-                        $totalQtyForecast = (float) $pengiriman->total_qty_forecast;
-                        $totalQtyKirim = (float) $pengiriman->total_qty_kirim;
-                        
-                        if ($totalQtyForecast > 0) {
-                            $percentage = ($totalQtyKirim / $totalQtyForecast) * 100;
-                            
-                            if ($percentage > 70) {
-                                $kategori = 'normal';
-                                $statusLabel = 'Normal (' . round($percentage, 1) . '%)';
-                                $normalCount++;
-                            } else {
-                                $kategori = 'bongkar';
-                                $statusLabel = 'Bongkar Sebagian (' . round($percentage, 1) . '%)';
-                                $bongkarCount++;
-                            }
-                        } else {
-                            $kategori = 'normal';
-                            $statusLabel = 'Normal (No Forecast)';
-                            $normalCount++;
-                        }
-                    } else {
-                        $kategori = 'normal';
-                        $statusLabel = 'Normal (No Forecast)';
-                        $normalCount++;
-                    }
-                } else {
-                    // Skip pending status
-                    continue;
+                $formatted = $this->formatPieChartDetailRow($pengiriman, true);
+                if ($formatted) {
+                    $details[] = $formatted;
+                    $summary[$formatted['kategori']]++;
                 }
-                
-                $details[] = [
-                    'id' => $pengiriman->id,
-                    'po_number' => $pengiriman->po_number ?? '-',
-                    'supplier' => $pengiriman->supplier_nama ?? '-',
-                    'tanggal_kirim' => $pengiriman->tanggal_kirim ? $pengiriman->tanggal_kirim->format('d/m/Y') : '-',
-                    'qty_forecast' => $pengiriman->total_qty_forecast ? (float) $pengiriman->total_qty_forecast : 0,
-                    'qty_pengiriman' => (float) $pengiriman->total_qty_kirim,
-                    'status_label' => $statusLabel,
-                    'kategori' => $kategori,
-                    'status_pengiriman' => $pengiriman->status
-                ];
             }
+            $summary['total'] = count($details);
             
-            // Determine report title based on filter
             $reportTitle = '';
             $reportPeriod = '';
             
@@ -841,35 +584,18 @@ class PengirimanController extends Controller
                     break;
             }
             
-            // Summary data
-            $summary = [
-                'normal' => $normalCount,
-                'bongkar' => $bongkarCount,
-                'gagal' => $gagalCount,
-                'total' => count($details)
-            ];
-            
-            // Generate PDF
             $pdf = Pdf::loadView('pages.laporan.pengiriman-pie-chart-pdf', [
                 'details' => $details,
                 'summary' => $summary,
                 'reportTitle' => $reportTitle,
                 'reportPeriod' => $reportPeriod,
                 'generatedAt' => now()->translatedFormat('d F Y H:i')
-            ]);
+            ])->setPaper('a4', 'landscape');
             
-            // Set paper size and orientation
-            $pdf->setPaper('a4', 'landscape');
-            
-            // Generate filename
-            $filename = 'Detail_Pengiriman_' . now()->format('Y-m-d_H-i-s') . '.pdf';
-            
-            return $pdf->download($filename);
+            return $pdf->download('Detail_Pengiriman_' . now()->format('Y-m-d_H-i-s') . '.pdf');
             
         } catch (\Exception $e) {
             Log::error('Export Pie Chart PDF Error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            
             return redirect()->back()->with('error', 'Gagal export PDF: ' . $e->getMessage());
         }
     }

@@ -578,6 +578,7 @@ Route::middleware(["auth"])->group(function () {
             ForecastingController::class,
             "exportPending",
         ])->name("forecast.export-pending");
+        Route::get('/forecasting/export-gagal', [ForecastingController::class, 'exportGagal'])->name('forecast.export-gagal');
 
         // Pengiriman routes
         // Routes tanpa parameter harus diletakkan sebelum resource routes
@@ -597,6 +598,9 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "batalPengiriman",
         ])->name("purchasing.pengiriman.batal");
+        Route::get('/pengiriman/export-gagal', [
+            PengirimanController::class, 'exportGagal'
+        ])->name('pengiriman.export-gagal');
 
         // Delete individual bukti foto
         Route::post("pengiriman/{pengiriman}/delete-bukti-foto", [
@@ -690,6 +694,7 @@ Route::middleware(["auth"])->group(function () {
             PengirimanController::class,
             "uploadFotoTandaTerima",
         ])->name("purchasing.pengiriman.upload-foto-tanda-terima");
+
     });
 
     // Accounting routes - accessible to all authenticated users

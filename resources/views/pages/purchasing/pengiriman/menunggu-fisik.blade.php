@@ -38,27 +38,39 @@
                 </div>
             </div>
 
-            {{-- Filter Section - Horizontal Layout --}}
             <div class="rounded-lg sm:rounded-xl p-2 sm:p-3">
                 <h3 class="flex items-center text-xs sm:text-sm font-bold text-purple-700 mb-2 sm:mb-3">
                     <div class="w-4 h-4 sm:w-5 sm:h-5 bg-purple-500 rounded-full flex items-center justify-center mr-1 sm:mr-2">
                         <i class="fas fa-filter text-white text-xs"></i>
                     </div>
-                    Filter & Urutan
+                    Filter
                 </h3>
-                
-                {{-- Horizontal Filter Layout --}}
+
                 <div class="flex flex-col sm:flex-row items-start sm:items-end gap-2 sm:gap-4">
-                    {{-- Filter by Purchasing --}}
+                    <div class="w-full sm:w-48 shrink-0">
+                        <label class="block text-xs font-medium text-purple-600 mb-1">
+                            <i class="fas fa-calendar mr-1 text-purple-500 text-xs"></i>
+                            Tanggal Mulai
+                        </label>
+                        <input type="date" id="tanggalMulaiFisik" name="tanggal_mulai_fisik" value="{{ request('tanggal_mulai_fisik') }}" class="w-full py-2 px-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 bg-white transition-all duration-200 text-sm">
+                    </div>
+
+                    <div class="w-full sm:w-48 shrink-0">
+                        <label class="block text-xs font-medium text-purple-600 mb-1">
+                            <i class="fas fa-calendar mr-1 text-purple-500 text-xs"></i>
+                            Tanggal Berakhir
+                        </label>
+                        <input type="date" id="tanggalAkhirFisik" name="tanggal_akhir_fisik" value="{{ request('tanggal_akhir_fisik') }}" class="w-full py-2 px-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 bg-white transition-all duration-200 text-sm">
+                    </div>
+
                     <div class="w-full sm:w-64 shrink-0">
                         <label class="block text-xs font-medium text-purple-600 mb-1">
                             <i class="fas fa-user mr-1 text-purple-500 text-xs"></i>
                             PIC Procurement
                         </label>
-                        <select id="filterPurchasingFisik" name="filter_purchasing_fisik" class="w-full py-2 px-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersFisik()">
+                        <select id="filterPurchasingFisik" name="filter_purchasing_fisik" class="w-full py-2 px-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 bg-white transition-all duration-200 text-sm">
                             <option value="">Semua Procurement</option>
                             @php
-                                // Debug: check purchasing data
                                 $purchasingOptions = collect();
                                 foreach($menungguFisik->items() ?? [] as $item) {
                                     if($item->purchasing && $item->purchasing->nama) {
@@ -73,21 +85,11 @@
                         </select>
                     </div>
 
-                    {{-- Sort by Date --}}
-                    <div class="w-full sm:w-48 shrink-0">
-                        <label class="block text-xs font-medium text-purple-600 mb-1">
-                            <i class="fas fa-sort mr-1 text-purple-500 text-xs"></i>
-                            Urutkan
-                        </label>
-                        <select id="sortDateFisik" name="sort_date_fisik" class="w-full py-2 px-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersFisik()">
-                            <option value="">Default</option>
-                            <option value="newest" {{ request('sort_date_fisik') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_date_fisik') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        </select>
-                    </div>
-
-                    {{-- Clear Filter Button --}}
-                    <div class="w-full sm:w-auto sm:ml-auto shrink-0">
+                    <div class="w-full sm:w-auto sm:ml-auto shrink-0 flex gap-2">
+                        <button onclick="applyFiltersFisik()" class="w-full sm:w-auto px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap">
+                            <i class="fas fa-filter mr-1"></i>
+                            Terapkan Filter
+                        </button>
                         <button onclick="clearAllFiltersFisik()" class="w-full sm:w-auto px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap">
                             <i class="fas fa-times mr-1"></i>
                             Hapus Filter
@@ -376,7 +378,8 @@
                                 // Preserve other filters
                                 if (request('search_fisik')) $prevParams['search_fisik'] = request('search_fisik');
                                 if (request('filter_purchasing_fisik')) $prevParams['filter_purchasing_fisik'] = request('filter_purchasing_fisik');
-                                if (request('sort_date_fisik')) $prevParams['sort_date_fisik'] = request('sort_date_fisik');
+                                if (request('tanggal_mulai_fisik')) $prevParams['tanggal_mulai_fisik'] = request('tanggal_mulai_fisik');
+                                if (request('tanggal_akhir_fisik')) $prevParams['tanggal_akhir_fisik'] = request('tanggal_akhir_fisik');
                                 $prevUrl = $prevUrlParts['path'] . '?' . http_build_query($prevParams);
                             @endphp
                             <a href="{{ $prevUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-colors">
@@ -396,7 +399,8 @@
                                         // Preserve other filters
                                         if (request('search_fisik')) $urlParams['search_fisik'] = request('search_fisik');
                                         if (request('filter_purchasing_fisik')) $urlParams['filter_purchasing_fisik'] = request('filter_purchasing_fisik');
-                                        if (request('sort_date_fisik')) $urlParams['sort_date_fisik'] = request('sort_date_fisik');
+                                        if (request('tanggal_mulai_fisik')) $urlParams['tanggal_mulai_fisik'] = request('tanggal_mulai_fisik');
+                                        if (request('tanggal_akhir_fisik')) $urlParams['tanggal_akhir_fisik'] = request('tanggal_akhir_fisik');
                                         $pageUrl = $urlParts['path'] . '?' . http_build_query($urlParams);
                                     @endphp
                                     
@@ -428,7 +432,8 @@
                                 // Preserve other filters
                                 if (request('search_fisik')) $nextParams['search_fisik'] = request('search_fisik');
                                 if (request('filter_purchasing_fisik')) $nextParams['filter_purchasing_fisik'] = request('filter_purchasing_fisik');
-                                if (request('sort_date_fisik')) $nextParams['sort_date_fisik'] = request('sort_date_fisik');
+                                if (request('tanggal_mulai_fisik')) $nextParams['tanggal_mulai_fisik'] = request('tanggal_mulai_fisik');
+                                if (request('tanggal_akhir_fisik')) $nextParams['tanggal_akhir_fisik'] = request('tanggal_akhir_fisik');
                                 $nextUrl = $nextUrlParts['path'] . '?' . http_build_query($nextParams);
                             @endphp
                             <a href="{{ $nextUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-colors">
@@ -492,24 +497,24 @@ function submitSearchFisik() {
 // Apply filters function for server-side filtering
 function applyFiltersFisik() {
     const currentParams = new URLSearchParams(window.location.search);
-    
-    const searchValue = document.getElementById('searchInputFisik').value;
+
+    const tanggalMulai = document.getElementById('tanggalMulaiFisik').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirFisik').value;
     const filterPurchasing = document.getElementById('filterPurchasingFisik').value;
-    const sortDate = document.getElementById('sortDateFisik').value;
-    
+
     currentParams.set('tab', 'menunggu-fisik');
-    
-    if (searchValue) currentParams.set('search_fisik', searchValue);
-    else currentParams.delete('search_fisik');
-    
+
+    if (tanggalMulai) currentParams.set('tanggal_mulai_fisik', tanggalMulai);
+    else currentParams.delete('tanggal_mulai_fisik');
+
+    if (tanggalAkhir) currentParams.set('tanggal_akhir_fisik', tanggalAkhir);
+    else currentParams.delete('tanggal_akhir_fisik');
+
     if (filterPurchasing) currentParams.set('filter_purchasing_fisik', filterPurchasing);
     else currentParams.delete('filter_purchasing_fisik');
-    
-    if (sortDate) currentParams.set('sort_date_fisik', sortDate);
-    else currentParams.delete('sort_date_fisik');
-    
+
     currentParams.delete('fisik_page');
-    
+
     window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
@@ -639,39 +644,46 @@ document.addEventListener('click', function(event) {
 
 // Update active filters on page load
 document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const tanggalMulai = urlParams.get('tanggal_mulai_fisik');
+    if (tanggalMulai) document.getElementById('tanggalMulaiFisik').value = tanggalMulai;
+
+    const tanggalAkhir = urlParams.get('tanggal_akhir_fisik');
+    if (tanggalAkhir) document.getElementById('tanggalAkhirFisik').value = tanggalAkhir;
+
     updateActiveFiltersFisik();
 });
 
 function updateActiveFiltersFisik() {
     const activeFiltersContainer = document.getElementById('activeFiltersFisik');
     const searchValue = document.getElementById('searchInputFisik').value;
+    const tanggalMulai = document.getElementById('tanggalMulaiFisik').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirFisik').value;
     const filterPurchasing = document.getElementById('filterPurchasingFisik').value;
-    const sortDate = document.getElementById('sortDateFisik').value;
-    
+
     let hasActiveFilters = false;
     let filtersHTML = '<span class="text-xs sm:text-sm font-bold text-purple-700">Filter aktif:</span>';
-    
+
     if (searchValue) {
         filtersHTML += `<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs active-filter-tag">Pencarian: ${searchValue}</span>`;
         hasActiveFilters = true;
     }
-    
+    if (tanggalMulai) {
+        filtersHTML += `<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs active-filter-tag">Dari: ${new Date(tanggalMulai).toLocaleDateString('id-ID')}</span>`;
+        hasActiveFilters = true;
+    }
+    if (tanggalAkhir) {
+        filtersHTML += `<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs active-filter-tag">Sampai: ${new Date(tanggalAkhir).toLocaleDateString('id-ID')}</span>`;
+        hasActiveFilters = true;
+    }
     if (filterPurchasing) {
         const purchasingSelect = document.getElementById('filterPurchasingFisik');
         const purchasingName = purchasingSelect.options[purchasingSelect.selectedIndex].text;
         filtersHTML += `<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs active-filter-tag">Procurement: ${purchasingName}</span>`;
         hasActiveFilters = true;
     }
-    
-    if (sortDate) {
-        const dateLabels = {
-            'newest': 'Terbaru',
-            'oldest': 'Terlama'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs active-filter-tag">Urutkan: ${dateLabels[sortDate]}</span>`;
-        hasActiveFilters = true;
-    }
-    
+
     if (hasActiveFilters) {
         filtersHTML += `<button onclick="clearAllFiltersFisik()" class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200 transition-colors ml-2">
             <i class="fas fa-times mr-1"></i>Hapus Semua

@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderDetail;
 use App\Models\Pengiriman;
-use App\Models\TargetOmset;
-use App\Models\OmsetManual;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\View\View;
+use Symfony\Component\HttpFoundation\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\MarginExport;
@@ -19,8 +20,25 @@ use App\Services\ChartService;
 class DashboardController extends Controller
 {
     /**
+     * Status pengiriman yang dianggap "aktif" untuk perhitungan omset & margin.
+     *
+     * Diekstrak sebagai konstanta untuk menghilangkan duplikasi array literal
+     * yang sebelumnya ditulis ulang identik di 4 lokasi berbeda pada file ini.
+     * Isi array TIDAK berubah dari versi sebelumnya.
+     */
+    private const VALID_PENGIRIMAN_STATUSES = ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'];
+
+    /**
      * Helper: tambahkan kondisi exclude pengiriman yang semua invoice-nya berstatus "digabung".
      * Pengiriman tanpa invoice sama sekali tetap dimasukkan (pakai fallback qty * harga_jual).
+     *
+     * Catatan: method ini juga terdapat di App\Services\DashboardService dengan implementasi
+     * identik. Duplikasi ini TIDAK dihapus dalam refactoring ini karena menghapus salah satu
+     * versi memerlukan perubahan simultan pada file Service yang tidak termasuk dalam cakupan
+     * audit/refactor saat ini. Direkomendasikan sebagai tindak lanjut terpisah.
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @return \Illuminate\Database\Query\Builder
      */
     private function applyValidInvoiceFilter($query)
     {
@@ -41,6 +59,10 @@ class DashboardController extends Controller
 
     /**
      * Normalisasi nama bahan baku agar variasi penulisan/alias tergabung dalam 1 kategori.
+     *
+     * Dipertahankan apa adanya (tidak dihapus) meski tidak terpanggil di dalam file ini,
+     * karena tanpa memeriksa seluruh codebase (View, method lain di luar cakupan audit)
+     * tidak dapat dipastikan method ini benar-benar dead code.
      */
     private function normalizeBahanBakuName(?string $name): string
     {
@@ -72,44 +94,24 @@ class DashboardController extends Controller
 
     /**
      * Hitung range tanggal default minggu berjalan (pembagian bulan 1-7, 8-14, 15-21, 22-akhir).
+     *
+     * @return array{start: Carbon, end: Carbon}
      */
     private function getDefaultWeekRange(): array
     {
-        $today        = Carbon::now();
-        $dayOfMonth   = $today->day;
-        $startOfMonth = Carbon::now()->startOfMonth();
-
-        if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
-            $currentWeekOfMonth = 1;
-        } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
-            $currentWeekOfMonth = 2;
-        } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
-            $currentWeekOfMonth = 3;
-        } else {
-            $currentWeekOfMonth = 4;
-        }
-
-        if ($currentWeekOfMonth == 1) {
-            $startOfWeek = $startOfMonth->copy();
-        } else {
-            $startOfWeek = $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
-        }
-
-        if ($currentWeekOfMonth == 4) {
-            $endOfWeek = $startOfMonth->copy()->endOfMonth();
-        } else {
-            $endOfWeek = $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
-        }
+        $resolved = $this->resolveCurrentWeek();
 
         return [
-            'start' => $startOfWeek,
-            'end'   => $endOfWeek,
+            'start' => $resolved['start'],
+            'end'   => $resolved['end'],
         ];
     }
 
     /**
      * Helper kalkulasi week-of-month dari tanggal hari ini.
      * Mengembalikan int 1-4 dan Carbon startOfMonth.
+     *
+     * @return array{week: int, startOfMonth: Carbon}
      */
     private function getCurrentWeekOfMonth(): array
     {
@@ -131,17 +133,101 @@ class DashboardController extends Controller
     }
 
     /**
+     * Satu sumber kebenaran untuk rumus penentuan minggu berjalan (nomor minggu + rentang
+     * tanggal). Rumus ini sebelumnya ditulis ulang secara identik di getDefaultWeekRange(),
+     * downloadMarginMingguIniPdf(), dan downloadMarginMingguIniExcel(). Hasil perhitungan
+     * TIDAK berubah dari versi sebelumnya.
+     *
+     * @return array{week: int, start: Carbon, end: Carbon}
+     */
+    private function resolveCurrentWeek(): array
+    {
+        ['week' => $currentWeekOfMonth, 'startOfMonth' => $startOfMonth] = $this->getCurrentWeekOfMonth();
+
+        $startOfWeek = $currentWeekOfMonth === 1
+            ? $startOfMonth->copy()
+            : $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+
+        $endOfWeek = $currentWeekOfMonth === 4
+            ? $startOfMonth->copy()->endOfMonth()
+            : $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+
+        return [
+            'week'  => $currentWeekOfMonth,
+            'start' => $startOfWeek,
+            'end'   => $endOfWeek,
+        ];
+    }
+
+    /**
+     * Daftar relasi eager-load yang dibutuhkan oleh hitungMarginDariPengiriman().
+     *
+     * Sebelumnya, query margin "bulan ini" (di index() dan PDF) hanya memuat sebagian relasi
+     * ini (tanpa purchasing, order.klien, order.winner.user) padahal hitungMarginDariPengiriman()
+     * selalu mengakses relasi-relasi tersebut — artinya query itu memicu lazy-load N+1 secara
+     * diam-diam. Menyatukan daftar relasi di satu tempat dan memakainya secara konsisten
+     * menghilangkan N+1 tersebut TANPA mengubah data yang dihasilkan (nilai relasi yang diakses
+     * tetap sama, hanya cara pengambilannya yang lebih efisien).
+     *
+     * @return array<int, string>
+     */
+    private function marginEagerLoadRelations(): array
+    {
+        return [
+            'purchasing:id,nama',
+            'order.klien:id,nama,cabang',
+            'order.winner.user:id,nama',
+            'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
+            'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
+            'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
+            'approvalPembayaran',
+            'invoicePenagihan',
+        ];
+    }
+
+    /**
+     * Ambil pengiriman untuk perhitungan margin dalam suatu rentang tanggal.
+     * Menggantikan blok query yang sebelumnya ditulis ulang identik di index()
+     * dan kedua method download.
+     */
+    private function getPengirimanForMarginByRange(Carbon $start, Carbon $end): Collection
+    {
+        return Pengiriman::with($this->marginEagerLoadRelations())
+            ->whereIn('status', self::VALID_PENGIRIMAN_STATUSES)
+            ->whereBetween('tanggal_kirim', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->orderBy('tanggal_kirim', 'asc')
+            ->get();
+    }
+
+    /**
+     * Ambil pengiriman untuk perhitungan gross margin bulan berjalan.
+     * Menggantikan blok query "margin bulan ini" yang sebelumnya ditulis ulang
+     * identik di index() dan downloadMarginMingguIniPdf().
+     */
+    private function getPengirimanForMarginByMonth(int $year, int $month): Collection
+    {
+        return Pengiriman::with($this->marginEagerLoadRelations())
+            ->whereIn('status', self::VALID_PENGIRIMAN_STATUSES)
+            ->whereYear('tanggal_kirim', $year)
+            ->whereMonth('tanggal_kirim', $month)
+            ->get();
+    }
+
+    /**
      * Hitung margin dari collection pengiriman.
      * Konsisten dengan MarginController::hitungHargaBeliJual():
      *  - Total jual/beli diambil LANGSUNG dari amount invoice/approval (bukan harga/kg × qty_kirim)
      *  - Prioritas jual : subtotal → amount_after_refraksi → harga_jual PO
      *  - Prioritas beli : subtotal → amount_after_refraksi → total_harga_kirim → harga_satuan detail
      *
+     * ISI LOGIC METHOD INI TIDAK DIUBAH dari versi sebelumnya (byte-identik pada bagian
+     * kalkulasi finansial) — hanya ditambahkan type hint pada signature.
+     *
      * @param  \Illuminate\Support\Collection  $pengirimanList
      * @param  bool  $withMeta  Sertakan pengiriman_id, status, no_pengiriman, has_refraksi
      * @return array{rows: array, totalMargin: float, totalHargaBeli: float, totalHargaJual: float}
      */
-    private function hitungMarginDariPengiriman($pengirimanList, bool $withMeta = false): array
+    private function hitungMarginDariPengiriman(Collection $pengirimanList, bool $withMeta = false): array
     {
         $toFloat = fn($val) => floatval(str_replace(',', '.', (string)($val ?? 0)));
 
@@ -260,11 +346,31 @@ class DashboardController extends Controller
         return compact('rows', 'totalMargin', 'totalHargaBeli', 'totalHargaJual');
     }
 
+    /**
+     * Bungkus hitungMarginDariPengiriman() dan tambahkan perhitungan gross margin percentage.
+     *
+     * Rumus `$totalHargaJual > 0 ? ($totalMargin / $totalHargaJual) * 100 : 0` sebelumnya
+     * ditulis ulang identik di 4 lokasi (index() 2×, downloadMarginMingguIniPdf() 2×).
+     * Hasil perhitungan TIDAK berubah dari versi sebelumnya.
+     *
+     * @return array{rows: array, totalMargin: float, totalHargaBeli: float, totalHargaJual: float, grossMarginPercentage: float}
+     */
+    private function computeGrossMargin(Collection $pengirimanList, bool $withMeta = false): array
+    {
+        $hasil = $this->hitungMarginDariPengiriman($pengirimanList, $withMeta);
+
+        $grossMarginPercentage = $hasil['totalHargaJual'] > 0
+            ? ($hasil['totalMargin'] / $hasil['totalHargaJual']) * 100
+            : 0;
+
+        return $hasil + ['grossMarginPercentage' => $grossMarginPercentage];
+    }
+
     // =========================================================================
     // INDEX
     // =========================================================================
 
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         // ========== PARSE DATE RANGE FILTER (WEEKLY) ==========
         $useCustomRange = false;
@@ -286,7 +392,13 @@ class DashboardController extends Controller
                     $useCustomRange = true;
                 }
             } catch (\Exception $e) {
-                // fallback ke default
+                // Fallback ke default range (behavior tidak berubah), namun kini tercatat di log
+                // agar kegagalan parsing filter tanggal dari user dapat ditelusuri.
+                Log::warning('Dashboard: gagal parsing filter tanggal, fallback ke range default.', [
+                    'start_date' => $startDateParam,
+                    'end_date'   => $endDateParam,
+                    'error'      => $e->getMessage(),
+                ]);
             }
         }
 
@@ -294,11 +406,38 @@ class DashboardController extends Controller
         $rangeEndLabel   = $weekEnd->format('d M Y');
 
         $metrics = DashboardService::getSummaryMetrics($weekStart, $weekEnd);
-        extract($metrics);
+
+        [
+            'targetMingguan'         => $targetMingguan,
+            'targetBulanan'          => $targetBulanan,
+            'targetTahunan'          => $targetTahunan,
+            'targetMingguanAdjusted' => $targetMingguanAdjusted,
+            'targetBulananAdjusted'  => $targetBulananAdjusted,
+            'omsetMingguIni'         => $omsetMingguIni,
+            'omsetBulanIni'          => $omsetBulanIni,
+            'omsetTahunIni'          => $omsetTahunIni,
+            'omsetSistemMingguIni'   => $omsetSistemMingguIni,
+            'omsetManualMingguIni'   => $omsetManualMingguIni,
+            'omsetSistemBulanIni'    => $omsetSistemBulanIni,
+            'omsetManualBulanIni'    => $omsetManualBulanIni,
+            'progressMinggu'         => $progressMinggu,
+            'progressBulan'          => $progressBulan,
+            'progressTahun'          => $progressTahun,
+            'totalOutstanding'       => $totalOutstanding,
+            'totalQtyOutstanding'    => $totalQtyOutstanding,
+            'poBerjalan'             => $poBerjalan,
+        ] = $metrics;
 
         // ========== PENGIRIMAN MINGGU INI ==========
         $deliveryData = DashboardService::getWeeklyDeliveries($weekStart, $weekEnd);
-        extract($deliveryData);
+
+        [
+            'pengirimanNormalList'               => $pengirimanNormalList,
+            'pengirimanBongkarSebagianList'      => $pengirimanBongkarSebagianList,
+            'pengirimanNormalMingguIni'          => $pengirimanNormalMingguIni,
+            'pengirimanBongkarSebagianMingguIni' => $pengirimanBongkarSebagianMingguIni,
+            'totalQtyPengirimanMingguIni'        => $totalQtyPengirimanMingguIni,
+        ] = $deliveryData;
 
         // ========== PENGIRIMAN GAGAL ==========
         $pengirimanGagalList = Pengiriman::with(['order.klien', 'purchasing'])
@@ -342,51 +481,23 @@ class DashboardController extends Controller
             ->sum(DB::raw('COALESCE(order_details.original_qty, order_details.qty) * order_details.harga_jual'));
 
         // ========== MARGIN MINGGU INI ==========
-        $pengirimanMarginMingguIni = Pengiriman::with([
-            'purchasing:id,nama',
-            'order.klien:id,nama,cabang',
-            'order.winner.user:id,nama',
-            'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
-            'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
-            'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
-            'approvalPembayaran',
-            'invoicePenagihan',
-        ])
-        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-        ->whereBetween('tanggal_kirim', [$weekStart->copy()->startOfDay(), $weekEnd->copy()->endOfDay()])
-        ->orderBy('tanggal_kirim', 'asc')
-        ->get();
+        $pengirimanMarginMingguIni = $this->getPengirimanForMarginByRange($weekStart, $weekEnd);
 
-        $hasilMingguIni          = $this->hitungMarginDariPengiriman($pengirimanMarginMingguIni, withMeta: true);
+        $hasilMingguIni          = $this->computeGrossMargin($pengirimanMarginMingguIni, withMeta: true);
         $topMarginMingguIni      = $hasilMingguIni['rows'];
         $totalMarginMingguIni    = $hasilMingguIni['totalMargin'];
         $totalHargaBeliMingguIni = $hasilMingguIni['totalHargaBeli'];
         $totalHargaJualMingguIni = $hasilMingguIni['totalHargaJual'];
-
-        $grossMarginMingguIni = $totalHargaJualMingguIni > 0
-            ? ($totalMarginMingguIni / $totalHargaJualMingguIni) * 100
-            : 0;
+        $grossMarginMingguIni    = $hasilMingguIni['grossMarginPercentage'];
 
         // ========== GROSS MARGIN BULAN INI ==========
-        $pengirimanMarginBulanIni = Pengiriman::with([
-            'pengirimanDetails.bahanBakuSupplier',
-            'pengirimanDetails.orderDetail',
-            'approvalPembayaran',
-            'invoicePenagihan',
-        ])
-        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-        ->whereYear('tanggal_kirim', Carbon::now()->year)
-        ->whereMonth('tanggal_kirim', Carbon::now()->month)
-        ->get();
+        $pengirimanMarginBulanIni = $this->getPengirimanForMarginByMonth(Carbon::now()->year, Carbon::now()->month);
 
-        $hasilBulanIni          = $this->hitungMarginDariPengiriman($pengirimanMarginBulanIni);
+        $hasilBulanIni          = $this->computeGrossMargin($pengirimanMarginBulanIni);
         $totalMarginBulanIni    = $hasilBulanIni['totalMargin'];
         $totalHargaBeliBulanIni = $hasilBulanIni['totalHargaBeli'];
         $totalHargaJualBulanIni = $hasilBulanIni['totalHargaJual'];
-
-        $grossMarginBulanIni = $totalHargaJualBulanIni > 0
-            ? ($totalMarginBulanIni / $totalHargaJualBulanIni) * 100
-            : 0;
+        $grossMarginBulanIni    = $hasilBulanIni['grossMarginPercentage'];
 
         return view('pages.dashboard', compact(
             'targetMingguan', 'targetBulanan', 'targetTahunan',
@@ -445,63 +556,27 @@ class DashboardController extends Controller
     // DOWNLOAD MARGIN MINGGU INI — PDF
     // =========================================================================
 
-    public function downloadMarginMingguIniPdf()
+    public function downloadMarginMingguIniPdf(): Response
     {
-        ['week' => $currentWeekOfMonth, 'startOfMonth' => $startOfMonth] = $this->getCurrentWeekOfMonth();
-
-        $startOfWeek = $currentWeekOfMonth == 1
-            ? $startOfMonth->copy()
-            : $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
-
-        $endOfWeek = $currentWeekOfMonth == 4
-            ? $startOfMonth->copy()->endOfMonth()
-            : $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+        ['week' => $currentWeekOfMonth, 'start' => $startOfWeek, 'end' => $endOfWeek] = $this->resolveCurrentWeek();
 
         // ---- Margin minggu ini ----
-        $pengirimanMargin = Pengiriman::with([
-            'purchasing:id,nama',
-            'order.klien:id,nama,cabang',
-            'order.winner.user:id,nama',
-            'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
-            'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
-            'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
-            'approvalPembayaran',
-            'invoicePenagihan',
-        ])
-        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-        ->whereBetween('tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
-        ->orderBy('tanggal_kirim', 'asc')
-        ->get();
+        $pengirimanMargin = $this->getPengirimanForMarginByRange($startOfWeek, $endOfWeek);
 
-        $hasilPdf                = $this->hitungMarginDariPengiriman($pengirimanMargin, withMeta: true);
+        $hasilPdf                = $this->computeGrossMargin($pengirimanMargin, withMeta: true);
         $marginDataMingguIni     = $hasilPdf['rows'];
         $totalMarginMingguIni    = $hasilPdf['totalMargin'];
         $totalHargaBeliMingguIni = $hasilPdf['totalHargaBeli'];
         $totalHargaJualMingguIni = $hasilPdf['totalHargaJual'];
-
-        $grossMarginMingguIni = $totalHargaJualMingguIni > 0
-            ? ($totalMarginMingguIni / $totalHargaJualMingguIni) * 100
-            : 0;
+        $grossMarginMingguIni    = $hasilPdf['grossMarginPercentage'];
 
         // ---- Gross margin bulan ini ----
-        $pengirimanMarginBulanIni = Pengiriman::with([
-            'pengirimanDetails.bahanBakuSupplier',
-            'pengirimanDetails.orderDetail',
-            'approvalPembayaran',
-            'invoicePenagihan',
-        ])
-        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-        ->whereYear('tanggal_kirim', Carbon::now()->year)
-        ->whereMonth('tanggal_kirim', Carbon::now()->month)
-        ->get();
+        $pengirimanMarginBulanIni = $this->getPengirimanForMarginByMonth(Carbon::now()->year, Carbon::now()->month);
 
-        $hasilBulanPdf          = $this->hitungMarginDariPengiriman($pengirimanMarginBulanIni);
+        $hasilBulanPdf          = $this->computeGrossMargin($pengirimanMarginBulanIni);
         $totalMarginBulanIni    = $hasilBulanPdf['totalMargin'];
         $totalHargaJualBulanIni = $hasilBulanPdf['totalHargaJual'];
-
-        $grossMarginBulanIni = $totalHargaJualBulanIni > 0
-            ? ($totalMarginBulanIni / $totalHargaJualBulanIni) * 100
-            : 0;
+        $grossMarginBulanIni    = $hasilBulanPdf['grossMarginPercentage'];
 
         $data = [
             'marginData'          => $marginDataMingguIni,
@@ -518,47 +593,38 @@ class DashboardController extends Controller
             'generatedAt'         => Carbon::now()->format('d/m/Y H:i:s'),
         ];
 
-        $pdf = Pdf::loadView('pages.dashboard.pdf.margin-minggu-ini', $data);
-        $pdf->setPaper('a4', 'landscape');
+        try {
+            $pdf = Pdf::loadView('pages.dashboard.pdf.margin-minggu-ini', $data);
+            $pdf->setPaper('a4', 'landscape');
 
-        return $pdf->download('Margin_Minggu_' . $currentWeekOfMonth . '_' . Carbon::now()->format('M_Y') . '.pdf');
+            return $pdf->download('Margin_Minggu_' . $currentWeekOfMonth . '_' . Carbon::now()->format('M_Y') . '.pdf');
+        } catch (\Throwable $e) {
+            // Response tetap diteruskan ke exception handler Laravel seperti sebelumnya
+            // (perilaku tidak berubah); hanya ditambahkan pencatatan konteks bisnis.
+            Log::error('Dashboard: gagal membuat PDF margin minggu ini.', [
+                'week'  => $currentWeekOfMonth,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
     }
 
     // =========================================================================
     // DOWNLOAD MARGIN MINGGU INI — EXCEL
     // =========================================================================
 
-    public function downloadMarginMingguIniExcel()
+    public function downloadMarginMingguIniExcel(): Response
     {
-        ['week' => $currentWeekOfMonth, 'startOfMonth' => $startOfMonth] = $this->getCurrentWeekOfMonth();
+        ['week' => $currentWeekOfMonth, 'start' => $startOfWeek, 'end' => $endOfWeek] = $this->resolveCurrentWeek();
 
-        $startOfWeek = $currentWeekOfMonth == 1
-            ? $startOfMonth->copy()
-            : $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
+        $pengirimanMargin = $this->getPengirimanForMarginByRange($startOfWeek, $endOfWeek);
 
-        $endOfWeek = $currentWeekOfMonth == 4
-            ? $startOfMonth->copy()->endOfMonth()
-            : $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
-
-        $pengirimanMargin = Pengiriman::with([
-            'purchasing:id,nama',
-            'order.klien:id,nama,cabang',
-            'order.winner.user:id,nama',
-            'pengirimanDetails.bahanBakuSupplier.supplier:id,nama',
-            'pengirimanDetails.bahanBakuSupplier:id,nama,supplier_id',
-            'pengirimanDetails.orderDetail.bahanBakuKlien:id,nama',
-            'approvalPembayaran',
-            'invoicePenagihan',
-        ])
-        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-        ->whereBetween('tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
-        ->orderBy('tanggal_kirim', 'asc')
-        ->get();
-
-        $hasilExcel              = $this->hitungMarginDariPengiriman($pengirimanMargin, withMeta: true);
+        $hasilExcel              = $this->computeGrossMargin($pengirimanMargin, withMeta: true);
         $totalMarginMingguIni    = $hasilExcel['totalMargin'];
         $totalHargaBeliMingguIni = $hasilExcel['totalHargaBeli'];
         $totalHargaJualMingguIni = $hasilExcel['totalHargaJual'];
+        $grossMarginMingguIni    = $hasilExcel['grossMarginPercentage'];
 
         // Format tanggal_kirim jadi string untuk Excel
         $marginDataMingguIni = array_map(function ($row) {
@@ -568,10 +634,6 @@ class DashboardController extends Controller
             )->format('d/m/Y');
             return $row;
         }, $hasilExcel['rows']);
-
-        $grossMarginMingguIni = $totalHargaJualMingguIni > 0
-            ? ($totalMarginMingguIni / $totalHargaJualMingguIni) * 100
-            : 0;
 
         $profitCount = count(array_filter($marginDataMingguIni, fn($item) => $item['margin'] >= 0));
         $lossCount   = count($marginDataMingguIni) - $profitCount;
@@ -591,9 +653,18 @@ class DashboardController extends Controller
             'end_date'   => $endOfWeek->format('Y-m-d'),
         ];
 
-        return Excel::download(
-            new MarginExport($marginDataMingguIni, $totals, $filters),
-            'Margin_Minggu_' . $currentWeekOfMonth . '_' . Carbon::now()->format('M_Y') . '.xlsx'
-        );
+        try {
+            return Excel::download(
+                new MarginExport($marginDataMingguIni, $totals, $filters),
+                'Margin_Minggu_' . $currentWeekOfMonth . '_' . Carbon::now()->format('M_Y') . '.xlsx'
+            );
+        } catch (\Throwable $e) {
+            Log::error('Dashboard: gagal membuat Excel margin minggu ini.', [
+                'week'  => $currentWeekOfMonth,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
     }
 }

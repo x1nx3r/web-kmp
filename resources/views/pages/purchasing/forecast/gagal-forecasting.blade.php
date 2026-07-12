@@ -19,7 +19,7 @@
                                    id="searchInputGagal" 
                                    name="search_gagal"
                                    value="{{ request('search_gagal') }}"
-                                   placeholder="Cari No. PO, nama klien, atau no forecast..." 
+                                   placeholder="Cari No. PO, nama klien/pabrik, PIC, atau bahan baku..." 
                                    class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-gagal"
                                    onkeypress="handleSearchKeyPressGagal(event)">
                             <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
@@ -37,55 +37,51 @@
                     </div>
                 </div>
             </div>
-
             {{-- Filter Section --}}
             <div class="rounded-lg sm:rounded-xl p-2 sm:p-4">
                 <h3 class="flex items-center text-xs sm:text-sm font-bold text-red-700 mb-2 sm:mb-4">
                     <div class="w-4 h-4 sm:w-6 sm:h-6 bg-red-500 rounded-full flex items-center justify-center mr-1 sm:mr-2">
                         <i class="fas fa-filter text-white text-xs"></i>
                     </div>
-                    Filter & Urutan
+                    Filter
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                    {{-- Date Range Filter --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
                             <i class="fas fa-calendar mr-1 sm:mr-2 text-red-500 text-xs"></i>
-                            Tanggal Forecast
+                            Tanggal Mulai
                         </label>
-                        <input type="date" id="dateRangeFilterGagal" name="date_range_gagal" value="{{ request('date_range_gagal') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersGagal()">
+                        <input type="date" id="tanggalMulaiFilterGagal" name="tanggal_mulai_gagal" value="{{ request('tanggal_mulai_gagal') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                     </div>
 
-                    {{-- Filter by PIC Purchasing --}}
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
+                            <i class="fas fa-calendar mr-1 sm:mr-2 text-red-500 text-xs"></i>
+                            Tanggal Berakhir
+                        </label>
+                        <input type="date" id="tanggalAkhirFilterGagal" name="tanggal_akhir_gagal" value="{{ request('tanggal_akhir_gagal') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm">
+                    </div>
+
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
                             <i class="fas fa-user-tie mr-1 sm:mr-2 text-red-500 text-xs"></i>
                             PIC Procurement
                         </label>
-                        <select id="filterPurchasingGagal" name="filter_purchasing_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersGagal()">
+                        <select id="filterPurchasingGagal" name="filter_purchasing_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                             <option value="">Semua PIC</option>
                             @foreach($gagalPurchasingOptions as $id => $nama)
                                 <option value="{{ $id }}" {{ request('filter_purchasing_gagal') == $id ? 'selected' : '' }}>{{ $nama }}</option>
                             @endforeach
                         </select>
                     </div>
-
-                    {{-- Sort Order --}}
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
-                            <i class="fas fa-sort mr-1 sm:mr-2 text-red-500 text-xs"></i>
-                            Urutan
-                        </label>
-                        <select id="sortOrderGagal" name="sort_order_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersGagal()">
-                            <option value="newest" {{ request('sort_order_gagal') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_order_gagal') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        </select>
-                    </div>
                 </div>
-                
-                {{-- Clear Filter Button (Below Grid) --}}
-                <div class="flex justify-end mt-3">
-                    <button onclick="clearAllFiltersGagal()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+
+                <div class="flex justify-end gap-2 mt-3">
+                    <button onclick="applyFiltersGagal()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+                        <i class="fas fa-filter mr-1"></i>
+                        Terapkan Filter
+                    </button>
+                    <button onclick="clearAllFiltersGagal()" class="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
                         <i class="fas fa-times mr-1"></i>
                         Hapus Semua Filter
                     </button>
@@ -106,6 +102,11 @@
                     <i class="fas fa-info-circle mr-1"></i>
                     Total: {{ $gagalForecasts->total() }} forecast (Halaman {{ $gagalForecasts->currentPage() }} dari {{ $gagalForecasts->lastPage() }})
                 </div>
+                <a href="{{ route('forecast.export-gagal', request()->all()) }}" 
+                class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-excel mr-2"></i>
+                    Export Excel
+                </a>
             </div>
         </div>
 
@@ -232,15 +233,40 @@
                                         </a>
                                     @endif
 
-                                    @foreach($gagalForecasts->getUrlRange(1, $gagalForecasts->lastPage()) as $page => $url)
-                                        @if($page == $gagalForecasts->currentPage())
+                                    @php
+                                        $currentPage = $gagalForecasts->currentPage();
+                                        $lastPage = $gagalForecasts->lastPage();
+                                        $onEachSide = 2;
+                                        $start = max($currentPage - $onEachSide, 1);
+                                        $end = min($currentPage + $onEachSide, $lastPage);
+                                    @endphp
+
+                                    {{-- Halaman pertama + elipsis --}}
+                                    @if($start > 1)
+                                        <a href="{{ $gagalForecasts->url(1) }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">1</a>
+                                        @if($start > 2)
+                                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5">...</span>
+                                        @endif
+                                    @endif
+
+                                    {{-- Halaman di sekitar halaman aktif --}}
+                                    @for($page = $start; $page <= $end; $page++)
+                                        @if($page == $currentPage)
                                             <span aria-current="page">
                                                 <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-white bg-red-600 border border-red-600 cursor-default leading-5">{{ $page }}</span>
                                             </span>
                                         @else
-                                            <a href="{{ $url }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
+                                            <a href="{{ $gagalForecasts->url($page) }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
                                         @endif
-                                    @endforeach
+                                    @endfor
+
+                                    {{-- Elipsis + halaman terakhir --}}
+                                    @if($end < $lastPage)
+                                        @if($end < $lastPage - 1)
+                                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5">...</span>
+                                        @endif
+                                        <a href="{{ $gagalForecasts->url($lastPage) }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">{{ $lastPage }}</a>
+                                    @endif
 
                                     @if($gagalForecasts->hasMorePages())
                                         <a href="{{ $gagalForecasts->nextPageUrl() }}&tab=gagal" rel="next" class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150" aria-label="Next">
@@ -278,86 +304,62 @@ function handleSearchKeyPressGagal(event) {
     }
 }
 
-// Function to submit search form
 function submitSearchGagal() {
-    const searchInput = document.getElementById('searchInputGagal');
-    const dateFilter = document.getElementById('dateRangeFilterGagal');
-    const filterPurchasing = document.getElementById('filterPurchasingGagal');
-    const sortOrder = document.getElementById('sortOrderGagal');
-    
-    // Build query parameters
-    const params = new URLSearchParams();
-    
-    if (searchInput.value.trim()) {
-        params.append('search_gagal', searchInput.value.trim());
-    }
-    
-    if (dateFilter.value) {
-        params.append('date_range_gagal', dateFilter.value);
-    }
-    
-    if (filterPurchasing.value) {
-        params.append('filter_purchasing_gagal', filterPurchasing.value);
-    }
-    
-    if (sortOrder.value) {
-        params.append('sort_order_gagal', sortOrder.value);
-    }
-    
-    // Add tab parameter to stay on gagal tab
-    params.append('tab', 'gagal');
-    
-    // Reset to page 1 when searching/filtering
-    params.append('page_gagal', '1');
-    
-    // Redirect with new parameters
-    const url = '/procurement/forecasting' + (params.toString() ? '?' + params.toString() : '');
-    window.location.href = url;
-}
-
-// Function to apply filters
-function applyFiltersGagal() {
-    submitSearchGagal();
-}
-
-// Function to clear all filters
-function clearAllFiltersGagal() {
     const currentParams = new URLSearchParams(window.location.search);
-    
-    // Keep only the tab parameter
+    const searchValue = document.getElementById('searchInputGagal').value;
+
+    currentParams.set('tab', 'gagal');
+
+    if (searchValue.trim()) currentParams.set('search_gagal', searchValue.trim());
+    else currentParams.delete('search_gagal');
+
+    currentParams.delete('page_gagal');
+
+    window.location.href = '/procurement/forecasting?' + currentParams.toString();
+}
+
+function applyFiltersGagal() {
+    const currentParams = new URLSearchParams(window.location.search);
+
+    const tanggalMulai = document.getElementById('tanggalMulaiFilterGagal').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirFilterGagal').value;
+    const filterPurchasing = document.getElementById('filterPurchasingGagal').value;
+
+    currentParams.set('tab', 'gagal');
+
+    if (tanggalMulai) currentParams.set('tanggal_mulai_gagal', tanggalMulai);
+    else currentParams.delete('tanggal_mulai_gagal');
+
+    if (tanggalAkhir) currentParams.set('tanggal_akhir_gagal', tanggalAkhir);
+    else currentParams.delete('tanggal_akhir_gagal');
+
+    if (filterPurchasing) currentParams.set('filter_purchasing_gagal', filterPurchasing);
+    else currentParams.delete('filter_purchasing_gagal');
+
+    currentParams.delete('page_gagal');
+
+    window.location.href = '/procurement/forecasting?' + currentParams.toString();
+}
+
+function clearAllFiltersGagal() {
     const newParams = new URLSearchParams();
     newParams.set('tab', 'gagal');
-    
     window.location.href = '/procurement/forecasting?' + newParams.toString();
 }
 
-// Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Set filter values from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Set search value
+
     const searchValue = urlParams.get('search_gagal');
-    if (searchValue) {
-        document.getElementById('searchInputGagal').value = searchValue;
-    }
-    
-    // Set date range filter
-    const dateRange = urlParams.get('date_range_gagal');
-    if (dateRange) {
-        document.getElementById('dateRangeFilterGagal').value = dateRange;
-    }
-    
-    // Set purchasing filter
+    if (searchValue) document.getElementById('searchInputGagal').value = searchValue;
+
+    const tanggalMulai = urlParams.get('tanggal_mulai_gagal');
+    if (tanggalMulai) document.getElementById('tanggalMulaiFilterGagal').value = tanggalMulai;
+
+    const tanggalAkhir = urlParams.get('tanggal_akhir_gagal');
+    if (tanggalAkhir) document.getElementById('tanggalAkhirFilterGagal').value = tanggalAkhir;
+
     const filterPurchasing = urlParams.get('filter_purchasing_gagal');
-    if (filterPurchasing) {
-        document.getElementById('filterPurchasingGagal').value = filterPurchasing;
-    }
-    
-    // Set sort order filter
-    const sortOrder = urlParams.get('sort_order_gagal');
-    if (sortOrder) {
-        document.getElementById('sortOrderGagal').value = sortOrder;
-    }
+    if (filterPurchasing) document.getElementById('filterPurchasingGagal').value = filterPurchasing;
 });
 </script>

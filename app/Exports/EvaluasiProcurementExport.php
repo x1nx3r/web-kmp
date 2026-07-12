@@ -26,6 +26,12 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
     protected $supplier;
     protected $supplierName;
 
+    /**
+     * Kata kunci yang menandai catatan sebagai "Tambahan".
+     * Dicek dengan str_contains (case-insensitive), bukan exact match.
+     */
+    private const KEYWORD_TAMBAHAN = 'tambahan';
+
     public function __construct(
         $startDate,
         $endDate,
@@ -65,7 +71,7 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
         });
 
         $omsetTambahan = $forecastData
-            ->filter(fn($f) => trim((string) $f->catatan) === 'Tambahan'
+            ->filter(fn($f) => $this->isTambahan($f->catatan)
                 && in_array($f->pengiriman_status, $statusRealisasi))
             ->sum(function ($f) use ($statusRealisasi) {
                 return $this->hitungRealisasi($f, $statusRealisasi);
@@ -166,7 +172,8 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
                 $keterangan = '';
             }
 
-            $isTambahan   = trim((string) $f->catatan) === 'Tambahan';
+            // Catatan mengandung kata "tambahan" (tidak lagi harus exact match)
+            $isTambahan   = $this->isTambahan($f->catatan);
             $tambahanSufx = $isTambahan ? ' [TAMBAHAN]' : '';
 
             $data[] = [
@@ -270,7 +277,7 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
             $dataIdx = 0;
             foreach ($forecastData as $f) {
                 $row = $dataStartRow + $dataIdx;
-                if (trim((string) $f->catatan) === 'Tambahan') {
+                if ($this->isTambahan($f->catatan)) {
                     $sheet->getStyle("A{$row}:L{$row}")->applyFromArray([
                         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF9C4']],
                     ]);
@@ -427,5 +434,14 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
 
         // realisasi_amount sudah COALESCE(invoice, SUM detail) dari subquery
         return (float) ($forecast->realisasi_amount ?? 0);
+    }
+
+    /**
+     * Cek apakah catatan mengandung kata "tambahan" (case-insensitive, partial match).
+     * Sebelumnya exact match ('Tambahan' === catatan), sekarang cukup mengandung kata itu.
+     */
+    private function isTambahan($catatan): bool
+    {
+        return str_contains(strtolower(trim((string) $catatan)), self::KEYWORD_TAMBAHAN);
     }
 }

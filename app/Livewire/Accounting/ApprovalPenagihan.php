@@ -5,23 +5,23 @@ namespace App\Livewire\Accounting;
 use App\Models\Pengiriman;
 use App\Models\InvoicePenagihan;
 use App\Models\ApprovalPenagihan as ApprovalPenagihanModel;
-use App\Models\ApprovalHistory;
 use App\Models\CompanySetting;
 use App\Services\Notifications\ApprovalPenagihanNotificationService;
+use App\Livewire\Accounting\Traits\WithInvoiceShared;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Carbon\Carbon;
 
 class ApprovalPenagihan extends Component
 {
-    use WithPagination;
+    use WithPagination, WithInvoiceShared;
 
     public $search = '';
     public $customerFilter = 'all';
     public $supplierFilter = 'all';
-    public $activeTab = 'pending'; // pending or approved
+    public $activeTab = 'pending';
     public $selectedData = null;
     public $selectedShipment = null;      
     public $selectedShipments = null;     
@@ -35,468 +35,144 @@ class ApprovalPenagihan extends Component
     public $approvalId = null;
     public $selectedApprovalIds = [];
 
-    public function getIsMergeValidProperty()
-    {
-        if (empty($this->selectedApprovalIds)) {
-            return false;
-        }
-
-        $approvals = ApprovalPenagihanModel::with('invoice')->whereIn('id', $this->selectedApprovalIds)->get();
-
-        if ($approvals->isEmpty()) {
-            return false;
-        }
-
-        $customerNames = $approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique();
-        return $customerNames->count() === 1;
-    }
-
-    // Invoice form
-    public $invoiceForm = [
-        'customer_name' => '',
-        'customer_address' => '',
-        'customer_phone' => '',
-        'customer_email' => '',
-        'refraksi_type' => 'qty', // 'qty' or 'rupiah'
-        'refraksi_value' => 0,
-        'notes' => '',
-    ];
-
-    // Edit forms
-    public $customerForm = [
-        'customer_name' => '',
-        'customer_address' => '',
-        'customer_phone' => '',
-        'customer_email' => '',
-    ];
-
-    public $dateForm = [
-        'invoice_date' => '',
-        'due_date' => '',
-    ];
-
-    public $bankForm = [
-        'bank_name' => '',
-        'bank_account_number' => '',
-        'bank_account_name' => '',
-    ];
-
+    // Forms
+    public $invoiceForm = ['customer_name' => '', 'customer_address' => '', 'customer_phone' => '', 'customer_email' => '', 'refraksi_type' => 'qty', 'refraksi_value' => 0, 'notes' => ''];
+    public $customerForm = ['customer_name' => '', 'customer_address' => '', 'customer_phone' => '', 'customer_email' => ''];
+    public $dateForm = ['invoice_date' => '', 'due_date' => ''];
+    public $bankForm = ['bank_name' => '', 'bank_account_number' => '', 'bank_account_name' => ''];
     public $invoiceNotesForm = '';
     public $invoiceNumberForm = '';
     public $totalHargaJualForm = 0;
-
     public $shipmentRefraksi = [];
     public $shipmentExpenses = [];
-    public $newExpenseType = '';
-    public $newExpenseAmount = 0;
 
-    protected $queryString = [
-        'search' => ['except' => ''],
-        'customerFilter' => ['except' => 'all'],
-        'supplierFilter' => ['except' => 'all'],
-        'activeTab' => ['except' => 'pending'],
-    ];
-
-    protected $rules = [
-        'invoiceForm.customer_name' => 'required|string|max:255',
-        'invoiceForm.customer_address' => 'required|string',
-        'invoiceForm.customer_phone' => 'nullable|string|max:20',
-        'invoiceForm.customer_email' => 'nullable|email|max:255',
-        'invoiceForm.refraksi_type' => 'required|in:qty,rupiah,lainnya',
-        'invoiceForm.refraksi_value' => 'required|numeric|min:0',
-        'invoiceForm.notes' => 'nullable|string',
-        'customerForm.customer_name' => 'required|string|max:255',
-        'customerForm.customer_address' => 'required|string',
-        'customerForm.customer_phone' => 'nullable|string|max:20',
-        'customerForm.customer_email' => 'nullable|email|max:255',
-        'dateForm.invoice_date' => 'required|date',
-        'dateForm.due_date' => 'required|date',
-        'bankForm.bank_name' => 'required|string|max:255',
-        'bankForm.bank_account_number' => 'required|string|max:50',
-        'bankForm.bank_account_name' => 'required|string|max:255',
-        'invoiceNumberForm' => 'required|string|max:191',
-    ];
+    protected $queryString = ['search' => ['except' => ''], 'customerFilter' => ['except' => 'all'], 'supplierFilter' => ['except' => 'all'], 'activeTab' => ['except' => 'pending']];
 
     public function mount($approvalId = null, $editMode = false)
     {
         $this->editMode = $editMode;
         $this->approvalId = $approvalId;
-
-        // Check permissions - manager_accounting, direktur, or superadmin can manage
-        $user = Auth::user();
-        $this->canManage = in_array($user->role, ['manager_accounting', 'direktur', 'superadmin','staff_accounting']);
-
-        // If we have approvalId, auto-open detail modal
-        if ($approvalId) {
-            $this->showDetail($approvalId);
-        }
+        $this->canManage = in_array(Auth::user()->role, ['manager_accounting', 'direktur', 'superadmin','staff_accounting']);
+        if ($approvalId) $this->showDetail($approvalId);
     }
 
-    public function updatingSearch()
-    {
-        $this->resetPage();
-        $this->resetPage('page_without_invoice');
-        $this->selectedApprovalIds = [];
-    }
+    public function updatingSearch() { $this->resetPage(); $this->resetPage('page_without_invoice'); $this->selectedApprovalIds = []; }
+    public function updatingCustomerFilter() { $this->resetPage(); $this->resetPage('page_without_invoice'); $this->selectedApprovalIds = []; }
+    public function updatingSupplierFilter() { $this->resetPage(); $this->resetPage('page_without_invoice'); $this->selectedApprovalIds = []; }
+    public function setActiveTab($tab) { $this->activeTab = $tab; $this->resetPage(); $this->resetPage('page_without_invoice'); $this->selectedApprovalIds = []; }
+    public function gotoPage($page, $pageName = 'page_approval') { $this->setPage($page, $pageName); }
 
-    public function updatingCustomerFilter()
+    public function getIsMergeValidProperty()
     {
-        $this->resetPage();
-        $this->resetPage('page_without_invoice');
-        $this->selectedApprovalIds = [];
-    }
-
-    public function updatingSupplierFilter()
-    {
-        $this->resetPage();
-        $this->resetPage('page_without_invoice');
-        $this->selectedApprovalIds = [];
-    }
-
-    public function setActiveTab($tab)
-    {
-        $this->activeTab = $tab;
-        $this->resetPage();
-        $this->resetPage('page_without_invoice');
-        $this->selectedApprovalIds = [];
-    }
-
-    public function gotoPage($page, $pageName = 'page_approval')
-    {
-        // Use Livewire's setPage method from WithPagination trait
-        $this->setPage($page, $pageName);
+        if (empty($this->selectedApprovalIds)) return false;
+        $approvals = ApprovalPenagihanModel::with('invoice')->whereIn('id', $this->selectedApprovalIds)->get();
+        if ($approvals->isEmpty()) return false;
+        return $approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique()->count() === 1;
     }
 
     public function render()
     {
-        // Get pengiriman with status 'berhasil' OR 'menunggu_verifikasi' AND approval_pembayaran completed
-        // Show in 'pending' tab - untuk buat invoice
         $pengirimansWithoutInvoice = null;
 
         if ($this->activeTab === 'pending') {
             $pengirimansWithoutInvoice = Pengiriman::whereIn('status', ['berhasil', 'menunggu_verifikasi'])
                 ->doesntHave('invoicePenagihan')
-                ->whereHas('approvalPembayaran', function($q) {
-                    $q->where('status', 'completed');
-                })
+                ->whereHas('approvalPembayaran', fn($q) => $q->where('status', 'completed'))
                 ->with(['purchaseOrder.klien', 'forecast', 'purchasing'])
-                ->when($this->search, function ($q) {
-                    $q->where('no_pengiriman', 'like', '%' . $this->search . '%');
-                })
-                ->latest()
-                ->paginate(10, ['*'], 'page_without_invoice');
+                ->when($this->search, fn($q) => $q->where('no_pengiriman', 'like', '%' . $this->search . '%'))
+                ->latest()->paginate(10, ['*'], 'page_without_invoice');
         }
 
-        // Get approval penagihan based on active tab
         $query = ApprovalPenagihanModel::with([
             'invoice.pengirimans.pengirimanDetails.bahanBakuSupplier.supplier',
             'invoice.pengirimans.purchaseOrder.klien',
             'pengiriman.purchaseOrder.klien',
             'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
-            'pengiriman.forecast',
-            'pengiriman.purchasing',
-            'staff',
-            'manager'
-        ])
-        ->whereHas('pengiriman'); // Only show approvals that have pengiriman
+            'pengiriman.forecast', 'pengiriman.purchasing', 'staff', 'manager'
+        ])->has('pengiriman');
 
-        // Filter by tab
-        if ($this->activeTab === 'pending') {
-            $query->where('status', 'pending')
-                  ->whereHas('pengiriman', function($q) {
-                      $q->whereIn('status', ['berhasil', 'menunggu_verifikasi']);
-                  });
-        } else {
-            // approved tab - hanya yang completed
-            $query->where('status', 'completed');
-        }
+        $query->when($this->activeTab === 'pending', fn($q) => $q->where('status', 'pending')->whereHas('pengiriman', fn($sq) => $sq->whereIn('status', ['berhasil', 'menunggu_verifikasi'])))
+              ->when($this->activeTab !== 'pending', fn($q) => $q->where('status', 'completed'))
+              ->when($this->search, function ($q) {
+                  $term = '%' . $this->search . '%';
+                  $q->where(fn($wq) => $wq->whereHas('pengiriman', fn($sq) => $sq->where('no_pengiriman', 'like', $term)->orWhereHas('purchaseOrder', fn($po) => $po->where('po_number', 'like', $term)))
+                          ->orWhereHas('invoice', fn($sq) => $sq->where('invoice_number', 'like', $term)->orWhere('customer_name', 'like', $term))
+                          ->orWhereHas('invoice.pengirimans.purchaseOrder', fn($po) => $po->where('po_number', 'like', $term)));
+              })
+              ->when($this->customerFilter !== 'all', fn($q) => $q->whereHas('invoice', fn($sq) => $sq->where('customer_name', $this->customerFilter)))
+              ->when($this->supplierFilter !== 'all', fn($q) => $q->whereHas('pengiriman.pengirimanDetails.bahanBakuSupplier.supplier', fn($sq) => $sq->where('nama', $this->supplierFilter)));
 
-        if ($this->search) {
-            $searchTerm = $this->search;
-            $query->where(function ($q) use ($searchTerm) {
-                $q->whereHas('pengiriman', function ($subQ) use ($searchTerm) {
-                    $subQ->where('no_pengiriman', 'like', '%' . $searchTerm . '%')
-                        ->orWhereHas('purchaseOrder', function ($poQ) use ($searchTerm) {
-                            $poQ->where('po_number', 'like', '%' . $searchTerm . '%');
-                        });
-                })->orWhereHas('invoice', function ($subQ) use ($searchTerm) {
-                    $subQ->where('invoice_number', 'like', '%' . $searchTerm . '%')
-                        ->orWhere('customer_name', 'like', '%' . $searchTerm . '%');
-                })->orWhereHas('invoice.pengirimans.purchaseOrder', function ($poQ) use ($searchTerm) {
-                    $poQ->where('po_number', 'like', '%' . $searchTerm . '%');
-                });
-            });
-        }
-
-        // Filter by customer
-        if ($this->customerFilter !== 'all') {
-            $query->whereHas('invoice', function ($q) {
-                $q->where('customer_name', $this->customerFilter);
-            });
-        }
-
-        // Filter by supplier - ensure pengiriman exists
-        if ($this->supplierFilter !== 'all') {
-            $query->whereHas('pengiriman', function($q) {
-                $q->whereHas('pengirimanDetails.bahanBakuSupplier.supplier', function ($subQ) {
-                    $subQ->where('nama', $this->supplierFilter);
-                });
-            });
-        }
-
-        $approvals = $query->latest('updated_at')->paginate(10, ['*'], 'page_approval');
-
-        // Get unique customers and suppliers for filters
-        $allApprovals = ApprovalPenagihanModel::with([
-            'invoice',
-            'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier'
-        ])
-        ->where('status', $this->activeTab === 'pending' ? 'pending' : 'completed')
-        ->get();
-
-        $customers = $allApprovals->pluck('invoice.customer_name')->unique()->filter()->sort()->values();
-
-        // Safely get suppliers - handle null pengiriman
-        $suppliers = collect();
-        foreach ($allApprovals as $approval) {
-            if ($approval->pengiriman && $approval->pengiriman->pengirimanDetails) {
-                $supplierNames = $approval->pengiriman->pengirimanDetails
-                    ->pluck('bahanBakuSupplier.supplier.nama')
-                    ->filter();
-                $suppliers = $suppliers->merge($supplierNames);
-            }
-        }
-        $suppliers = $suppliers->unique()->sort()->values();
+        $allApprovals = ApprovalPenagihanModel::with(['invoice', 'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier'])
+            ->where('status', $this->activeTab === 'pending' ? 'pending' : 'completed')->get();
+        
+        $suppliers = $allApprovals->flatMap(fn($a) => $a->pengiriman?->pengirimanDetails?->pluck('bahanBakuSupplier.supplier.nama') ?? [])->filter()->unique()->sort()->values();
 
         return view('livewire.accounting.approval-penagihan', [
             'pengirimansWithoutInvoice' => $pengirimansWithoutInvoice,
-            'approvals' => $approvals,
-            'customers' => $customers,
+            'approvals' => $query->latest('updated_at')->paginate(10, ['*'], 'page_approval'),
+            'customers' => $allApprovals->pluck('invoice.customer_name')->unique()->filter()->sort()->values(),
             'suppliers' => $suppliers,
         ]);
     }
 
     public function showCreateInvoice($pengirimanId)
     {
-        $pengiriman = Pengiriman::with([
-            'purchaseOrder.klien',
-            'forecast',
-            'pengirimanDetails.bahanBakuSupplier',
-            'approvalPembayaran.histories' => function($query) {
-                $query->where('approval_type', 'pembayaran')
-                    ->orderBy('created_at', 'desc');
-            }
-        ])->findOrFail($pengirimanId);
-
+        $pengiriman = Pengiriman::with(['purchaseOrder.klien', 'forecast', 'pengirimanDetails.bahanBakuSupplier', 'approvalPembayaran.histories' => fn($q) => $q->where('approval_type', 'pembayaran')->orderByDesc('created_at')])->findOrFail($pengirimanId);
         $klien = $pengiriman->purchaseOrder->klien ?? null;
-        $approvalPembayaran = $pengiriman->approvalPembayaran;
-        $refraksiType = 'qty';
-        $refraksiValue = 0;
-        $notes = '';
-
-        if ($approvalPembayaran) {
-            $refraksiType = $approvalPembayaran->refraksi_type ?? 'qty';
-            $refraksiValue = $approvalPembayaran->refraksi_value ?? 0;
-            $latestHistory = $approvalPembayaran->histories->first();
-            if ($latestHistory && $latestHistory->notes) {
-                $notes = 'Catatan dari Pembayaran: ' . $latestHistory->notes;
-            }
-        }
+        $ap = $pengiriman->approvalPembayaran;
 
         $this->invoiceForm = [
             'customer_name'    => $klien->nama ?? '',
             'customer_address' => $klien->alamat_lengkap ?? '',
             'customer_phone'   => $klien->no_hp ?? '',
             'customer_email'   => '',
-            'refraksi_type'    => $refraksiType,
-            'refraksi_value'   => $refraksiValue,
-            'notes'            => $notes,
+            'refraksi_type'    => $ap->refraksi_type ?? 'qty',
+            'refraksi_value'   => $ap->refraksi_value ?? 0,
+            'notes'            => ($ap && $ap->histories->first()?->notes) ? 'Catatan dari Pembayaran: ' . $ap->histories->first()->notes : '',
         ];
 
-        // State baru
         $this->selectedShipment  = $pengiriman;
         $this->selectedShipments = collect([$pengiriman]);
         $this->isMergedInvoice   = false;
-
         $this->showCreateInvoiceModal = true;
     }
 
+    public function showCreateMergedInvoice() { $this->prepareMergedInvoiceData(false); }
+    public function mergeInvoices() { $this->prepareMergedInvoiceData(true); }
 
-    public function showCreateMergedInvoice()
+    private function prepareMergedInvoiceData($autoCreate = false)
     {
-        if (empty($this->selectedApprovalIds)) {
-            session()->flash('error', 'Silakan pilih minimal 1 invoice.');
-            return;
-        }
+        if (empty($this->selectedApprovalIds)) { session()->flash('error', 'Silakan pilih minimal 1 invoice.'); return; }
+        
+        $approvals = ApprovalPenagihanModel::with(['invoice', 'pengiriman.purchaseOrder.klien', 'pengiriman.pengirimanDetails.bahanBakuSupplier', 'pengiriman.approvalPembayaran.histories' => fn($q) => $q->where('approval_type', 'pembayaran')->orderByDesc('created_at')])->whereIn('id', $this->selectedApprovalIds)->get();
+        if ($approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique()->count() > 1) { session()->flash('error', 'Gagal menggabungkan invoice: Customer harus sama.'); return; }
 
-        $approvals = ApprovalPenagihanModel::with([
-            'invoice',
-            'pengiriman.purchaseOrder.klien',
-            'pengiriman.pengirimanDetails.bahanBakuSupplier',
-            'pengiriman.approvalPembayaran.histories' => function($query) {
-                $query->where('approval_type', 'pembayaran')
-                    ->orderBy('created_at', 'desc');
-            }
-        ])->whereIn('id', $this->selectedApprovalIds)->get();
+        $shipments = Pengiriman::with(['purchaseOrder.klien', 'forecast', 'pengirimanDetails.bahanBakuSupplier', 'approvalPembayaran.histories' => fn($q) => $q->where('approval_type', 'pembayaran')->orderByDesc('created_at')])
+            ->whereIn('invoice_penagihan_id', $approvals->pluck('invoice_id')->filter()->unique())
+            ->orWhereIn('id', $approvals->pluck('pengiriman_id'))->get()->unique('id');
 
-        // Validasi: semua harus customer yang sama
-        $customerNames = $approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique();
-        if ($customerNames->count() > 1) {
-            session()->flash('error', 'Gagal menggabungkan invoice: Customer dari invoice terpilih harus sama.');
-            return;
-        }
+        if ($shipments->isEmpty()) { session()->flash('error', 'Tidak ada data pengiriman.'); return; }
 
-        // Kumpulkan semua pengiriman unik dari invoice-invoice tersebut
-        $invoiceIds = $approvals->pluck('invoice_id')->filter()->unique();
-        $shipments = Pengiriman::with([
-            'purchaseOrder.klien',
-            'forecast',
-            'pengirimanDetails.bahanBakuSupplier',
-            'approvalPembayaran.histories' => function($query) {
-                $query->where('approval_type', 'pembayaran')
-                    ->orderBy('created_at', 'desc');
-            }
-        ])->whereIn('invoice_penagihan_id', $invoiceIds)
-        ->orWhereIn('id', $approvals->pluck('pengiriman_id'))
-        ->get()
-        ->unique('id');
-
-        if ($shipments->isEmpty()) {
-            session()->flash('error', 'Tidak ada data pengiriman yang ditemukan untuk digabungkan.');
-            return;
-        }
-
-        $firstShipment = $shipments->first();
-        $klien = $firstShipment->purchaseOrder->klien ?? null;
-
-        // Gabungkan catatan dari semua pengiriman
-        $combinedNotes = [];
-        foreach ($shipments as $s) {
-            $ap = $s->approvalPembayaran;
-            if ($ap) {
-                $latestHistory = $ap->histories->first();
-                if ($latestHistory && $latestHistory->notes) {
-                    $combinedNotes[] = $s->no_pengiriman . ': ' . $latestHistory->notes;
-                }
-            }
-        }
-        $notes = !empty($combinedNotes)
-            ? "Catatan dari Pembayaran:\n" . implode("\n", $combinedNotes)
-            : '';
-
-        // Ambil refraksi pertama yang non-zero
-        $refraksiType  = 'qty';
-        $refraksiValue = 0;
-        foreach ($shipments as $s) {
-            if ($s->approvalPembayaran && $s->approvalPembayaran->refraksi_value > 0) {
-                $refraksiType  = $s->approvalPembayaran->refraksi_type ?? 'qty';
-                $refraksiValue = $s->approvalPembayaran->refraksi_value ?? 0;
-                break;
-            }
-        }
+        $combinedNotes = $shipments->map(fn($s) => $s->approvalPembayaran?->histories->first()?->notes ? $s->no_pengiriman . ': ' . $s->approvalPembayaran->histories->first()->notes : null)->filter()->implode("\n");
+        $firstRefraksi = $shipments->first(fn($s) => $s->approvalPembayaran && $s->approvalPembayaran->refraksi_value > 0);
+        $klien = $shipments->first()->purchaseOrder->klien ?? null;
 
         $this->invoiceForm = [
             'customer_name'    => $klien->nama ?? $approvals->first()->invoice?->customer_name ?? '',
             'customer_address' => $klien->alamat_lengkap ?? $approvals->first()->invoice?->customer_address ?? '',
             'customer_phone'   => $klien->no_hp ?? $approvals->first()->invoice?->customer_phone ?? '',
             'customer_email'   => $approvals->first()->invoice?->customer_email ?? '',
-            'refraksi_type'    => $refraksiType,
-            'refraksi_value'   => $refraksiValue,
-            'notes'            => $notes,
+            'refraksi_type'    => $firstRefraksi->approvalPembayaran->refraksi_type ?? 'qty',
+            'refraksi_value'   => $firstRefraksi->approvalPembayaran->refraksi_value ?? 0,
+            'notes'            => $combinedNotes ? "Catatan dari Pembayaran:\n" . $combinedNotes : '',
         ];
 
-        // State baru
-        $this->selectedShipment  = $firstShipment;   // representative untuk kalkulasi
-        $this->selectedShipments = $shipments;        // semua untuk tampilan & simpan
-        $this->isMergedInvoice   = true;
-
-        $this->showCreateInvoiceModal = true;
-    }
-
-    public function mergeInvoices()
-    {
-        if (empty($this->selectedApprovalIds)) {
-            session()->flash('error', 'Silakan pilih minimal 1 invoice.');
-            return;
-        }
-
-        $approvals = ApprovalPenagihanModel::with([
-            'invoice',
-            'pengiriman.purchaseOrder.klien',
-            'pengiriman.pengirimanDetails.bahanBakuSupplier',
-            'pengiriman.approvalPembayaran.histories' => function($query) {
-                $query->where('approval_type', 'pembayaran')
-                    ->orderBy('created_at', 'desc');
-            }
-        ])->whereIn('id', $this->selectedApprovalIds)->get();
-
-        $customerNames = $approvals->map(fn($a) => $a->invoice?->customer_name)->filter()->unique();
-        if ($customerNames->count() > 1) {
-            session()->flash('error', 'Gagal menggabungkan invoice: Customer dari invoice terpilih harus sama.');
-            return;
-        }
-
-        $invoiceIds = $approvals->pluck('invoice_id')->filter()->unique();
-        $shipments = Pengiriman::with([
-            'purchaseOrder.klien',
-            'forecast',
-            'pengirimanDetails.bahanBakuSupplier',
-            'approvalPembayaran.histories' => function($query) {
-                $query->where('approval_type', 'pembayaran')
-                    ->orderBy('created_at', 'desc');
-            }
-        ])->whereIn('invoice_penagihan_id', $invoiceIds)
-        ->orWhereIn('id', $approvals->pluck('pengiriman_id'))
-        ->get()
-        ->unique('id');
-
-        if ($shipments->isEmpty()) {
-            session()->flash('error', 'Tidak ada data pengiriman yang ditemukan untuk digabungkan.');
-            return;
-        }
-
-        $firstShipment = $shipments->first();
-        $klien = $firstShipment->purchaseOrder->klien ?? null;
-
-        $combinedNotes = [];
-        foreach ($shipments as $s) {
-            $ap = $s->approvalPembayaran;
-            if ($ap) {
-                $latestHistory = $ap->histories->first();
-                if ($latestHistory && $latestHistory->notes) {
-                    $combinedNotes[] = $s->no_pengiriman . ': ' . $latestHistory->notes;
-                }
-            }
-        }
-        $notes = !empty($combinedNotes)
-            ? "Catatan dari Pembayaran:\n" . implode("\n", $combinedNotes)
-            : '';
-
-        $refraksiType  = 'qty';
-        $refraksiValue = 0;
-        foreach ($shipments as $s) {
-            if ($s->approvalPembayaran && $s->approvalPembayaran->refraksi_value > 0) {
-                $refraksiType  = $s->approvalPembayaran->refraksi_type ?? 'qty';
-                $refraksiValue = $s->approvalPembayaran->refraksi_value ?? 0;
-                break;
-            }
-        }
-
-        $this->invoiceForm = [
-            'customer_name'    => $klien->nama ?? $approvals->first()->invoice?->customer_name ?? '',
-            'customer_address' => $klien->alamat_lengkap ?? $approvals->first()->invoice?->customer_address ?? '',
-            'customer_phone'   => $klien->no_hp ?? $approvals->first()->invoice?->customer_phone ?? '',
-            'customer_email'   => $approvals->first()->invoice?->customer_email ?? '',
-            'refraksi_type'    => $refraksiType,
-            'refraksi_value'   => $refraksiValue,
-            'notes'            => $notes,
-        ];
-
-        $this->selectedShipment  = $firstShipment;
+        $this->selectedShipment  = $shipments->first();
         $this->selectedShipments = $shipments;
         $this->isMergedInvoice   = true;
-
-        $this->createInvoice();
+        
+        if ($autoCreate) $this->createInvoice();
+        else $this->showCreateInvoiceModal = true;
     }
 
     public function createInvoice()
@@ -508,989 +184,216 @@ class ApprovalPenagihan extends Component
             'invoiceForm.customer_email' => 'nullable|email|max:255',
             'invoiceForm.refraksi_type' => 'required|in:qty,rupiah,lainnya',
             'invoiceForm.refraksi_value' => 'required|numeric|min:0',
-            'invoiceForm.notes' => 'nullable|string',
         ]);
 
-        // Gunakan $selectedShipments (selalu Collection setelah refactor)
-        $shipments = $this->selectedShipments;
-
-        if (!$shipments || $shipments->isEmpty()) {
-            session()->flash('error', 'Data pengiriman tidak ditemukan');
-            return;
+        if (!$this->selectedShipments || $this->selectedShipments->isEmpty()) {
+            session()->flash('error', 'Data pengiriman tidak ditemukan'); return;
         }
-
-        // Primary shipment untuk kalkulasi (selalu ada karena di-set di showCreate*)
-        $primaryShipment = $this->selectedShipment;
 
         DB::beginTransaction();
         try {
             $companySetting = CompanySetting::getSettings();
             $invoiceNumber  = InvoicePenagihan::generateInvoiceNumber();
+            $expenseRows = collect();
+            
+            $calcData = $this->prepareInvoiceItems($this->selectedShipments, $expenseRows);
+            $totals = $this->calculateFinalTotals($calcData['items'], $calcData['totalSellingPrice'], $expenseRows, $companySetting);
+            
+            $invoice = InvoicePenagihan::create(array_merge([
+                'pengiriman_id'  => $this->selectedShipment->id,
+                'invoice_number' => $invoiceNumber,
+                'invoice_date'   => now(),
+                'due_date'       => now()->addDays($companySetting->invoice_due_days),
+                'payment_status' => 'unpaid',
+                'created_by'     => Auth::id(),
+            ], $this->invoiceForm, $totals, ['items' => $calcData['items']]));
 
-            // Hitung total harga jual dan kumpulkan per-pengiriman data
-            $totalSellingPrice = 0;
-            $items = [];
+            foreach ($expenseRows as $e) $invoice->expenses()->create(['type' => $e->type, 'amount' => $e->amount]);
+            foreach ($this->selectedShipments as $s) $s->update(['invoice_penagihan_id' => $invoice->id]);
 
-            foreach ($shipments as $pengiriman) {
-                $pengiriman->load(
-                    'pengirimanDetails.purchaseOrderBahanBaku',
-                    'pengirimanDetails.orderDetail',
-                    'approvalPembayaran.expenses'
-                );
+            $this->processMergeCleanup($invoice->id);
 
-                $shipmentTotal = 0;
-                $itemDetails   = [];
-
-                foreach ($pengiriman->pengirimanDetails as $detail) {
-                    $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                    $hargaJual   = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
-                    $qtyKirim    = floatval($detail->qty_kirim);
-                    $itemTotal   = $qtyKirim * $hargaJual;
-                    $shipmentTotal += $itemTotal;
-
-                    $bahanBakuName = $detail->bahanBakuSupplier->nama
-                        ?? ($orderDetail->bahanBakuKlien->nama ?? 'Bahan Baku');
-
-                    $itemDetails[] = [
-                        'name'      => $bahanBakuName,
-                        'qty'       => $qtyKirim,
-                        'harga_jual'=> $hargaJual,
-                        'total'     => $itemTotal,
-                    ];
-                }
-
-                $totalSellingPrice += $shipmentTotal;
-
-                // Per-pengiriman refraksi dari approvalPembayaran
-                $ap = $pengiriman->approvalPembayaran;
-                $itemRefraksiType  = 'qty';
-                $itemRefraksiValue = 0;
-                if ($ap && $ap->refraksi_value > 0) {
-                    $itemRefraksiType  = $ap->refraksi_type ?? 'qty';
-                    $itemRefraksiValue = (float) $ap->refraksi_value;
-                } elseif ($this->invoiceForm['refraksi_value'] > 0) {
-                    $itemRefraksiType  = $this->invoiceForm['refraksi_type'];
-                    $itemRefraksiValue = (float) $this->invoiceForm['refraksi_value'];
-                }
-
-                // Per-pengiriman expenses dari approvalPembayaran
-                $itemExpenses = [];
-                if ($ap) {
-                    foreach ($ap->expenses as $e) {
-                        $itemExpenses[] = [
-                            'type'   => $e->type,
-                            'amount' => (float) $e->amount,
-                        ];
-                    }
-                }
-
-                $items[] = [
-                    'item_name'       => 'Pengiriman ' . $pengiriman->no_pengiriman,
-                    'description'     => 'No. Pengiriman: ' . $pengiriman->no_pengiriman
-                        . '\nTanggal Kirim: ' . $pengiriman->tanggal_kirim->format('d M Y')
-                        . '\nTotal Qty: ' . number_format($pengiriman->total_qty_kirim, 2, ',', '.') . ' kg',
-                    'quantity'        => 1,
-                    'unit'            => 'paket',
-                    'unit_price'      => $shipmentTotal,
-                    'amount'          => $shipmentTotal,
-                    'refraksi_type'   => $itemRefraksiType,
-                    'refraksi_value'  => $itemRefraksiValue,
-                    'refraksi_amount' => 0,
-                    'expenses'        => $itemExpenses,
-                    'details'         => $itemDetails,
-                ];
-            }
-
-            // Hitung refraksi amount per-item dan totals
-            $totalRefraksiAmount = 0;
-            $totalRefraksiQty    = 0;
-            $totalQty            = 0;
-            $expenseRows         = collect();
-
-            foreach ($items as &$item) {
-                $qty   = array_sum(array_column($item['details'], 'qty'));
-                $total = $item['amount'];
-                $type  = $item['refraksi_type'];
-                $value = $item['refraksi_value'];
-
-                $totalQty += $qty;
-
-                if ($value > 0) {
-                    if ($type === 'qty' && $qty > 0) {
-                        $refraksiQty              = $qty * ($value / 100);
-                        $hargaPerKg               = $total / $qty;
-                        $item['refraksi_amount']    = $refraksiQty * $hargaPerKg;
-                        $totalRefraksiQty         += $refraksiQty;
-                    } elseif ($type === 'rupiah' && $qty > 0) {
-                        $item['refraksi_amount']    = $value * $qty;
-                    } elseif ($type === 'lainnya') {
-                        $item['refraksi_amount']    = $value;
-                    }
-                }
-
-                $totalRefraksiAmount += $item['refraksi_amount'];
-
-                foreach ($item['expenses'] as $e) {
-                    $expenseRows->push((object) ['type' => $e['type'], 'amount' => $e['amount']]);
-                }
-            }
-            unset($item);
-
-            $qtyBeforeRefraksi = $totalQty;
-            $qtyAfterRefraksi  = $totalQty - $totalRefraksiQty;
-            $refraksiAmount    = $totalRefraksiAmount;
-            $amountAfterRefraksi = $totalSellingPrice - $refraksiAmount;
-            $expensesTotal     = $expenseRows->sum('amount');
-            $subtotal          = $amountAfterRefraksi + $expensesTotal;
-
-            $taxAmount   = $subtotal * ($companySetting->tax_percentage / 100);
-            $totalAmount = $subtotal + $taxAmount;
-
-            // Buat invoice
-            $invoice = InvoicePenagihan::create([
-                'pengiriman_id'          => $primaryShipment->id,
-                'invoice_number'         => $invoiceNumber,
-                'invoice_date'           => now(),
-                'due_date'               => now()->addDays($companySetting->invoice_due_days),
-                'customer_name'          => $this->invoiceForm['customer_name'],
-                'customer_address'       => $this->invoiceForm['customer_address'],
-                'customer_phone'         => $this->invoiceForm['customer_phone'],
-                'customer_email'         => $this->invoiceForm['customer_email'],
-                'items'                  => $items,
-                'refraksi_type'          => $this->invoiceForm['refraksi_type'],
-                'refraksi_value'         => $this->invoiceForm['refraksi_value'],
-                'refraksi_amount'        => $refraksiAmount,
-                'qty_before_refraksi'    => $qtyBeforeRefraksi,
-                'qty_after_refraksi'     => $qtyAfterRefraksi,
-                'amount_before_refraksi' => $totalSellingPrice,
-                'amount_after_refraksi'  => $amountAfterRefraksi,
-                'subtotal'               => $subtotal,
-                'additional_expenses_total' => $expensesTotal,
-                'tax_percentage'         => $companySetting->tax_percentage,
-                'tax_amount'             => $taxAmount,
-                'discount_amount'        => 0,
-                'total_amount'           => $totalAmount,
-                'notes'                  => $this->invoiceForm['notes'],
-                'payment_status'         => 'unpaid',
-                'created_by'             => Auth::id(),
-            ]);
-
-            // Copy expense rows ke invoice
-            foreach ($expenseRows as $e) {
-                $invoice->expenses()->create([
-                    'type'   => $e->type,
-                    'amount' => $e->amount,
-                ]);
-            }
-
-            // Link semua pengiriman ke invoice baru
-            foreach ($shipments as $s) {
-                $s->update(['invoice_penagihan_id' => $invoice->id]);
-            }
-
-            // Kalau ini merge: bersihkan approval & invoice lama
-            if ($this->isMergedInvoice && !empty($this->selectedApprovalIds)) {
-                $oldApprovals  = ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)->get();
-                $oldInvoiceIds = $oldApprovals->pluck('invoice_id')->filter()->unique();
-
-                // Putus referensi ke invoice lama dulu
-                Pengiriman::whereIn('invoice_penagihan_id', $oldInvoiceIds)
-                    ->where('invoice_penagihan_id', '!=', $invoice->id)
-                    ->update(['invoice_penagihan_id' => null]);
-
-                // Tandai approval & invoice lama sebagai digabung (bukan dihapus)
-                ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)
-                    ->update(['status' => 'digabung']);
-                InvoicePenagihan::whereIn('id', $oldInvoiceIds)
-                    ->update(['status' => 'digabung']);
-            }
-
-            // Buat approval penagihan baru
-            $approvalPenagihan = ApprovalPenagihanModel::create([
-                'invoice_id'    => $invoice->id,
-                'pengiriman_id' => $primaryShipment->id,
-                'status'        => 'pending',
-            ]);
-
-            if ($approvalPenagihan) {
-                ApprovalPenagihanNotificationService::notifyPendingApproval($approvalPenagihan);
-            }
+            $approvalPenagihan = ApprovalPenagihanModel::create(['invoice_id' => $invoice->id, 'pengiriman_id' => $this->selectedShipment->id, 'status' => 'pending']);
+            if ($approvalPenagihan) ApprovalPenagihanNotificationService::notifyPendingApproval($approvalPenagihan);
 
             DB::commit();
-
-            $isMerged = $this->isMergedInvoice;
-            $count    = $shipments->count();
-
-            session()->flash('message', $isMerged
-                ? "Invoice berhasil digabungkan ({$count} pengiriman digabung ke 1 invoice)"
-                : 'Invoice berhasil dibuat');
-
+            session()->flash('message', $this->isMergedInvoice ? "Invoice berhasil digabungkan ({$this->selectedShipments->count()} pengiriman digabung ke 1 invoice)" : 'Invoice berhasil dibuat');
             $this->closeModal();
-            $this->selectedApprovalIds = [];
-
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error("Create Invoice Error: " . $e->getMessage());
             session()->flash('error', 'Gagal membuat invoice: ' . $e->getMessage());
         }
     }
 
+    private function prepareInvoiceItems($shipments, &$expenseRows)
+    {
+        $totalSellingPrice = 0; $items = [];
+        foreach ($shipments as $pengiriman) {
+            $pengiriman->load('pengirimanDetails.purchaseOrderBahanBaku', 'pengirimanDetails.orderDetail', 'approvalPembayaran.expenses');
+            $shipmentTotal = 0; $itemDetails = [];
+
+            foreach ($pengiriman->pengirimanDetails as $detail) {
+                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
+                $hargaJual   = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
+                $itemTotal   = floatval($detail->qty_kirim) * $hargaJual;
+                $shipmentTotal += $itemTotal;
+                $itemDetails[] = ['name' => $detail->bahanBakuSupplier->nama ?? ($orderDetail->bahanBakuKlien->nama ?? 'Bahan Baku'), 'qty' => floatval($detail->qty_kirim), 'harga_jual'=> $hargaJual, 'total' => $itemTotal];
+            }
+            $totalSellingPrice += $shipmentTotal;
+            
+            $ap = $pengiriman->approvalPembayaran;
+            $itemRefraksiType  = ($ap && $ap->refraksi_value > 0) ? $ap->refraksi_type : ($this->invoiceForm['refraksi_value'] > 0 ? $this->invoiceForm['refraksi_type'] : 'qty');
+            $itemRefraksiValue = ($ap && $ap->refraksi_value > 0) ? (float) $ap->refraksi_value : (float) $this->invoiceForm['refraksi_value'];
+            
+            $itemExpenses = [];
+            if ($ap) { foreach ($ap->expenses as $e) { $itemExpenses[] = ['type' => $e->type, 'amount' => (float) $e->amount]; $expenseRows->push((object)['type' => $e->type, 'amount' => (float) $e->amount]); } }
+
+            $items[] = [
+                'item_name' => 'Pengiriman ' . $pengiriman->no_pengiriman,
+                'description' => 'No. Pengiriman: ' . $pengiriman->no_pengiriman . '\nTanggal Kirim: ' . $pengiriman->tanggal_kirim->format('d M Y') . '\nTotal Qty: ' . number_format($pengiriman->total_qty_kirim, 2, ',', '.') . ' kg',
+                'quantity' => 1, 'unit' => 'paket', 'unit_price' => $shipmentTotal, 'amount' => $shipmentTotal,
+                'refraksi_type' => $itemRefraksiType, 'refraksi_value' => $itemRefraksiValue, 'refraksi_amount' => 0,
+                'expenses' => $itemExpenses, 'details' => $itemDetails,
+            ];
+        }
+        return ['items' => $items, 'totalSellingPrice' => $totalSellingPrice];
+    }
+
+    private function calculateFinalTotals(&$items, $totalSellingPrice, $expenseRows, $companySetting)
+    {
+        $totalRefraksiAmount = 0; $totalRefraksiQty = 0; $totalQty = 0;
+        foreach ($items as &$item) {
+            $qty = array_sum(array_column($item['details'], 'qty'));
+            $totalQty += $qty;
+            if ($item['refraksi_value'] > 0) {
+                if ($item['refraksi_type'] === 'qty' && $qty > 0) {
+                    $refQty = $qty * ($item['refraksi_value'] / 100);
+                    $item['refraksi_amount'] = $refQty * ($item['amount'] / $qty);
+                    $totalRefraksiQty += $refQty;
+                } elseif ($item['refraksi_type'] === 'rupiah' && $qty > 0) $item['refraksi_amount'] = $item['refraksi_value'] * $qty;
+                else $item['refraksi_amount'] = $item['refraksi_value'];
+            }
+            $totalRefraksiAmount += $item['refraksi_amount'];
+        }
+        
+        $expensesTotal = $expenseRows->sum('amount');
+        $amountAfterRefraksi = $totalSellingPrice - $totalRefraksiAmount;
+        $subtotal = $amountAfterRefraksi + $expensesTotal;
+        $taxAmount = $subtotal * ($companySetting->tax_percentage / 100);
+
+        return [
+            'qty_before_refraksi' => $totalQty,
+            'qty_after_refraksi' => $totalQty - $totalRefraksiQty,
+            'amount_before_refraksi' => $totalSellingPrice,
+            'amount_after_refraksi' => $amountAfterRefraksi,
+            'refraksi_amount' => $totalRefraksiAmount,
+            'additional_expenses_total' => $expensesTotal,
+            'subtotal' => $subtotal,
+            'tax_percentage' => $companySetting->tax_percentage,
+            'tax_amount' => $taxAmount,
+            'discount_amount' => 0,
+            'total_amount' => $subtotal + $taxAmount,
+        ];
+    }
+
+    private function processMergeCleanup($newInvoiceId)
+    {
+        if ($this->isMergedInvoice && !empty($this->selectedApprovalIds)) {
+            $oldApprovals = ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)->get();
+            $oldInvoiceIds = $oldApprovals->pluck('invoice_id')->filter()->unique();
+            Pengiriman::whereIn('invoice_penagihan_id', $oldInvoiceIds)->where('invoice_penagihan_id', '!=', $newInvoiceId)->update(['invoice_penagihan_id' => null]);
+            ApprovalPenagihanModel::whereIn('id', $this->selectedApprovalIds)->update(['status' => 'digabung']);
+            InvoicePenagihan::whereIn('id', $oldInvoiceIds)->update(['status' => 'digabung']);
+        }
+    }
+    
     public function showDetail($approvalId)
     {
-        $approval = ApprovalPenagihanModel::with([
-            'invoice',
-            'pengiriman.purchaseOrder.klien',
-            'pengiriman.forecast',
-            'pengiriman.purchasing',
-            'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier',
-            'pengiriman.pengirimanDetails.bahanBakuSupplier',
-            'staff',
-            'manager',
-            'histories.user'
-        ])->findOrFail($approvalId);
-
-        $this->selectedData = $approval;
+        $this->selectedData = ApprovalPenagihanModel::with(['invoice', 'pengiriman.purchaseOrder.klien', 'pengiriman.forecast', 'pengiriman.purchasing', 'pengiriman.pengirimanDetails.bahanBakuSupplier.supplier', 'staff', 'manager', 'histories.user'])->findOrFail($approvalId);
         $this->showDetailModal = true;
-        $this->notes = '';
-
-        // Load refraksi values to form for editing
-        if ($approval->invoice) {
-            $this->invoiceForm['refraksi_type'] = $approval->invoice->refraksi_type ?? 'qty';
-            $this->invoiceForm['refraksi_value'] = $approval->invoice->refraksi_value ?? 0;
+        
+        if ($inv = $this->selectedData->invoice) {
+            $this->customerForm = ['customer_name' => $inv->customer_name, 'customer_address' => $inv->customer_address, 'customer_phone' => $inv->customer_phone, 'customer_email' => $inv->customer_email];
+            $this->dateForm = ['invoice_date' => $inv->invoice_date?->format('Y-m-d'), 'due_date' => $inv->due_date?->format('Y-m-d')];
+            $this->bankForm = ['bank_name' => $inv->bank_name, 'bank_account_number' => $inv->bank_account_number, 'bank_account_name' => $inv->bank_account_name];
+            $this->invoiceNotesForm = $inv->notes ?? '';
+            $this->invoiceNumberForm = $inv->invoice_number ?? '';
+            $this->totalHargaJualForm = $inv->subtotal ?? 0;
         }
-
-        // Populate customerForm with existing customer data
-        $this->customerForm = [
-            'customer_name' => $approval->invoice->customer_name ?? '',
-            'customer_address' => $approval->invoice->customer_address ?? '',
-            'customer_phone' => $approval->invoice->customer_phone ?? '',
-            'customer_email' => $approval->invoice->customer_email ?? '',
-        ];
-
-        // Populate dateForm with existing date data
-        $this->dateForm = [
-            'invoice_date' => $approval->invoice->invoice_date ? $approval->invoice->invoice_date->format('Y-m-d') : '',
-            'due_date' => $approval->invoice->due_date ? $approval->invoice->due_date->format('Y-m-d') : '',
-        ];
-
-        // Populate bankForm with existing bank data
-        $this->bankForm = [
-            'bank_name' => $approval->invoice->bank_name ?? '',
-            'bank_account_number' => $approval->invoice->bank_account_number ?? '',
-            'bank_account_name' => $approval->invoice->bank_account_name ?? '',
-        ];
-
-        // Populate invoice notes
-        $this->invoiceNotesForm = $approval->invoice->notes ?? '';
-
-        // Populate invoice number
-        $this->invoiceNumberForm = $approval->invoice->invoice_number ?? '';
-
-        // Populate total harga jual form
-        $this->totalHargaJualForm = $approval->invoice->subtotal ?? 0;
-
-        // Load per-pengiriman refraksi and expenses
-        $this->shipmentRefraksi = [];
-        $this->shipmentExpenses = [];
-        if ($approval->invoice) {
-            $approval->invoice->load('pengirimans.approvalPembayaran.expenses');
-            foreach ($approval->invoice->pengirimans as $s) {
-                $ap = $s->approvalPembayaran;
-                $this->shipmentRefraksi[$s->id] = [
-                    'type'  => $ap?->refraksi_type ?? 'qty',
-                    'value' => $ap?->refraksi_value ?? 0,
-                ];
-                $this->shipmentExpenses[$s->id] = [];
-                if ($ap) {
-                    foreach ($ap->expenses as $e) {
-                        $this->shipmentExpenses[$s->id][] = [
-                            'id'     => $e->id,
-                            'type'   => $e->type,
-                            'amount' => $e->amount,
-                        ];
-                    }
-                }
-            }
-        }
-
-        // Load approval history
-        $this->approvalHistory = ApprovalHistory::where('approval_type', 'penagihan')
-            ->where('approval_id', $approvalId)
-            ->with('user')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->toArray();
+        $this->approvalHistory = ApprovalHistory::where('approval_type', 'penagihan')->where('approval_id', $approvalId)->with('user')->orderByDesc('created_at')->get()->toArray();
     }
 
-    public function updateCustomerInfo()
+    public function updateCustomerInfo() { $this->executeFieldUpdate('customerForm', ['customer_name'=>'required', 'customer_address'=>'required'], 'Update informasi customer'); }
+    public function updateInvoiceDates() { $this->executeFieldUpdate('dateForm', ['invoice_date'=>'required|date', 'due_date'=>'required|date'], 'Update tanggal invoice'); }
+    public function updateBankInfo() { $this->executeFieldUpdate('bankForm', ['bank_name'=>'required', 'bank_account_number'=>'required', 'bank_account_name'=>'required'], 'Update informasi bank'); }
+    
+    private function executeFieldUpdate($formName, $rules, $logNote)
     {
-        $this->validate([
-            'customerForm.customer_name' => 'required|string|max:255',
-            'customerForm.customer_address' => 'required|string',
-            'customerForm.customer_phone' => 'nullable|string|max:20',
-            'customerForm.customer_email' => 'nullable|email|max:255',
-        ]);
-
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            session()->flash('error', 'Data invoice tidak ditemukan');
-            return;
-        }
-
+        $this->validate(array_combine(array_map(fn($k) => "$formName.$k", array_keys($rules)), array_values($rules)));
+        if (!$this->selectedData?->invoice) return;
         DB::beginTransaction();
         try {
-            $invoice = $this->selectedData->invoice;
-            $user = Auth::user();
-
-            // Collect changes
-            $changes = [
-                'before' => [
-                    'customer_name' => $invoice->customer_name,
-                    'customer_address' => $invoice->customer_address,
-                    'customer_phone' => $invoice->customer_phone,
-                    'customer_email' => $invoice->customer_email,
-                ],
-                'after' => $this->customerForm,
-            ];
-
-            // Update invoice
-            $invoice->update($this->customerForm);
-
-            // Save history
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $this->selectedData->id,
-                'pengiriman_id' => $this->selectedData->pengiriman_id,
-                'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
-                'user_id' => $user->id,
-                'action' => 'edited',
-                'changes' => $changes,
-                'notes' => 'Update informasi customer',
-            ]);
-
+            $this->selectedData->invoice->update($this->{$formName});
+            $this->logInvoiceHistory($this->selectedData->id, $this->selectedData->pengiriman_id, $this->selectedData->invoice->id, 'edited', $logNote);
             DB::commit();
-            session()->flash('message', 'Informasi customer berhasil diupdate');
-
-            // Reload data
+            session()->flash('message', "$logNote berhasil");
             $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal update informasi customer: ' . $e->getMessage());
-        }
-    }
-
-    public function updateInvoiceDates()
-    {
-        $this->validate([
-            'dateForm.invoice_date' => 'required|date',
-            'dateForm.due_date' => 'required|date',
-        ]);
-
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            session()->flash('error', 'Data invoice tidak ditemukan');
-            return;
-        }
-
-        DB::beginTransaction();
-        try {
-            $invoice = $this->selectedData->invoice;
-            $user = Auth::user();
-
-            // Collect changes
-            $changes = [
-                'before' => [
-                    'invoice_date' => $invoice->invoice_date ? $invoice->invoice_date->format('Y-m-d') : null,
-                    'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
-                ],
-                'after' => $this->dateForm,
-            ];
-
-            // Update invoice
-            $invoice->invoice_date = $this->dateForm['invoice_date'];
-            $invoice->due_date = $this->dateForm['due_date'];
-            $invoice->save();
-
-            // Save history
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $this->selectedData->id,
-                'pengiriman_id' => $this->selectedData->pengiriman_id,
-                'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
-                'user_id' => $user->id,
-                'action' => 'edited',
-                'changes' => $changes,
-                'notes' => 'Update tanggal invoice',
-            ]);
-
-            DB::commit();
-            session()->flash('message', 'Tanggal invoice berhasil diupdate');
-
-            // Reload data
-            $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal update tanggal invoice: ' . $e->getMessage());
-        }
-    }
-
-    public function updateBankInfo()
-    {
-        $this->validate([
-            'bankForm.bank_name' => 'required|string|max:255',
-            'bankForm.bank_account_number' => 'required|string|max:50',
-            'bankForm.bank_account_name' => 'required|string|max:255',
-        ]);
-
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            session()->flash('error', 'Data invoice tidak ditemukan');
-            return;
-        }
-
-        DB::beginTransaction();
-        try {
-            $invoice = $this->selectedData->invoice;
-            $user = Auth::user();
-
-            // Collect changes
-            $changes = [
-                'before' => [
-                    'bank_name' => $invoice->bank_name,
-                    'bank_account_number' => $invoice->bank_account_number,
-                    'bank_account_name' => $invoice->bank_account_name,
-                ],
-                'after' => $this->bankForm,
-            ];
-
-            // Update invoice
-            $invoice->update($this->bankForm);
-
-            // Save history
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $this->selectedData->id,
-                'pengiriman_id' => $this->selectedData->pengiriman_id,
-                'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
-                'user_id' => $user->id,
-                'action' => 'edited',
-                'changes' => $changes,
-                'notes' => 'Update informasi bank',
-            ]);
-
-            DB::commit();
-            session()->flash('message', 'Informasi bank berhasil diupdate');
-
-            // Reload data
-            $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal update informasi bank: ' . $e->getMessage());
-        }
+        } catch (\Exception $e) { DB::rollBack(); Log::error("Update $formName Error: " . $e->getMessage()); session()->flash('error', 'Gagal update: ' . $e->getMessage()); }
     }
 
     public function updateInvoiceNotes()
     {
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            session()->flash('error', 'Data invoice tidak ditemukan');
-            return;
-        }
-
+        if (!$this->selectedData?->invoice) return;
         DB::beginTransaction();
         try {
-            $invoice = $this->selectedData->invoice;
-            $user = Auth::user();
-
-            // Collect changes
-            $changes = [
-                'before' => [
-                    'notes' => $invoice->notes,
-                ],
-                'after' => [
-                    'notes' => $this->invoiceNotesForm,
-                ],
-            ];
-
-            // Update invoice
-            $invoice->notes = $this->invoiceNotesForm;
-            $invoice->save();
-
-            // Save history
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $this->selectedData->id,
-                'pengiriman_id' => $this->selectedData->pengiriman_id,
-                'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
-                'user_id' => $user->id,
-                'action' => 'edited',
-                'changes' => $changes,
-                'notes' => 'Update catatan invoice',
-            ]);
-
+            $this->selectedData->invoice->update(['notes' => $this->invoiceNotesForm]);
+            $this->logInvoiceHistory($this->selectedData->id, $this->selectedData->pengiriman_id, $this->selectedData->invoice->id, 'edited', 'Update catatan invoice');
             DB::commit();
-            session()->flash('message', 'Catatan invoice berhasil diupdate');
-
-            // Reload data
-            $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal update catatan invoice: ' . $e->getMessage());
-        }
+            session()->flash('message', 'Catatan berhasil diupdate');
+        } catch (\Exception $e) { DB::rollBack(); Log::error("Update Notes Error: " . $e->getMessage()); }
     }
 
     public function updateInvoiceNumber()
     {
-        $this->validate([
-            'invoiceNumberForm' => 'required|string|max:191',
-        ], [
-            'invoiceNumberForm.required' => 'Nomor invoice harus diisi',
-            'invoiceNumberForm.max' => 'Nomor invoice maksimal 191 karakter',
-        ]);
-
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            session()->flash('error', 'Data invoice tidak ditemukan');
-            return;
+        $this->validate(['invoiceNumberForm' => 'required|string|max:191']);
+        if (!$this->selectedData?->invoice) return;
+        if (InvoicePenagihan::where('invoice_number', $this->invoiceNumberForm)->where('id', '!=', $this->selectedData->invoice->id)->exists()) {
+            session()->flash('error', 'Nomor invoice sudah digunakan.'); return;
         }
-
-        // Check if invoice number already exists (excluding current invoice)
-        $exists = InvoicePenagihan::where('invoice_number', $this->invoiceNumberForm)
-            ->where('id', '!=', $this->selectedData->invoice->id)
-            ->exists();
-
-        if ($exists) {
-            session()->flash('error', 'Nomor invoice "' . $this->invoiceNumberForm . '" sudah digunakan. Silakan gunakan nomor invoice yang berbeda.');
-            return;
-        }
-
         DB::beginTransaction();
         try {
-            $invoice = $this->selectedData->invoice;
-            $user = Auth::user();
-
-            // Collect changes
-            $changes = [
-                'before' => [
-                    'invoice_number' => $invoice->invoice_number,
-                ],
-                'after' => [
-                    'invoice_number' => $this->invoiceNumberForm,
-                ],
-            ];
-
-            // Update invoice
-            $invoice->invoice_number = $this->invoiceNumberForm;
-            $invoice->save();
-
-            // Save history
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $this->selectedData->id,
-                'pengiriman_id' => $this->selectedData->pengiriman_id,
-                'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
-                'user_id' => $user->id,
-                'action' => 'edited',
-                'changes' => $changes,
-                'notes' => 'Update nomor invoice dari "' . $changes['before']['invoice_number'] . '" menjadi "' . $this->invoiceNumberForm . '"',
-            ]);
-
+            $this->selectedData->invoice->update(['invoice_number' => $this->invoiceNumberForm]);
+            $this->logInvoiceHistory($this->selectedData->id, $this->selectedData->pengiriman_id, $this->selectedData->invoice->id, 'edited', 'Update nomor invoice');
             DB::commit();
             session()->flash('message', 'Nomor invoice berhasil diupdate');
-
-            // Reload data
             $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal update nomor invoice: ' . $e->getMessage());
-        }
-    }
-
-    public function updateShipmentRefraksi($pengirimanId)
-    {
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            return;
-        }
-
-        $pengiriman = Pengiriman::with('approvalPembayaran')->find($pengirimanId);
-        if (!$pengiriman) {
-            session()->flash('error', 'Data pengiriman tidak ditemukan');
-            return;
-        }
-
-        DB::beginTransaction();
-        try {
-            $type  = $this->shipmentRefraksi[$pengirimanId]['type'] ?? 'qty';
-            $value = floatval($this->shipmentRefraksi[$pengirimanId]['value'] ?? 0);
-
-            // Save to approvalPembayaran
-            $ap = $pengiriman->approvalPembayaran;
-            if ($ap) {
-                $ap->update([
-                    'refraksi_type'  => $type,
-                    'refraksi_value' => $value,
-                ]);
-            }
-
-            // Recalculate invoice totals from all shipments
-            $this->recalculateInvoiceFromShipments();
-
-            DB::commit();
-            session()->flash('message', 'Refraksi pengiriman ' . $pengiriman->no_pengiriman . ' berhasil diupdate');
-
-            $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal update refraksi: ' . $e->getMessage());
-        }
-    }
-
-    public function addShipmentExpense($pengirimanId)
-    {
-        $this->shipmentExpenses[$pengirimanId][] = [
-            'id'     => null,
-            'type'   => '',
-            'amount' => 0,
-        ];
-    }
-
-    public function removeShipmentExpense($pengirimanId, $index)
-    {
-        if (isset($this->shipmentExpenses[$pengirimanId][$index])) {
-            unset($this->shipmentExpenses[$pengirimanId][$index]);
-            $this->shipmentExpenses[$pengirimanId] = array_values($this->shipmentExpenses[$pengirimanId]);
-        }
-    }
-
-    public function saveShipmentExpenses($pengirimanId)
-    {
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            return;
-        }
-
-        $pengiriman = Pengiriman::with('approvalPembayaran')->find($pengirimanId);
-        if (!$pengiriman || !$pengiriman->approvalPembayaran) {
-            session()->flash('error', 'Data pengiriman atau approval pembayaran tidak ditemukan');
-            return;
-        }
-
-        DB::beginTransaction();
-        try {
-            $ap = $pengiriman->approvalPembayaran;
-            $expenses = $this->shipmentExpenses[$pengirimanId] ?? [];
-
-            // Get existing expense IDs to track deletions
-            $existingIds = $ap->expenses()->pluck('id')->toArray();
-            $submittedIds = [];
-
-            foreach ($expenses as $e) {
-                $type   = $e['type'] ?? '';
-                $amount = floatval($e['amount'] ?? 0);
-
-                if (empty($type) || $amount <= 0) {
-                    continue;
-                }
-
-                if (!empty($e['id'])) {
-                    // Update existing
-                    $ap->expenses()->where('id', $e['id'])->update([
-                        'type'   => $type,
-                        'amount' => $amount,
-                    ]);
-                    $submittedIds[] = $e['id'];
-                } else {
-                    // Create new
-                    $new = $ap->expenses()->create([
-                        'type'   => $type,
-                        'amount' => $amount,
-                    ]);
-                    $submittedIds[] = $new->id;
-                }
-            }
-
-            // Delete removed expenses
-            $toDelete = array_diff($existingIds, $submittedIds);
-            if (!empty($toDelete)) {
-                $ap->expenses()->whereIn('id', $toDelete)->delete();
-            }
-
-            // Sync additional_expenses_total on approvalPembayaran
-            $ap->additional_expenses_total = $ap->expenses()->sum('amount');
-            $ap->save();
-
-            // Recalculate invoice totals
-            $this->recalculateInvoiceFromShipments();
-
-            DB::commit();
-            session()->flash('message', 'Biaya pengiriman ' . $pengiriman->no_pengiriman . ' berhasil disimpan');
-
-            $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal menyimpan biaya: ' . $e->getMessage());
-        }
-    }
-
-    private function recalculateInvoiceFromShipments()
-    {
-        $invoice = $this->selectedData->invoice;
-        $invoice->load('pengirimans.approvalPembayaran.expenses', 'pengirimans.pengirimanDetails.purchaseOrderBahanBaku', 'pengirimans.pengirimanDetails.orderDetail');
-
-        $totalSellingPrice = 0;
-        $totalQty          = 0;
-        $totalRefraksiAmt  = 0;
-        $totalExpenses     = 0;
-        $qtyBefore         = 0;
-        $qtyAfter          = 0;
-
-        foreach ($invoice->pengirimans as $s) {
-            $sellPrice = 0;
-            foreach ($s->pengirimanDetails as $detail) {
-                $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-                $hargaJual   = $orderDetail ? floatval($orderDetail->harga_jual) : 0;
-                $sellPrice  += floatval($detail->qty_kirim) * $hargaJual;
-            }
-            $totalSellingPrice += $sellPrice;
-            $totalQty          += floatval($s->total_qty_kirim);
-
-            $ap = $s->approvalPembayaran;
-            if ($ap) {
-                $type  = $ap->refraksi_type ?? 'qty';
-                $value = $ap->refraksi_value ?? 0;
-
-                if ($type === 'qty') {
-                    $rQty  = floatval($s->total_qty_kirim) * ($value / 100);
-                    $hKg   = floatval($s->total_qty_kirim) > 0 ? $sellPrice / floatval($s->total_qty_kirim) : 0;
-                    $rAmt  = $rQty * $hKg;
-                    $totalRefraksiAmt += $rAmt;
-                    $qtyAfter += floatval($s->total_qty_kirim) - $rQty;
-                } elseif ($type === 'rupiah') {
-                    $rAmt = $value * floatval($s->total_qty_kirim);
-                    $totalRefraksiAmt += $rAmt;
-                } else {
-                    $totalRefraksiAmt += $value;
-                }
-
-                $totalExpenses += floatval($ap->additional_expenses_total ?? 0);
-            }
-
-            $qtyBefore += floatval($s->total_qty_kirim);
-        }
-
-        $subtotal = $totalSellingPrice - $totalRefraksiAmt + $totalExpenses;
-
-        $invoice->refraksi_type            = 'qty';
-        $invoice->refraksi_value           = 0;
-        $invoice->refraksi_amount          = $totalRefraksiAmt;
-        $invoice->qty_before_refraksi      = $qtyBefore;
-        $invoice->qty_after_refraksi       = $qtyAfter;
-        $invoice->amount_before_refraksi   = $totalSellingPrice;
-        $invoice->amount_after_refraksi    = $totalSellingPrice - $totalRefraksiAmt;
-        $invoice->subtotal                 = $subtotal;
-        $invoice->additional_expenses_total = $totalExpenses;
-        $invoice->recalculateTotal();
+        } catch (\Exception $e) { DB::rollBack(); Log::error("Update Invoice Number Error: " . $e->getMessage()); session()->flash('error', 'Gagal update: ' . $e->getMessage()); }
     }
 
     public function approve()
     {
-        $user = Auth::user();
-        $approval = $this->selectedData;
-
-        if (!$approval) {
-            session()->flash('error', 'Data approval tidak ditemukan');
-            return;
-        }
-
-        // Validate customer information from customerForm
-        $this->validate([
-            'customerForm.customer_name' => 'required|string|max:255',
-            'customerForm.customer_address' => 'required|string',
-            'customerForm.customer_phone' => 'nullable|string|max:20',
-            'customerForm.customer_email' => 'nullable|email|max:255',
-        ], [
-            'customerForm.customer_name.required' => 'Nama customer harus diisi',
-            'customerForm.customer_address.required' => 'Alamat customer harus diisi',
-            'customerForm.customer_email.email' => 'Format email tidak valid',
-        ]);
-
+        if (!$this->selectedData || !$this->ensureCanManage()) return;
+        $this->validate(['customerForm.customer_name' => 'required', 'customerForm.customer_address' => 'required']);
+        
         DB::beginTransaction();
         try {
-            $role = $this->getUserRole($user);
+            if ($this->selectedData->status !== 'pending') throw new \Exception('Approval tidak valid');
+            if ($this->selectedData->invoice) $this->selectedData->invoice->update($this->customerForm);
+            
+            $role = $this->getApprovalUserRole();
+            $updateData = ['status' => 'completed', in_array($role, ['manager_keuangan', 'superadmin']) ? 'manager_id' : 'staff_id' => Auth::id(), in_array($role, ['manager_keuangan', 'superadmin']) ? 'manager_approved_at' : 'staff_approved_at' => now()];
+            $this->selectedData->update($updateData);
 
-            if (!$role) {
-                throw new \Exception('Anda tidak memiliki akses untuk melakukan approval');
-            }
-
-            // Check if approval can be processed
-            if ($approval->status !== 'pending') {
-                throw new \Exception('Approval ini sudah diproses atau tidak dapat diapprove');
-            }
-
-            // Save customer information changes BEFORE approving
-            if ($approval->invoice) {
-                $approval->invoice->update($this->customerForm);
-            }
-
-            // Langsung complete untuk semua anggota keuangan
-            $updateData = [
-                'status' => 'completed',
-            ];
-
-            // Set approver based on role
-            if ($role === 'manager_keuangan') {
-                $updateData['manager_id'] = $user->id;
-                $updateData['manager_approved_at'] = now();
-            } else {
-                $updateData['staff_id'] = $user->id;
-                $updateData['staff_approved_at'] = now();
-            }
-
-            $approval->update($updateData);
-
-            // Save history
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $approval->id,
-                'pengiriman_id' => $approval->pengiriman_id,
-                'invoice_id' => $approval->invoice_id,
-                'role' => $role,
-                'user_id' => $user->id,
-                'action' => 'approved',
-                'notes' => $this->notes,
-            ]);
-
+            $this->logInvoiceHistory($this->selectedData->id, $this->selectedData->pengiriman_id, $this->selectedData->invoice_id, 'approved', $this->notes);
             DB::commit();
-
             session()->flash('message', 'Approval berhasil disimpan');
             $this->closeModal();
-            $this->render();
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', $e->getMessage());
-        }
+        } catch (\Exception $e) { DB::rollBack(); Log::error("Approve Error: " . $e->getMessage()); session()->flash('error', $e->getMessage()); }
     }
 
-    private function getUserRole($user)
-    {
-        if ($user->role === 'manager_accounting') {
-            return 'manager_keuangan';
-        } elseif ($user->role === 'staff_accounting') {
-            return 'staff';
-        } elseif ($user->role === 'direktur') {
-            return 'direktur';
-        } elseif ($user->role === 'superadmin') {
-            return 'superadmin';
-        } elseif ($user->role === 'staff_accounting') {
-            return 'staff_accounting';
-        }
-
-        return null;
-    }
     public function closeModal()
     {
-        $this->showDetailModal         = false;
-        $this->showCreateInvoiceModal  = false;
-        $this->selectedData            = null;
-        $this->selectedShipment        = null;   // <-- tambah
-        $this->selectedShipments       = null;   // <-- tambah
-        $this->isMergedInvoice         = false;  // <-- tambah
-        $this->notes                   = '';
-        $this->invoiceForm = [
-            'customer_name'    => '',
-            'customer_address' => '',
-            'customer_phone'   => '',
-            'customer_email'   => '',
-            'refraksi_type'    => 'qty',
-            'refraksi_value'   => 0,
-            'notes'            => '',
-        ];
-        $this->customerForm = [
-            'customer_name'    => '',
-            'customer_address' => '',
-            'customer_phone'   => '',
-            'customer_email'   => '',
-        ];
-        $this->dateForm = [
-            'invoice_date' => '',
-            'due_date'     => '',
-        ];
-        $this->bankForm = [
-            'bank_name'            => '',
-            'bank_account_number'  => '',
-            'bank_account_name'    => '',
-        ];
-        $this->invoiceNotesForm   = '';
-        $this->invoiceNumberForm  = '';
-        $this->totalHargaJualForm = 0;
-        $this->approvalHistory    = [];
-    }
-
-    public function updateTotalHargaJual()
-    {
-        $this->validate([
-            'totalHargaJualForm' => 'required|numeric|min:0',
-        ], [
-            'totalHargaJualForm.required' => 'Total harga jual harus diisi',
-            'totalHargaJualForm.numeric' => 'Total harga jual harus berupa angka',
-            'totalHargaJualForm.min' => 'Total harga jual tidak boleh negatif',
-        ]);
-
-        if (!$this->selectedData || !$this->selectedData->invoice) {
-            session()->flash('error', 'Data invoice tidak ditemukan');
-            return;
-        }
-
-        DB::beginTransaction();
-        try {
-            $invoice = $this->selectedData->invoice;
-            $user = Auth::user();
-
-            // Store old values for history
-            $oldSubtotal = $invoice->subtotal;
-            $oldTotal = $invoice->total_amount;
-
-            // Update subtotal
-            $invoice->subtotal = floatval($this->totalHargaJualForm);
-
-            // Recalculate total with tax
-            $invoice->tax_amount = $invoice->subtotal * ($invoice->tax_percentage / 100);
-            $invoice->total_amount = $invoice->subtotal + $invoice->tax_amount - $invoice->discount_amount;
-            $invoice->save();
-
-            // Collect changes
-            $changes = [
-                'before' => [
-                    'subtotal' => number_format($oldSubtotal, 2, ',', '.'),
-                    'total_amount' => number_format($oldTotal, 2, ',', '.'),
-                ],
-                'after' => [
-                    'subtotal' => number_format($invoice->subtotal, 2, ',', '.'),
-                    'total_amount' => number_format($invoice->total_amount, 2, ',', '.'),
-                ],
-            ];
-
-            // Save history
-            ApprovalHistory::create([
-                'approval_type' => 'penagihan',
-                'approval_id' => $this->selectedData->id,
-                'pengiriman_id' => $this->selectedData->pengiriman_id,
-                'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
-                'user_id' => $user->id,
-                'action' => 'edited',
-                'changes' => $changes,
-                'notes' => 'Update total harga jual dari Rp ' . number_format($oldSubtotal, 0, ',', '.') .
-                          ' menjadi Rp ' . number_format($invoice->subtotal, 0, ',', '.'),
-            ]);
-
-            DB::commit();
-            session()->flash('message', 'Total harga jual berhasil diupdate');
-
-            // Reload data
-            $this->showDetail($this->selectedData->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Gagal update total harga jual: ' . $e->getMessage());
-        }
+        $this->reset(['showDetailModal', 'showCreateInvoiceModal', 'selectedData', 'selectedShipment', 'selectedShipments', 'isMergedInvoice', 'notes', 'approvalHistory']);
     }
 }

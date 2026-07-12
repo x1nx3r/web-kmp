@@ -10,14 +10,30 @@ use App\Models\BahanBakuKlien;
 use App\Models\Klien;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\MarginExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Exception;
 
 class MarginController extends Controller
 {
-   
+    private const STATUS_VALID = ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'];
+
+    private function validateFilters(Request $request): void
+    {
+        $request->validate([
+            'start_date'     => 'nullable|date',
+            'end_date'       => 'nullable|date',
+            'pic_purchasing' => 'nullable|integer',
+            'pic_marketing'  => 'nullable|integer',
+            'klien'          => 'nullable|integer',
+            'supplier'       => 'nullable|integer',
+            'bahan_baku'     => 'nullable|integer',
+        ]);
+    }
+
     private function hitungHargaBeliJual($p, $detail): array
     {
         $toFloat = fn($val) => floatval(str_replace(',', '.', (string)($val ?? 0)));
@@ -28,20 +44,17 @@ class MarginController extends Controller
         $sumberHargaJual    = '-';
 
         if ($p->invoicePenagihan) {
-            $amountJual = $toFloat($p->invoicePenagihan->amount_after_refraksi) > 0
-                ? $toFloat($p->invoicePenagihan->amount_after_refraksi)
-                : $toFloat($p->invoicePenagihan->subtotal);
+            $amountAfter = $toFloat($p->invoicePenagihan->amount_after_refraksi);
+            $amountJual  = $amountAfter > 0 ? $amountAfter : $toFloat($p->invoicePenagihan->subtotal);
 
-            // Prioritas qty: qty_after_refraksi → qty_before_refraksi → total_qty_kirim
-            $qtyJual = $toFloat($p->invoicePenagihan->qty_after_refraksi) > 0
-                ? $toFloat($p->invoicePenagihan->qty_after_refraksi)
-                : $toFloat($p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim);
+            $qtyAfter  = $toFloat($p->invoicePenagihan->qty_after_refraksi);
+            $qtyBefore = $toFloat($p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim);
+            $qtyJual   = $qtyAfter > 0 ? $qtyAfter : $qtyBefore;
 
             if ($qtyJual > 0 && $amountJual > 0) {
                 $hargaJualPerKg = $amountJual / $qtyJual;
             }
 
-            // Total diambil langsung dari invoice agar refraksi tidak dibatalkan
             $totalHargaJualItem = $amountJual;
             $sumberHargaJual    = 'Invoice Penagihan';
 
@@ -56,23 +69,22 @@ class MarginController extends Controller
         $totalHargaBeliItem = 0;
 
         if ($p->approvalPembayaran) {
-            // Prioritas amount: subtotal → amount_after_refraksi → total_harga_kirim
-            $amountBeli = $toFloat($p->approvalPembayaran->subtotal) > 0
-                ? $toFloat($p->approvalPembayaran->subtotal)
-                : ($toFloat($p->approvalPembayaran->amount_after_refraksi) > 0
-                    ? $toFloat($p->approvalPembayaran->amount_after_refraksi)
-                    : $toFloat($p->total_harga_kirim));
+            $subtotal     = $toFloat($p->approvalPembayaran->subtotal);
+            $amountAfter  = $toFloat($p->approvalPembayaran->amount_after_refraksi);
+            
+            if ($subtotal > 0) {
+                $amountBeli = $subtotal;
+            } else {
+                $amountBeli = $amountAfter > 0 ? $amountAfter : $toFloat($p->total_harga_kirim);
+            }
 
-            // Prioritas qty: qty_after_refraksi → total_qty_kirim
-            $qtyBeli = $toFloat($p->approvalPembayaran->qty_after_refraksi) > 0
-                ? $toFloat($p->approvalPembayaran->qty_after_refraksi)
-                : $toFloat($p->total_qty_kirim);
+            $qtyAfter = $toFloat($p->approvalPembayaran->qty_after_refraksi);
+            $qtyBeli  = $qtyAfter > 0 ? $qtyAfter : $toFloat($p->total_qty_kirim);
 
             if ($qtyBeli > 0 && $amountBeli > 0) {
                 $hargaBeliPerKg = $amountBeli / $qtyBeli;
             }
 
-            // Total diambil langsung dari approval agar refraksi tidak dibatalkan
             $totalHargaBeliItem = $amountBeli;
 
         } else {
@@ -90,9 +102,6 @@ class MarginController extends Controller
         ];
     }
 
-    /**
-     * Bangun query pengiriman dengan eager load & filter yang seragam.
-     */
     private function buildQuery(Request $request)
     {
         $startDate     = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
@@ -113,7 +122,7 @@ class MarginController extends Controller
             'approvalPembayaran',
             'invoicePenagihan',
         ])
-        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+        ->whereIn('status', self::STATUS_VALID)
         ->whereBetween('tanggal_kirim', [$startDate, $endDate]);
 
         if ($picPurchasing) {
@@ -139,14 +148,6 @@ class MarginController extends Controller
         return $query->orderBy('tanggal_kirim', 'asc');
     }
 
-    /**
-     * Proses collection pengiriman menjadi array marginData + totals.
-     * Dipakai di semua method agar konsisten.
-     *
-     * @param  \Illuminate\Support\Collection  $pengirimanList
-     * @param  bool  $withMeta  Sertakan field tambahan (pengiriman_id, status, has_refraksi, sumber_harga_jual)
-     * @return array{marginData: array, totalQty: float, totalHargaBeli: float, totalHargaJual: float, totalMargin: float}
-     */
     private function prosesMarginData($pengirimanList, bool $withMeta = false): array
     {
         $marginData     = [];
@@ -160,16 +161,12 @@ class MarginController extends Controller
                 continue;
             }
 
-            // Ambil detail pertama untuk info bahan baku/supplier
             $detail = $p->pengirimanDetails->first();
             if (!$detail) continue;
 
-            // Total qty dijumlah dari semua details
             $qtyTotal = $p->pengirimanDetails->sum('qty_kirim');
+            $harga    = $this->hitungHargaBeliJual($p, $detail);
 
-            $harga = $this->hitungHargaBeliJual($p, $detail);
-
-            // Fallback harga beli total: jika tidak ada approval, sum dari semua details
             if (!$p->approvalPembayaran) {
                 $harga['harga_beli_total'] = $p->pengirimanDetails->sum('total_harga');
                 $harga['harga_beli_per_kg'] = $qtyTotal > 0
@@ -226,9 +223,6 @@ class MarginController extends Controller
         return compact('marginData', 'totalQty', 'totalHargaBeli', 'totalHargaJual', 'totalMargin');
     }
 
-    /**
-     * Hitung ringkasan (summary stats) dari hasil prosesMarginData.
-     */
     private function hitungSummary(array $marginData, float $totalHargaJual, float $totalMargin): array
     {
         $grossMarginPercentage = $totalHargaJual > 0 ? ($totalMargin / $totalHargaJual) * 100 : 0;
@@ -241,12 +235,10 @@ class MarginController extends Controller
         return compact('grossMarginPercentage', 'profitCount', 'lossCount', 'avgMarginPercentage');
     }
 
-    // =========================================================================
-    // INDEX
-    // =========================================================================
-
     public function index(Request $request)
     {
+        $this->validateFilters($request);
+
         $title     = 'Analisis Margin';
         $activeTab = 'margin';
 
@@ -258,78 +250,71 @@ class MarginController extends Controller
         $supplierId    = $request->get('supplier');
         $bahanBakuId   = $request->get('bahan_baku');
 
-        // ---- Dropdown filter options ----
-        $picPurchasingList = User::whereIn('id', function ($query) {
-            $query->select('purchasing_id')
-                ->from('pengiriman')
-                ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                ->whereNull('deleted_at')
-                ->distinct();
-        })->select('id', 'nama')->orderBy('nama')->get();
+        // ---- Menggunakan JOIN yang efisien, bukan Nested Subqueries ----
+        $picPurchasingList = User::select('users.id', 'users.nama')
+            ->join('pengiriman', 'users.id', '=', 'pengiriman.purchasing_id')
+            ->whereIn('pengiriman.status', self::STATUS_VALID)
+            ->whereNull('pengiriman.deleted_at')
+            ->distinct()
+            ->orderBy('users.nama')
+            ->get();
 
-        $picMarketingList = User::whereIn('id', function ($query) {
-            $query->select('user_id')
-                ->from('order_winners')
-                ->whereIn('order_id', function ($subQuery) {
-                    $subQuery->select('purchase_order_id')
-                        ->from('pengiriman')
-                        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                        ->whereNull('deleted_at')
-                        ->distinct();
-                });
-        })->select('id', 'nama')->orderBy('nama')->get();
+        $picMarketingList = User::select('users.id', 'users.nama')
+            ->join('order_winners', 'users.id', '=', 'order_winners.user_id')
+            ->join('pengiriman', 'order_winners.order_id', '=', 'pengiriman.purchase_order_id')
+            ->whereIn('pengiriman.status', self::STATUS_VALID)
+            ->whereNull('pengiriman.deleted_at')
+            ->distinct()
+            ->orderBy('users.nama')
+            ->get();
 
-        $klienList = Klien::whereIn('id', function ($query) {
-            $query->select('klien_id')
-                ->from('orders')
-                ->whereIn('id', function ($subQuery) {
-                    $subQuery->select('purchase_order_id')
-                        ->from('pengiriman')
-                        ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                        ->whereNull('deleted_at');
-                });
-        })->select('id', 'nama', 'cabang')->orderBy('nama')->get();
+        $klienList = Klien::select('kliens.id', 'kliens.nama', 'kliens.cabang')
+            ->join('orders', 'kliens.id', '=', 'orders.klien_id')
+            ->join('pengiriman', 'orders.id', '=', 'pengiriman.purchase_order_id')
+            ->whereIn('pengiriman.status', self::STATUS_VALID)
+            ->whereNull('pengiriman.deleted_at')
+            ->distinct()
+            ->orderBy('kliens.nama')
+            ->get();
 
-        $supplierList = Supplier::whereIn('id', function ($query) {
-            $query->select('supplier_id')
-                ->from('bahan_baku_supplier')
-                ->whereIn('id', function ($subQuery) {
-                    $subQuery->select('bahan_baku_supplier_id')
-                        ->from('pengiriman_details')
-                        ->whereIn('pengiriman_id', function ($innerQuery) {
-                            $innerQuery->select('id')
-                                ->from('pengiriman')
-                                ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                                ->whereNull('deleted_at');
-                        });
-                })->distinct();
-        })->select('id', 'nama')->orderBy('nama')->get();
+        $supplierList = Supplier::select('suppliers.id', 'suppliers.nama')
+            ->join('bahan_baku_supplier', 'suppliers.id', '=', 'bahan_baku_supplier.supplier_id')
+            ->join('pengiriman_details', 'bahan_baku_supplier.id', '=', 'pengiriman_details.bahan_baku_supplier_id')
+            ->join('pengiriman', 'pengiriman_details.pengiriman_id', '=', 'pengiriman.id')
+            ->whereIn('pengiriman.status', self::STATUS_VALID)
+            ->whereNull('pengiriman.deleted_at')
+            ->distinct()
+            ->orderBy('suppliers.nama')
+            ->get();
 
-        $bahanBakuList = BahanBakuKlien::whereIn('id', function ($query) {
-            $query->select('bahan_baku_klien_id')
-                ->from('order_details')
-                ->whereIn('id', function ($subQuery) {
-                    $subQuery->select('purchase_order_bahan_baku_id')
-                        ->from('pengiriman_details')
-                        ->whereIn('pengiriman_id', function ($innerQuery) {
-                            $innerQuery->select('id')
-                                ->from('pengiriman')
-                                ->whereIn('status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
-                                ->whereNull('deleted_at');
-                        });
-                })->distinct();
-        })->select('id', 'nama')->distinct()->orderBy('nama')->get()->unique('nama')->values();
+        $bahanBakuList = BahanBakuKlien::select('bahan_baku_klien.id', 'bahan_baku_klien.nama')
+            ->join('order_details', 'bahan_baku_klien.id', '=', 'order_details.bahan_baku_klien_id')
+            ->join('pengiriman_details', 'order_details.id', '=', 'pengiriman_details.purchase_order_bahan_baku_id')
+            ->join('pengiriman', 'pengiriman_details.pengiriman_id', '=', 'pengiriman.id')
+            ->whereIn('pengiriman.status', self::STATUS_VALID)
+            ->whereNull('pengiriman.deleted_at')
+            ->distinct()
+            ->orderBy('bahan_baku_klien.nama')
+            ->get()
+            ->unique('nama')
+            ->values();
 
         // ---- Data ----
         $pengirimanList = $this->buildQuery($request)->get();
-
-        $hasil = $this->prosesMarginData($pengirimanList, withMeta: true);
-
-        extract($hasil); // $marginData, $totalQty, $totalHargaBeli, $totalHargaJual, $totalMargin
+        $hasil = $this->prosesMarginData($pengirimanList, true);
+        
+        $marginData     = $hasil['marginData'];
+        $totalQty       = $hasil['totalQty'];
+        $totalHargaBeli = $hasil['totalHargaBeli'];
+        $totalHargaJual = $hasil['totalHargaJual'];
+        $totalMargin    = $hasil['totalMargin'];
 
         $summary = $this->hitungSummary($marginData, $totalHargaJual, $totalMargin);
-
-        extract($summary); // $grossMarginPercentage, $profitCount, $lossCount, $avgMarginPercentage
+        
+        $grossMarginPercentage = $summary['grossMarginPercentage'];
+        $profitCount           = $summary['profitCount'];
+        $lossCount             = $summary['lossCount'];
+        $avgMarginPercentage   = $summary['avgMarginPercentage'];
 
         return view('pages.laporan.margin', compact(
             'title', 'activeTab',
@@ -341,152 +326,154 @@ class MarginController extends Controller
         ));
     }
 
-    // =========================================================================
-    // EXPORT PDF
-    // =========================================================================
-
     public function export(Request $request)
     {
-        $startDate     = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $endDate       = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
-        $picPurchasing = $request->get('pic_purchasing');
-        $picMarketing  = $request->get('pic_marketing');
-        $klienId       = $request->get('klien');
-        $supplierId    = $request->get('supplier');
-        $bahanBakuId   = $request->get('bahan_baku');
+        try {
+            $this->validateFilters($request);
 
-        // ---- Label filter untuk header PDF ----
-        $picName          = $picPurchasing ? (User::find($picPurchasing)->nama ?? '')     : '';
-        $picMarketingName = $picMarketing  ? (User::find($picMarketing)->nama ?? '')      : '';
-        $supplierName     = $supplierId    ? (Supplier::find($supplierId)->nama ?? '')    : '';
+            $startDate     = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+            $endDate       = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+            $picPurchasing = $request->get('pic_purchasing');
+            $picMarketing  = $request->get('pic_marketing');
+            $klienId       = $request->get('klien');
+            $supplierId    = $request->get('supplier');
+            $bahanBakuId   = $request->get('bahan_baku');
 
-        $klienName = '';
-        if ($klienId) {
-            $klienObj  = Klien::find($klienId);
-            $klienName = $klienObj ? $klienObj->nama . ($klienObj->cabang ? " ({$klienObj->cabang})" : '') : '';
+            $picName          = $picPurchasing ? (User::find($picPurchasing)->nama ?? '')     : '';
+            $picMarketingName = $picMarketing  ? (User::find($picMarketing)->nama ?? '')      : '';
+            $supplierName     = $supplierId    ? (Supplier::find($supplierId)->nama ?? '')    : '';
+
+            $klienName = '';
+            if ($klienId) {
+                $klienObj  = Klien::find($klienId);
+                $klienName = $klienObj ? $klienObj->nama . ($klienObj->cabang ? " ({$klienObj->cabang})" : '') : '';
+            }
+
+            $bahanBakuName = '';
+            if ($bahanBakuId) {
+                $bahanBakuName = BahanBakuKlien::find($bahanBakuId)->nama ?? '';
+            }
+
+            $pengirimanList = $this->buildQuery($request)->get();
+            $hasil = $this->prosesMarginData($pengirimanList, false);
+
+            $marginData     = $hasil['marginData'];
+            $totalQty       = $hasil['totalQty'];
+            $totalHargaBeli = $hasil['totalHargaBeli'];
+            $totalHargaJual = $hasil['totalHargaJual'];
+            $totalMargin    = $hasil['totalMargin'];
+
+            usort($marginData, fn($a, $b) => $b['margin_percentage'] <=> $a['margin_percentage']);
+
+            $summary = $this->hitungSummary($marginData, $totalHargaJual, $totalMargin);
+            
+            $grossMarginPercentage = $summary['grossMarginPercentage'];
+            $profitCount           = $summary['profitCount'];
+            $lossCount             = $summary['lossCount'];
+
+            $filterDesc = array_filter([
+                $picPurchasing ? 'PIC Procurement: ' . $picName          : null,
+                $picMarketing  ? 'PIC Marketing: '   . $picMarketingName : null,
+                $klienId       ? 'Klien: '            . $klienName        : null,
+                $supplierId    ? 'Supplier: '         . $supplierName     : null,
+                $bahanBakuId   ? 'Bahan Baku: '       . $bahanBakuName    : null,
+            ]);
+
+            $data = [
+                'marginData'            => $marginData,
+                'totalQty'              => $totalQty,
+                'totalHargaBeli'        => $totalHargaBeli,
+                'totalHargaJual'        => $totalHargaJual,
+                'totalMargin'           => $totalMargin,
+                'grossMarginPercentage' => $grossMarginPercentage,
+                'profitCount'           => $profitCount,
+                'lossCount'             => $lossCount,
+                'startDate'             => Carbon::parse($startDate)->format('d/m/Y'),
+                'endDate'               => Carbon::parse($endDate)->format('d/m/Y'),
+                'filterDesc'            => implode(' • ', $filterDesc),
+                'generatedAt'           => Carbon::now()->format('d/m/Y H:i:s'),
+            ];
+
+            $pdf = Pdf::loadView('pages.laporan.pdf.margin', $data);
+            $pdf->setPaper('a4', 'landscape');
+
+            $filename = 'Laporan_Margin_' . Carbon::parse($startDate)->format('d-m-Y') . '_sd_' . Carbon::parse($endDate)->format('d-m-Y') . '.pdf';
+
+            return $pdf->download($filename);
+            
+        } catch (Exception $e) {
+            Log::error('Gagal memproses Export PDF Margin: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat memproses laporan PDF.');
         }
-
-        $bahanBakuName = '';
-        if ($bahanBakuId) {
-            $bahanBakuName = BahanBakuKlien::find($bahanBakuId)->nama ?? '';
-        }
-
-        // ---- Data ----
-        $pengirimanList = $this->buildQuery($request)->get();
-
-        $hasil = $this->prosesMarginData($pengirimanList, withMeta: false);
-
-        extract($hasil);
-
-        // PDF diurutkan margin % descending
-        usort($marginData, fn($a, $b) => $b['margin_percentage'] <=> $a['margin_percentage']);
-
-        $summary = $this->hitungSummary($marginData, $totalHargaJual, $totalMargin);
-
-        extract($summary);
-
-        $filterDesc = array_filter([
-            $picPurchasing ? 'PIC Procurement: ' . $picName          : null,
-            $picMarketing  ? 'PIC Marketing: '   . $picMarketingName : null,
-            $klienId       ? 'Klien: '            . $klienName        : null,
-            $supplierId    ? 'Supplier: '         . $supplierName     : null,
-            $bahanBakuId   ? 'Bahan Baku: '       . $bahanBakuName    : null,
-        ]);
-
-        $data = [
-            'marginData'            => $marginData,
-            'totalQty'              => $totalQty,
-            'totalHargaBeli'        => $totalHargaBeli,
-            'totalHargaJual'        => $totalHargaJual,
-            'totalMargin'           => $totalMargin,
-            'grossMarginPercentage' => $grossMarginPercentage,
-            'profitCount'           => $profitCount,
-            'lossCount'             => $lossCount,
-            'startDate'             => Carbon::parse($startDate)->format('d/m/Y'),
-            'endDate'               => Carbon::parse($endDate)->format('d/m/Y'),
-            'filterDesc'            => implode(' • ', $filterDesc),
-            'generatedAt'           => Carbon::now()->format('d/m/Y H:i:s'),
-        ];
-
-        $pdf = Pdf::loadView('pages.laporan.pdf.margin', $data);
-        $pdf->setPaper('a4', 'landscape');
-
-        $filename = 'Laporan_Margin_'
-            . Carbon::parse($startDate)->format('d-m-Y')
-            . '_sd_'
-            . Carbon::parse($endDate)->format('d-m-Y')
-            . '.pdf';
-
-        return $pdf->download($filename);
     }
-
-    // =========================================================================
-    // EXPORT EXCEL
-    // =========================================================================
 
     public function exportExcel(Request $request)
     {
-        $startDate     = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $endDate       = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
-        $picPurchasing = $request->get('pic_purchasing');
-        $picMarketing  = $request->get('pic_marketing');
-        $klienId       = $request->get('klien');
-        $supplierId    = $request->get('supplier');
-        $bahanBakuId   = $request->get('bahan_baku');
+        try {
+            $this->validateFilters($request);
 
-        // ---- Filters metadata untuk header sheet Excel ----
-        $filters = [
-            'start_date' => $startDate,
-            'end_date'   => $endDate,
-        ];
+            $startDate     = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+            $endDate       = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+            $picPurchasing = $request->get('pic_purchasing');
+            $picMarketing  = $request->get('pic_marketing');
+            $klienId       = $request->get('klien');
+            $supplierId    = $request->get('supplier');
+            $bahanBakuId   = $request->get('bahan_baku');
 
-        if ($picPurchasing) {
-            $filters['pic_purchasing_name'] = User::find($picPurchasing)->nama ?? '';
+            $filters = [
+                'start_date' => $startDate,
+                'end_date'   => $endDate,
+            ];
+
+            if ($picPurchasing) {
+                $filters['pic_purchasing_name'] = User::find($picPurchasing)->nama ?? '';
+            }
+            if ($picMarketing) {
+                $filters['pic_marketing_name'] = User::find($picMarketing)->nama ?? '';
+            }
+            if ($klienId) {
+                $klienObj = Klien::find($klienId);
+                $filters['klien_name'] = $klienObj ? $klienObj->nama . ($klienObj->cabang ? " ({$klienObj->cabang})" : '') : '';
+            }
+            if ($supplierId) {
+                $filters['supplier_name'] = Supplier::find($supplierId)->nama ?? '';
+            }
+            if ($bahanBakuId) {
+                $filters['bahan_baku_name'] = BahanBakuKlien::find($bahanBakuId)->nama ?? '';
+            }
+
+            $pengirimanList = $this->buildQuery($request)->get();
+            $hasil = $this->prosesMarginData($pengirimanList, true);
+
+            $marginData     = $hasil['marginData'];
+            $totalQty       = $hasil['totalQty'];
+            $totalHargaBeli = $hasil['totalHargaBeli'];
+            $totalHargaJual = $hasil['totalHargaJual'];
+            $totalMargin    = $hasil['totalMargin'];
+
+            $summary = $this->hitungSummary($marginData, $totalHargaJual, $totalMargin);
+            
+            $grossMarginPercentage = $summary['grossMarginPercentage'];
+            $profitCount           = $summary['profitCount'];
+            $lossCount             = $summary['lossCount'];
+
+            $totals = [
+                'totalQty'              => $totalQty,
+                'totalHargaBeli'        => $totalHargaBeli,
+                'totalHargaJual'        => $totalHargaJual,
+                'totalMargin'           => $totalMargin,
+                'grossMarginPercentage' => $grossMarginPercentage,
+                'profitCount'           => $profitCount,
+                'lossCount'             => $lossCount,
+            ];
+
+            $filename = 'Laporan_Margin_' . Carbon::parse($startDate)->format('d-m-Y') . '_sd_' . Carbon::parse($endDate)->format('d-m-Y') . '.xlsx';
+
+            return Excel::download(new MarginExport($marginData, $totals, $filters), $filename);
+
+        } catch (Exception $e) {
+            Log::error('Gagal memproses Export Excel Margin: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat mengekspor ke Excel.');
         }
-        if ($picMarketing) {
-            $filters['pic_marketing_name'] = User::find($picMarketing)->nama ?? '';
-        }
-        if ($klienId) {
-            $klienObj = Klien::find($klienId);
-            $filters['klien_name'] = $klienObj
-                ? $klienObj->nama . ($klienObj->cabang ? " ({$klienObj->cabang})" : '')
-                : '';
-        }
-        if ($supplierId) {
-            $filters['supplier_name'] = Supplier::find($supplierId)->nama ?? '';
-        }
-        if ($bahanBakuId) {
-            $filters['bahan_baku_name'] = BahanBakuKlien::find($bahanBakuId)->nama ?? '';
-        }
-
-        // ---- Data ----
-        $pengirimanList = $this->buildQuery($request)->get();
-
-        // withMeta: true supaya has_refraksi tersedia di Excel (kolom penanda)
-        $hasil = $this->prosesMarginData($pengirimanList, withMeta: true);
-
-        extract($hasil);
-
-        $summary = $this->hitungSummary($marginData, $totalHargaJual, $totalMargin);
-
-        extract($summary);
-
-        $totals = [
-            'totalQty'              => $totalQty,
-            'totalHargaBeli'        => $totalHargaBeli,
-            'totalHargaJual'        => $totalHargaJual,
-            'totalMargin'           => $totalMargin,
-            'grossMarginPercentage' => $grossMarginPercentage,
-            'profitCount'           => $profitCount,
-            'lossCount'             => $lossCount,
-        ];
-
-        $filename = 'Laporan_Margin_'
-            . Carbon::parse($startDate)->format('d-m-Y')
-            . '_sd_'
-            . Carbon::parse($endDate)->format('d-m-Y')
-            . '.xlsx';
-
-        return Excel::download(new MarginExport($marginData, $totals, $filters), $filename);
     }
 }

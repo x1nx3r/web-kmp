@@ -389,32 +389,30 @@ function refreshWithPreservedParams() {
     if (currentParams.get('page_berhasil')) params.append('page_berhasil', currentPageBerhasil);
     if (currentParams.get('page_gagal')) params.append('page_gagal', currentPageGagal);
     
-    // Preserve search and filter parameters for pengiriman-masuk tab
     if (currentParams.get('search_masuk')) params.append('search_masuk', currentParams.get('search_masuk'));
+    if (currentParams.get('tanggal_mulai_masuk')) params.append('tanggal_mulai_masuk', currentParams.get('tanggal_mulai_masuk'));
+    if (currentParams.get('tanggal_akhir_masuk')) params.append('tanggal_akhir_masuk', currentParams.get('tanggal_akhir_masuk'));
     if (currentParams.get('filter_purchasing')) params.append('filter_purchasing', currentParams.get('filter_purchasing'));
-    if (currentParams.get('sort_date_masuk')) params.append('sort_date_masuk', currentParams.get('sort_date_masuk'));
-    
-    // Preserve search and filter parameters for menunggu-verifikasi tab
+
     if (currentParams.get('search_verifikasi')) params.append('search_verifikasi', currentParams.get('search_verifikasi'));
+    if (currentParams.get('tanggal_mulai_verifikasi')) params.append('tanggal_mulai_verifikasi', currentParams.get('tanggal_mulai_verifikasi'));
+    if (currentParams.get('tanggal_akhir_verifikasi')) params.append('tanggal_akhir_verifikasi', currentParams.get('tanggal_akhir_verifikasi'));
     if (currentParams.get('filter_purchasing_verifikasi')) params.append('filter_purchasing_verifikasi', currentParams.get('filter_purchasing_verifikasi'));
-    if (currentParams.get('sort_date_verifikasi')) params.append('sort_date_verifikasi', currentParams.get('sort_date_verifikasi'));
-    
-    // Preserve search and filter parameters for menunggu-fisik tab
+
     if (currentParams.get('search_fisik')) params.append('search_fisik', currentParams.get('search_fisik'));
+    if (currentParams.get('tanggal_mulai_fisik')) params.append('tanggal_mulai_fisik', currentParams.get('tanggal_mulai_fisik'));
+    if (currentParams.get('tanggal_akhir_fisik')) params.append('tanggal_akhir_fisik', currentParams.get('tanggal_akhir_fisik'));
     if (currentParams.get('filter_purchasing_fisik')) params.append('filter_purchasing_fisik', currentParams.get('filter_purchasing_fisik'));
-    if (currentParams.get('sort_date_fisik')) params.append('sort_date_fisik', currentParams.get('sort_date_fisik'));
-    
-    // Preserve search and filter parameters for pengiriman-berhasil tab
+
     if (currentParams.get('search_berhasil')) params.append('search_berhasil', currentParams.get('search_berhasil'));
-    if (currentParams.get('date_range_berhasil')) params.append('date_range_berhasil', currentParams.get('date_range_berhasil'));
+    if (currentParams.get('tanggal_mulai_berhasil')) params.append('tanggal_mulai_berhasil', currentParams.get('tanggal_mulai_berhasil'));
+    if (currentParams.get('tanggal_akhir_berhasil')) params.append('tanggal_akhir_berhasil', currentParams.get('tanggal_akhir_berhasil'));
     if (currentParams.get('filter_purchasing_berhasil')) params.append('filter_purchasing_berhasil', currentParams.get('filter_purchasing_berhasil'));
-    if (currentParams.get('sort_order_berhasil')) params.append('sort_order_berhasil', currentParams.get('sort_order_berhasil'));
-    
-    // Preserve search and filter parameters for pengiriman-gagal tab
+
     if (currentParams.get('search_gagal')) params.append('search_gagal', currentParams.get('search_gagal'));
-    if (currentParams.get('date_range_gagal')) params.append('date_range_gagal', currentParams.get('date_range_gagal'));
+    if (currentParams.get('tanggal_mulai_gagal')) params.append('tanggal_mulai_gagal', currentParams.get('tanggal_mulai_gagal'));
+    if (currentParams.get('tanggal_akhir_gagal')) params.append('tanggal_akhir_gagal', currentParams.get('tanggal_akhir_gagal'));
     if (currentParams.get('filter_purchasing_gagal')) params.append('filter_purchasing_gagal', currentParams.get('filter_purchasing_gagal'));
-    if (currentParams.get('sort_order_gagal')) params.append('sort_order_gagal', currentParams.get('sort_order_gagal'));
     
     // Navigate with all preserved parameters
     const newUrl = window.location.pathname + '?' + params.toString();

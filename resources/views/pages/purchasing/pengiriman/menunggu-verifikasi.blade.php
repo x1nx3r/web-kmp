@@ -44,21 +44,34 @@
                     <div class="w-4 h-4 sm:w-5 sm:h-5 bg-yellow-500 rounded-full flex items-center justify-center mr-1 sm:mr-2">
                         <i class="fas fa-filter text-white text-xs"></i>
                     </div>
-                    Filter & Urutan
+                    Filter
                 </h3>
-                
-                {{-- Horizontal Filter Layout --}}
+
                 <div class="flex flex-col sm:flex-row items-start sm:items-end gap-2 sm:gap-4">
-                    {{-- Filter by Purchasing --}}
+                    <div class="w-full sm:w-48 shrink-0">
+                        <label class="block text-xs font-medium text-yellow-600 mb-1">
+                            <i class="fas fa-calendar mr-1 text-yellow-500 text-xs"></i>
+                            Tanggal Mulai
+                        </label>
+                        <input type="date" id="tanggalMulaiVerifikasi" name="tanggal_mulai_verifikasi" value="{{ request('tanggal_mulai_verifikasi') }}" class="w-full py-2 px-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-sm">
+                    </div>
+
+                    <div class="w-full sm:w-48 shrink-0">
+                        <label class="block text-xs font-medium text-yellow-600 mb-1">
+                            <i class="fas fa-calendar mr-1 text-yellow-500 text-xs"></i>
+                            Tanggal Berakhir
+                        </label>
+                        <input type="date" id="tanggalAkhirVerifikasi" name="tanggal_akhir_verifikasi" value="{{ request('tanggal_akhir_verifikasi') }}" class="w-full py-2 px-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-sm">
+                    </div>
+
                     <div class="w-full sm:w-64 shrink-0">
                         <label class="block text-xs font-medium text-yellow-600 mb-1">
                             <i class="fas fa-user mr-1 text-yellow-500 text-xs"></i>
                             PIC Procurement
                         </label>
-                        <select id="filterPurchasingVerifikasi" name="filter_purchasing_verifikasi" class="w-full py-2 px-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersVerifikasi()">
+                        <select id="filterPurchasingVerifikasi" name="filter_purchasing_verifikasi" class="w-full py-2 px-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-sm">
                             <option value="">Semua Procurement</option>
                             @php
-                                // Debug: check purchasing data
                                 $purchasingOptions = collect();
                                 foreach($menungguVerifikasi->items() ?? [] as $item) {
                                     if($item->purchasing && $item->purchasing->nama) {
@@ -73,21 +86,11 @@
                         </select>
                     </div>
 
-                    {{-- Sort by Date --}}
-                    <div class="w-full sm:w-48 shrink-0">
-                        <label class="block text-xs font-medium text-yellow-600 mb-1">
-                            <i class="fas fa-sort mr-1 text-yellow-500 text-xs"></i>
-                            Urutkan
-                        </label>
-                        <select id="sortDateVerifikasi" name="sort_date_verifikasi" class="w-full py-2 px-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersVerifikasi()">
-                            <option value="">Default</option>
-                            <option value="newest" {{ request('sort_date_verifikasi') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_date_verifikasi') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        </select>
-                    </div>
-
-                    {{-- Clear Filter Button --}}
-                    <div class="w-full sm:w-auto sm:ml-auto shrink-0">
+                    <div class="w-full sm:w-auto sm:ml-auto shrink-0 flex gap-2">
+                        <button onclick="applyFiltersVerifikasi()" class="w-full sm:w-auto px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap">
+                            <i class="fas fa-filter mr-1"></i>
+                            Terapkan Filter
+                        </button>
                         <button onclick="clearAllFiltersVerifikasi()" class="w-full sm:w-auto px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap">
                             <i class="fas fa-times mr-1"></i>
                             Hapus Filter
@@ -415,7 +418,8 @@
                                 // Preserve other filters
                                 if (request('search_verifikasi')) $prevParams['search_verifikasi'] = request('search_verifikasi');
                                 if (request('filter_purchasing_verifikasi')) $prevParams['filter_purchasing_verifikasi'] = request('filter_purchasing_verifikasi');
-                                if (request('sort_date_verifikasi')) $prevParams['sort_date_verifikasi'] = request('sort_date_verifikasi');
+                                if (request('tanggal_mulai_verifikasi')) $prevParams['tanggal_mulai_verifikasi'] = request('tanggal_mulai_verifikasi');
+                                if (request('tanggal_akhir_verifikasi')) $prevParams['tanggal_akhir_verifikasi'] = request('tanggal_akhir_verifikasi');
                                 $prevUrl = $prevUrlParts['path'] . '?' . http_build_query($prevParams);
                             @endphp
                             <a href="{{ $prevUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 transition-colors">
@@ -435,7 +439,8 @@
                                         // Preserve other filters
                                         if (request('search_verifikasi')) $urlParams['search_verifikasi'] = request('search_verifikasi');
                                         if (request('filter_purchasing_verifikasi')) $urlParams['filter_purchasing_verifikasi'] = request('filter_purchasing_verifikasi');
-                                        if (request('sort_date_verifikasi')) $urlParams['sort_date_verifikasi'] = request('sort_date_verifikasi');
+                                        if (request('tanggal_mulai_verifikasi')) $urlParams['tanggal_mulai_verifikasi'] = request('tanggal_mulai_verifikasi');
+                                        if (request('tanggal_akhir_verifikasi')) $urlParams['tanggal_akhir_verifikasi'] = request('tanggal_akhir_verifikasi');
                                         $pageUrl = $urlParts['path'] . '?' . http_build_query($urlParams);
                                     @endphp
                                     
@@ -467,7 +472,8 @@
                                 // Preserve other filters
                                 if (request('search_verifikasi')) $nextParams['search_verifikasi'] = request('search_verifikasi');
                                 if (request('filter_purchasing_verifikasi')) $nextParams['filter_purchasing_verifikasi'] = request('filter_purchasing_verifikasi');
-                                if (request('sort_date_verifikasi')) $nextParams['sort_date_verifikasi'] = request('sort_date_verifikasi');
+                                if (request('tanggal_mulai_verifikasi')) $nextParams['tanggal_mulai_verifikasi'] = request('tanggal_mulai_verifikasi');
+                                if (request('tanggal_akhir_verifikasi')) $nextParams['tanggal_akhir_verifikasi'] = request('tanggal_akhir_verifikasi');
                                 $nextUrl = $nextUrlParts['path'] . '?' . http_build_query($nextParams);
                             @endphp
                             <a href="{{ $nextUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 transition-colors">
@@ -552,24 +558,24 @@ function submitSearchVerifikasi() {
 // Apply filters function for server-side filtering
 function applyFiltersVerifikasi() {
     const currentParams = new URLSearchParams(window.location.search);
-    
-    const searchValue = document.getElementById('searchInputVerifikasi').value;
+
+    const tanggalMulai = document.getElementById('tanggalMulaiVerifikasi').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirVerifikasi').value;
     const filterPurchasing = document.getElementById('filterPurchasingVerifikasi').value;
-    const sortDate = document.getElementById('sortDateVerifikasi').value;
-    
+
     currentParams.set('tab', 'menunggu-verifikasi');
-    
-    if (searchValue) currentParams.set('search_verifikasi', searchValue);
-    else currentParams.delete('search_verifikasi');
-    
+
+    if (tanggalMulai) currentParams.set('tanggal_mulai_verifikasi', tanggalMulai);
+    else currentParams.delete('tanggal_mulai_verifikasi');
+
+    if (tanggalAkhir) currentParams.set('tanggal_akhir_verifikasi', tanggalAkhir);
+    else currentParams.delete('tanggal_akhir_verifikasi');
+
     if (filterPurchasing) currentParams.set('filter_purchasing_verifikasi', filterPurchasing);
     else currentParams.delete('filter_purchasing_verifikasi');
-    
-    if (sortDate) currentParams.set('sort_date_verifikasi', sortDate);
-    else currentParams.delete('sort_date_verifikasi');
-    
+
     currentParams.delete('verifikasi_page');
-    
+
     window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
@@ -726,40 +732,46 @@ document.addEventListener('click', function(event) {
 
 // Update active filters on page load
 document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const tanggalMulai = urlParams.get('tanggal_mulai_verifikasi');
+    if (tanggalMulai) document.getElementById('tanggalMulaiVerifikasi').value = tanggalMulai;
+
+    const tanggalAkhir = urlParams.get('tanggal_akhir_verifikasi');
+    if (tanggalAkhir) document.getElementById('tanggalAkhirVerifikasi').value = tanggalAkhir;
+
     updateActiveFiltersVerifikasi();
 });
 
 function updateActiveFiltersVerifikasi() {
-    // Implementation for showing active filters
     const activeFiltersContainer = document.getElementById('activeFiltersVerifikasi');
     const searchValue = document.getElementById('searchInputVerifikasi').value;
+    const tanggalMulai = document.getElementById('tanggalMulaiVerifikasi').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirVerifikasi').value;
     const filterPurchasing = document.getElementById('filterPurchasingVerifikasi').value;
-    const sortDate = document.getElementById('sortDateVerifikasi').value;
-    
+
     let hasActiveFilters = false;
     let filtersHTML = '<span class="text-xs sm:text-sm font-bold text-yellow-700">Filter aktif:</span>';
-    
+
     if (searchValue) {
         filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs active-filter-tag">Pencarian: ${searchValue}</span>`;
         hasActiveFilters = true;
     }
-    
+    if (tanggalMulai) {
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs active-filter-tag">Dari: ${new Date(tanggalMulai).toLocaleDateString('id-ID')}</span>`;
+        hasActiveFilters = true;
+    }
+    if (tanggalAkhir) {
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs active-filter-tag">Sampai: ${new Date(tanggalAkhir).toLocaleDateString('id-ID')}</span>`;
+        hasActiveFilters = true;
+    }
     if (filterPurchasing) {
         const purchasingSelect = document.getElementById('filterPurchasingVerifikasi');
         const purchasingName = purchasingSelect.options[purchasingSelect.selectedIndex].text;
         filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs active-filter-tag">Procurement: ${purchasingName}</span>`;
         hasActiveFilters = true;
     }
-    
-    if (sortDate) {
-        const dateLabels = {
-            'newest': 'Terbaru',
-            'oldest': 'Terlama'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs active-filter-tag">Urutkan: ${dateLabels[sortDate]}</span>`;
-        hasActiveFilters = true;
-    }
-    
+
     if (hasActiveFilters) {
         filtersHTML += `<button onclick="clearAllFiltersVerifikasi()" class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200 transition-colors ml-2">
             <i class="fas fa-times mr-1"></i>Hapus Semua

@@ -44,33 +44,31 @@
                     <div class="w-4 h-4 sm:w-6 sm:h-6 bg-red-500 rounded-full flex items-center justify-center mr-1 sm:mr-2">
                         <i class="fas fa-filter text-white text-xs"></i>
                     </div>
-                    Filter & Urutan
+                    Filter
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                    {{-- Date Range Filter --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
                             <i class="fas fa-calendar mr-1 sm:mr-2 text-red-500 text-xs"></i>
-                            Tanggal Pengiriman
+                            Tanggal Mulai
                         </label>
-                        <input type="date" 
-                               id="dateRangeFilterGagal" 
-                               name="date_range_gagal" 
-                               value="{{ request('date_range_gagal') }}" 
-                               class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" 
-                               onchange="applyFiltersGagal()">
+                        <input type="date" id="tanggalMulaiGagal" name="tanggal_mulai_gagal" value="{{ request('tanggal_mulai_gagal') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                     </div>
 
-                    {{-- Filter by PIC Purchasing --}}
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
+                            <i class="fas fa-calendar mr-1 sm:mr-2 text-red-500 text-xs"></i>
+                            Tanggal Berakhir
+                        </label>
+                        <input type="date" id="tanggalAkhirGagal" name="tanggal_akhir_gagal" value="{{ request('tanggal_akhir_gagal') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm">
+                    </div>
+
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
                             <i class="fas fa-user-tie mr-1 sm:mr-2 text-red-500 text-xs"></i>
                             PIC Procurement
                         </label>
-                        <select id="filterPurchasingGagal" 
-                                name="filter_purchasing_gagal" 
-                                class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" 
-                                onchange="applyFiltersGagal()">
+                        <select id="filterPurchasingGagal" name="filter_purchasing_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                             <option value="">Semua PIC</option>
                             @php
                                 $purchasingOptions = collect($pengirimanGagal->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
@@ -80,26 +78,14 @@
                             @endforeach
                         </select>
                     </div>
-
-                    {{-- Sort Order --}}
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-red-700 mb-1 sm:mb-2">
-                            <i class="fas fa-sort mr-1 sm:mr-2 text-red-500 text-xs"></i>
-                            Urutan
-                        </label>
-                        <select id="sortOrderGagal" 
-                                name="sort_order_gagal" 
-                                class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm" 
-                                onchange="applyFiltersGagal()">
-                            <option value="newest" {{ request('sort_order_gagal') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_order_gagal') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        </select>
-                    </div>
                 </div>
-                
-                {{-- Clear Filter Button (Below Grid) --}}
-                <div class="flex justify-end mt-3">
-                    <button onclick="clearAllFiltersGagal()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+
+                <div class="flex justify-end gap-2 mt-3">
+                    <button onclick="applyFiltersGagal()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+                        <i class="fas fa-filter mr-1"></i>
+                        Terapkan Filter
+                    </button>
+                    <button onclick="clearAllFiltersGagal()" class="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
                         <i class="fas fa-times mr-1"></i>
                         Hapus Semua Filter
                     </button>
@@ -120,6 +106,11 @@
                     <i class="fas fa-info-circle mr-1"></i>
                     Total: {{ $pengirimanGagal->total() ?? 0 }} pengiriman (Halaman {{ $pengirimanGagal->currentPage() ?? 1 }} dari {{ $pengirimanGagal->lastPage() ?? 1 }})
                 </div>
+                <a href="{{ route('pengiriman.export-gagal', request()->all()) }}" 
+                class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-excel mr-2"></i>
+                    Export Excel
+                </a>
             </div>
         </div>
 
@@ -296,44 +287,41 @@ function handleSearchKeyPressGagal(event) {
 
 // Function to submit search form
 function submitSearchGagal() {
-    const searchInput = document.getElementById('searchInputGagal');
-    const dateFilter = document.getElementById('dateRangeFilterGagal');
-    const filterPurchasing = document.getElementById('filterPurchasingGagal');
-    const sortOrder = document.getElementById('sortOrderGagal');
-    
-    // Build query parameters
-    const params = new URLSearchParams();
-    
-    if (searchInput.value.trim()) {
-        params.append('search_gagal', searchInput.value.trim());
-    }
-    
-    if (dateFilter.value) {
-        params.append('date_range_gagal', dateFilter.value);
-    }
-    
-    if (filterPurchasing.value) {
-        params.append('filter_purchasing_gagal', filterPurchasing.value);
-    }
-    
-    if (sortOrder.value) {
-        params.append('sort_order_gagal', sortOrder.value);
-    }
-    
-    // Add tab parameter to stay on pengiriman-gagal tab
-    params.append('tab', 'pengiriman-gagal');
-    
-    // Reset to page 1 when searching/filtering
-    params.append('gagal_page', '1');
-    
-    // Redirect with new parameters
-    const url = '/procurement/pengiriman' + (params.toString() ? '?' + params.toString() : '');
-    window.location.href = url;
+    const currentParams = new URLSearchParams(window.location.search);
+    const searchValue = document.getElementById('searchInputGagal').value;
+
+    currentParams.set('tab', 'pengiriman-gagal');
+
+    if (searchValue.trim()) currentParams.set('search_gagal', searchValue.trim());
+    else currentParams.delete('search_gagal');
+
+    currentParams.delete('gagal_page');
+
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Function to apply filters
 function applyFiltersGagal() {
-    submitSearchGagal();
+    const currentParams = new URLSearchParams(window.location.search);
+
+    const tanggalMulai = document.getElementById('tanggalMulaiGagal').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirGagal').value;
+    const filterPurchasing = document.getElementById('filterPurchasingGagal').value;
+
+    currentParams.set('tab', 'pengiriman-gagal');
+
+    if (tanggalMulai) currentParams.set('tanggal_mulai_gagal', tanggalMulai);
+    else currentParams.delete('tanggal_mulai_gagal');
+
+    if (tanggalAkhir) currentParams.set('tanggal_akhir_gagal', tanggalAkhir);
+    else currentParams.delete('tanggal_akhir_gagal');
+
+    if (filterPurchasing) currentParams.set('filter_purchasing_gagal', filterPurchasing);
+    else currentParams.delete('filter_purchasing_gagal');
+
+    currentParams.delete('gagal_page');
+
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Function to open detail modal
@@ -501,44 +489,28 @@ function closeDetailModalGagal() {
 
 // Function to clear all filters
 function clearAllFiltersGagal() {
-    const currentParams = new URLSearchParams(window.location.search);
-    
-    // Keep only the tab parameter
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pengiriman-gagal');
-    
     window.location.href = '/procurement/pengiriman?' + newParams.toString();
 }
 
 // Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Set filter values from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Set search value
+
     const searchValue = urlParams.get('search_gagal');
-    if (searchValue) {
-        document.getElementById('searchInputGagal').value = searchValue;
-    }
-    
-    // Set date range filter
-    const dateRange = urlParams.get('date_range_gagal');
-    if (dateRange) {
-        document.getElementById('dateRangeFilterGagal').value = dateRange;
-    }
-    
-    // Set purchasing filter
+    if (searchValue) document.getElementById('searchInputGagal').value = searchValue;
+
+    const tanggalMulai = urlParams.get('tanggal_mulai_gagal');
+    if (tanggalMulai) document.getElementById('tanggalMulaiGagal').value = tanggalMulai;
+
+    const tanggalAkhir = urlParams.get('tanggal_akhir_gagal');
+    if (tanggalAkhir) document.getElementById('tanggalAkhirGagal').value = tanggalAkhir;
+
     const filterPurchasing = urlParams.get('filter_purchasing_gagal');
-    if (filterPurchasing) {
-        document.getElementById('filterPurchasingGagal').value = filterPurchasing;
-    }
-    
-    // Set sort order filter
-    const sortOrder = urlParams.get('sort_order_gagal');
-    if (sortOrder) {
-        document.getElementById('sortOrderGagal').value = sortOrder;
-    }
+    if (filterPurchasing) document.getElementById('filterPurchasingGagal').value = filterPurchasing;
 });
+
 
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {

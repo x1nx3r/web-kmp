@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Purchasing;
 use App\Models\Supplier;
 use App\Models\BahanBakuSupplier;
 use App\Models\RiwayatHargaBahanBaku;
-use App\Models\Pengiriman; // Import Pengiriman model
-use App\Models\PengirimanDetail; // Import PengirimanDetail model
+use App\Models\Pengiriman;
+use App\Models\PengirimanDetail;
+use App\Models\Klien;
+use App\Models\BahanBakuSupplierKlien;
 use App\Services\ReferenceDataService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -14,71 +16,36 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class SupplierController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): View
     {
         $query = Supplier::with(['bahanBakuSuppliers' => function($q) {
             $q->orderBy('nama', 'asc');
         }, 'picPurchasing']);
 
-        // Search functionality
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('alamat', 'like', "%{$search}%")
-                  ->orWhere('no_hp', 'like', "%{$search}%")
-                  ->orWhereHas('picPurchasing', function($subQuery) use ($search) {
-                      $subQuery->where('nama', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('bahanBakuSuppliers', function($subQuery) use ($search) {
-                      $subQuery->where('nama', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        // Filter by specific bahan baku
-        if ($request->has('bahan_baku') && $request->bahan_baku != '') {
-            $bahanBaku = str_replace('_', ' ', $request->bahan_baku);
-            $query->whereHas('bahanBakuSuppliers', function($subQuery) use ($bahanBaku) {
-                $subQuery->where('nama', 'like', "%{$bahanBaku}%");
-            });
-        }
-
-        // Sort by bahan baku count
-        if ($request->has('sort_bahan_baku') && $request->sort_bahan_baku != '') {
-            $sortDirection = $request->sort_bahan_baku == 'terbanyak' ? 'desc' : 'asc';
-            $query->withCount('bahanBakuSuppliers')->orderBy('bahan_baku_suppliers_count', $sortDirection);
-        }
-
-        // Sort by total stock
-        if ($request->has('sort_stok') && $request->sort_stok != '') {
-            $sortDirection = $request->sort_stok == 'terbanyak' ? 'desc' : 'asc';
-            $query->withSum('bahanBakuSuppliers', 'stok')->orderBy('bahan_baku_suppliers_sum_stok', $sortDirection);
-        }
-
-        // Default ordering if no specific sort applied
-        if (!$request->has('sort_bahan_baku') && !$request->has('sort_stok')) {
-            $query->orderBy('nama', 'asc');
-        }
+        $this->applySearchFilters($query, $request);
+        $this->applySorting($query, $request);
 
         $suppliers = $query->paginate(10);
 
-        // Get unique bahan baku names for filter dropdown
-        $bahanBakuList = \App\Models\BahanBakuSupplier::select('nama')
+        $bahanBakuList = BahanBakuSupplier::select('nama')
             ->distinct()
             ->orderBy('nama')
             ->pluck('nama')
-            ->map(function($nama) {
-                return [
-                    'value' => strtolower(str_replace(' ', '_', $nama)),
-                    'label' => $nama
-                ];
-            });
+            ->map(fn($nama) => [
+                'value' => strtolower(str_replace(' ', '_', $nama)),
+                'label' => $nama
+            ]);
 
-        // Get purchasing users for PIC dropdown (jika diperlukan di form)
         $purchasingUsers = ReferenceDataService::getPurchasingUsers();
 
         return view('pages.purchasing.supplier', compact('suppliers', 'bahanBakuList', 'purchasingUsers'));
@@ -87,80 +54,37 @@ class SupplierController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(): View
     {
-        // Only direktur, manager_purchasing, and staff_purchasing can create
-        if (!in_array(Auth::user()->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
-            abort(403, 'Anda tidak memiliki akses untuk menambah supplier.');
-        }
+        $this->authorizeAccess('create');
 
-        // Get purchasing users for PIC dropdown
         $purchasingUsers = ReferenceDataService::getPurchasingUsers();
-
         return view('pages.purchasing.supplier.tambah', compact('purchasingUsers'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        // Only direktur, manager_purchasing, and staff_purchasing can create
-        if (!in_array(Auth::user()->role, ['direktur', 'manager_purchasing', 'staff_purchasing'])) {
-            abort(403, 'Anda tidak memiliki akses untuk menambah supplier.');
-        }
-
-        // Validation
-        $request->validate([
-            'nama' => 'required|string|max:255',
-            'alamat' => 'nullable|string',
-            'no_hp' => 'nullable|string|max:20',
-            'pic_purchasing_id' => 'nullable|exists:users,id',
-            'bahan_baku' => 'required|array|min:1',
-            'bahan_baku.*.nama' => 'required|string|max:255',
-            'bahan_baku.*.satuan' => 'required|string|max:50',
-            'bahan_baku.*.harga_per_satuan' => 'required|numeric|min:0',
-            'bahan_baku.*.stok' => 'required|numeric|min:0',
-        ], [
-            'nama.required' => 'Nama supplier harus diisi',
-            'bahan_baku.required' => 'Minimal satu bahan baku harus ditambahkan',
-            'bahan_baku.min' => 'Minimal satu bahan baku harus ditambahkan',
-            'bahan_baku.*.nama.required' => 'Nama bahan baku harus diisi',
-            'bahan_baku.*.satuan.required' => 'Satuan bahan baku harus dipilih',
-            'bahan_baku.*.harga_per_satuan.required' => 'Harga per satuan harus diisi',
-            'bahan_baku.*.stok.required' => 'Stok harus diisi',
-        ]);
+        $this->authorizeAccess('create');
+        $request->validate($this->getValidationRules('store'), $this->getValidationMessages());
 
         try {
             DB::beginTransaction();
 
-            // Generate unique slug
-            $baseSlug = Str::slug($request->nama);
-            $slug = $baseSlug;
-            $counter = 1;
-
-            // Check if slug exists and make it unique
-            while (Supplier::where('slug', $slug)->exists()) {
-                $slug = $baseSlug . '-' . $counter;
-                $counter++;
-            }
-
-            // Create supplier
             $supplier = Supplier::create([
                 'nama' => $request->nama,
-                'slug' => $slug,
+                'slug' => $this->generateSupplierSlug($request->nama),
                 'alamat' => $request->alamat,
                 'no_hp' => $request->no_hp,
                 'pic_purchasing_id' => $request->pic_purchasing_id,
             ]);
 
-            // Create bahan baku for supplier
             foreach ($request->bahan_baku as $bahanBaku) {
-                $hargaPerSatuan = str_replace('.', '', $bahanBaku['harga_per_satuan']); // Remove thousand separators
-                $stok = str_replace('.', '', $bahanBaku['stok']); // Remove thousand separators
-                
-                // Generate unique slug
-                $slug = \App\Models\BahanBakuSupplier::generateUniqueSlug($bahanBaku['nama'], $supplier->id);
+                $hargaPerSatuan = $this->parseNumeric($bahanBaku['harga_per_satuan']);
+                $stok = $this->parseNumeric($bahanBaku['stok']);
+                $slug = BahanBakuSupplier::generateUniqueSlug($bahanBaku['nama'], $supplier->id);
                 
                 $newBahanBaku = $supplier->bahanBakuSuppliers()->create([
                     'nama' => $bahanBaku['nama'],
@@ -170,10 +94,9 @@ class SupplierController extends Controller
                     'stok' => $stok,
                 ]);
 
-                // Catat riwayat harga untuk bahan baku baru
                 RiwayatHargaBahanBaku::catatPerubahanHarga(
                     $newBahanBaku->id,
-                    null, // harga lama = null karena bahan baku baru
+                    null,
                     $hargaPerSatuan,
                     "Data awal bahan baku '{$bahanBaku['nama']}' untuk supplier '{$supplier->nama}'"
                 );
@@ -186,55 +109,36 @@ class SupplierController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->withInput()
-                ->with('error', 'Gagal menyimpan supplier: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Gagal menyimpan supplier: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Display the specified resource.
+     */
     public function show(Supplier $supplier)
     {
         // Akan diimplementasi nanti
     }
 
-    public function edit(Supplier $supplier)
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Supplier $supplier): View
     {
-        // Authorization check
-        $user = Auth::user();
-        $canEdit = false;
+        $this->authorizeAccess('edit', $supplier);
 
-        if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
-            // Direktur and manager_purchasing can edit all suppliers
-            $canEdit = true;
-        } elseif ($user->role === 'staff_purchasing') {
-            // Staff_purchasing can only edit suppliers where they are PIC
-            $canEdit = $supplier->pic_purchasing_id === $user->id;
-        }
-
-        if (!$canEdit) {
-            abort(403, 'Anda tidak memiliki akses untuk mengedit supplier ini.');
-        }
-
-        // Get purchasing users for PIC dropdown
         $purchasingUsers = ReferenceDataService::getPurchasingUsers();
+        $klienList = Klien::select('id', 'nama', 'cabang')->orderBy('nama')->orderBy('cabang')->get();
         
-        // Get all klien for price selection dropdown
-        $klienList = \App\Models\Klien::select('id', 'nama', 'cabang')
-            ->orderBy('nama')
-            ->orderBy('cabang')
-            ->get();
-        
-        // Load harga per klien untuk setiap bahan baku
         $supplier->load(['bahanBakuSuppliers.hargaPerKlien.klien']);
         
-        // Build price data structure untuk JavaScript
         $priceData = [];
         foreach ($supplier->bahanBakuSuppliers as $bahanBaku) {
             $priceData[$bahanBaku->id] = [
                 'global' => (float) $bahanBaku->harga_per_satuan,
                 'klien' => []
             ];
-            
-            // Add klien-specific prices
             foreach ($bahanBaku->hargaPerKlien as $hargaKlien) {
                 $priceData[$bahanBaku->id]['klien'][$hargaKlien->klien_id] = (float) $hargaKlien->harga_per_satuan;
             }
@@ -243,72 +147,31 @@ class SupplierController extends Controller
         return view('pages.purchasing.supplier.edit', compact('supplier', 'purchasingUsers', 'klienList', 'priceData'));
     }
 
-    public function update(Request $request, Supplier $supplier)
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Supplier $supplier): RedirectResponse
     {
-        // Authorization check
-        $user = Auth::user();
-        $canEdit = false;
-
-        if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
-            // Direktur and manager_purchasing can edit all suppliers
-            $canEdit = true;
-        } elseif ($user->role === 'staff_purchasing') {
-            // Staff_purchasing can only edit suppliers where they are PIC
-            $canEdit = $supplier->pic_purchasing_id === $user->id;
+        try {
+            $this->authorizeAccess('edit', $supplier);
+        } catch (\Exception $e) {
+            return redirect()->route('supplier.index')->with('error', $e->getMessage());
         }
 
-        if (!$canEdit) {
-            return redirect()->route('supplier.index')
-                ->with('error', 'Anda tidak memiliki akses untuk mengedit supplier ini.');
-        }
-
-        // Debug logging
         Log::info('Supplier Update Request', [
             'supplier_id' => $supplier->id,
-            'nama' => $request->nama,
             'bahan_baku_count' => $request->has('bahan_baku') ? count($request->bahan_baku) : 0,
-            'bahan_baku_data' => $request->bahan_baku
         ]);
 
-        // Validation
-        $request->validate([
-            'nama' => 'required|string|max:255',
-            'alamat' => 'nullable|string',
-            'no_hp' => 'nullable|string|max:20',
-            'pic_purchasing_id' => 'nullable|exists:users,id',
-            'edit_harga_untuk' => 'required|string', // 'global' or klien_id
-            'bahan_baku' => 'nullable|array',
-            'bahan_baku.*.nama' => 'required_with:bahan_baku|string|max:255',
-            'bahan_baku.*.satuan' => 'required_with:bahan_baku|string|max:50',
-            'bahan_baku.*.harga_per_satuan' => 'required_with:bahan_baku|numeric|min:0',
-            'bahan_baku.*.stok' => 'required_with:bahan_baku|numeric|min:0',
-        ], [
-            'nama.required' => 'Nama supplier harus diisi',
-            'edit_harga_untuk.required' => 'Pilihan harga harus dipilih',
-            'bahan_baku.*.nama.required_with' => 'Nama bahan baku harus diisi',
-            'bahan_baku.*.satuan.required_with' => 'Satuan bahan baku harus dipilih',
-            'bahan_baku.*.harga_per_satuan.required_with' => 'Harga per satuan harus diisi',
-            'bahan_baku.*.stok.required_with' => 'Stok harus diisi',
-        ]);
+        $request->validate($this->getValidationRules('update'), $this->getValidationMessages());
 
         try {
             DB::beginTransaction();
 
-            // Generate unique slug if name changed
-            $slug = $supplier->slug;
-            if ($request->nama !== $supplier->nama) {
-                $baseSlug = Str::slug($request->nama);
-                $slug = $baseSlug;
-                $counter = 1;
+            $slug = ($request->nama !== $supplier->nama) 
+                ? $this->generateSupplierSlug($request->nama, $supplier->id) 
+                : $supplier->slug;
 
-                // Check if slug exists and make it unique (excluding current supplier)
-                while (Supplier::where('slug', $slug)->where('id', '!=', $supplier->id)->exists()) {
-                    $slug = $baseSlug . '-' . $counter;
-                    $counter++;
-                }
-            }
-
-            // Update supplier
             $supplier->update([
                 'nama' => $request->nama,
                 'slug' => $slug,
@@ -317,174 +180,21 @@ class SupplierController extends Controller
                 'pic_purchasing_id' => $request->pic_purchasing_id,
             ]);
 
-            // Determine if editing global or klien-specific price
-            $editHargaUntuk = $request->edit_harga_untuk; // 'global' or klien_id
-            $klienId = ($editHargaUntuk !== 'global') ? (int) $editHargaUntuk : null;
-
-            // Handle bahan baku updates - use ID-based tracking to avoid duplicate key errors
-            $existingBahanBaku = $supplier->bahanBakuSuppliers()->get()->keyBy('id');
+            $klienId = ($request->edit_harga_untuk !== 'global') ? (int) $request->edit_harga_untuk : null;
             $submittedIds = [];
 
-            // Update or create bahan baku from form data
             if ($request->has('bahan_baku') && is_array($request->bahan_baku)) {
-                foreach ($request->bahan_baku as $bahanBaku) {
-                    if (!empty($bahanBaku['nama']) && !empty($bahanBaku['satuan'])) {
-                        $nama = trim($bahanBaku['nama']);
-
-                        // Clean up numeric values
-                        $hargaPerSatuan = str_replace(['.', ','], '', $bahanBaku['harga_per_satuan'] ?? '0');
-                        $stok = str_replace(['.', ','], '', $bahanBaku['stok'] ?? '0');
-
-                        // Check if this is an update (has id) or create (no id)
-                        if (!empty($bahanBaku['id']) && $existingBahanBaku->has($bahanBaku['id'])) {
-                            // Update existing bahan baku
-                            $bahanBakuToUpdate = $existingBahanBaku[$bahanBaku['id']];
-                            $submittedIds[] = $bahanBakuToUpdate->id;
-                            
-                            // Always generate unique slug (nama boleh sama, tapi slug harus beda)
-                            if ($bahanBakuToUpdate->nama !== $nama) {
-                                // Nama berubah, generate slug baru
-                                $slug = \App\Models\BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id, $bahanBakuToUpdate->id);
-                                
-                                Log::info('Updating bahan baku nama', [
-                                    'id' => $bahanBakuToUpdate->id,
-                                    'old_nama' => $bahanBakuToUpdate->nama,
-                                    'new_nama' => $nama,
-                                    'old_slug' => $bahanBakuToUpdate->slug,
-                                    'new_slug' => $slug
-                                ]);
-                            } else {
-                                // Nama tidak berubah, keep existing slug
-                                $slug = $bahanBakuToUpdate->slug;
-                            }
-                            
-                            // Update nama, slug, satuan, stok (always)
-                            $bahanBakuToUpdate->update([
-                                'nama' => $nama,
-                                'slug' => $slug,
-                                'satuan' => $bahanBaku['satuan'],
-                                'stok' => is_numeric($stok) ? $stok : 0,
-                            ]);
-                            
-                            // Handle price update based on edit_harga_untuk
-                            if ($klienId === null) {
-                                // Update GLOBAL price
-                                $hargaLama = (float) $bahanBakuToUpdate->harga_per_satuan;
-                                $hargaBaru = (float) $hargaPerSatuan;
-                                
-                                $bahanBakuToUpdate->update([
-                                    'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
-                                ]);
-                                
-                                // Catat riwayat harga global jika ada perubahan
-                                if ($hargaLama != $hargaBaru) {
-                                    RiwayatHargaBahanBaku::catatPerubahanHarga(
-                                        $bahanBakuToUpdate->id,
-                                        $hargaLama,
-                                        $hargaBaru,
-                                        "Update harga GLOBAL bahan baku '{$nama}' melalui edit supplier",
-                                        null, // $updatedBy
-                                        null, // $tanggal
-                                        null  // $klienId = null untuk global
-                                    );
-                                }
-                            } else {
-                                // Update KLIEN-SPECIFIC price
-                                $hargaKlien = \App\Models\BahanBakuSupplierKlien::firstOrNew([
-                                    'bahan_baku_supplier_id' => $bahanBakuToUpdate->id,
-                                    'klien_id' => $klienId
-                                ]);
-                                
-                                $hargaLama = $hargaKlien->exists ? (float) $hargaKlien->harga_per_satuan : (float) $bahanBakuToUpdate->harga_per_satuan;
-                                $hargaBaru = (float) $hargaPerSatuan;
-                                
-                                $hargaKlien->harga_per_satuan = $hargaBaru;
-                                $hargaKlien->save();
-                                
-                                // Catat riwayat harga klien jika ada perubahan
-                                if ($hargaLama != $hargaBaru) {
-                                    $klienInfo = \App\Models\Klien::find($klienId);
-                                    $klienNama = $klienInfo ? $klienInfo->nama . ($klienInfo->cabang ? ' - ' . $klienInfo->cabang : '') : 'Klien';
-                                    
-                                    RiwayatHargaBahanBaku::catatPerubahanHarga(
-                                        $bahanBakuToUpdate->id,
-                                        $hargaLama,
-                                        $hargaBaru,
-                                        "Update harga untuk {$klienNama} - bahan baku '{$nama}' melalui edit supplier",
-                                        null,     // $updatedBy
-                                        null,     // $tanggal
-                                        $klienId  // $klienId
-                                    );
-                                }
-                            }
-                        } else {
-                            // Create new bahan baku
-                            // Generate unique slug (nama boleh sama, slug harus beda)
-                            $slug = \App\Models\BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id);
-                            
-                            $newBahanBaku = $supplier->bahanBakuSuppliers()->create([
-                                'nama' => $nama,
-                                'slug' => $slug,
-                                'satuan' => $bahanBaku['satuan'],
-                                'harga_per_satuan' => is_numeric($hargaPerSatuan) ? $hargaPerSatuan : 0,
-                                'stok' => is_numeric($stok) ? $stok : 0,
-                            ]);
-                            
-                            $submittedIds[] = $newBahanBaku->id;
-                            
-                            // Catat riwayat harga untuk bahan baku baru
-                            if ($klienId === null) {
-                                // Create bahan baku dengan harga global
-                                RiwayatHargaBahanBaku::catatPerubahanHarga(
-                                    $newBahanBaku->id,
-                                    null, // harga lama = null karena bahan baku baru
-                                    (float) $hargaPerSatuan,
-                                    "Bahan baku baru '{$nama}' ditambahkan ke supplier '{$supplier->nama}' (harga global)",
-                                    null, // $updatedBy
-                                    null, // $tanggal
-                                    null  // $klienId = null untuk global
-                                );
-                            } else {
-                                // Create bahan baku dengan harga klien-specific
-                                // Set harga global dulu = harga yang diinput
-                                // Kemudian create record di bahan_baku_supplier_klien
-                                $hargaKlienRecord = \App\Models\BahanBakuSupplierKlien::create([
-                                    'bahan_baku_supplier_id' => $newBahanBaku->id,
-                                    'klien_id' => $klienId,
-                                    'harga_per_satuan' => (float) $hargaPerSatuan
-                                ]);
-                                
-                                $klienInfo = \App\Models\Klien::find($klienId);
-                                $klienNama = $klienInfo ? $klienInfo->nama . ($klienInfo->cabang ? ' - ' . $klienInfo->cabang : '') : 'Klien';
-                                
-                                RiwayatHargaBahanBaku::catatPerubahanHarga(
-                                    $newBahanBaku->id,
-                                    null, // harga lama = null karena bahan baku baru
-                                    (float) $hargaPerSatuan,
-                                    "Bahan baku baru '{$nama}' ditambahkan untuk {$klienNama}",
-                                    null,     // $updatedBy
-                                    null,     // $tanggal
-                                    $klienId  // $klienId
-                                );
-                            }
-                        }
-                    }
-                }
+                $submittedIds = $this->processBahanBakuUpdates($supplier, $request->bahan_baku, $klienId);
             }
 
-            // Delete bahan baku that were removed from the form
-            $supplier->bahanBakuSuppliers()
-                ->whereNotIn('id', $submittedIds)
-                ->delete();
+            // Hapus bahan baku yang tidak ada di form
+            $supplier->bahanBakuSuppliers()->whereNotIn('id', $submittedIds)->delete();
 
             DB::commit();
 
-            $bahanBakuCount = $request->has('bahan_baku') ? count(array_filter($request->bahan_baku, function($item) {
-                return !empty($item['nama']);
-            })) : 0;
-
+            $bahanBakuCount = $request->has('bahan_baku') ? count(array_filter($request->bahan_baku, fn($item) => !empty($item['nama']))) : 0;
             return redirect()->route('supplier.index')
-                ->with('success', 'Supplier berhasil diperbarui dengan ' . $bahanBakuCount . ' bahan baku');
+                ->with('success', "Supplier berhasil diperbarui dengan {$bahanBakuCount} bahan baku");
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -492,40 +202,25 @@ class SupplierController extends Controller
         }
     }
 
-    public function destroy(Supplier $supplier)
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Supplier $supplier): RedirectResponse
     {
-        // Authorization check
-        $user = Auth::user();
-        $canDelete = false;
-
-        if (in_array($user->role, ['direktur', 'manager_purchasing'])) {
-            // Direktur and manager_purchasing can delete all suppliers
-            $canDelete = true;
-        } elseif ($user->role === 'staff_purchasing') {
-            // Staff_purchasing can only delete suppliers where they are PIC
-            $canDelete = $supplier->pic_purchasing_id === $user->id;
-        }
-
-        if (!$canDelete) {
-            return redirect()->route('supplier.index')
-                ->with('error', 'Anda tidak memiliki akses untuk menghapus supplier ini.');
+        try {
+            $this->authorizeAccess('delete', $supplier);
+        } catch (\Exception $e) {
+            return redirect()->route('supplier.index')->with('error', $e->getMessage());
         }
 
         try {
             DB::beginTransaction();
 
-            // Log the deletion attempt
-            Log::info('Supplier Delete Request', [
-                'supplier_id' => $supplier->id,
-                'supplier_nama' => $supplier->nama,
-                'bahan_baku_count' => $supplier->bahanBakuSuppliers->count()
-            ]);
+            Log::info('Supplier Delete Request', ['supplier_id' => $supplier->id]);
 
-            // Delete related bahan baku first (due to foreign key constraints)
-            $bahanBakuCount = $supplier->bahanBakuSuppliers->count();
+            $bahanBakuCount = $supplier->bahanBakuSuppliers()->count();
             $supplier->bahanBakuSuppliers()->delete();
-
-            // Delete the supplier
+            
             $supplierName = $supplier->nama;
             $supplier->delete();
 
@@ -536,272 +231,111 @@ class SupplierController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
-            
-            Log::error('Supplier Delete Error', [
-                'supplier_id' => $supplier->id,
-                'error' => $e->getMessage()
-            ]);
-
+            Log::error('Supplier Delete Error', ['supplier_id' => $supplier->id, 'error' => $e->getMessage()]);
             return back()->with('error', 'Gagal menghapus supplier: ' . $e->getMessage());
         }
     }
 
-    public function riwayatHarga(Supplier $supplier, BahanBakuSupplier $bahanBaku)
+    /**
+     * Show price history for specific material
+     */
+    public function riwayatHarga(Supplier $supplier, BahanBakuSupplier $bahanBaku): View
     {
-        // Debug logging
-        Log::info('RiwayatHarga Request', [
-            'supplier_id' => $supplier->id,
-            'supplier_slug' => $supplier->slug,
-            'bahan_baku_id' => $bahanBaku->id,
-            'bahan_baku_slug' => $bahanBaku->slug
-        ]);
-        
-        // Pastikan bahan baku ini milik supplier yang benar
         if ($bahanBaku->supplier_id !== $supplier->id) {
             abort(404, 'Bahan baku tidak ditemukan untuk supplier ini');
         }
         
-        // Get riwayat harga dari database (include data per klien)
-        $riwayatHarga = $bahanBaku->riwayatHarga()
+        $riwayatHargaData = $bahanBaku->riwayatHarga()
             ->with('klien')
             ->orderBy('tanggal_perubahan', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        // Jika tidak ada riwayat, buat entry pertama dari harga saat ini
-        if ($riwayatHarga->isEmpty()) {
+        if ($riwayatHargaData->isEmpty()) {
             RiwayatHargaBahanBaku::catatPerubahanHarga(
                 $bahanBaku->id,
                 null,
                 (float) $bahanBaku->harga_per_satuan,
                 "Data riwayat awal untuk bahan baku '{$bahanBaku->nama}'"
             );
-            
-            // Refresh riwayat harga setelah dibuat
-            $riwayatHarga = $bahanBaku->riwayatHarga()
-                ->with('klien')
-                ->orderBy('tanggal_perubahan', 'asc')
-                ->orderBy('id', 'asc')
-                ->get();
+            $riwayatHargaData = $bahanBaku->riwayatHarga()->with('klien')->orderBy('tanggal_perubahan', 'asc')->orderBy('id', 'asc')->get();
         }
 
-        // Format data supplier
-        $supplierData = (object) [
-            'id' => $supplier->id,
-            'nama' => $supplier->nama,
-            'slug' => $supplier->slug
-        ];
-
-        // Format data bahan baku
-        $bahanBakuData = (object) [
-            'id' => $bahanBaku->id,
-            'slug' => $bahanBaku->slug,
-            'nama' => $bahanBaku->nama,
-            'satuan' => $bahanBaku->satuan,
-            'supplier_nama' => $supplier->nama,
-            'harga_saat_ini' => (float) $bahanBaku->harga_per_satuan,
-            'stok_saat_ini' => (float) $bahanBaku->stok
-        ];
-
-        // Format data riwayat harga untuk view
-        $riwayatHarga = $riwayatHarga->map(function ($item) {
-            return [
-                'id' => $item->id,
-                'tanggal' => $item->tanggal_perubahan->format('Y-m-d'),
-                'harga' => (float) $item->harga_baru,
-                'harga_lama' => $item->harga_lama ? (float) $item->harga_lama : null,
-                'selisih_harga' => (float) $item->selisih_harga,
-                'persentase_perubahan' => (float) $item->persentase_perubahan,
-                'tipe_perubahan' => $item->tipe_perubahan,
-                'keterangan' => $item->keterangan,
-                'klien_id' => $item->klien_id,
-                'klien_nama' => $item->klien ? $item->klien->nama : 'Global',
-                'klien_cabang' => $item->klien ? $item->klien->cabang : null,
-                'formatted_tanggal' => $item->tanggal_perubahan->format('d M Y'),
-                'formatted_hari' => $item->tanggal_perubahan->format('l'),
-                'formatted_harga' => number_format((float) $item->harga_baru, 0, ',', '.'),
-                'formatted_harga_lama' => $item->harga_lama ? number_format((float) $item->harga_lama, 0, ',', '.') : null,
-                'formatted_selisih' => number_format(abs((float) $item->selisih_harga), 0, ',', '.'),
-                'color_class' => $item->color_class,
-                'badge_class' => $item->badge_class,
-                'icon' => $item->icon,
-            ];
-        })->toArray();
+        $riwayatHarga = $this->formatRiwayatData($riwayatHargaData);
         
-        // Group data by klien untuk multi-line chart
-        $chartDataByKlien = [];
         $allDates = [];
-        
-        // First pass: collect all dates and group by klien
-        foreach ($riwayatHarga as $item) {
-            $klienKey = $item['klien_id'] ?? 'global';
-            $klienLabel = $item['klien_nama'];
-            if ($item['klien_cabang']) {
-                $klienLabel .= ' - ' . $item['klien_cabang'];
-            }
-            
-            if (!isset($chartDataByKlien[$klienKey])) {
-                $chartDataByKlien[$klienKey] = [
-                    'label' => $klienLabel,
-                    'dataByDate' => []
-                ];
-            }
-            
-            // Store data by date for easy lookup
-            $chartDataByKlien[$klienKey]['dataByDate'][$item['tanggal']] = $item['harga'];
-            
-            if (!in_array($item['tanggal'], $allDates)) {
-                $allDates[] = $item['tanggal'];
-            }
-        }
-        
-        // Sort dates
-        sort($allDates);
-        
-        // Find first and last date for each klien to determine their actual start/end
-        $klienDateRanges = [];
-        foreach ($chartDataByKlien as $klienKey => $klienData) {
-            $dates = array_keys($klienData['dataByDate']);
-            sort($dates);
-            $klienDateRanges[$klienKey] = [
-                'first' => $dates[0] ?? null,
-                'last' => end($dates) ?: null
-            ];
-        }
-        
-        // Second pass: align all data to same date range with smart forward-fill
-        foreach ($chartDataByKlien as $klienKey => &$klienData) {
-            $alignedData = [];
-            $lastKnownValue = null;
-            $hasStarted = false; // Flag to track if this klien has started
-            
-            $firstDate = $klienDateRanges[$klienKey]['first'];
-            $lastDate = $klienDateRanges[$klienKey]['last'];
-            
-            foreach ($allDates as $date) {
-                if (isset($klienData['dataByDate'][$date])) {
-                    // Harga ada di tanggal ini
-                    $hasStarted = true;
-                    $lastKnownValue = $klienData['dataByDate'][$date];
-                    $alignedData[] = [
-                        'tanggal' => $date,
-                        'harga' => $lastKnownValue
-                    ];
-                } elseif ($hasStarted && $date <= $lastDate) {
-                    // Klien sudah mulai transaksi DAN belum sampai tanggal terakhir -> forward fill
-                    $alignedData[] = [
-                        'tanggal' => $date,
-                        'harga' => $lastKnownValue
-                    ];
-                } elseif (!$hasStarted && $date < $firstDate) {
-                    // Sebelum tanggal pertama klien ini mulai -> null (biar line mulai dari titik yang sama)
-                    $alignedData[] = [
-                        'tanggal' => $date,
-                        'harga' => null
-                    ];
-                } elseif ($date > $lastDate) {
-                    // Setelah tanggal terakhir klien ini -> forward fill untuk kontinuitas
-                    $alignedData[] = [
-                        'tanggal' => $date,
-                        'harga' => $lastKnownValue
-                    ];
-                } else {
-                    // Default: null
-                    $alignedData[] = [
-                        'tanggal' => $date,
-                        'harga' => null
-                    ];
-                }
-            }
-            
-            $klienData['data'] = $alignedData;
-            unset($klienData['dataByDate']); // Clean up temporary data
-        }
-        unset($klienData); // Unset reference
+        $chartDataByKlien = $this->prepareChartDataByKlien($riwayatHarga, $allDates);
 
-        return view('pages.purchasing.supplier.riwayat-harga', compact('supplierData', 'bahanBakuData', 'riwayatHarga', 'chartDataByKlien', 'allDates'));
+        return view('pages.purchasing.supplier.riwayat-harga', [
+            'supplierData' => (object) ['id' => $supplier->id, 'nama' => $supplier->nama, 'slug' => $supplier->slug],
+            'bahanBakuData' => (object) [
+                'id' => $bahanBaku->id, 'slug' => $bahanBaku->slug, 'nama' => $bahanBaku->nama,
+                'satuan' => $bahanBaku->satuan, 'supplier_nama' => $supplier->nama,
+                'harga_saat_ini' => (float) $bahanBaku->harga_per_satuan, 'stok_saat_ini' => (float) $bahanBaku->stok
+            ],
+            'riwayatHarga' => $riwayatHarga,
+            'chartDataByKlien' => $chartDataByKlien,
+            'allDates' => $allDates
+        ]);
     }
 
     /**
      * Show supplier reviews page
      */
-    public function reviews(Request $request, Supplier $supplier)
+    public function reviews(Request $request, Supplier $supplier): View
     {
-        // Get all pengiriman for this supplier
         $query = Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($q) use ($supplier) {
             $q->where('supplier_id', $supplier->id);
         })
         ->whereIn('status', ['berhasil', 'gagal'])
         ->with(['order.klien', 'purchasing', 'pengirimanDetails.bahanBakuSupplier']);
 
-        // Filter by status if requested
         if ($request->filled('status') && in_array($request->status, ['berhasil', 'gagal'])) {
             $query->where('status', $request->status);
         }
-
-        // Filter by rating if requested
         if ($request->filled('rating') && $request->rating >= 1 && $request->rating <= 5) {
             $query->where('rating', $request->rating);
         }
-
-        // Filter by klien if requested
         if ($request->filled('klien')) {
-            $query->whereHas('order.klien', function($klienQuery) use ($request) {
-                $klienQuery->where('id', $request->klien);
-            });
+            $query->whereHas('order.klien', fn($k) => $k->where('id', $request->klien));
         }
-
-        // Search functionality
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('no_pengiriman', 'LIKE', "%{$search}%")
                   ->orWhere('ulasan', 'LIKE', "%{$search}%")
-                  ->orWhereHas('order', function($orderQuery) use ($search) {
-                      $orderQuery->where('no_order', 'LIKE', "%{$search}%");
-                  })
-                  ->orWhereHas('order.klien', function($klienQuery) use ($search) {
-                      $klienQuery->where('nama', 'LIKE', "%{$search}%")
-                                 ->orWhere('cabang', 'LIKE', "%{$search}%");
-                  })
-                  ->orWhereHas('purchasing', function($purchasingQuery) use ($search) {
-                      $purchasingQuery->where('nama', 'LIKE', "%{$search}%");
-                  });
+                  ->orWhereHas('order', fn($o) => $o->where('no_order', 'LIKE', "%{$search}%"))
+                  ->orWhereHas('order.klien', fn($k) => $k->where('nama', 'LIKE', "%{$search}%")->orWhere('cabang', 'LIKE', "%{$search}%"))
+                  ->orWhereHas('purchasing', fn($p) => $p->where('nama', 'LIKE', "%{$search}%"));
             });
         }
 
-        // Sort by latest
         $pengiriman = $query->orderBy('created_at', 'desc')->paginate(10)->appends(request()->query());
 
-        // Get all klien for filter dropdown
-        $klienList = \App\Models\Klien::select('id', 'nama', 'cabang')
+        $klienList = Klien::select('id', 'nama', 'cabang')
             ->orderBy('nama')
             ->get()
-            ->map(function($klien) {
-                return [
-                    'id' => $klien->id,
-                    'nama' => $klien->nama . ($klien->cabang ? ' - ' . $klien->cabang : '')
-                ];
-            });
+            ->map(fn($k) => ['id' => $k->id, 'nama' => $k->nama . ($k->cabang ? ' - ' . $k->cabang : '')]);
 
-        // Get statistics
         $stats = [
             'average_rating' => $supplier->getAverageRating(),
             'total_reviews' => $supplier->getTotalReviews(),
             'berhasil_count' => $supplier->getPengirimanBerhasilCount(),
             'gagal_count' => $supplier->getPengirimanGagalCount(),
-            'rating_distribution' => []
+            'rating_distribution' => array_fill(1, 5, 0)
         ];
 
-        // Get rating distribution
-        for ($i = 1; $i <= 5; $i++) {
-            $count = Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', function($q) use ($supplier) {
-                $q->where('supplier_id', $supplier->id);
-            })
-            ->where('rating', $i)
-            ->count();
-            
-            $stats['rating_distribution'][$i] = $count;
+        // Optimized Rating Distribution (1 Query instead of 5)
+        $ratingCounts = Pengiriman::whereHas('pengirimanDetails.bahanBakuSupplier', fn($q) => $q->where('supplier_id', $supplier->id))
+            ->whereNotNull('rating')
+            ->select('rating', DB::raw('count(*) as total'))
+            ->groupBy('rating')
+            ->pluck('total', 'rating');
+
+        foreach ($ratingCounts as $rating => $count) {
+            if ($rating >= 1 && $rating <= 5) {
+                $stats['rating_distribution'][(int)$rating] = $count;
+            }
         }
 
         return view('pages.purchasing.supplier.reviews', compact('supplier', 'pengiriman', 'stats', 'klienList'));
@@ -810,50 +344,36 @@ class SupplierController extends Controller
     /**
      * Get PO/Orders data for specific price in riwayat harga
      */
-    public function getPOByHarga(Request $request, Supplier $supplier, BahanBakuSupplier $bahanBaku)
+    public function getPOByHarga(Request $request, Supplier $supplier, BahanBakuSupplier $bahanBaku): JsonResponse
     {
-        // Validate that bahan baku belongs to supplier
         if ($bahanBaku->supplier_id !== $supplier->id) {
             return response()->json(['error' => 'Bahan baku tidak ditemukan untuk supplier ini'], 404);
         }
 
         $harga = $request->input('harga');
-        $tanggal = $request->input('tanggal');
-
         if (!$harga) {
             return response()->json(['error' => 'Harga tidak ditemukan'], 400);
         }
 
-        // Get all pengiriman details that used this specific price
         $pengirimanDetails = PengirimanDetail::where('bahan_baku_supplier_id', $bahanBaku->id)
             ->where('harga_satuan', $harga)
-            ->with([
-                'pengiriman.order.klien',
-                'pengiriman.forecast',
-                'orderDetail.bahanBakuKlien'
-            ])
+            ->with(['pengiriman.order.klien'])
             ->get();
 
-        // Group by order/PO
         $orders = [];
-        $totalPO = 0;
         $totalQty = 0;
 
         foreach ($pengirimanDetails as $detail) {
-            $pengiriman = $detail->pengiriman;
-            $order = $pengiriman->order;
-            
+            $order = $detail->pengiriman->order;
             if (!$order) continue;
 
             $orderId = $order->id;
-            
             if (!isset($orders[$orderId])) {
-                $totalPO++;
                 $orders[$orderId] = [
                     'order_id' => $order->id,
                     'no_order' => $order->no_order,
                     'po_number' => $order->po_number ?? '-',
-                    'tanggal_order' => $order->tanggal_order ? \Carbon\Carbon::parse($order->tanggal_order)->format('d M Y') : '-',
+                    'tanggal_order' => $order->tanggal_order ? Carbon::parse($order->tanggal_order)->format('d M Y') : '-',
                     'klien_nama' => $order->klien->nama ?? '-',
                     'klien_cabang' => $order->klien->cabang ?? '-',
                     'status_order' => $order->status,
@@ -862,26 +382,297 @@ class SupplierController extends Controller
             }
 
             $orders[$orderId]['pengiriman'][] = [
-                'no_pengiriman' => $pengiriman->no_pengiriman,
-                'tanggal_kirim' => $pengiriman->tanggal_kirim ? \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d M Y') : '-',
+                'no_pengiriman' => $detail->pengiriman->no_pengiriman,
+                'tanggal_kirim' => $detail->pengiriman->tanggal_kirim ? Carbon::parse($detail->pengiriman->tanggal_kirim)->format('d M Y') : '-',
                 'qty_kirim' => (float) $detail->qty_kirim,
                 'total_harga' => (float) $detail->total_harga,
-                'status' => $pengiriman->status,
+                'status' => $detail->pengiriman->status,
             ];
-
             $totalQty += (float) $detail->qty_kirim;
         }
 
         return response()->json([
             'success' => true,
             'harga' => (float) $harga,
-            'tanggal' => $tanggal,
+            'tanggal' => $request->input('tanggal'),
             'satuan' => $bahanBaku->satuan,
             'bahan_baku_nama' => $bahanBaku->nama,
             'supplier_nama' => $supplier->nama,
-            'total_po' => $totalPO,
+            'total_po' => count($orders),
             'total_qty' => $totalQty,
             'orders' => array_values($orders),
         ]);
+    }
+
+    // =========================================================================
+    // PRIVATE HELPER METHODS (REFACTORING EXTRACTIONS)
+    // =========================================================================
+
+    private function applySearchFilters($query, Request $request): void
+    {
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('alamat', 'like', "%{$search}%")
+                  ->orWhere('no_hp', 'like', "%{$search}%")
+                  ->orWhereHas('picPurchasing', fn($s) => $s->where('nama', 'like', "%{$search}%"))
+                  ->orWhereHas('bahanBakuSuppliers', fn($s) => $s->where('nama', 'like', "%{$search}%"));
+            });
+        }
+        if ($request->filled('bahan_baku')) {
+            $bahanBaku = str_replace('_', ' ', $request->bahan_baku);
+            $query->whereHas('bahanBakuSuppliers', fn($s) => $s->where('nama', 'like', "%{$bahanBaku}%"));
+        }
+    }
+
+    private function applySorting($query, Request $request): void
+    {
+        if ($request->filled('sort_bahan_baku')) {
+            $query->withCount('bahanBakuSuppliers')->orderBy('bahan_baku_suppliers_count', $request->sort_bahan_baku == 'terbanyak' ? 'desc' : 'asc');
+        } elseif ($request->filled('sort_stok')) {
+            $query->withSum('bahanBakuSuppliers', 'stok')->orderBy('bahan_baku_suppliers_sum_stok', $request->sort_stok == 'terbanyak' ? 'desc' : 'asc');
+        } else {
+            $query->orderBy('nama', 'asc');
+        }
+    }
+
+    private function authorizeAccess(string $action, ?Supplier $supplier = null): void
+    {
+        $user = Auth::user();
+        $isGlobalAdmin = in_array($user->role, ['direktur', 'manager_purchasing']);
+        
+        if ($action === 'create' && !$isGlobalAdmin && $user->role !== 'staff_purchasing') {
+            abort(403, 'Anda tidak memiliki akses untuk menambah supplier.');
+        }
+        
+        if (in_array($action, ['edit', 'delete']) && $supplier) {
+            $isPic = ($user->role === 'staff_purchasing' && $supplier->pic_purchasing_id === $user->id);
+            if (!$isGlobalAdmin && !$isPic) {
+                throw new \Exception("Anda tidak memiliki akses untuk melakukan aksi ini pada supplier.");
+            }
+        }
+    }
+
+    private function generateSupplierSlug(string $nama, ?int $ignoreId = null): string
+    {
+        $baseSlug = Str::slug($nama);
+        $slug = $baseSlug;
+        $counter = 1;
+        $query = Supplier::where('slug', $slug);
+        
+        if ($ignoreId) {
+            $query->where('id', '!=', $ignoreId);
+        }
+
+        while ($query->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+            $query = Supplier::where('slug', $slug);
+            if ($ignoreId) {
+                $query->where('id', '!=', $ignoreId);
+            }
+        }
+        return $slug;
+    }
+
+    private function parseNumeric(?string $value): float
+    {
+        return (float) str_replace(['.', ','], '', $value ?? '0');
+    }
+
+    private function processBahanBakuUpdates(Supplier $supplier, array $bahanBakuData, ?int $klienId): array
+    {
+        $existingBahanBaku = $supplier->bahanBakuSuppliers()->get()->keyBy('id');
+        $submittedIds = [];
+
+        foreach ($bahanBakuData as $item) {
+            if (empty($item['nama']) || empty($item['satuan'])) {
+                continue;
+            }
+
+            $nama = trim($item['nama']);
+            $harga = $this->parseNumeric($item['harga_per_satuan']);
+            $stok = $this->parseNumeric($item['stok']);
+
+            if (!empty($item['id']) && $existingBahanBaku->has($item['id'])) {
+                $this->updateExistingBahanBaku($supplier, $existingBahanBaku[$item['id']], $nama, $item['satuan'], $stok, $harga, $klienId);
+                $submittedIds[] = $item['id'];
+            } else {
+                $newId = $this->createNewBahanBaku($supplier, $nama, $item['satuan'], $stok, $harga, $klienId);
+                $submittedIds[] = $newId;
+            }
+        }
+
+        return $submittedIds;
+    }
+
+    private function updateExistingBahanBaku(Supplier $supplier, BahanBakuSupplier $bahanBaku, string $nama, string $satuan, float $stok, float $hargaBaru, ?int $klienId): void
+    {
+        $slug = ($bahanBaku->nama !== $nama) ? BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id, $bahanBaku->id) : $bahanBaku->slug;
+        
+        $bahanBaku->update(['nama' => $nama, 'slug' => $slug, 'satuan' => $satuan, 'stok' => $stok]);
+
+        if ($klienId === null) {
+            $hargaLama = (float) $bahanBaku->harga_per_satuan;
+            $bahanBaku->update(['harga_per_satuan' => $hargaBaru]);
+            if ($hargaLama != $hargaBaru) {
+                RiwayatHargaBahanBaku::catatPerubahanHarga($bahanBaku->id, $hargaLama, $hargaBaru, "Update harga GLOBAL bahan baku '{$nama}' melalui edit supplier");
+            }
+        } else {
+            $hargaKlien = BahanBakuSupplierKlien::firstOrNew(['bahan_baku_supplier_id' => $bahanBaku->id, 'klien_id' => $klienId]);
+            $hargaLama = $hargaKlien->exists ? (float) $hargaKlien->harga_per_satuan : (float) $bahanBaku->harga_per_satuan;
+            
+            $hargaKlien->harga_per_satuan = $hargaBaru;
+            $hargaKlien->save();
+            
+            if ($hargaLama != $hargaBaru) {
+                $klienInfo = Klien::find($klienId);
+                $klienNama = $klienInfo ? $klienInfo->nama . ($klienInfo->cabang ? ' - ' . $klienInfo->cabang : '') : 'Klien';
+                RiwayatHargaBahanBaku::catatPerubahanHarga($bahanBaku->id, $hargaLama, $hargaBaru, "Update harga untuk {$klienNama} - bahan baku '{$nama}' melalui edit supplier", null, null, $klienId);
+            }
+        }
+    }
+
+    private function createNewBahanBaku(Supplier $supplier, string $nama, string $satuan, float $stok, float $harga, ?int $klienId): int
+    {
+        $newBahanBaku = $supplier->bahanBakuSuppliers()->create([
+            'nama' => $nama,
+            'slug' => BahanBakuSupplier::generateUniqueSlug($nama, $supplier->id),
+            'satuan' => $satuan,
+            'harga_per_satuan' => $harga,
+            'stok' => $stok,
+        ]);
+
+        if ($klienId === null) {
+            RiwayatHargaBahanBaku::catatPerubahanHarga($newBahanBaku->id, null, $harga, "Bahan baku baru '{$nama}' ditambahkan (harga global)");
+        } else {
+            BahanBakuSupplierKlien::create(['bahan_baku_supplier_id' => $newBahanBaku->id, 'klien_id' => $klienId, 'harga_per_satuan' => $harga]);
+            $klienInfo = Klien::find($klienId);
+            $klienNama = $klienInfo ? $klienInfo->nama . ($klienInfo->cabang ? ' - ' . $klienInfo->cabang : '') : 'Klien';
+            RiwayatHargaBahanBaku::catatPerubahanHarga($newBahanBaku->id, null, $harga, "Bahan baku baru '{$nama}' ditambahkan untuk {$klienNama}", null, null, $klienId);
+        }
+
+        return $newBahanBaku->id;
+    }
+
+    private function formatRiwayatData($riwayatHargaData): array
+    {
+        return $riwayatHargaData->map(fn($item) => [
+            'id' => $item->id,
+            'tanggal' => $item->tanggal_perubahan->format('Y-m-d'),
+            'harga' => (float) $item->harga_baru,
+            'harga_lama' => $item->harga_lama ? (float) $item->harga_lama : null,
+            'selisih_harga' => (float) $item->selisih_harga,
+            'persentase_perubahan' => (float) $item->persentase_perubahan,
+            'tipe_perubahan' => $item->tipe_perubahan,
+            'keterangan' => $item->keterangan,
+            'klien_id' => $item->klien_id,
+            'klien_nama' => $item->klien ? $item->klien->nama : 'Global',
+            'klien_cabang' => $item->klien ? $item->klien->cabang : null,
+            'formatted_tanggal' => $item->tanggal_perubahan->format('d M Y'),
+            'formatted_hari' => $item->tanggal_perubahan->format('l'),
+            'formatted_harga' => number_format((float) $item->harga_baru, 0, ',', '.'),
+            'formatted_harga_lama' => $item->harga_lama ? number_format((float) $item->harga_lama, 0, ',', '.') : null,
+            'formatted_selisih' => number_format(abs((float) $item->selisih_harga), 0, ',', '.'),
+            'color_class' => $item->color_class,
+            'badge_class' => $item->badge_class,
+            'icon' => $item->icon,
+        ])->toArray();
+    }
+
+    private function prepareChartDataByKlien(array $riwayatHarga, array &$allDates): array
+    {
+        $chartDataByKlien = [];
+        
+        foreach ($riwayatHarga as $item) {
+            $klienKey = $item['klien_id'] ?? 'global';
+            $klienLabel = $item['klien_nama'] . ($item['klien_cabang'] ? ' - ' . $item['klien_cabang'] : '');
+            
+            if (!isset($chartDataByKlien[$klienKey])) {
+                $chartDataByKlien[$klienKey] = ['label' => $klienLabel, 'dataByDate' => []];
+            }
+            $chartDataByKlien[$klienKey]['dataByDate'][$item['tanggal']] = $item['harga'];
+            if (!in_array($item['tanggal'], $allDates)) {
+                $allDates[] = $item['tanggal'];
+            }
+        }
+        
+        sort($allDates);
+        
+        foreach ($chartDataByKlien as $klienKey => &$klienData) {
+            $dates = array_keys($klienData['dataByDate']);
+            sort($dates);
+            $firstDate = $dates[0] ?? null;
+            $lastDate = end($dates) ?: null;
+            
+            $alignedData = [];
+            $lastKnownValue = null;
+            $hasStarted = false;
+            
+            foreach ($allDates as $date) {
+                if (isset($klienData['dataByDate'][$date])) {
+                    $hasStarted = true;
+                    $lastKnownValue = $klienData['dataByDate'][$date];
+                }
+                
+                if ($hasStarted && $date <= $lastDate) {
+                    $alignedData[] = ['tanggal' => $date, 'harga' => $lastKnownValue];
+                } elseif (!$hasStarted && $date < $firstDate) {
+                    $alignedData[] = ['tanggal' => $date, 'harga' => null];
+                } elseif ($date > $lastDate) {
+                    $alignedData[] = ['tanggal' => $date, 'harga' => $lastKnownValue];
+                } else {
+                    $alignedData[] = ['tanggal' => $date, 'harga' => null];
+                }
+            }
+            $klienData['data'] = $alignedData;
+            unset($klienData['dataByDate']);
+        }
+        return $chartDataByKlien;
+    }
+
+    private function getValidationRules(string $mode): array
+    {
+        $rules = [
+            'nama' => 'required|string|max:255',
+            'alamat' => 'nullable|string',
+            'no_hp' => 'nullable|string|max:20',
+            'pic_purchasing_id' => 'nullable|exists:users,id',
+        ];
+
+        if ($mode === 'store') {
+            $rules['bahan_baku'] = 'required|array|min:1';
+            $rules['bahan_baku.*.nama'] = 'required|string|max:255';
+            $rules['bahan_baku.*.satuan'] = 'required|string|max:50';
+            $rules['bahan_baku.*.harga_per_satuan'] = 'required|numeric|min:0';
+            $rules['bahan_baku.*.stok'] = 'required|numeric|min:0';
+        } else {
+            $rules['edit_harga_untuk'] = 'required|string';
+            $rules['bahan_baku'] = 'nullable|array';
+            $rules['bahan_baku.*.nama'] = 'required_with:bahan_baku|string|max:255';
+            $rules['bahan_baku.*.satuan'] = 'required_with:bahan_baku|string|max:50';
+            $rules['bahan_baku.*.harga_per_satuan'] = 'required_with:bahan_baku|numeric|min:0';
+            $rules['bahan_baku.*.stok'] = 'required_with:bahan_baku|numeric|min:0';
+        }
+        return $rules;
+    }
+
+    private function getValidationMessages(): array
+    {
+        return [
+            'nama.required' => 'Nama supplier harus diisi',
+            'bahan_baku.required' => 'Minimal satu bahan baku harus ditambahkan',
+            'bahan_baku.min' => 'Minimal satu bahan baku harus ditambahkan',
+            'edit_harga_untuk.required' => 'Pilihan harga harus dipilih',
+            'bahan_baku.*.nama.required' => 'Nama bahan baku harus diisi',
+            'bahan_baku.*.nama.required_with' => 'Nama bahan baku harus diisi',
+            'bahan_baku.*.satuan.required' => 'Satuan bahan baku harus dipilih',
+            'bahan_baku.*.satuan.required_with' => 'Satuan bahan baku harus dipilih',
+            'bahan_baku.*.harga_per_satuan.required' => 'Harga per satuan harus diisi',
+            'bahan_baku.*.harga_per_satuan.required_with' => 'Harga per satuan harus diisi',
+            'bahan_baku.*.stok.required' => 'Stok harus diisi',
+            'bahan_baku.*.stok.required_with' => 'Stok harus diisi',
+        ];
     }
 }

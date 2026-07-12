@@ -13,9 +13,9 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class ForecastPendingExport implements 
-    FromArray, 
-    WithColumnWidths, 
+class ForecastGagalExport implements
+    FromArray,
+    WithColumnWidths,
     WithTitle,
     WithStyles
 {
@@ -37,15 +37,14 @@ class ForecastPendingExport implements
      */
     public function array(): array
     {
-        // Header informasi
         $data = [];
-        
+
         // Baris 1: Judul
-        $data[] = ['LAPORAN FORECAST PENDING', '', '', '', '', '', '', '', '', ''];
-        
+        $data[] = ['LAPORAN FORECAST GAGAL', '', '', '', '', '', '', '', '', ''];
+
         // Baris 2: Tanggal Export
         $data[] = ['Diekspor pada: ' . now()->format('d/m/Y H:i:s'), '', '', '', '', '', '', '', '', ''];
-        
+
         // Baris 3: Filter
         $filterInfo = [];
         if ($this->tanggalMulai && $this->tanggalAkhir) {
@@ -62,238 +61,160 @@ class ForecastPendingExport implements
             $filterInfo[] = 'Pencarian: ' . $this->search;
         }
 
-        if (!empty($filterInfo)) {
-            $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', ''];
-        } else {
-            $data[] = ['Filter: Semua Data Forecast Pending', '', '', '', '', '', '', '', '', ''];
-        }
-        
+        $data[] = [!empty($filterInfo) ? 'Filter: ' . implode(' | ', $filterInfo) : 'Filter: Semua Data Forecast Gagal', '', '', '', '', '', '', '', '', ''];
+
         // Baris 4: Kosong
         $data[] = ['', '', '', '', '', '', '', '', '', ''];
-        
+
         // Header tabel
         $data[] = [
-            'Tanggal Perkiraan Kirim',
-            'Hari Perkiraan Kirim',
-            'No PO',
+            'Tanggal',
+            'Hari',
+            'PIC',
             'Supplier',
-            'Bahan Baku PO',
-            'Nama Pabrik',
-            'QTY Forecasting',
+            'Bahan Baku',
+            'Klien',
+            'Qty Forecast',
             'Harga Jual',
-            'Total Harga Forecasting',
-            'PIC Supplier'
+            'Total Forecast',
+            'Keterangan'
         ];
 
-        // Data forecasts
         $forecasts = $this->getForecastData();
-        
-        // Variable untuk menghitung total
         $grandTotal = 0;
-        
+
         foreach ($forecasts as $forecast) {
-            // Ambil data forecast details
             $forecastDetails = collect($forecast->forecastDetails ?? []);
-            
+
+            // Ambil keterangan dari pengiriman (status gagal) terkait forecast ini
+            $pengirimanGagal = $forecast->pengiriman
+                ->where('status', 'gagal')
+                ->sortByDesc('created_at')
+                ->first();
+            $keterangan = optional($pengirimanGagal)->catatan ?? 'N/A';
+
             if ($forecastDetails->isEmpty()) {
-                // Jika tidak ada details, tampilkan data forecast saja
                 $data[] = [
                     $forecast->tanggal_forecast ? Carbon::parse($forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
                     $forecast->hari_kirim_forecast ?? 'N/A',
-                    optional($forecast->order)->po_number ?? 'N/A',
+                    optional($forecast->purchasing)->nama ?? 'N/A',
                     'N/A',
                     'Tidak ada detail',
                     optional(optional($forecast->order)->klien)->nama ?? 'N/A',
                     0,
                     0,
                     0,
-                    'N/A'
+                    $keterangan
                 ];
             } else {
-                // Loop untuk setiap detail forecast
                 foreach ($forecastDetails as $detail) {
                     $bahanBaku = $detail->bahanBakuSupplier;
                     $supplier = optional($bahanBaku)->supplier;
-                    $picSupplier = optional($supplier)->picPurchasing;
-                    
-                    // Ambil harga jual dari order detail
+
                     $orderDetail = $detail->orderDetail;
-                    $hargaJual = $orderDetail ? (float)$orderDetail->harga_jual : 0;
-                    
-                    // Hitung total harga menggunakan qty forecast dan harga jual dari PO
-                    $totalHargaDetail = (float)($detail->qty_forecast ?? 0) * $hargaJual;
-                    $grandTotal += $totalHargaDetail;
+                    $hargaJual = $orderDetail ? (float) $orderDetail->harga_jual : 0;
+
+                    $totalForecastDetail = (float) ($detail->qty_forecast ?? 0) * $hargaJual;
+                    $grandTotal += $totalForecastDetail;
 
                     $data[] = [
                         $forecast->tanggal_forecast ? Carbon::parse($forecast->tanggal_forecast)->format('d/m/Y') : 'N/A',
                         $forecast->hari_kirim_forecast ?? 'N/A',
-                        optional($forecast->order)->po_number ?? 'N/A',
+                        optional($forecast->purchasing)->nama ?? 'N/A',
                         optional($supplier)->nama ?? 'N/A',
                         optional($bahanBaku)->nama ?? 'N/A',
                         optional(optional($forecast->order)->klien)->nama ?? 'N/A',
-                        (float)($detail->qty_forecast ?? 0),
+                        (float) ($detail->qty_forecast ?? 0),
                         $hargaJual,
-                        $totalHargaDetail,
-                        optional($picSupplier)->nama ?? 'N/A'
+                        $totalForecastDetail,
+                        $keterangan
                     ];
                 }
             }
         }
-        
-        // Tambahkan baris kosong
+
         $data[] = ['', '', '', '', '', '', '', '', '', ''];
-        
-        // Tambahkan baris TOTAL
-        $data[] = [
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            $grandTotal,
-            ''
-        ];
+
+        // Baris TOTAL
+        $data[] = ['', '', '', '', '', '', '', '', $grandTotal, ''];
 
         return $data;
     }
 
-    /**
-     * Apply styles to the worksheet
-     */
     public function styles(Worksheet $sheet)
     {
         $lastRow = $sheet->getHighestRow();
-        $totalRow = $lastRow; // Baris total
-        $dataEndRow = $lastRow - 2; // Baris terakhir data (sebelum baris kosong dan total)
-        
-        // Style for title
+        $totalRow = $lastRow;
+        $dataEndRow = $lastRow - 2;
+
+        // Judul
         $sheet->mergeCells('A1:J1');
         $sheet->getStyle('A1')->applyFromArray([
-            'font' => [
-                'bold' => true,
-                'size' => 16,
-                'color' => ['rgb' => 'FFFFFF']
-            ],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'F59E0B'] // Yellow-500
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER
-            ]
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EF4444']], // Red-500
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
         ]);
         $sheet->getRowDimension(1)->setRowHeight(30);
 
-        // Style for export date
         $sheet->mergeCells('A2:J2');
         $sheet->getStyle('A2')->applyFromArray([
             'font' => ['italic' => true, 'size' => 10],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
         ]);
 
-        // Style for filter info
         $sheet->mergeCells('A3:J3');
         $sheet->getStyle('A3')->applyFromArray([
             'font' => ['size' => 10],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
         ]);
 
-        // Style for header row (row 5)
+        // Header tabel (row 5)
         $sheet->getStyle('A5:J5')->applyFromArray([
-            'font' => [
-                'bold' => true,
-                'color' => ['rgb' => 'FFFFFF']
-            ],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '3B82F6'] // Blue-500
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER
-            ],
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => '000000']
-                ]
-            ]
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '3B82F6']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]]
         ]);
         $sheet->getRowDimension(5)->setRowHeight(25);
 
-        // Style for data rows
         for ($row = 6; $row <= $dataEndRow; $row++) {
             $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => 'CCCCCC']
-                    ]
-                ],
-                'alignment' => [
-                    'vertical' => Alignment::VERTICAL_CENTER
-                ]
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CCCCCC']]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
             ]);
 
-            // Center align specific columns
             $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("B{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("G{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle("H{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle("I{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
-            // Alternating row colors
             if ($row % 2 == 0) {
                 $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => ['rgb' => 'F9FAFB'] // Gray-50
-                    ]
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F9FAFB']]
                 ]);
             }
         }
 
-        // Number format for currency columns
         for ($row = 6; $row <= $dataEndRow; $row++) {
             $sheet->getStyle("G{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
             $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('#,##0');
         }
-        
-        // Style untuk baris TOTAL
+
+        // Baris TOTAL
         $sheet->mergeCells("A{$totalRow}:H{$totalRow}");
         $sheet->setCellValue("A{$totalRow}", "TOTAL");
         $sheet->getStyle("A{$totalRow}:J{$totalRow}")->applyFromArray([
-            'font' => [
-                'bold' => true,
-                'size' => 12,
-                'color' => ['rgb' => 'FFFFFF']
-            ],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '10B981'] // Green-500
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_RIGHT,
-                'vertical' => Alignment::VERTICAL_CENTER
-            ],
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => '000000']
-                ]
-            ]
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '10B981']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]]
         ]);
         $sheet->getStyle("I{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("I{$totalRow}")->getNumberFormat()->setFormatCode('#,##0');
         $sheet->getRowDimension($totalRow)->setRowHeight(25);
 
-        // Auto-size all columns except merged cells
         foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(false);
         }
@@ -302,18 +223,18 @@ class ForecastPendingExport implements
     }
 
     /**
-     * Get forecast data based on filters
+     * Get forecast data based on filters (sama seperti getForecastsByStatus('gagal') di controller, tanpa pagination)
      */
     private function getForecastData()
     {
         $query = Forecast::with([
             'order.klien',
             'purchasing',
-            'forecastDetails.bahanBakuSupplier.supplier.picPurchasing',
+            'forecastDetails.bahanBakuSupplier.supplier',
             'forecastDetails.orderDetail',
-            'forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien'
-        ])
-        ->where('status', 'pending');
+            'forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien',
+            'pengiriman'
+        ])->where('status', 'gagal');
 
         if ($this->tanggalMulai && $this->tanggalAkhir) {
             $query->whereBetween('tanggal_forecast', [$this->tanggalMulai, $this->tanggalAkhir]);
@@ -329,17 +250,17 @@ class ForecastPendingExport implements
 
         if ($this->search) {
             $term = $this->search;
-            $query->where(function($q) use ($term) {
-                $q->whereHas('order', function($orderQuery) use ($term) {
+            $query->where(function ($q) use ($term) {
+                $q->whereHas('order', function ($orderQuery) use ($term) {
                         $orderQuery->where('po_number', 'like', "%{$term}%")
-                                ->orWhereHas('klien', function($klienQuery) use ($term) {
+                                ->orWhereHas('klien', function ($klienQuery) use ($term) {
                                     $klienQuery->where('nama', 'like', "%{$term}%");
                                 });
                     })
-                    ->orWhereHas('purchasing', function($userQuery) use ($term) {
+                    ->orWhereHas('purchasing', function ($userQuery) use ($term) {
                         $userQuery->where('nama', 'like', "%{$term}%");
                     })
-                    ->orWhereHas('forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien', function($bbQuery) use ($term) {
+                    ->orWhereHas('forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien', function ($bbQuery) use ($term) {
                         $bbQuery->where('nama', 'like', "%{$term}%");
                     });
             });
@@ -350,30 +271,24 @@ class ForecastPendingExport implements
                     ->get();
     }
 
-    /**
-     * @return array
-     */
     public function columnWidths(): array
     {
         return [
-            'A' => 20,  // Tanggal Perkiraan Kirim
-            'B' => 20,  // Hari Perkiraan Kirim
-            'C' => 18,  // No PO
+            'A' => 15,  // Tanggal
+            'B' => 20,  // Hari
+            'C' => 25,  // PIC
             'D' => 30,  // Supplier
-            'E' => 40,  // Bahan Baku PO
-            'F' => 35,  // Nama Pabrik
-            'G' => 18,  // QTY Forecasting
-            'H' => 20,  // Harga Beli
-            'I' => 25,  // Total Harga Forecasting
-            'J' => 25,  // PIC Supplier
+            'E' => 40,  // Bahan Baku
+            'F' => 30,  // Klien
+            'G' => 15,  // Qty Forecast
+            'H' => 20,  // Harga Jual
+            'I' => 22,  // Total Forecast
+            'J' => 45,  // Keterangan
         ];
     }
 
-    /**
-     * @return string
-     */
     public function title(): string
     {
-        return 'Forecast Pending';
+        return 'Forecast Gagal';
     }
 }

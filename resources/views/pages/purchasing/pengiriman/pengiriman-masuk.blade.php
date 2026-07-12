@@ -44,21 +44,38 @@
                     <div class="w-4 h-4 sm:w-5 sm:h-5 bg-blue-500 rounded-full flex items-center justify-center mr-1 sm:mr-2">
                         <i class="fas fa-filter text-white text-xs"></i>
                     </div>
-                    Filter & Urutan
+                    Filter
                 </h3>
                 
                 {{-- Horizontal Filter Layout --}}
                 <div class="flex flex-col sm:flex-row items-start sm:items-end gap-2 sm:gap-4">
+                    {{-- Tanggal Mulai --}}
+                    <div class="w-full sm:w-48 shrink-0">
+                        <label class="block text-xs font-medium text-blue-600 mb-1">
+                            <i class="fas fa-calendar mr-1 text-blue-500 text-xs"></i>
+                            Tanggal Mulai
+                        </label>
+                        <input type="date" id="tanggalMulaiMasuk" name="tanggal_mulai_masuk" value="{{ request('tanggal_mulai_masuk') }}" class="w-full py-2 px-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 text-sm">
+                    </div>
+
+                    {{-- Tanggal Berakhir --}}
+                    <div class="w-full sm:w-48 shrink-0">
+                        <label class="block text-xs font-medium text-blue-600 mb-1">
+                            <i class="fas fa-calendar mr-1 text-blue-500 text-xs"></i>
+                            Tanggal Berakhir
+                        </label>
+                        <input type="date" id="tanggalAkhirMasuk" name="tanggal_akhir_masuk" value="{{ request('tanggal_akhir_masuk') }}" class="w-full py-2 px-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 text-sm">
+                    </div>
+
                     {{-- Filter by Purchasing --}}
                     <div class="w-full sm:w-64 shrink-0">
                         <label class="block text-xs font-medium text-blue-600 mb-1">
                             <i class="fas fa-user mr-1 text-blue-500 text-xs"></i>
                             PIC Procurement
                         </label>
-                        <select id="filterPurchasing" name="filter_purchasing" class="w-full py-2 px-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersMasuk()">
+                        <select id="filterPurchasing" name="filter_purchasing" class="w-full py-2 px-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 text-sm">
                             <option value="">Semua Procurement</option>
                             @php
-                                // Debug: check purchasing data
                                 $purchasingOptions = collect();
                                 foreach($pengirimanMasuk->items() ?? [] as $item) {
                                     if($item->purchasing && $item->purchasing->nama) {
@@ -73,21 +90,12 @@
                         </select>
                     </div>
 
-                    {{-- Sort by Date --}}
-                    <div class="w-full sm:w-48 shrink-0">
-                        <label class="block text-xs font-medium text-blue-600 mb-1">
-                            <i class="fas fa-sort mr-1 text-blue-500 text-xs"></i>
-                            Urutkan
-                        </label>
-                        <select id="sortDateMasuk" name="sort_date_masuk" class="w-full py-2 px-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 text-sm" onchange="applyFiltersMasuk()">
-                            <option value="">Default</option>
-                            <option value="newest" {{ request('sort_date_masuk') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_date_masuk') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        </select>
-                    </div>
-
-                    {{-- Clear Filter Button --}}
-                    <div class="w-full sm:w-auto sm:ml-auto shrink-0">
+                    {{-- Terapkan & Hapus Filter Button --}}
+                    <div class="w-full sm:w-auto sm:ml-auto shrink-0 flex gap-2">
+                        <button onclick="applyFiltersMasuk()" class="w-full sm:w-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap">
+                            <i class="fas fa-filter mr-1"></i>
+                            Terapkan Filter
+                        </button>
                         <button onclick="clearAllFiltersMasuk()" class="w-full sm:w-auto px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap">
                             <i class="fas fa-times mr-1"></i>
                             Hapus Filter
@@ -334,7 +342,8 @@
                                 // Preserve other filters
                                 if (request('search_masuk')) $prevParams['search_masuk'] = request('search_masuk');
                                 if (request('filter_purchasing')) $prevParams['filter_purchasing'] = request('filter_purchasing');
-                                if (request('sort_date_masuk')) $prevParams['sort_date_masuk'] = request('sort_date_masuk');
+                                if (request('tanggal_mulai_masuk')) $prevParams['tanggal_mulai_masuk'] = request('tanggal_mulai_masuk');
+                                if (request('tanggal_akhir_masuk')) $prevParams['tanggal_akhir_masuk'] = request('tanggal_akhir_masuk');
                                 $prevUrl = $prevUrlParts['path'] . '?' . http_build_query($prevParams);
                             @endphp
                             <a href="{{ $prevUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors">
@@ -354,7 +363,8 @@
                                         // Preserve other filters
                                         if (request('search_masuk')) $urlParams['search_masuk'] = request('search_masuk');
                                         if (request('filter_purchasing')) $urlParams['filter_purchasing'] = request('filter_purchasing');
-                                        if (request('sort_date_masuk')) $urlParams['sort_date_masuk'] = request('sort_date_masuk');
+                                        if (request('tanggal_mulai_masuk')) $urlParams['tanggal_mulai_masuk'] = request('tanggal_mulai_masuk');
+                                        if (request('tanggal_akhir_masuk')) $urlParams['tanggal_akhir_masuk'] = request('tanggal_akhir_masuk');
                                         $pageUrl = $urlParts['path'] . '?' . http_build_query($urlParams);
                                     @endphp
                                     
@@ -386,7 +396,8 @@
                                 // Preserve other filters
                                 if (request('search_masuk')) $nextParams['search_masuk'] = request('search_masuk');
                                 if (request('filter_purchasing')) $nextParams['filter_purchasing'] = request('filter_purchasing');
-                                if (request('sort_date_masuk')) $nextParams['sort_date_masuk'] = request('sort_date_masuk');
+                                if (request('tanggal_mulai_masuk')) $nextParams['tanggal_mulai_masuk'] = request('tanggal_mulai_masuk');
+                                if (request('tanggal_akhir_masuk')) $nextParams['tanggal_akhir_masuk'] = request('tanggal_akhir_masuk');
                                 $nextUrl = $nextUrlParts['path'] . '?' . http_build_query($nextParams);
                             @endphp
                             <a href="{{ $nextUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors">
@@ -660,27 +671,25 @@ function submitSearchMasuk() {
     window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
-// Apply filters function for server-side filtering
+// Apply filters function for server-side filtering (triggered by button, not auto)
 function applyFiltersMasuk() {
     const currentParams = new URLSearchParams(window.location.search);
     
-    // Get filter values
-    const searchValue = document.getElementById('searchInputMasuk').value;
+    const tanggalMulai = document.getElementById('tanggalMulaiMasuk').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirMasuk').value;
     const filterPurchasing = document.getElementById('filterPurchasing').value;
-    const sortDate = document.getElementById('sortDateMasuk').value;
     
     // Preserve current tab
     currentParams.set('tab', 'pengiriman-masuk');
     
-    // Update parameters
-    if (searchValue) currentParams.set('search_masuk', searchValue);
-    else currentParams.delete('search_masuk');
+    if (tanggalMulai) currentParams.set('tanggal_mulai_masuk', tanggalMulai);
+    else currentParams.delete('tanggal_mulai_masuk');
+    
+    if (tanggalAkhir) currentParams.set('tanggal_akhir_masuk', tanggalAkhir);
+    else currentParams.delete('tanggal_akhir_masuk');
     
     if (filterPurchasing) currentParams.set('filter_purchasing', filterPurchasing);
     else currentParams.delete('filter_purchasing');
-    
-    if (sortDate) currentParams.set('sort_date_masuk', sortDate);
-    else currentParams.delete('sort_date_masuk');
     
     // Reset to first page when filtering
     currentParams.delete('masuk_page');
@@ -695,8 +704,9 @@ function applyFiltersMasuk() {
 function updateActiveFiltersMasuk() {
     const activeFiltersContainer = document.getElementById('activeFiltersMasuk');
     const searchValue = document.getElementById('searchInputMasuk').value;
+    const tanggalMulai = document.getElementById('tanggalMulaiMasuk').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirMasuk').value;
     const filterPurchasing = document.getElementById('filterPurchasing').value;
-    const sortDate = document.getElementById('sortDateMasuk').value;
     
     let hasActiveFilters = false;
     let filtersHTML = '<span class="text-xs sm:text-sm font-bold text-blue-700">Filter aktif:</span>';
@@ -706,19 +716,20 @@ function updateActiveFiltersMasuk() {
         hasActiveFilters = true;
     }
     
+    if (tanggalMulai) {
+        filtersHTML += `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs active-filter-tag">Dari: ${new Date(tanggalMulai).toLocaleDateString('id-ID')}</span>`;
+        hasActiveFilters = true;
+    }
+    
+    if (tanggalAkhir) {
+        filtersHTML += `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs active-filter-tag">Sampai: ${new Date(tanggalAkhir).toLocaleDateString('id-ID')}</span>`;
+        hasActiveFilters = true;
+    }
+    
     if (filterPurchasing) {
         const purchasingSelect = document.getElementById('filterPurchasing');
         const purchasingName = purchasingSelect.options[purchasingSelect.selectedIndex].text;
         filtersHTML += `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs active-filter-tag">Purchasing: ${purchasingName}</span>`;
-        hasActiveFilters = true;
-    }
-    
-    if (sortDate) {
-        const dateLabels = {
-            'newest': 'Terbaru',
-            'oldest': 'Terlama'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs active-filter-tag">Urutkan: ${dateLabels[sortDate]}</span>`;
         hasActiveFilters = true;
     }
     
@@ -735,9 +746,6 @@ function updateActiveFiltersMasuk() {
 
 // Clear all filters
 function clearAllFiltersMasuk() {
-    const currentParams = new URLSearchParams(window.location.search);
-    
-    // Keep only the tab parameter
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pengiriman-masuk');
     
@@ -1628,6 +1636,25 @@ function submitPengiriman() {
         }
     });
 }
+
+// Initialize filters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const searchValue = urlParams.get('search_masuk');
+    if (searchValue) document.getElementById('searchInputMasuk').value = searchValue;
+
+    const tanggalMulai = urlParams.get('tanggal_mulai_masuk');
+    if (tanggalMulai) document.getElementById('tanggalMulaiMasuk').value = tanggalMulai;
+
+    const tanggalAkhir = urlParams.get('tanggal_akhir_masuk');
+    if (tanggalAkhir) document.getElementById('tanggalAkhirMasuk').value = tanggalAkhir;
+
+    const filterPurchasing = urlParams.get('filter_purchasing');
+    if (filterPurchasing) document.getElementById('filterPurchasing').value = filterPurchasing;
+
+    updateActiveFiltersMasuk();
+});
 </script>
 
 <style>

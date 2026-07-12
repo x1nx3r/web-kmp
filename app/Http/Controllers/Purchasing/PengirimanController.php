@@ -212,7 +212,7 @@ class PengirimanController extends Controller
         try {
             $pengiriman->loadMissing(['invoicePenagihan', 'mergedInvoicePenagihan']);
 
-            $invoice = $pengiriman->invoicePenagihan ?? $pengiriman->mergedInvoicePenagihan;
+            $invoice = $pengiriman->mergedInvoicePenagihan ?? $pengiriman->invoicePenagihan;
 
             if (!$invoice) {
                 return;

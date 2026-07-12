@@ -20,7 +20,7 @@
                                    id="searchInput" 
                                    name="search"
                                    value="{{ request('search') }}"
-                                   placeholder="Cari No. PO atau nama klien..." 
+                                   placeholder="Cari No. PO, nama klien/pabrik, PIC, atau bahan baku..." 
                                    class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm"
                                    onkeypress="handleSearchKeyPress(event)">
                             <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">

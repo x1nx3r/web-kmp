@@ -19,17 +19,17 @@ class ForecastPendingExport implements
     WithTitle,
     WithStyles
 {
-    protected $dateRange;
+    protected $tanggalMulai;
+    protected $tanggalAkhir;
     protected $purchasing;
     protected $search;
-    protected $hariKirim;
 
-    public function __construct($dateRange = null, $purchasing = null, $search = null, $hariKirim = null)
+    public function __construct($tanggalMulai = null, $tanggalAkhir = null, $purchasing = null, $search = null)
     {
-        $this->dateRange = $dateRange;
+        $this->tanggalMulai = $tanggalMulai;
+        $this->tanggalAkhir = $tanggalAkhir;
         $this->purchasing = $purchasing;
         $this->search = $search;
-        $this->hariKirim = $hariKirim;
     }
 
     /**
@@ -48,8 +48,12 @@ class ForecastPendingExport implements
         
         // Baris 3: Filter
         $filterInfo = [];
-        if ($this->dateRange) {
-            $filterInfo[] = 'Tanggal Perkiraan Kirim: ' . date('d/m/Y', strtotime($this->dateRange));
+        if ($this->tanggalMulai && $this->tanggalAkhir) {
+            $filterInfo[] = 'Periode: ' . date('d/m/Y', strtotime($this->tanggalMulai)) . ' - ' . date('d/m/Y', strtotime($this->tanggalAkhir));
+        } elseif ($this->tanggalMulai) {
+            $filterInfo[] = 'Dari Tanggal: ' . date('d/m/Y', strtotime($this->tanggalMulai));
+        } elseif ($this->tanggalAkhir) {
+            $filterInfo[] = 'Sampai Tanggal: ' . date('d/m/Y', strtotime($this->tanggalAkhir));
         }
         if ($this->purchasing) {
             $filterInfo[] = 'PIC Purchasing ID: ' . $this->purchasing;
@@ -57,10 +61,7 @@ class ForecastPendingExport implements
         if ($this->search) {
             $filterInfo[] = 'Pencarian: ' . $this->search;
         }
-        if ($this->hariKirim) {
-            $filterInfo[] = 'Hari Kirim: ' . ucfirst($this->hariKirim);
-        }
-        
+
         if (!empty($filterInfo)) {
             $data[] = ['Filter: ' . implode(' | ', $filterInfo), '', '', '', '', '', '', '', '', ''];
         } else {
@@ -309,13 +310,17 @@ class ForecastPendingExport implements
             'order.klien',
             'purchasing',
             'forecastDetails.bahanBakuSupplier.supplier.picPurchasing',
-            'forecastDetails.orderDetail'
+            'forecastDetails.orderDetail',
+            'forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien'
         ])
         ->where('status', 'pending');
 
-        // Apply filters
-        if ($this->dateRange) {
-            $query->whereDate('tanggal_forecast', $this->dateRange);
+        if ($this->tanggalMulai && $this->tanggalAkhir) {
+            $query->whereBetween('tanggal_forecast', [$this->tanggalMulai, $this->tanggalAkhir]);
+        } elseif ($this->tanggalMulai) {
+            $query->whereDate('tanggal_forecast', '>=', $this->tanggalMulai);
+        } elseif ($this->tanggalAkhir) {
+            $query->whereDate('tanggal_forecast', '<=', $this->tanggalAkhir);
         }
 
         if ($this->purchasing) {
@@ -323,27 +328,26 @@ class ForecastPendingExport implements
         }
 
         if ($this->search) {
-            $query->where(function($q) {
-                $q->where('no_forecast', 'like', "%{$this->search}%")
-                  ->orWhereHas('order', function($orderQuery) {
-                      $orderQuery->where('po_number', 'like', "%{$this->search}%")
-                                 ->orWhereHas('klien', function($klienQuery) {
-                                     $klienQuery->where('nama', 'like', "%{$this->search}%");
-                                 });
-                  })
-                  ->orWhereHas('purchasing', function($userQuery) {
-                      $userQuery->where('nama', 'like', "%{$this->search}%");
-                  });
+            $term = $this->search;
+            $query->where(function($q) use ($term) {
+                $q->whereHas('order', function($orderQuery) use ($term) {
+                        $orderQuery->where('po_number', 'like', "%{$term}%")
+                                ->orWhereHas('klien', function($klienQuery) use ($term) {
+                                    $klienQuery->where('nama', 'like', "%{$term}%");
+                                });
+                    })
+                    ->orWhereHas('purchasing', function($userQuery) use ($term) {
+                        $userQuery->where('nama', 'like', "%{$term}%");
+                    })
+                    ->orWhereHas('forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien', function($bbQuery) use ($term) {
+                        $bbQuery->where('nama', 'like', "%{$term}%");
+                    });
             });
         }
 
-        if ($this->hariKirim) {
-            $query->whereRaw('LOWER(hari_kirim_forecast) LIKE ?', ['%' . strtolower($this->hariKirim) . '%']);
-        }
-
         return $query->orderBy('tanggal_forecast', 'asc')
-                     ->orderBy('created_at', 'asc')
-                     ->get();
+                    ->orderBy('created_at', 'asc')
+                    ->get();
     }
 
     /**

@@ -386,21 +386,20 @@ function refreshWithPreservedParams() {
     
     // Preserve search and filter parameters for pending tab
     if (currentParams.get('search_pending')) params.append('search_pending', currentParams.get('search_pending'));
-    if (currentParams.get('date_range')) params.append('date_range', currentParams.get('date_range'));
-    if (currentParams.get('sort_amount_pending')) params.append('sort_amount_pending', currentParams.get('sort_amount_pending'));
-    if (currentParams.get('sort_qty_pending')) params.append('sort_qty_pending', currentParams.get('sort_qty_pending'));
-    if (currentParams.get('sort_date_pending')) params.append('sort_date_pending', currentParams.get('sort_date_pending'));
-    if (currentParams.get('sort_hari_kirim')) params.append('sort_hari_kirim', currentParams.get('sort_hari_kirim'));
+    if (currentParams.get('tanggal_mulai_pending')) params.append('tanggal_mulai_pending', currentParams.get('tanggal_mulai_pending'));
+    if (currentParams.get('tanggal_akhir_pending')) params.append('tanggal_akhir_pending', currentParams.get('tanggal_akhir_pending'));
     
     // Preserve search and filter parameters for sukses tab
     if (currentParams.get('search_sukses')) params.append('search_sukses', currentParams.get('search_sukses'));
-    if (currentParams.get('date_range_sukses')) params.append('date_range_sukses', currentParams.get('date_range_sukses'));
-    if (currentParams.get('sort_order_sukses')) params.append('sort_order_sukses', currentParams.get('sort_order_sukses'));
+    if (currentParams.get('tanggal_mulai_sukses')) params.append('tanggal_mulai_sukses', currentParams.get('tanggal_mulai_sukses'));
+    if (currentParams.get('tanggal_akhir_sukses')) params.append('tanggal_akhir_sukses', currentParams.get('tanggal_akhir_sukses'));
+    if (currentParams.get('filter_purchasing_sukses')) params.append('filter_purchasing_sukses', currentParams.get('filter_purchasing_sukses'));
     
     // Preserve search and filter parameters for gagal tab
     if (currentParams.get('search_gagal')) params.append('search_gagal', currentParams.get('search_gagal'));
-    if (currentParams.get('date_range_gagal')) params.append('date_range_gagal', currentParams.get('date_range_gagal'));
-    if (currentParams.get('sort_order_gagal')) params.append('sort_order_gagal', currentParams.get('sort_order_gagal'));
+    if (currentParams.get('tanggal_mulai_gagal')) params.append('tanggal_mulai_gagal', currentParams.get('tanggal_mulai_gagal'));
+    if (currentParams.get('tanggal_akhir_gagal')) params.append('tanggal_akhir_gagal', currentParams.get('tanggal_akhir_gagal'));
+    if (currentParams.get('filter_purchasing_gagal')) params.append('filter_purchasing_gagal', currentParams.get('filter_purchasing_gagal'));
     
     // Reload with preserved parameters
     window.location.href = '/procurement/forecasting?' + params.toString();

@@ -19,7 +19,7 @@
                                    id="searchInputPending" 
                                    name="search_pending"
                                    value="{{ request('search_pending') }}"
-                                   placeholder="Cari No. PO, nama klien, atau no forecast..." 
+                                   placeholder="Cari No. PO, nama klien/pabrik, PIC, atau bahan baku..." 
                                    class="w-full pl-8 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm search-input-pending"
                                    onkeypress="handleSearchKeyPressPending(event)">
                             <div class="absolute inset-y-0 left-0 pl-2 sm:pl-4 flex items-center pointer-events-none">
@@ -46,90 +46,43 @@
                     </div>
                     Filter & Urutan
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-4 filter-grid">
-                    {{-- Date Range Filter --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 filter-grid">
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
                             <i class="fas fa-calendar mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
-                            Perkiraan Tanggal Kirim
+                            Tanggal Mulai
                         </label>
-                        <input type="date" id="dateRangeFilter" name="date_range" value="{{ request('date_range') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
+                        <input type="date" id="tanggalMulaiFilter" name="tanggal_mulai_pending" value="{{ request('tanggal_mulai_pending') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                     </div>
 
-                    {{-- Filter by PIC Purchasing --}}
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
+                            <i class="fas fa-calendar mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
+                            Tanggal Berakhir
+                        </label>
+                        <input type="date" id="tanggalAkhirFilter" name="tanggal_akhir_pending" value="{{ request('tanggal_akhir_pending') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm">
+                    </div>
+
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
                             <i class="fas fa-user-tie mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
                             PIC Procurement
                         </label>
-                        <select id="filterPurchasingPending" name="filter_purchasing_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
+                        <select id="filterPurchasingPending" name="filter_purchasing_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                             <option value="">Semua PIC</option>
                             @foreach($pendingPurchasingOptions as $id => $nama)
                                 <option value="{{ $id }}" {{ request('filter_purchasing_pending') == $id ? 'selected' : '' }}>{{ $nama }}</option>
                             @endforeach
                         </select>
                     </div>
-
-                    {{-- Sort by Amount --}}
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
-                            <i class="fas fa-sort mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
-                            Urutkan Total
-                        </label>
-                        <select id="sortAmountPending" name="sort_amount_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
-                            <option value="">Default</option>
-                            <option value="highest" {{ request('sort_amount_pending') == 'highest' ? 'selected' : '' }}>Tertinggi</option>
-                            <option value="lowest" {{ request('sort_amount_pending') == 'lowest' ? 'selected' : '' }}>Terendah</option>
-                        </select>
-                    </div>
-
-                    {{-- Sort by Quantity --}}
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
-                            <i class="fas fa-sort mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
-                            Urutkan Qty
-                        </label>
-                        <select id="sortQtyPending" name="sort_qty_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
-                            <option value="">Default</option>
-                            <option value="highest" {{ request('sort_qty_pending') == 'highest' ? 'selected' : '' }}>Terbanyak</option>
-                            <option value="lowest" {{ request('sort_qty_pending') == 'lowest' ? 'selected' : '' }}>Tersedikit</option>
-                        </select>
-                    </div>
-
-                    {{-- Sort by Date --}}
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
-                            <i class="fas fa-sort mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
-                            Urutkan Tanggal
-                        </label>
-                        <select id="sortDatePending" name="sort_date_pending" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
-                            <option value="">Default</option>
-                            <option value="newest" {{ request('sort_date_pending') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_date_pending') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        </select>
-                    </div>
-
-                    {{-- Sort by Hari Kirim --}}
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-yellow-700 mb-1 sm:mb-2">
-                            <i class="fas fa-truck mr-1 sm:mr-2 text-yellow-500 text-xs"></i>
-                            Hari Kirim
-                        </label>
-                        <select id="sortHariKirimPending" name="sort_hari_kirim" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-yellow-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-xs sm:text-sm" onchange="applyFiltersPending()">
-                            <option value="">Semua Hari</option>
-                            <option value="senin" {{ request('sort_hari_kirim') == 'senin' ? 'selected' : '' }}>Senin</option>
-                            <option value="selasa" {{ request('sort_hari_kirim') == 'selasa' ? 'selected' : '' }}>Selasa</option>
-                            <option value="rabu" {{ request('sort_hari_kirim') == 'rabu' ? 'selected' : '' }}>Rabu</option>
-                            <option value="kamis" {{ request('sort_hari_kirim') == 'kamis' ? 'selected' : '' }}>Kamis</option>
-                            <option value="jumat" {{ request('sort_hari_kirim') == 'jumat' ? 'selected' : '' }}>Jumat</option>
-                            <option value="sabtu" {{ request('sort_hari_kirim') == 'sabtu' ? 'selected' : '' }}>Sabtu</option>
-                            <option value="minggu" {{ request('sort_hari_kirim') == 'minggu' ? 'selected' : '' }}>Minggu</option>
-                        </select>
-                    </div>
                 </div>
-                
-                {{-- Clear Filter Button (Below Grid) --}}
-                <div class="flex justify-end mt-3">
+
+                {{-- Tombol Terapkan & Hapus Filter --}}
+                <div class="flex justify-end gap-2 mt-3">
+                    <button onclick="applyFiltersPending()" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+                        <i class="fas fa-filter mr-1"></i>
+                        Terapkan Filter
+                    </button>
                     <button onclick="clearAllFiltersPending()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
                         <i class="fas fa-times mr-1"></i>
                         Hapus Semua Filter
@@ -369,12 +322,8 @@
                                 $prevParams['tab'] = 'pending';
                                 // Preserve other filters
                                 if (request('search_pending')) $prevParams['search_pending'] = request('search_pending');
-                                if (request('date_range')) $prevParams['date_range'] = request('date_range');
-                                if (request('filter_purchasing_pending')) $prevParams['filter_purchasing_pending'] = request('filter_purchasing_pending');
-                                if (request('sort_amount_pending')) $prevParams['sort_amount_pending'] = request('sort_amount_pending');
-                                if (request('sort_qty_pending')) $prevParams['sort_qty_pending'] = request('sort_qty_pending');
-                                if (request('sort_date_pending')) $prevParams['sort_date_pending'] = request('sort_date_pending');
-                                if (request('sort_hari_kirim')) $prevParams['sort_hari_kirim'] = request('sort_hari_kirim');
+                                if (request('tanggal_mulai_pending')) $prevParams['tanggal_mulai_pending'] = request('tanggal_mulai_pending');
+                                if (request('tanggal_akhir_pending')) $prevParams['tanggal_akhir_pending'] = request('tanggal_akhir_pending');
                                 $prevUrl = $prevUrlParts['path'] . '?' . http_build_query($prevParams);
                             @endphp
                             <a href="{{ $prevUrl }}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300 transition-colors">
@@ -483,126 +432,65 @@ function submitSearchPending() {
     window.location.href = '/procurement/forecasting?' + currentParams.toString();
 }
 
-// Apply filters function for server-side filtering
 function applyFiltersPending() {
     const currentParams = new URLSearchParams(window.location.search);
-    
-    // Get filter values
+
     const searchValue = document.getElementById('searchInputPending').value;
-    const dateRange = document.getElementById('dateRangeFilter').value;
+    const tanggalMulai = document.getElementById('tanggalMulaiFilter').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirFilter').value;
     const filterPurchasing = document.getElementById('filterPurchasingPending').value;
-    const sortAmount = document.getElementById('sortAmountPending').value;
-    const sortQty = document.getElementById('sortQtyPending').value;
-    const sortDate = document.getElementById('sortDatePending').value;
-    const sortHariKirim = document.getElementById('sortHariKirimPending').value;
-    
-    // Preserve current tab
+
     currentParams.set('tab', 'pending');
-    
-    // Update parameters
+
     if (searchValue) currentParams.set('search_pending', searchValue);
     else currentParams.delete('search_pending');
-    
-    if (dateRange) currentParams.set('date_range', dateRange);
-    else currentParams.delete('date_range');
-    
+
+    if (tanggalMulai) currentParams.set('tanggal_mulai_pending', tanggalMulai);
+    else currentParams.delete('tanggal_mulai_pending');
+
+    if (tanggalAkhir) currentParams.set('tanggal_akhir_pending', tanggalAkhir);
+    else currentParams.delete('tanggal_akhir_pending');
+
     if (filterPurchasing) currentParams.set('filter_purchasing_pending', filterPurchasing);
     else currentParams.delete('filter_purchasing_pending');
-    
-    if (sortAmount) currentParams.set('sort_amount_pending', sortAmount);
-    else currentParams.delete('sort_amount_pending');
-    
-    if (sortQty) currentParams.set('sort_qty_pending', sortQty);
-    else currentParams.delete('sort_qty_pending');
-    
-    if (sortDate) currentParams.set('sort_date_pending', sortDate);
-    else currentParams.delete('sort_date_pending');
-    
-    if (sortHariKirim) currentParams.set('sort_hari_kirim', sortHariKirim);
-    else currentParams.delete('sort_hari_kirim');
-    
-    // Reset to first page when filtering
+
     currentParams.delete('page_pending');
-    
-    const newUrl = '/procurement/forecasting?' + currentParams.toString();
-    
-    // Navigate to new URL
-    window.location.href = newUrl;
+
+    window.location.href = '/procurement/forecasting?' + currentParams.toString();
 }
 
-// Update active filters display
 function updateActiveFiltersPending() {
     const activeFiltersContainer = document.getElementById('activeFiltersPending');
     const searchValue = document.getElementById('searchInputPending').value;
-    const dateRange = document.getElementById('dateRangeFilter').value;
+    const tanggalMulai = document.getElementById('tanggalMulaiFilter').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirFilter').value;
     const filterPurchasing = document.getElementById('filterPurchasingPending').value;
-    const sortAmount = document.getElementById('sortAmountPending').value;
-    const sortQty = document.getElementById('sortQtyPending').value;
-    const sortDate = document.getElementById('sortDatePending').value;
-    const sortHariKirim = document.getElementById('sortHariKirimPending').value;
-    
+
     let hasActiveFilters = false;
     let filtersHTML = '<span class="text-xs sm:text-sm font-bold text-yellow-700">Filter aktif:</span>';
-    
+
     if (searchValue) {
         filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Pencarian: ${searchValue}</span>`;
         hasActiveFilters = true;
     }
-    
-    if (dateRange) {
-        const formattedDate = new Date(dateRange).toLocaleDateString('id-ID');
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Tanggal: ${formattedDate}</span>`;
+
+    if (tanggalMulai) {
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Dari: ${new Date(tanggalMulai).toLocaleDateString('id-ID')}</span>`;
         hasActiveFilters = true;
     }
-    
+
+    if (tanggalAkhir) {
+        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Sampai: ${new Date(tanggalAkhir).toLocaleDateString('id-ID')}</span>`;
+        hasActiveFilters = true;
+    }
+
     if (filterPurchasing) {
         const purchasingSelect = document.getElementById('filterPurchasingPending');
         const purchasingName = purchasingSelect.options[purchasingSelect.selectedIndex].text;
         filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">PIC: ${purchasingName}</span>`;
         hasActiveFilters = true;
     }
-    
-    if (sortAmount) {
-        const sortLabels = {
-            'highest': 'Total Tertinggi',
-            'lowest': 'Total Terendah'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">${sortLabels[sortAmount]}</span>`;
-        hasActiveFilters = true;
-    }
-    
-    if (sortQty) {
-        const qtyLabels = {
-            'highest': 'Qty Terbanyak',
-            'lowest': 'Qty Tersedikit'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">${qtyLabels[sortQty]}</span>`;
-        hasActiveFilters = true;
-    }
-    
-    if (sortDate) {
-        const dateLabels = {
-            'newest': 'Terbaru',
-            'oldest': 'Terlama'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Urutkan: ${dateLabels[sortDate]}</span>`;
-        hasActiveFilters = true;
-    }
-    
-    if (sortHariKirim) {
-        const hariLabels = {
-            'senin': 'Senin',
-            'selasa': 'Selasa',
-            'rabu': 'Rabu',
-            'kamis': 'Kamis',
-            'jumat': 'Jumat',
-            'sabtu': 'Sabtu',
-            'minggu': 'Minggu'
-        };
-        filtersHTML += `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Hari: ${hariLabels[sortHariKirim]}</span>`;
-        hasActiveFilters = true;
-    }
-    
+
     if (hasActiveFilters) {
         filtersHTML += `<button onclick="clearAllFiltersPending()" class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200 transition-colors ml-2">
             <i class="fas fa-times mr-1"></i>Hapus Semua
@@ -614,14 +502,9 @@ function updateActiveFiltersPending() {
     }
 }
 
-// Clear all filters
 function clearAllFiltersPending() {
-    const currentParams = new URLSearchParams(window.location.search);
-    
-    // Keep only the tab parameter
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pending');
-    
     window.location.href = '/procurement/forecasting?' + newParams.toString();
 }
 
@@ -648,52 +531,22 @@ function toggleForecastList(poId) {
 
 // Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Set filter values from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Set search value
+
     const searchValue = urlParams.get('search_pending');
-    if (searchValue) {
-        document.getElementById('searchInputPending').value = searchValue;
-    }
-    
-    // Set date range filter
-    const dateRange = urlParams.get('date_range');
-    if (dateRange) {
-        document.getElementById('dateRangeFilter').value = dateRange;
-    }
-    
-    // Set purchasing filter
+    if (searchValue) document.getElementById('searchInputPending').value = searchValue;
+
+    const tanggalMulai = urlParams.get('tanggal_mulai_pending');
+    if (tanggalMulai) document.getElementById('tanggalMulaiFilter').value = tanggalMulai;
+
+    const tanggalAkhir = urlParams.get('tanggal_akhir_pending');
+    if (tanggalAkhir) document.getElementById('tanggalAkhirFilter').value = tanggalAkhir;
+
     const filterPurchasing = urlParams.get('filter_purchasing_pending');
-    if (filterPurchasing) {
-        document.getElementById('filterPurchasingPending').value = filterPurchasing;
-    }
-    
-    // Set sort filters
-    const sortAmount = urlParams.get('sort_amount_pending');
-    if (sortAmount) {
-        document.getElementById('sortAmountPending').value = sortAmount;
-    }
-    
-    const sortQty = urlParams.get('sort_qty_pending');
-    if (sortQty) {
-        document.getElementById('sortQtyPending').value = sortQty;
-    }
-    
-    const sortDate = urlParams.get('sort_date_pending');
-    if (sortDate) {
-        document.getElementById('sortDatePending').value = sortDate;
-    }
-    
-    const sortHariKirim = urlParams.get('sort_hari_kirim');
-    if (sortHariKirim) {
-        document.getElementById('sortHariKirimPending').value = sortHariKirim;
-    }
-    
-    // Update active filters display
+    if (filterPurchasing) document.getElementById('filterPurchasingPending').value = filterPurchasing;
+
     updateActiveFiltersPending();
-    
-    // Initialize forecast list states
+
     document.querySelectorAll('.forecast-list').forEach(list => {
         list.style.display = 'none';
     });

@@ -439,10 +439,10 @@ class ForecastingController extends Controller
             $fileName = 'forecast_pending_' . now()->format('Y-m-d_His') . '.xlsx';
             return \Maatwebsite\Excel\Facades\Excel::download(
                 new \App\Exports\ForecastPendingExport(
-                    $request->input('date_range'), 
-                    $request->input('filter_purchasing_pending'), 
-                    $request->input('search_pending'), 
-                    $request->input('sort_hari_kirim')
+                    $request->input('tanggal_mulai_pending'),
+                    $request->input('tanggal_akhir_pending'),
+                    $request->input('filter_purchasing_pending'),
+                    $request->input('search_pending')
                 ),
                 $fileName
             );
@@ -537,22 +537,27 @@ class ForecastingController extends Controller
             ->when(request("search_{$status}"), function($query) use ($status) {
                 $term = request("search_{$status}");
                 $query->where(function($q) use ($term) {
-                    $q->where('no_forecast', 'like', "%{$term}%")
-                      ->orWhereHas('order', function($subQ) use ($term) {
-                          $subQ->where('po_number', 'like', "%{$term}%")
-                               ->orWhereHas('klien', fn($k) => $k->where('nama', 'like', "%{$term}%"));
-                      })
-                      ->orWhereHas('purchasing', fn($u) => $u->where('nama', 'like', "%{$term}%"));
+                    $q->whereHas('order', function($subQ) use ($term) {
+                            $subQ->where('po_number', 'like', "%{$term}%")
+                                ->orWhereHas('klien', fn($k) => $k->where('nama', 'like', "%{$term}%"));
+                        })
+                        ->orWhereHas('purchasing', fn($u) => $u->where('nama', 'like', "%{$term}%"))
+                        ->orWhereHas('forecastDetails.purchaseOrderBahanBaku.bahanBakuKlien', function($bbQ) use ($term) {
+                            $bbQ->where('nama', 'like', "%{$term}%");
+                        });
                 });
             })
-            ->when(request("date_range" . ($status === 'pending' ? '' : "_{$status}")), fn($query) => $query->whereDate('tanggal_forecast', request("date_range" . ($status === 'pending' ? '' : "_{$status}"))))
-            ->when($status === 'pending' && request('sort_hari_kirim'), fn($query) => $query->whereRaw('LOWER(hari_kirim_forecast) LIKE ?', ['%' . strtolower(request('sort_hari_kirim')) . '%']))
-            ->when($status === 'pending' && request('sort_amount_pending'), fn($query) => $query->orderBy('total_harga_forecast', request('sort_amount_pending') === 'highest' ? 'desc' : 'asc'))
-            ->when($status === 'pending' && request('sort_qty_pending'), fn($query) => $query->orderBy('total_qty_forecast', request('sort_qty_pending') === 'highest' ? 'desc' : 'asc'))
+            ->when(request("tanggal_mulai_{$status}") && request("tanggal_akhir_{$status}"), function($query) use ($status) {
+                $query->whereBetween('tanggal_forecast', [request("tanggal_mulai_{$status}"), request("tanggal_akhir_{$status}")]);
+            })
+            ->when(request("tanggal_mulai_{$status}") && !request("tanggal_akhir_{$status}"), function($query) use ($status) {
+                $query->whereDate('tanggal_forecast', '>=', request("tanggal_mulai_{$status}"));
+            })
+            ->when(!request("tanggal_mulai_{$status}") && request("tanggal_akhir_{$status}"), function($query) use ($status) {
+                $query->whereDate('tanggal_forecast', '<=', request("tanggal_akhir_{$status}"));
+            })
             ->when(request("filter_purchasing_{$status}"), fn($query) => $query->where('purchasing_id', request("filter_purchasing_{$status}")))
-            ->when(request("sort_date_{$status}"), function($query) use ($status) {
-                $query->orderBy('created_at', request("sort_date_{$status}") === 'oldest' ? 'asc' : 'desc');
-            }, fn($query) => $query->latest('created_at'))
+            ->latest('created_at')
             ->paginate($status === 'pending' ? 50 : 10, ['*'], $pageName)
             ->withQueryString();
     }

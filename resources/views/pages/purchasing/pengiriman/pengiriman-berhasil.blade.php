@@ -44,33 +44,31 @@
                     <div class="w-4 h-4 sm:w-6 sm:h-6 bg-green-500 rounded-full flex items-center justify-center mr-1 sm:mr-2">
                         <i class="fas fa-filter text-white text-xs"></i>
                     </div>
-                    Filter & Urutan
+                    Filter
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                    {{-- Date Range Filter --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
                             <i class="fas fa-calendar mr-1 sm:mr-2 text-green-500 text-xs"></i>
-                            Tanggal Pengiriman
+                            Tanggal Mulai
                         </label>
-                        <input type="date" 
-                               id="dateRangeFilterBerhasil" 
-                               name="date_range_berhasil" 
-                               value="{{ request('date_range_berhasil') }}" 
-                               class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm" 
-                               onchange="applyFiltersBerhasil()">
+                        <input type="date" id="tanggalMulaiBerhasil" name="tanggal_mulai_berhasil" value="{{ request('tanggal_mulai_berhasil') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                     </div>
 
-                    {{-- Filter by PIC Purchasing --}}
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
+                            <i class="fas fa-calendar mr-1 sm:mr-2 text-green-500 text-xs"></i>
+                            Tanggal Berakhir
+                        </label>
+                        <input type="date" id="tanggalAkhirBerhasil" name="tanggal_akhir_berhasil" value="{{ request('tanggal_akhir_berhasil') }}" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm">
+                    </div>
+
                     <div>
                         <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
                             <i class="fas fa-user-tie mr-1 sm:mr-2 text-green-500 text-xs"></i>
                             PIC Procurement
                         </label>
-                        <select id="filterPurchasingBerhasil" 
-                                name="filter_purchasing_berhasil" 
-                                class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm" 
-                                onchange="applyFiltersBerhasil()">
+                        <select id="filterPurchasingBerhasil" name="filter_purchasing_berhasil" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                             <option value="">Semua PIC</option>
                             @php
                                 $purchasingOptions = collect($pengirimanBerhasil->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
@@ -80,25 +78,13 @@
                             @endforeach
                         </select>
                     </div>
-
-                    {{-- Sort Order --}}
-                    <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-green-700 mb-1 sm:mb-2">
-                            <i class="fas fa-sort mr-1 sm:mr-2 text-green-500 text-xs"></i>
-                            Urutan
-                        </label>
-                        <select id="sortOrderBerhasil" 
-                                name="sort_order_berhasil" 
-                                class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm" 
-                                onchange="applyFiltersBerhasil()">
-                            <option value="newest" {{ request('sort_order_berhasil') == 'newest' ? 'selected' : '' }}>Terbaru</option>
-                            <option value="oldest" {{ request('sort_order_berhasil') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        </select>
-                    </div>
                 </div>
-                
-                {{-- Clear Filter Button (Below Grid) --}}
-                <div class="flex justify-end mt-3">
+
+                <div class="flex justify-end gap-2 mt-3">
+                    <button onclick="applyFiltersBerhasil()" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
+                        <i class="fas fa-filter mr-1"></i>
+                        Terapkan Filter
+                    </button>
                     <button onclick="clearAllFiltersBerhasil()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 text-xs sm:text-sm font-semibold">
                         <i class="fas fa-times mr-1"></i>
                         Hapus Semua Filter
@@ -284,85 +270,66 @@ function handleSearchKeyPressBerhasil(event) {
 
 // Function to submit search form
 function submitSearchBerhasil() {
-    const searchInput = document.getElementById('searchInputBerhasil');
-    const dateFilter = document.getElementById('dateRangeFilterBerhasil');
-    const filterPurchasing = document.getElementById('filterPurchasingBerhasil');
-    const sortOrder = document.getElementById('sortOrderBerhasil');
-    
-    // Build query parameters
-    const params = new URLSearchParams();
-    
-    if (searchInput.value.trim()) {
-        params.append('search_berhasil', searchInput.value.trim());
-    }
-    
-    if (dateFilter.value) {
-        params.append('date_range_berhasil', dateFilter.value);
-    }
-    
-    if (filterPurchasing.value) {
-        params.append('filter_purchasing_berhasil', filterPurchasing.value);
-    }
-    
-    if (sortOrder.value) {
-        params.append('sort_order_berhasil', sortOrder.value);
-    }
-    
-    // Add tab parameter to stay on pengiriman-berhasil tab
-    params.append('tab', 'pengiriman-berhasil');
-    
-    // Reset to page 1 when searching/filtering
-    params.append('berhasil_page', '1');
-    
-    // Redirect with new parameters
-    const url = '/procurement/pengiriman' + (params.toString() ? '?' + params.toString() : '');
-    window.location.href = url;
+    const currentParams = new URLSearchParams(window.location.search);
+    const searchValue = document.getElementById('searchInputBerhasil').value;
+
+    currentParams.set('tab', 'pengiriman-berhasil');
+
+    if (searchValue.trim()) currentParams.set('search_berhasil', searchValue.trim());
+    else currentParams.delete('search_berhasil');
+
+    currentParams.delete('berhasil_page');
+
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
+
 
 // Function to apply filters
 function applyFiltersBerhasil() {
-    submitSearchBerhasil();
+    const currentParams = new URLSearchParams(window.location.search);
+
+    const tanggalMulai = document.getElementById('tanggalMulaiBerhasil').value;
+    const tanggalAkhir = document.getElementById('tanggalAkhirBerhasil').value;
+    const filterPurchasing = document.getElementById('filterPurchasingBerhasil').value;
+
+    currentParams.set('tab', 'pengiriman-berhasil');
+
+    if (tanggalMulai) currentParams.set('tanggal_mulai_berhasil', tanggalMulai);
+    else currentParams.delete('tanggal_mulai_berhasil');
+
+    if (tanggalAkhir) currentParams.set('tanggal_akhir_berhasil', tanggalAkhir);
+    else currentParams.delete('tanggal_akhir_berhasil');
+
+    if (filterPurchasing) currentParams.set('filter_purchasing_berhasil', filterPurchasing);
+    else currentParams.delete('filter_purchasing_berhasil');
+
+    currentParams.delete('berhasil_page');
+
+    window.location.href = '/procurement/pengiriman?' + currentParams.toString();
 }
 
 // Function to clear all filters
 function clearAllFiltersBerhasil() {
-    const currentParams = new URLSearchParams(window.location.search);
-    
-    // Keep only the tab parameter
     const newParams = new URLSearchParams();
     newParams.set('tab', 'pengiriman-berhasil');
-    
     window.location.href = '/procurement/pengiriman?' + newParams.toString();
 }
 
 // Initialize filters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Set filter values from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Set search value
+
     const searchValue = urlParams.get('search_berhasil');
-    if (searchValue) {
-        document.getElementById('searchInputBerhasil').value = searchValue;
-    }
-    
-    // Set date range filter
-    const dateRange = urlParams.get('date_range_berhasil');
-    if (dateRange) {
-        document.getElementById('dateRangeFilterBerhasil').value = dateRange;
-    }
-    
-    // Set purchasing filter
+    if (searchValue) document.getElementById('searchInputBerhasil').value = searchValue;
+
+    const tanggalMulai = urlParams.get('tanggal_mulai_berhasil');
+    if (tanggalMulai) document.getElementById('tanggalMulaiBerhasil').value = tanggalMulai;
+
+    const tanggalAkhir = urlParams.get('tanggal_akhir_berhasil');
+    if (tanggalAkhir) document.getElementById('tanggalAkhirBerhasil').value = tanggalAkhir;
+
     const filterPurchasing = urlParams.get('filter_purchasing_berhasil');
-    if (filterPurchasing) {
-        document.getElementById('filterPurchasingBerhasil').value = filterPurchasing;
-    }
-    
-    // Set sort order filter
-    const sortOrder = urlParams.get('sort_order_berhasil');
-    if (sortOrder) {
-        document.getElementById('sortOrderBerhasil').value = sortOrder;
-    }
+    if (filterPurchasing) document.getElementById('filterPurchasingBerhasil').value = filterPurchasing;
 });
 
 

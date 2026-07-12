@@ -245,7 +245,7 @@ class PengirimanController extends Controller
         return $query->findOrFail($id);
     }
 
-    private function buildIndexQuery(string $status, Request $request)
+    private function buildIndexQuery(string $status, string $suffix, Request $request)
     {
         $query = Pengiriman::with([
             "order:id,po_number,klien_id", "order.klien:id,nama,cabang", "purchasing:id,nama",
@@ -253,33 +253,28 @@ class PengirimanController extends Controller
             "approvalPembayaran:id,pengiriman_id,refraksi_type,refraksi_value,refraksi_amount,qty_before_refraksi,qty_after_refraksi,amount_before_refraksi,amount_after_refraksi,bukti_pembayaran",
         ])->whereNotNull("purchase_order_id")->whereNotNull("purchasing_id")->where("status", $status);
 
-        $searchKey = $status === 'pending' ? 'search_masuk' : "search_{$status}";
-        if ($request->filled($searchKey)) {
-            $search = $request->get($searchKey);
+        if ($request->filled("search_{$suffix}")) {
+            $search = $request->get("search_{$suffix}");
             $query->where(function ($q) use ($search) {
                 $q->whereHas("order", fn($orderQuery) => $orderQuery->where("po_number", "LIKE", "%{$search}%"))
-                  ->orWhereHas("purchasing", fn($purchasingQuery) => $purchasingQuery->where("nama", "LIKE", "%{$search}%"))
-                  ->orWhere("no_pengiriman", "LIKE", "%{$search}%");
+                ->orWhereHas("purchasing", fn($purchasingQuery) => $purchasingQuery->where("nama", "LIKE", "%{$search}%"))
+                ->orWhere("no_pengiriman", "LIKE", "%{$search}%");
             });
         }
 
-        $filterKey = $status === 'pending' ? 'filter_purchasing' : "filter_purchasing_{$status}";
-        if ($request->filled($filterKey)) {
-            $query->where("purchasing_id", $request->get($filterKey));
+        if ($request->filled("tanggal_mulai_{$suffix}") && $request->filled("tanggal_akhir_{$suffix}")) {
+            $query->whereBetween("tanggal_kirim", [$request->get("tanggal_mulai_{$suffix}"), $request->get("tanggal_akhir_{$suffix}")]);
+        } elseif ($request->filled("tanggal_mulai_{$suffix}")) {
+            $query->whereDate("tanggal_kirim", ">=", $request->get("tanggal_mulai_{$suffix}"));
+        } elseif ($request->filled("tanggal_akhir_{$suffix}")) {
+            $query->whereDate("tanggal_kirim", "<=", $request->get("tanggal_akhir_{$suffix}"));
         }
 
-        if (in_array($status, ['berhasil', 'gagal']) && $request->filled("date_range_{$status}")) {
-            $query->whereDate("tanggal_kirim", $request->get("date_range_{$status}"));
+        if ($request->filled("filter_purchasing_{$suffix}")) {
+            $query->where("purchasing_id", $request->get("filter_purchasing_{$suffix}"));
         }
 
-        $sortKey = $status === 'pending' ? 'sort_date_masuk' : "sort_date_{$status}";
-        if ($status === 'berhasil' || $status === 'gagal') $sortKey = "sort_order_{$status}";
-        
-        if ($request->filled($sortKey)) {
-            $query->orderBy("created_at", $request->get($sortKey) === "oldest" ? "asc" : "desc");
-        } else {
-            $query->orderBy("created_at", "desc");
-        }
+        $query->orderBy("created_at", "desc");
 
         return $query;
     }
@@ -290,12 +285,12 @@ class PengirimanController extends Controller
 
     public function index(Request $request): View
     {
-        $pengirimanMasuk = $this->buildIndexQuery("pending", $request)->paginate(10, ["*"], "masuk_page");
-        $menungguVerifikasi = $this->buildIndexQuery("menunggu_verifikasi", $request)->paginate(10, ["*"], "verifikasi_page");
-        $menungguFisik = $this->buildIndexQuery("menunggu_fisik", $request)->paginate(10, ["*"], "fisik_page");
-        $pengirimanBerhasil = $this->buildIndexQuery("berhasil", $request)->paginate(10, ["*"], "berhasil_page");
-        $pengirimanGagal = $this->buildIndexQuery("gagal", $request)->paginate(10, ["*"], "gagal_page");
-        
+        $pengirimanMasuk = $this->buildIndexQuery("pending", "masuk", $request)->paginate(10, ["*"], "masuk_page");
+        $menungguVerifikasi = $this->buildIndexQuery("menunggu_verifikasi", "verifikasi", $request)->paginate(10, ["*"], "verifikasi_page");
+        $menungguFisik = $this->buildIndexQuery("menunggu_fisik", "fisik", $request)->paginate(10, ["*"], "fisik_page");
+        $pengirimanBerhasil = $this->buildIndexQuery("berhasil", "berhasil", $request)->paginate(10, ["*"], "berhasil_page");
+        $pengirimanGagal = $this->buildIndexQuery("gagal", "gagal", $request)->paginate(10, ["*"], "gagal_page");
+
         foreach ([$menungguVerifikasi, $menungguFisik, $pengirimanBerhasil] as $collection) {
             foreach ($collection as $pengiriman) {
                 $pengiriman->partialInfo = $this->checkPartialDelivery($pengiriman);

@@ -106,6 +106,11 @@
                     <i class="fas fa-info-circle mr-1"></i>
                     Total: {{ $pengirimanGagal->total() ?? 0 }} pengiriman (Halaman {{ $pengirimanGagal->currentPage() ?? 1 }} dari {{ $pengirimanGagal->lastPage() ?? 1 }})
                 </div>
+                <a href="{{ route('pengiriman.export-gagal', request()->all()) }}" 
+                class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-excel mr-2"></i>
+                    Export Excel
+                </a>
             </div>
         </div>
 

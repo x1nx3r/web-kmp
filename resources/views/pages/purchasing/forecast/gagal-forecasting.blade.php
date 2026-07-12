@@ -102,6 +102,11 @@
                     <i class="fas fa-info-circle mr-1"></i>
                     Total: {{ $gagalForecasts->total() }} forecast (Halaman {{ $gagalForecasts->currentPage() }} dari {{ $gagalForecasts->lastPage() }})
                 </div>
+                <a href="{{ route('forecast.export-gagal', request()->all()) }}" 
+                class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
+                    <i class="fas fa-file-excel mr-2"></i>
+                    Export Excel
+                </a>
             </div>
         </div>
 
@@ -228,15 +233,40 @@
                                         </a>
                                     @endif
 
-                                    @foreach($gagalForecasts->getUrlRange(1, $gagalForecasts->lastPage()) as $page => $url)
-                                        @if($page == $gagalForecasts->currentPage())
+                                    @php
+                                        $currentPage = $gagalForecasts->currentPage();
+                                        $lastPage = $gagalForecasts->lastPage();
+                                        $onEachSide = 2;
+                                        $start = max($currentPage - $onEachSide, 1);
+                                        $end = min($currentPage + $onEachSide, $lastPage);
+                                    @endphp
+
+                                    {{-- Halaman pertama + elipsis --}}
+                                    @if($start > 1)
+                                        <a href="{{ $gagalForecasts->url(1) }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">1</a>
+                                        @if($start > 2)
+                                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5">...</span>
+                                        @endif
+                                    @endif
+
+                                    {{-- Halaman di sekitar halaman aktif --}}
+                                    @for($page = $start; $page <= $end; $page++)
+                                        @if($page == $currentPage)
                                             <span aria-current="page">
                                                 <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-white bg-red-600 border border-red-600 cursor-default leading-5">{{ $page }}</span>
                                             </span>
                                         @else
-                                            <a href="{{ $url }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
+                                            <a href="{{ $gagalForecasts->url($page) }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
                                         @endif
-                                    @endforeach
+                                    @endfor
+
+                                    {{-- Elipsis + halaman terakhir --}}
+                                    @if($end < $lastPage)
+                                        @if($end < $lastPage - 1)
+                                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5">...</span>
+                                        @endif
+                                        <a href="{{ $gagalForecasts->url($lastPage) }}&tab=gagal" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">{{ $lastPage }}</a>
+                                    @endif
 
                                     @if($gagalForecasts->hasMorePages())
                                         <a href="{{ $gagalForecasts->nextPageUrl() }}&tab=gagal" rel="next" class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150" aria-label="Next">

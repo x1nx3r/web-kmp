@@ -677,4 +677,22 @@ class ForecastingController extends Controller
         }
         return null;
     }
+    public function exportGagal(Request $request)
+    {
+        try {
+            $fileName = 'forecast_gagal_' . now()->format('Y-m-d_His') . '.xlsx';
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\ForecastGagalExport(
+                    $request->input('tanggal_mulai_gagal'),
+                    $request->input('tanggal_akhir_gagal'),
+                    $request->input('filter_purchasing_gagal'),
+                    $request->input('search_gagal')
+                ),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            Log::error('Error exporting gagal forecasts: ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengekspor data forecast gagal.');
+        }
+    }
 }

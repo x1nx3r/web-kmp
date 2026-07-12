@@ -229,15 +229,40 @@ Tab Sukses Forecasting
                                         </a>
                                     @endif
 
-                                    @foreach($suksesForecasts->getUrlRange(1, $suksesForecasts->lastPage()) as $page => $url)
-                                        @if($page == $suksesForecasts->currentPage())
+                                    @php
+                                        $currentPage = $suksesForecasts->currentPage();
+                                        $lastPage = $suksesForecasts->lastPage();
+                                        $onEachSide = 2;
+                                        $start = max($currentPage - $onEachSide, 1);
+                                        $end = min($currentPage + $onEachSide, $lastPage);
+                                    @endphp
+
+                                    {{-- Halaman pertama + elipsis --}}
+                                    @if($start > 1)
+                                        <a href="{{ $suksesForecasts->url(1) }}&tab=sukses" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">1</a>
+                                        @if($start > 2)
+                                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5">...</span>
+                                        @endif
+                                    @endif
+
+                                    {{-- Halaman di sekitar halaman aktif --}}
+                                    @for($page = $start; $page <= $end; $page++)
+                                        @if($page == $currentPage)
                                             <span aria-current="page">
                                                 <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-white bg-green-600 border border-green-600 cursor-default leading-5">{{ $page }}</span>
                                             </span>
                                         @else
-                                            <a href="{{ $url }}&tab=sukses" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
+                                            <a href="{{ $suksesForecasts->url($page) }}&tab=sukses" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150" aria-label="Go to page {{ $page }}">{{ $page }}</a>
                                         @endif
-                                    @endforeach
+                                    @endfor
+
+                                    {{-- Elipsis + halaman terakhir --}}
+                                    @if($end < $lastPage)
+                                        @if($end < $lastPage - 1)
+                                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5">...</span>
+                                        @endif
+                                        <a href="{{ $suksesForecasts->url($lastPage) }}&tab=sukses" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">{{ $lastPage }}</a>
+                                    @endif
 
                                     @if($suksesForecasts->hasMorePages())
                                         <a href="{{ $suksesForecasts->nextPageUrl() }}&tab=sukses" rel="next" class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150" aria-label="Next">

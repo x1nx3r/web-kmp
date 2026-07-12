@@ -1150,4 +1150,22 @@ class PengirimanController extends Controller
             return response()->json(['success' => false, 'message' => 'Gagal menghapus foto.'], 500);
         }
     }
+    public function exportGagal(Request $request)
+    {
+        try {
+            $fileName = 'pengiriman_gagal_' . now()->format('Y-m-d_His') . '.xlsx';
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\PengirimanGagalExport(
+                    $request->input('tanggal_mulai_gagal'),
+                    $request->input('tanggal_akhir_gagal'),
+                    $request->input('filter_purchasing_gagal'),
+                    $request->input('search_gagal')
+                ),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            Log::error('Error exporting pengiriman gagal: ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengekspor data pengiriman gagal.');
+        }
+    }
 }

@@ -279,7 +279,8 @@
                             $keteranganText = null;
                         }
 
-                        $isTambahan = trim((string) $f->catatan) === 'Tambahan';
+                        // Catatan mengandung kata "tambahan" (tidak lagi harus exact match)
+                        $isTambahan = str_contains(strtolower(trim((string) $f->catatan)), 'tambahan');
                     @endphp
 
                     <tr class="{{ $isTambahan ? 'bg-yellow-50/60' : 'hover:bg-gray-50/60' }} transition-colors">

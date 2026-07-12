@@ -16,11 +16,11 @@ use Exception;
 
 class EvaluasiProcurementController extends Controller
 {
-    /**
-     * Konstanta status pengiriman yang masuk kategori realisasi.
-     */
+
     private const STATUS_REALISASI = ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'];
-    private const CATATAN_TAMBAHAN = 'Tambahan';
+
+
+    private const KEYWORD_TAMBAHAN = 'tambahan';
 
     public function index(Request $request)
     {
@@ -44,9 +44,9 @@ class EvaluasiProcurementController extends Controller
         // Omset realisasi: COALESCE(invoice_amount, fallback_sum_detail)
         $omsetRealisasi = $forecastData->sum(fn($f) => $this->hitungRealisasi($f));
 
-        // Omset tambahan: catatan == 'Tambahan' && status realisasi
+        // Omset tambahan: catatan mengandung kata 'tambahan' && status realisasi
         $omsetTambahan = $forecastData
-            ->filter(fn($f) => trim((string) $f->catatan) === self::CATATAN_TAMBAHAN
+            ->filter(fn($f) => $this->isTambahan($f->catatan)
                 && in_array($f->pengiriman_status, self::STATUS_REALISASI))
             ->sum(fn($f) => $this->hitungRealisasi($f));
 
@@ -224,5 +224,9 @@ class EvaluasiProcurementController extends Controller
         }
 
         return (float) ($forecast->realisasi_amount ?? 0);
+    }
+    private function isTambahan($catatan): bool
+    {
+        return str_contains(strtolower(trim((string) $catatan)), self::KEYWORD_TAMBAHAN);
     }
 }

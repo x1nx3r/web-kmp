@@ -173,23 +173,44 @@ class ApprovePembayaran extends Component
 
         $pengiriman = $this->approval->pengiriman;
         $totalSellingPrice = 0;
+        $totalQty = 0;
         $items = [];
 
         foreach ($pengiriman->pengirimanDetails as $detail) {
             $orderDetail = $detail->purchaseOrderBahanBaku ?? $detail->orderDetail;
-            $itemTotal = floatval($detail->qty_kirim) * floatval($orderDetail->harga_jual ?? 0);
+            $qty = floatval($detail->qty_kirim);
+            $itemTotal = $qty * floatval($orderDetail->harga_jual ?? 0);
             $totalSellingPrice += $itemTotal;
+            $totalQty += $qty;
 
             $items[] = [
                 'description' => $detail->bahanBakuSupplier->nama ?? ($orderDetail->bahanBakuKlien->nama ?? 'Bahan Baku'),
-                'quantity' => floatval($detail->qty_kirim),
+                'quantity' => $qty,
                 'unit_price' => floatval($orderDetail->harga_jual ?? 0),
                 'refraksi_kg' => 0,
                 'total' => $itemTotal,
             ];
         }
 
-        $subtotal = $this->approval->amount_after_refraksi ?? ($totalSellingPrice - floatval($this->approval->refraksi_amount));
+        // Refraksi dihitung ulang berbasis HARGA JUAL, bukan ambil dari approval->amount_after_refraksi
+        // (approval->amount_after_refraksi itu basis HARGA BELI, dipakai untuk pembayaran ke supplier — beda konteks)
+        $refraksiType = $this->approval->refraksi_type;
+        $refraksiValue = floatval($this->approval->refraksi_value ?? 0);
+        $refraksiAmount = 0;
+        $qtyAfterRefraksi = $totalQty;
+
+        if ($refraksiType === 'qty' && $refraksiValue > 0) {
+            $refraksiQty = $totalQty * ($refraksiValue / 100);
+            $qtyAfterRefraksi = $totalQty - $refraksiQty;
+            $hargaPerKg = $totalQty > 0 ? $totalSellingPrice / $totalQty : 0;
+            $refraksiAmount = $refraksiQty * $hargaPerKg;
+        } elseif ($refraksiType === 'rupiah' && $refraksiValue > 0) {
+            $refraksiAmount = $refraksiValue * $totalQty;
+        } elseif ($refraksiType === 'lainnya' && $refraksiValue > 0) {
+            $refraksiAmount = $refraksiValue;
+        }
+
+        $subtotal = $totalSellingPrice - $refraksiAmount;
         $expensesTotal = floatval($this->approval->additional_expenses_total ?? 0);
         $finalTotal = max(0, $subtotal + $expensesTotal);
 
@@ -199,16 +220,20 @@ class ApprovePembayaran extends Component
             'invoice_date' => now(),
             'due_date' => now()->addDays(30),
             'customer_name' => $pengiriman->purchaseOrder->klien->nama ?? 'Customer',
+            'customer_address' => $pengiriman->purchaseOrder->klien->alamat_lengkap ?? '-',
             'items' => $items,
             'subtotal' => $finalTotal,
             'additional_expenses_total' => $expensesTotal,
             'total_amount' => $finalTotal,
             'status' => 'pending',
             'created_by' => $userId,
-            // (Memasukkan nilai refraksi sesuai state dari approval)
-            'refraksi_type' => $this->approval->refraksi_type,
-            'refraksi_value' => $this->approval->refraksi_value ?? 0,
-            'refraksi_amount' => $this->approval->refraksi_amount ?? 0,
+            'refraksi_type' => $refraksiType,
+            'refraksi_value' => $refraksiValue,
+            'refraksi_amount' => $refraksiAmount,
+            'qty_before_refraksi' => $totalQty,
+            'qty_after_refraksi' => $qtyAfterRefraksi,
+            'amount_before_refraksi' => $totalSellingPrice,
+            'amount_after_refraksi' => $subtotal,
         ]);
 
         $pengiriman->update(['invoice_penagihan_id' => $invoice->id]);

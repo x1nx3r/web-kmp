@@ -38,12 +38,16 @@ class MarginController extends Controller
     {
         $toFloat = fn($val) => floatval(str_replace(',', '.', (string)($val ?? 0)));
 
-        // ===== HARGA JUAL =====
         $hargaJualPerKg     = 0;
         $totalHargaJualItem = 0;
         $sumberHargaJual    = '-';
 
-        if ($p->invoicePenagihan) {
+        if ($detail->orderDetail && $toFloat($detail->orderDetail->harga_jual) > 0) {
+            $hargaJualPerKg     = $toFloat($detail->orderDetail->harga_jual);
+            $totalHargaJualItem = $toFloat($detail->qty_kirim) * $hargaJualPerKg;
+            $sumberHargaJual    = 'Purchase Order';
+
+        } elseif ($p->invoicePenagihan) {
             $amountAfter = $toFloat($p->invoicePenagihan->amount_after_refraksi);
             $amountJual  = $amountAfter > 0 ? $amountAfter : $toFloat($p->invoicePenagihan->subtotal);
 
@@ -57,11 +61,6 @@ class MarginController extends Controller
 
             $totalHargaJualItem = $amountJual;
             $sumberHargaJual    = 'Invoice Penagihan';
-
-        } elseif ($detail->orderDetail && $toFloat($detail->orderDetail->harga_jual) > 0) {
-            $hargaJualPerKg     = $toFloat($detail->orderDetail->harga_jual);
-            $totalHargaJualItem = $toFloat($detail->qty_kirim) * $hargaJualPerKg;
-            $sumberHargaJual    = 'Purchase Order';
         }
 
         // ===== HARGA BELI =====

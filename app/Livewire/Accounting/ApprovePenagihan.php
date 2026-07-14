@@ -117,7 +117,32 @@ class ApprovePenagihan extends Component
             return redirect()->route('accounting.approval-penagihan');
         } catch (\Exception $e) { DB::rollBack(); Log::error("Approve Error: " . $e->getMessage()); session()->flash('error', $e->getMessage()); }
     }
-    
+    public function updateInvoiceDates()
+    {
+        if (!$this->ensureCanManage()) return;
+
+        $this->validate([
+            'invoiceDate' => 'required|date',
+            'dueDate'     => 'required|date|after_or_equal:invoiceDate',
+        ]);
+
+        try {
+            $this->invoice->update([
+                'invoice_date' => $this->invoiceDate,
+                'due_date'     => $this->dueDate,
+            ]);
+
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $this->logInvoiceHistory($this->approval->id, $this->approval->pengiriman_id, $this->invoice->id, 'edited', 'Tanggal invoice diubah');
+            }
+
+            $this->invoice->refresh();
+            session()->flash('message', 'Tanggal invoice berhasil diupdate');
+        } catch (\Exception $e) {
+            Log::error('Update Invoice Dates Error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal update tanggal invoice');
+        }
+    }
     // Metode update khusus statis disederhanakan
     public function updateBankSelection()
     {
@@ -145,5 +170,46 @@ class ApprovePenagihan extends Component
             'isMerged' => ($this->invoice && $this->invoice->pengirimans->count() > 0),
             'shipments' => $shipments,
         ]);
+    }
+    public function updateAllInvoiceFields()
+    {
+        if (!$this->ensureCanManage()) return;
+
+        $this->validate([
+            'invoiceNumber'   => 'required|max:191',
+            'customerName'    => 'required',
+            'customerAddress' => 'required',
+            'customerEmail'   => 'nullable|email',
+            'invoiceDate'     => 'nullable|date',
+            'dueDate'         => 'nullable|date|after_or_equal:invoiceDate',
+        ]);
+
+        if (InvoicePenagihan::where('invoice_number', $this->invoiceNumber)->where('id', '!=', $this->invoice->id)->exists()) {
+            session()->flash('error', 'Nomor invoice sudah digunakan.');
+            return;
+        }
+
+        try {
+            $this->invoice->update([
+                'invoice_number'   => $this->invoiceNumber,
+                'customer_name'    => $this->customerName,
+                'customer_address' => $this->customerAddress,
+                'customer_phone'   => $this->customerPhone,
+                'customer_email'   => $this->customerEmail,
+                'notes'            => $this->invoiceNotes,
+                'invoice_date'     => $this->invoiceDate ?: $this->invoice->invoice_date,
+                'due_date'         => $this->dueDate ?: $this->invoice->due_date,
+            ]);
+
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $this->logInvoiceHistory($this->approval->id, $this->approval->pengiriman_id, $this->invoice->id, 'edited', 'Data invoice diubah (simpan semua)');
+            }
+
+            $this->invoice->refresh();
+            session()->flash('message', 'Semua perubahan berhasil disimpan');
+        } catch (\Exception $e) {
+            Log::error('Update All Invoice Fields Error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan perubahan');
+        }
     }
 }

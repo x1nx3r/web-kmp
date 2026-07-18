@@ -27,7 +27,6 @@ class EvaluasiProcurementController extends Controller
         $title     = 'Evaluasi Procurement';
         $activeTab = 'evaluasiProcurement';
 
-        // Mengambil filter yang sudah tervalidasi
         $filters = $this->getValidatedFilters($request);
 
         $forecastData = $this->buildQuery(
@@ -38,13 +37,10 @@ class EvaluasiProcurementController extends Controller
             ->orderBy('forecasts.id', 'asc')
             ->get();
 
-        // Hitung total forecast: SUM(qty_forecast * harga_jual)
         $omsetForecasting = $forecastData->sum('computed_total_forecast');
 
-        // Omset realisasi: COALESCE(invoice_amount, fallback_sum_detail)
         $omsetRealisasi = $forecastData->sum(fn($f) => $this->hitungRealisasi($f));
 
-        // Omset tambahan: catatan mengandung kata 'tambahan' && status realisasi
         $omsetTambahan = $forecastData
             ->filter(fn($f) => $this->isTambahan($f->catatan)
                 && in_array($f->pengiriman_status, self::STATUS_REALISASI))
@@ -54,7 +50,6 @@ class EvaluasiProcurementController extends Controller
         $pabrikList      = ReferenceDataService::getKliens();
         $supplierList    = ReferenceDataService::getSuppliers();
 
-        // Extract filters array to individual variables to maintain View contract
         extract($filters);
 
         return view('pages.laporan.evaluasi-procurement', compact(
@@ -90,10 +85,6 @@ class EvaluasiProcurementController extends Controller
         }
     }
 
-    /**
-     * Memusatkan pengambilan dan validasi input filter.
-     * Mengamankan aplikasi dari injeksi parameter tipe data yang tidak sesuai.
-     */
     private function getValidatedFilters(Request $request): array
     {
         $request->validate([
@@ -114,8 +105,7 @@ class EvaluasiProcurementController extends Controller
             'search'     => $request->get('search'),
             'pabrik'     => $request->get('pabrik'),
             'supplier'   => $request->get('supplier'),
-            
-            // Duplicate keys for DB compatibility and view compatibility if needed
+
             'start_date' => $request->get('start_date', now()->startOfMonth()->format('Y-m-d')),
             'end_date'   => $request->get('end_date', now()->endOfMonth()->format('Y-m-d')),
         ];
@@ -136,9 +126,36 @@ class EvaluasiProcurementController extends Controller
             )
             ->groupBy('fd.forecast_id');
 
-        // Subquery 2: omset realisasi per pengiriman.id
+        // Subquery pendukung: total gross sales per invoice_penagihan_id (utk merged invoice)
+        $invoiceGrossSub = DB::table('pengiriman as p2')
+            ->join('pengiriman_details as pd2', 'pd2.pengiriman_id', '=', 'p2.id')
+            ->join('order_details as od2', 'od2.id', '=', 'pd2.purchase_order_bahan_baku_id')
+            ->whereNotNull('p2.invoice_penagihan_id')
+            ->whereNull('p2.deleted_at')
+            ->select(
+                'p2.invoice_penagihan_id',
+                DB::raw('SUM(pd2.qty_kirim * od2.harga_jual) as gross_invoice_total')
+            )
+            ->groupBy('p2.invoice_penagihan_id');
+
+        // FIX (konsistensi dgn Margin & Omset): join invoice_penagihan sebelumnya HANYA lewat
+        // p.invoice_penagihan_id (equi-join biasa). Untuk pengiriman yang kolom ini belum
+        // ter-backfill (NULL), join gagal total, sehingga realisasi_amount selalu jatuh ke
+        // fallback harga PO mentah (SUM qty*harga_jual PO) walau invoice asli (dengan
+        // amount_after_refraksi yang sudah dipotong refraksi) sebenarnya ada & valid lewat
+        // invoice_penagihan.pengiriman_id. Sekarang join memakai OR condition: match via
+        // p.invoice_penagihan_id kalau ada, ATAU via ip.pengiriman_id kalau
+        // p.invoice_penagihan_id NULL dan invoice lama itu bukan hasil merge (status != 'digabung').
         $pengirimanOmsetSub = DB::table('pengiriman as p')
-            ->leftJoin('invoice_penagihan as ip', 'p.id', '=', 'ip.pengiriman_id')
+            ->leftJoin('invoice_penagihan as ip', function ($join) {
+                $join->on('p.invoice_penagihan_id', '=', 'ip.id')
+                     ->orOn(function ($q) {
+                         $q->whereNull('p.invoice_penagihan_id')
+                           ->whereColumn('p.id', '=', 'ip.pengiriman_id')
+                           ->where('ip.status', '!=', 'digabung');
+                     });
+            })
+            ->leftJoinSub($invoiceGrossSub, 'ig', 'ig.invoice_penagihan_id', '=', 'p.invoice_penagihan_id')
             ->leftJoin('pengiriman_details as pd', 'p.id', '=', 'pd.pengiriman_id')
             ->leftJoin('order_details as od', 'pd.purchase_order_bahan_baku_id', '=', 'od.id')
             ->whereNull('p.deleted_at')
@@ -150,7 +167,21 @@ class EvaluasiProcurementController extends Controller
                 'p.catatan as p_catatan',
                 'p.total_harga_kirim as p_total_harga_kirim',
                 'p.total_qty_kirim as p_total_qty_kirim',
-                DB::raw('COALESCE(MAX(ip.amount_after_refraksi), SUM(pd.qty_kirim * od.harga_jual)) as realisasi_amount'),
+                // FIX: logika CASE diselaraskan dgn Margin/Omset —
+                //  1. Tidak ada invoice sama sekali -> fallback harga PO.
+                //  2. Ada invoice, gross > 0 (hasil merge) -> distribusi proporsional.
+                //  3. Ada invoice, gross = 0 (invoice tunggal/non-merge, termasuk hasil
+                //     fallback pengiriman_id di atas) -> pakai amount invoice APA ADANYA.
+                DB::raw('
+                    CASE
+                        WHEN COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0)) IS NULL
+                            THEN SUM(pd.qty_kirim * od.harga_jual)
+                        WHEN MAX(ig.gross_invoice_total) > 0
+                            THEN (SUM(pd.qty_kirim * od.harga_jual) / MAX(ig.gross_invoice_total))
+                                 * COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0))
+                        ELSE COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0))
+                    END as realisasi_amount
+                '),
                 DB::raw('COALESCE(MAX(ip.qty_after_refraksi), SUM(pd.qty_kirim)) as realisasi_qty')
             )
             ->groupBy(

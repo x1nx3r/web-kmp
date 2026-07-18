@@ -21,52 +21,130 @@ use Illuminate\Support\Facades\Auth;
 class OmsetController extends Controller
 {
     /**
-     * Helper: exclude pengiriman yang semua invoice-nya berstatus "digabung".
-     * Pengiriman tanpa invoice tetap dimasukkan (pakai fallback qty * harga_jual).
+     * Helper: exclude pengiriman yang invoice aktifnya berstatus "digabung".
+     *
+     * FIX (konsistensi dgn Margin): sebelumnya pengiriman dengan invoice_penagihan_id NULL
+     * SELALU dimasukkan (asumsi tidak ada invoice sama sekali, pakai fallback PO). Padahal
+     * pengiriman itu bisa saja punya invoice LAMA (match via invoice_penagihan.pengiriman_id)
+     * yang justru berstatus 'digabung' (sudah di-merge ke invoice lain) — datanya semestinya
+     * sudah terhitung lewat pengiriman lain yang invoice_penagihan_id-nya menunjuk ke invoice
+     * gabungan tsb. Kalau tetap dimasukkan pakai fallback PO di sini, akan double count.
+     * Sekarang pengiriman dengan invoice_penagihan_id NULL baru dimasukkan kalau TIDAK ada
+     * invoice lama yang berstatus 'digabung' untuknya.
      */
     private function applyValidInvoiceFilter($query)
     {
         return $query->where(function ($q) {
-            $q->whereNotExists(function ($sub) {
-                $sub->select(DB::raw(1))
-                    ->from('invoice_penagihan as ip_all')
-                    ->whereColumn('ip_all.pengiriman_id', 'pengiriman.id');
+            $q->where(function ($q2) {
+                $q2->whereNull('pengiriman.invoice_penagihan_id')
+                   ->whereNotExists(function ($sub) {
+                       $sub->select(DB::raw(1))
+                           ->from('invoice_penagihan as ip_merged')
+                           ->whereColumn('ip_merged.pengiriman_id', 'pengiriman.id')
+                           ->where('ip_merged.status', '=', 'digabung');
+                   });
             })
             ->orWhereExists(function ($sub) {
                 $sub->select(DB::raw(1))
                     ->from('invoice_penagihan as ip_valid')
-                    ->whereColumn('ip_valid.pengiriman_id', 'pengiriman.id')
+                    ->whereColumn('ip_valid.id', 'pengiriman.invoice_penagihan_id')
                     ->where('ip_valid.status', '!=', 'digabung');
             });
         });
     }
 
     /**
-     * Subquery invoice dengan amount_after_refraksi — dipakai berulang di seluruh controller.
-     * Menghasilkan string SQL siap pakai di DB::raw().
+     * Subquery invoice — di-join lewat pengiriman.invoice_penagihan_id, dengan FALLBACK ke
+     * invoice_penagihan.pengiriman_id kalau kolom invoice_penagihan_id belum ter-backfill.
+     *
+     * FIX (konsistensi dgn Margin): kolom pengiriman_id & status ditambahkan supaya join
+     * fallback (lihat joinInvoiceData()) bisa mencocokkan invoice lama & memvalidasi statusnya.
      */
     private function invoiceSubquery(): string
     {
         return '(
-            SELECT pengiriman_id,
-                   MAX(subtotal) as subtotal,
-                   MAX(amount_after_refraksi) as amount_after_refraksi
+            SELECT id as invoice_id,
+                   pengiriman_id,
+                   status,
+                   subtotal,
+                   amount_after_refraksi
             FROM invoice_penagihan
-            WHERE status != "digabung"
-            GROUP BY pengiriman_id
         ) as invoice_penagihan';
     }
 
     /**
-     * Ekspresi COALESCE untuk omset: prioritas amount_after_refraksi → subtotal → qty×harga_jual.
+     * Subquery total gross sales (qty * harga_jual) per invoice_penagihan_id, dihitung dari
+     * SELURUH pengiriman yang tergabung pada invoice yang sama — bukan hanya pengiriman yang
+     * lolos filter query utama — supaya rasio proporsional tetap akurat walau ada filter
+     * tanggal/status tambahan di query utama.
+     */
+    private function invoiceGrossSubquery(): string
+    {
+        return '(
+            SELECT p2.invoice_penagihan_id as invoice_penagihan_id,
+                   SUM(pd2.qty_kirim * od2.harga_jual) as gross_invoice_total
+            FROM pengiriman p2
+            JOIN pengiriman_details pd2 ON pd2.pengiriman_id = p2.id
+            JOIN order_details od2 ON od2.id = pd2.purchase_order_bahan_baku_id
+            WHERE p2.invoice_penagihan_id IS NOT NULL
+              AND p2.deleted_at IS NULL
+            GROUP BY p2.invoice_penagihan_id
+        ) as invoice_gross';
+    }
+
+    /**
+     * FIX (konsistensi dgn Margin): helper terpusat untuk join invoice_penagihan + gross
+     * totals ke query pengiriman, dengan fallback saat pengiriman.invoice_penagihan_id NULL.
+     * Sebelumnya join invoice HANYA lewat pengiriman.invoice_penagihan_id (equi-join biasa) —
+     * untuk pengiriman yang kolom ini belum ter-backfill, join gagal total sehingga omsetExpr()
+     * selalu jatuh ke fallback harga PO mentah (SUM qty*harga_jual PO), walau invoice asli
+     * (dengan amount_after_refraksi yang sudah dipotong refraksi) sebenarnya ada dan valid.
+     * Ini yang membuat Omset & Evaluasi Procurement berbeda dari Margin (yang sudah punya
+     * fallback serupa di level PHP). Sekarang join invoice memakai OR condition: match via
+     * invoice_penagihan_id kalau ada, ATAU match via invoice_penagihan.pengiriman_id kalau
+     * invoice_penagihan_id NULL dan invoice lama itu bukan hasil merge (status != 'digabung').
+     */
+    private function joinInvoiceData($query)
+    {
+        return $query
+            ->leftJoin(DB::raw($this->invoiceSubquery()), function ($join) {
+                $join->on('pengiriman.invoice_penagihan_id', '=', 'invoice_penagihan.invoice_id')
+                     ->orOn(function ($q) {
+                         $q->whereNull('pengiriman.invoice_penagihan_id')
+                           ->whereColumn('pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                           ->where('invoice_penagihan.status', '!=', 'digabung');
+                     });
+            })
+            ->leftJoin(DB::raw($this->invoiceGrossSubquery()), 'pengiriman.invoice_penagihan_id', '=', 'invoice_gross.invoice_penagihan_id');
+    }
+
+    /**
+     * Ekspresi omset per pengiriman.
+     *
+     * FIX (konsistensi dgn Margin): sebelumnya WHEN pertama mensyaratkan
+     * `MAX(invoice_gross.gross_invoice_total) > 0` sekaligus jadi syarat penentu apakah
+     * amount_after_refraksi invoice dipakai sama sekali. Padahal invoice tunggal (bukan hasil
+     * merge) TIDAK PERNAH punya baris di invoice_gross (subquery itu hanya diisi kalau
+     * invoice_penagihan_id kolom pengiriman ter-set), sehingga gross_invoice_total-nya 0 dan
+     * CASE jatuh ke ELSE (harga PO mentah) — walau invoice_penagihan sudah match & valid lewat
+     * fallback pengiriman_id di atas. Sekarang logikanya diselaraskan dgn PHP di Margin:
+     *  1. Tidak ada invoice sama sekali -> fallback harga PO (SUM qty*harga_jual PO).
+     *  2. Ada invoice, gross > 0 (berarti hasil merge) -> distribusi proporsional.
+     *  3. Ada invoice, gross = 0 (invoice tunggal/non-merge) -> pakai amount invoice APA ADANYA
+     *     (amount_after_refraksi, fallback subtotal), TANPA dikalikan rasio apapun.
      */
     private function omsetExpr(): \Illuminate\Database\Query\Expression
     {
-        return DB::raw('COALESCE(
-            NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0),
-            NULLIF(MAX(invoice_penagihan.subtotal), 0),
-            SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
-        ) as omset_pengiriman');
+        return DB::raw('
+            CASE
+                WHEN COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0)) IS NULL
+                    THEN SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
+                WHEN MAX(invoice_gross.gross_invoice_total) > 0
+                    THEN (SUM(pengiriman_details.qty_kirim * order_details.harga_jual) / MAX(invoice_gross.gross_invoice_total))
+                         * COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
+                ELSE COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
+            END as omset_pengiriman
+        ');
     }
 
     /**
@@ -74,9 +152,9 @@ class OmsetController extends Controller
      */
     private function calculateOmsetSistem($query)
     {
-        $q = DB::table('pengiriman')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+        $q = DB::table('pengiriman');
+        $q = $this->joinInvoiceData($q);
+        $q = $q->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
             ->whereNull('pengiriman.deleted_at')
@@ -106,9 +184,9 @@ class OmsetController extends Controller
 
         // ===== Helper closure: base query dengan join standar =====
         $baseOmsetQuery = function () {
-            $q = DB::table('pengiriman')
-                ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-                ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+            $q = DB::table('pengiriman');
+            $q = $this->joinInvoiceData($q);
+            $q = $q->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                 ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                 ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
                 ->whereNull('pengiriman.deleted_at');
@@ -125,9 +203,6 @@ class OmsetController extends Controller
         };
 
         // ========== BLOK KALKULASI BERAT (di-cache 120 detik) ==========
-        // Blok ini menjalankan puluhan query agregat (total, summary, target
-        // analysis, rekap bulanan per minggu). Di-cache per tahun supaya
-        // request yang datang beruntun tidak menghantam DB berkali-kali.
         $cacheKeyIndex = 'omset:index_heavy_block:' . $selectedYearTarget . ':' . Carbon::now()->format('Y-m-d');
         $heavyBlockResult = \Illuminate\Support\Facades\Cache::remember($cacheKeyIndex, 120, function () use (
             $baseOmsetQuery, $sumOmset, $selectedYearTarget
@@ -343,8 +418,6 @@ class OmsetController extends Controller
             ];
         }
 
-        // Kembalikan semua variabel yang dipakai di luar blok cache ini
-        // (untuk view non-AJAX maupun response AJAX di bawah).
         return [
             'totalOmset'             => $totalOmset,
             'omsetTahunIniSummary'   => $omsetTahunIniSummary,
@@ -364,7 +437,6 @@ class OmsetController extends Controller
         ];
         }); // akhir Cache::remember blok kalkulasi berat
 
-        // Extract hasil dari cache/kalkulasi ke variabel lokal seperti semula
         $totalOmset             = $heavyBlockResult['totalOmset'];
         $omsetTahunIniSummary   = $heavyBlockResult['omsetTahunIniSummary'];
         $omsetBulanIniSummary   = $heavyBlockResult['omsetBulanIniSummary'];
@@ -464,8 +536,9 @@ class OmsetController extends Controller
             $cacheKeyTopKlien = 'omset:top_klien:' . $periodeKlien . ':' . $request->get('start_date_klien') . ':' . $request->get('end_date_klien');
 
             $data = \Illuminate\Support\Facades\Cache::remember($cacheKeyTopKlien, 60, function () use ($periodeKlien, $request) {
-                $topKlienQuery = DB::table('pengiriman')
-                    ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                $topKlienQuery = DB::table('pengiriman');
+                $topKlienQuery = $this->joinInvoiceData($topKlienQuery);
+                $topKlienQuery = $topKlienQuery
                     ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
@@ -542,8 +615,9 @@ class OmsetController extends Controller
             $cacheKeyMarketing = 'omset:marketing:' . $periode . ':' . $request->get('start_date_marketing') . ':' . $request->get('end_date_marketing');
 
             $data = \Illuminate\Support\Facades\Cache::remember($cacheKeyMarketing, 60, function () use ($periode, $request) {
-                $omsetMarketingQuery = DB::table('pengiriman')
-                    ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                $omsetMarketingQuery = DB::table('pengiriman');
+                $omsetMarketingQuery = $this->joinInvoiceData($omsetMarketingQuery);
+                $omsetMarketingQuery = $omsetMarketingQuery
                     ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
@@ -577,8 +651,9 @@ class OmsetController extends Controller
             $cacheKeyProcurement = 'omset:procurement_ajax:' . $periodeProcurement . ':' . $request->get('start_date_procurement') . ':' . $request->get('end_date_procurement');
 
             $data = \Illuminate\Support\Facades\Cache::remember($cacheKeyProcurement, 60, function () use ($periodeProcurement, $request) {
-                $omsetProcurementQuery = DB::table('pengiriman')
-                    ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+                $omsetProcurementQuery = DB::table('pengiriman');
+                $omsetProcurementQuery = $this->joinInvoiceData($omsetProcurementQuery);
+                $omsetProcurementQuery = $omsetProcurementQuery
                     ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
                     ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
                     ->select('pengiriman.purchasing_id', 'pengiriman.id as pengiriman_id', $this->omsetExpr())
@@ -604,8 +679,9 @@ class OmsetController extends Controller
         }
 
         // ===== NON-AJAX: Omset Marketing =====
-        $omsetMarketingQuery = DB::table('pengiriman')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $omsetMarketingQuery = DB::table('pengiriman');
+        $omsetMarketingQuery = $this->joinInvoiceData($omsetMarketingQuery);
+        $omsetMarketingQuery = $omsetMarketingQuery
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
@@ -634,8 +710,9 @@ class OmsetController extends Controller
         })->filter(fn($item) => $item->total > 0)->values();
 
         // ===== NON-AJAX: Omset Procurement =====
-        $omsetProcurementQuery = DB::table('pengiriman')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $omsetProcurementQuery = DB::table('pengiriman');
+        $omsetProcurementQuery = $this->joinInvoiceData($omsetProcurementQuery);
+        $omsetProcurementQuery = $omsetProcurementQuery
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->select('pengiriman.purchasing_id', 'pengiriman.id as pengiriman_id', $this->omsetExpr())
@@ -657,8 +734,9 @@ class OmsetController extends Controller
         })->filter(fn($item) => $item['total'] > 0)->values();
 
         // ===== NON-AJAX: Top Klien =====
-        $topKlienQuery = DB::table('pengiriman')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $topKlienQuery = DB::table('pengiriman');
+        $topKlienQuery = $this->joinInvoiceData($topKlienQuery);
+        $topKlienQuery = $topKlienQuery
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
@@ -740,10 +818,6 @@ class OmsetController extends Controller
     // HELPER: Apply periode filter ke query (DRY)
     // =========================================================================
 
-    /**
-     * Terapkan filter periode ke query pengiriman.
-     * $type: 'marketing' | 'procurement' | 'klien' | 'supplier'
-     */
     private function applyPeriodeFilter($query, string $periode, Request $request, string $type): void
     {
         $startKey = "start_date_{$type}";
@@ -851,8 +925,9 @@ class OmsetController extends Controller
             ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
             ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
             ->join('users', 'order_winners.user_id', '=', 'users.id')
-            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id');
+        $query = $this->joinInvoiceData($query);
+        $query = $query
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->select(
@@ -876,7 +951,6 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
         $details = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         return response()->json($details);
     }
@@ -891,8 +965,9 @@ class OmsetController extends Controller
             ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
             ->join('order_winners', 'orders.id', '=', 'order_winners.order_id')
             ->join('users', 'order_winners.user_id', '=', 'users.id')
-            ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->join('kliens', 'orders.klien_id', '=', 'kliens.id');
+        $query = $this->joinInvoiceData($query);
+        $query = $query
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->select(
@@ -916,7 +991,6 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
         $details     = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         $groupedData = $details->groupBy('marketing_nama');
 
@@ -925,7 +999,6 @@ class OmsetController extends Controller
             'periode'      => $periode,
             'startDate'    => $startDate,
             'endDate'      => $endDate,
-            // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
             'totalOverall' => $details->sum('omset_pengiriman'),
         ]);
 
@@ -945,8 +1018,9 @@ class OmsetController extends Controller
         $query = DB::table('pengiriman')
             ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id');
+        $query = $this->joinInvoiceData($query);
+        $query = $query
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->select(
@@ -970,7 +1044,6 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
         $details = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         return response()->json($details);
     }
@@ -984,8 +1057,9 @@ class OmsetController extends Controller
         $query = DB::table('pengiriman')
             ->join('orders', 'pengiriman.purchase_order_id', '=', 'orders.id')
             ->join('kliens', 'orders.klien_id', '=', 'kliens.id')
-            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+            ->join('users', 'pengiriman.purchasing_id', '=', 'users.id');
+        $query = $this->joinInvoiceData($query);
+        $query = $query
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->select(
@@ -1009,7 +1083,6 @@ class OmsetController extends Controller
             $query->whereBetween('pengiriman.tanggal_kirim', [$startDate, $endDate]);
         }
 
-        // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
         $details     = $query->orderBy('users.nama')->orderBy('omset_pengiriman', 'desc')->get();
         $groupedData = $details->groupBy('purchasing_nama');
 
@@ -1018,7 +1091,6 @@ class OmsetController extends Controller
             'periode'      => $periode,
             'startDate'    => $startDate,
             'endDate'      => $endDate,
-            // FIX: kolom hasil select bernama 'omset_pengiriman' (bukan 'total_nilai')
             'totalOverall' => $details->sum('omset_pengiriman'),
         ]);
 
@@ -1096,8 +1168,6 @@ class OmsetController extends Controller
                 ]);
             }
 
-            // OPTIMASI: hitung omset semua user sekaligus dalam 1 query batch,
-            // bukan 1 query terpisah per user (N+1) seperti sebelumnya.
             $userIds = $procurementTargets->pluck('user_id')->unique()->values()->all();
 
             if ($minggu && $bulan) {
@@ -1151,19 +1221,15 @@ class OmsetController extends Controller
         }
     }
 
-    /**
-     * OPTIMASI: versi batch dari calculateProcurementOmset() — menghitung omset
-     * untuk banyak user sekaligus dalam 1 query, alih-alih 1 query per user.
-     * Return: [user_id => total_omset]
-     */
     private function calculateProcurementOmsetBatch(array $userIds, $tahun, $bulan = null, $minggu = null): array
     {
         if (empty($userIds)) {
             return [];
         }
 
-        $query = DB::table('pengiriman')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $query = DB::table('pengiriman');
+        $query = $this->joinInvoiceData($query);
+        $query = $query
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->whereIn('pengiriman.purchasing_id', $userIds)
@@ -1201,8 +1267,9 @@ class OmsetController extends Controller
 
     private function calculateProcurementOmset($userId, $tahun, $bulan = null, $minggu = null)
     {
-        $query = DB::table('pengiriman')
-            ->leftJoin(DB::raw($this->invoiceSubquery()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
+        $query = DB::table('pengiriman');
+        $query = $this->joinInvoiceData($query);
+        $query = $query
             ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
             ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
             ->where('pengiriman.purchasing_id', $userId)

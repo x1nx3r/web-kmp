@@ -34,7 +34,7 @@ class MarginController extends Controller
         ]);
     }
 
-    private function hitungHargaBeliJual($p, $detail): array
+    private function hitungHargaBeliJual($p, $detail, array $invoiceData = []): array
     {
         $toFloat = fn($val) => floatval(str_replace(',', '.', (string)($val ?? 0)));
 
@@ -42,35 +42,71 @@ class MarginController extends Controller
         $totalHargaJualItem = 0;
         $sumberHargaJual    = '-';
 
-        if ($detail->orderDetail && $toFloat($detail->orderDetail->harga_jual) > 0) {
-            $hargaJualPerKg     = $toFloat($detail->orderDetail->harga_jual);
-            $totalHargaJualItem = $toFloat($detail->qty_kirim) * $hargaJualPerKg;
-            $sumberHargaJual    = 'Purchase Order';
+        $invoiceRow = ($p->invoice_penagihan_id ?? null)
+            ? ($invoiceData['invoices'][$p->invoice_penagihan_id] ?? null)
+            : null;
 
-        } elseif ($p->invoicePenagihan) {
-            $amountAfter = $toFloat($p->invoicePenagihan->amount_after_refraksi);
-            $amountJual  = $amountAfter > 0 ? $amountAfter : $toFloat($p->invoicePenagihan->subtotal);
-
-            $qtyAfter  = $toFloat($p->invoicePenagihan->qty_after_refraksi);
-            $qtyBefore = $toFloat($p->invoicePenagihan->qty_before_refraksi ?? $p->total_qty_kirim);
-            $qtyJual   = $qtyAfter > 0 ? $qtyAfter : $qtyBefore;
-
-            if ($qtyJual > 0 && $amountJual > 0) {
-                $hargaJualPerKg = $amountJual / $qtyJual;
-            }
-
-            $totalHargaJualItem = $amountJual;
-            $sumberHargaJual    = 'Invoice Penagihan';
+        // FIX: invoice_penagihan_id belum ter-backfill utk pengiriman ini, tapi invoice lama
+        // yang match langsung lewat pengiriman_id (relasi invoicePenagihan, sudah di-eager-load
+        // di buildQuery()) masih ada dan bukan hasil merge -> aman dipakai apa adanya.
+        if (!$invoiceRow && $p->invoicePenagihan && $p->invoicePenagihan->status !== 'digabung') {
+            $invoiceRow = $p->invoicePenagihan;
         }
 
-        // ===== HARGA BELI =====
+        $hasValidInvoice   = $invoiceRow && $invoiceRow->status !== 'digabung';
+        $invoiceIdResolved = $invoiceRow->id ?? null;
+
+        if ($hasValidInvoice) {
+            $amountAfter = $toFloat($invoiceRow->amount_after_refraksi);
+            $amountJual  = $amountAfter > 0 ? $amountAfter : $toFloat($invoiceRow->subtotal);
+
+            $grossInvoiceTotal = $toFloat($invoiceData['grossTotals'][$invoiceIdResolved] ?? 0);
+            $grossPengiriman   = $toFloat($p->pengirimanDetails->sum(
+                fn($d) => $toFloat($d->qty_kirim) * $toFloat(optional($d->orderDetail)->harga_jual)
+            ));
+
+            if ($grossInvoiceTotal > 0 && $amountJual > 0) {
+                // Distribusi proporsional (menangani merged invoice sekaligus invoice tunggal,
+                // karena rasio = 1 saat pengiriman ini satu-satunya pemilik invoice tersebut).
+                $ratio              = $grossPengiriman / $grossInvoiceTotal;
+                $totalHargaJualItem = $ratio * $amountJual;
+            } else {
+                // Invoice tunggal (tidak ketemu di grossTotals karena bukan hasil query batch
+                // by invoice_penagihan_id, mis. kasus fallback relasi di atas) -> pakai penuh.
+                $totalHargaJualItem = $amountJual;
+            }
+
+            // Qty sisi jual selalu memakai qty fisik milik pengiriman ini sendiri (basis yang
+            // sama dengan qty sisi beli), supaya perbandingan harga/kg jual vs beli konsisten.
+            $qtyJual = $toFloat($p->pengirimanDetails->sum('qty_kirim'));
+
+            if ($qtyJual > 0 && $totalHargaJualItem > 0) {
+                $hargaJualPerKg = $totalHargaJualItem / $qtyJual;
+            }
+
+            $sumberHargaJual = 'Invoice Penagihan';
+
+        } else {
+            // FIX: sum SEMUA pengirimanDetails, bukan cuma $detail (detail pertama saja).
+            $totalHargaJualItem = $toFloat($p->pengirimanDetails->sum(
+                fn($d) => $toFloat($d->qty_kirim) * $toFloat(optional($d->orderDetail)->harga_jual)
+            ));
+            $qtyJualPO = $toFloat($p->pengirimanDetails->sum('qty_kirim'));
+
+            if ($qtyJualPO > 0 && $totalHargaJualItem > 0) {
+                $hargaJualPerKg  = $totalHargaJualItem / $qtyJualPO;
+                $sumberHargaJual = 'Purchase Order';
+            }
+        }
+
+        // ===== HARGA BELI ===== (tidak berubah)
         $hargaBeliPerKg     = 0;
         $totalHargaBeliItem = 0;
 
         if ($p->approvalPembayaran) {
             $subtotal     = $toFloat($p->approvalPembayaran->subtotal);
             $amountAfter  = $toFloat($p->approvalPembayaran->amount_after_refraksi);
-            
+
             if ($subtotal > 0) {
                 $amountBeli = $subtotal;
             } else {
@@ -87,7 +123,6 @@ class MarginController extends Controller
             $totalHargaBeliItem = $amountBeli;
 
         } else {
-            // Fallback: tidak ada approval, pakai data mentah dari detail pengiriman
             $hargaBeliPerKg     = $toFloat($detail->harga_satuan);
             $totalHargaBeliItem = $toFloat($detail->total_harga);
         }
@@ -147,6 +182,44 @@ class MarginController extends Controller
         return $query->orderBy('tanggal_kirim', 'asc');
     }
 
+    /**
+     * Ambil data invoice_penagihan (row lengkap) dan total gross sales per invoice sekaligus
+     * dalam 1-2 query batch (menghindari N+1), untuk seluruh pengiriman yang butuh dihitung.
+     * Dipakai oleh hitungHargaBeliJual() untuk resolusi & distribusi proporsional merged invoice.
+     *
+     * @return array{invoices: \Illuminate\Support\Collection, grossTotals: \Illuminate\Support\Collection}
+     */
+    private function loadInvoiceDataForPengirimanList($pengirimanList): array
+    {
+        $invoiceIds = collect($pengirimanList)
+            ->pluck('invoice_penagihan_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($invoiceIds)) {
+            return ['invoices' => collect(), 'grossTotals' => collect()];
+        }
+
+        $invoices = DB::table('invoice_penagihan')
+            ->whereIn('id', $invoiceIds)
+            ->get()
+            ->keyBy('id');
+
+        $grossTotals = DB::table('pengiriman as p2')
+            ->join('pengiriman_details as pd2', 'pd2.pengiriman_id', '=', 'p2.id')
+            ->join('order_details as od2', 'od2.id', '=', 'pd2.purchase_order_bahan_baku_id')
+            ->whereIn('p2.invoice_penagihan_id', $invoiceIds)
+            ->whereNull('p2.deleted_at')
+            ->select('p2.invoice_penagihan_id', DB::raw('SUM(pd2.qty_kirim * od2.harga_jual) as gross_total'))
+            ->groupBy('p2.invoice_penagihan_id')
+            ->get()
+            ->pluck('gross_total', 'invoice_penagihan_id');
+
+        return ['invoices' => $invoices, 'grossTotals' => $grossTotals];
+    }
+
     private function prosesMarginData($pengirimanList, bool $withMeta = false): array
     {
         $marginData     = [];
@@ -155,8 +228,15 @@ class MarginController extends Controller
         $totalHargaJual = 0;
         $totalMargin    = 0;
 
+        $invoiceData = $this->loadInvoiceDataForPengirimanList($pengirimanList);
+
         foreach ($pengirimanList as $p) {
-            if (!$p->approvalPembayaran && !$p->invoicePenagihan) {
+            $invoiceRow = ($p->invoice_penagihan_id ?? null)
+                ? ($invoiceData['invoices'][$p->invoice_penagihan_id] ?? null)
+                : null;
+            $hasValidInvoice = $invoiceRow && $invoiceRow->status !== 'digabung';
+
+            if (!$p->approvalPembayaran && !$hasValidInvoice) {
                 continue;
             }
 
@@ -164,7 +244,7 @@ class MarginController extends Controller
             if (!$detail) continue;
 
             $qtyTotal = $p->pengirimanDetails->sum('qty_kirim');
-            $harga    = $this->hitungHargaBeliJual($p, $detail);
+            $harga    = $this->hitungHargaBeliJual($p, $detail, $invoiceData);
 
             if (!$p->approvalPembayaran) {
                 $harga['harga_beli_total'] = $p->pengirimanDetails->sum('total_harga');

@@ -372,7 +372,11 @@
             </div>
             
             {{-- PO Details Table --}}
-            @if(isset($poDetailsByClient[$client->klien_id]) && count($poDetailsByClient[$client->klien_id]) > 0)
+            @php
+                $clientDetail = $poDetailsByClient[$client->klien_id] ?? ['orders' => [], 'materials' => []];
+                $clientOrders = $clientDetail['orders'] ?? [];
+            @endphp
+            @if(count($clientOrders) > 0)
             <table>
                 <thead>
                     <tr>
@@ -386,7 +390,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($poDetailsByClient[$client->klien_id] as $po)
+                    @foreach($clientOrders as $po)
                     <tr>
                         <td class="po-number">{{ $po['po_number'] }}</td>
                         <td>{{ $po['tanggal_order'] }}</td>

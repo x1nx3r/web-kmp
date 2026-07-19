@@ -110,8 +110,11 @@
         </tr>
         
         {{-- PO Details --}}
-        @if(isset($poDetailsByClient[$client->klien_id]))
-            @foreach($poDetailsByClient[$client->klien_id] as $po)
+        @php
+            $clientOrders = $poDetailsByClient[$client->klien_id]['orders'] ?? [];
+        @endphp
+        @if(count($clientOrders) > 0)
+            @foreach($clientOrders as $po)
                 <tr>
                     <td style="color: #2563EB; font-weight: bold;">{{ $po['po_number'] }}</td>
                     <td>{{ $po['tanggal_order'] }}</td>
@@ -122,6 +125,10 @@
                     <td style="text-align: right;">{{ number_format($po['total_amount'], 0, ',', '.') }}</td>
                 </tr>
             @endforeach
+        @else
+            <tr>
+                <td colspan="7" style="text-align: center; color: #999;">Tidak ada data PO</td>
+            </tr>
         @endif
         
         <tr><td colspan="9"></td></tr>

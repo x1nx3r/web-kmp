@@ -1168,4 +1168,22 @@ class PengirimanController extends Controller
             return back()->with('error', 'Gagal mengekspor data pengiriman gagal.');
         }
     }
+    public function exportBerhasil(Request $request)
+    {
+        try {
+            $fileName = 'pengiriman_berhasil_' . now()->format('Y-m-d_His') . '.xlsx';
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\PengirimanBerhasilExport(
+                    $request->input('tanggal_mulai_berhasil'),
+                    $request->input('tanggal_akhir_berhasil'),
+                    $request->input('filter_purchasing_berhasil'),
+                    $request->input('search_berhasil')
+                ),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            Log::error('Error exporting pengiriman berhasil: ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengekspor data pengiriman berhasil.');
+        }
+    }
 }

@@ -695,4 +695,22 @@ class ForecastingController extends Controller
             return back()->with('error', 'Gagal mengekspor data forecast gagal.');
         }
     }
+    public function exportSukses(Request $request)
+    {
+        try {
+            $fileName = 'forecast_sukses_' . now()->format('Y-m-d_His') . '.xlsx';
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\ForecastSuksesExport(
+                    $request->input('tanggal_mulai_sukses'),
+                    $request->input('tanggal_akhir_sukses'),
+                    $request->input('filter_purchasing_sukses'),
+                    $request->input('search_sukses')
+                ),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            Log::error('Error exporting sukses forecasts: ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengekspor data forecast sukses.');
+        }
+    }
 }

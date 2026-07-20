@@ -277,7 +277,7 @@
                     @if($company && $company->phone)
                         Telp : {{ $company->phone }}
                     @else
-                        Telp : 085606614900
+                        Telp : 082234232008
                     @endif
                 </div>
             </td>

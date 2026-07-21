@@ -47,12 +47,7 @@ class NotificationPage extends Component
         $user = auth()->user();
 
         if ($user) {
-            DB::table('notifications')
-                ->where('id', $notificationId)
-                ->where('notifiable_type', User::class)
-                ->where('notifiable_id', $user->id)
-                ->delete();
-
+            NotificationService::delete($notificationId, $user);
             session()->flash('message', 'Notifikasi berhasil dihapus');
         }
     }
@@ -62,12 +57,7 @@ class NotificationPage extends Component
         $user = auth()->user();
 
         if ($user) {
-            $count = DB::table('notifications')
-                ->where('notifiable_type', User::class)
-                ->where('notifiable_id', $user->id)
-                ->whereNotNull('read_at')
-                ->delete();
-
+            $count = NotificationService::deleteAllRead($user);
             session()->flash('message', "{$count} notifikasi yang sudah dibaca berhasil dihapus");
         }
     }
@@ -123,9 +113,6 @@ class NotificationPage extends Component
         ];
     }
 
-    /**
-     * Convert timestamp to Indonesian "time ago" format.
-     */
     protected function timeAgo($timestamp): string
     {
         $time = \Carbon\Carbon::parse($timestamp);
@@ -162,9 +149,8 @@ class NotificationPage extends Component
     {
         $notifications = $this->getNotificationsQuery()->paginate(15);
 
-        // Transform the notifications
         $notifications->getCollection()->transform(function ($notification) {
-            $data = json_decode($notification->data, true);
+            $data = json_decode($notification->data, true) ?? [];
             $notification->data = $data;
             $notification->title = $data['title'] ?? 'Notifikasi';
             $notification->message = $data['message'] ?? '';

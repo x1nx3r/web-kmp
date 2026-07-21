@@ -145,6 +145,22 @@ class NotificationService
         return BaseNotificationService::cleanupOldNotifications($daysOld);
     }
 
+    /**
+     * Delete a specific notification.
+     */
+    public static function delete(string $notificationId, User $user): bool
+    {
+        return BaseNotificationService::delete($notificationId, $user);
+    }
+
+    /**
+     * Delete all read notifications for a user.
+     */
+    public static function deleteAllRead(User $user): int
+    {
+        return BaseNotificationService::deleteAllRead($user);
+    }
+    
     /*
     |--------------------------------------------------------------------------
     | Penawaran Notifications (delegated to PenawaranNotificationService)

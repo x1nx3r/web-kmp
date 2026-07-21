@@ -177,36 +177,53 @@ Route::middleware(["auth"])->group(function () {
             return response()->json(["error" => "Not authenticated"], 401);
         }
 
-        $notifications = \App\Services\NotificationService::getNotifications(
-            $user,
-            10,
-        )
-            ->map(function ($notification) {
-                return [
-                    "id" => $notification->id,
-                    "type" => $notification->type,
-                    "title" => $notification->data["title"] ?? "Notifikasi",
-                    "message" => $notification->data["message"] ?? "",
-                    "icon" => $notification->data["icon"] ?? "bell",
-                    "icon_bg" =>
-                        $notification->data["icon_bg"] ?? "bg-blue-100",
-                    "icon_color" =>
-                        $notification->data["icon_color"] ?? "text-blue-600",
-                    "url" => $notification->data["url"] ?? "#",
-                    "read_at" => $notification->read_at,
-                    "created_at" => $notification->created_at,
-                    "time_ago" => \Carbon\Carbon::parse(
-                        $notification->created_at,
-                    )->diffForHumans(),
-                ];
-            })
-            ->toArray();
+        $notifications = \Illuminate\Support\Facades\Cache::remember(
+            "notif_list_{$user->id}",
+            30,
+            function () use ($user) {
+                return \App\Services\NotificationService::getNotifications(
+                    $user,
+                    10,
+                )
+                    ->map(function ($notification) {
+                        return [
+                            "id" => $notification->id,
+                            "type" => $notification->type,
+                            "title" =>
+                                $notification->data["title"] ?? "Notifikasi",
+                            "message" => $notification->data["message"] ?? "",
+                            "icon" => $notification->data["icon"] ?? "bell",
+                            "icon_bg" =>
+                                $notification->data["icon_bg"] ??
+                                "bg-blue-100",
+                            "icon_color" =>
+                                $notification->data["icon_color"] ??
+                                "text-blue-600",
+                            "url" => $notification->data["url"] ?? "#",
+                            "read_at" => $notification->read_at,
+                            "created_at" => $notification->created_at,
+                            "time_ago" => \Carbon\Carbon::parse(
+                                $notification->created_at,
+                            )->diffForHumans(),
+                        ];
+                    })
+                    ->toArray();
+            },
+        );
+
+        $unreadCount = \Illuminate\Support\Facades\Cache::remember(
+            "unread_notif_count_{$user->id}",
+            30,
+            function () use ($user) {
+                return \App\Services\NotificationService::getUnreadCount(
+                    $user,
+                );
+            },
+        );
 
         return response()->json([
             "notifications" => $notifications,
-            "unread_count" => \App\Services\NotificationService::getUnreadCount(
-                $user,
-            ),
+            "unread_count" => $unreadCount,
         ]);
     })->name("api.notifications.index");
 

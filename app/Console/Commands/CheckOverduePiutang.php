@@ -26,6 +26,12 @@ class CheckOverduePiutang extends Command
     protected $description = 'Check and notify accounting about overdue piutang (supplier and pabrik)';
 
     /**
+     * Cache notified IDs per type, loaded once per run instead of per-row.
+     * Structure: [type => [id => true, id => true, ...]]
+     */
+    private array $notifiedCache = [];
+
+    /**
      * Execute the console command.
      */
     public function handle()
@@ -45,7 +51,9 @@ class CheckOverduePiutang extends Command
         // ==========================================
         $this->info('Checking supplier piutang...');
 
-        // Get overdue supplier piutang (belum lunas dan sudah melewati jatuh tempo)
+        // Preload today's notified IDs ONCE for this type, instead of querying per-row
+        $this->loadNotifiedIds(PiutangNotificationService::TYPE_SUPPLIER_OVERDUE, $today);
+
         $overdueSupplierPiutangs = CatatanPiutang::with('supplier')
             ->where('status', '!=', 'lunas')
             ->whereNotNull('tanggal_jatuh_tempo')
@@ -55,7 +63,6 @@ class CheckOverduePiutang extends Command
         foreach ($overdueSupplierPiutangs as $piutang) {
             $daysOverdue = Carbon::parse($piutang->tanggal_jatuh_tempo)->diffInDays($today);
 
-            // Check if notification already sent today for this piutang
             $alreadyNotified = $this->hasNotifiedToday($piutang->id, PiutangNotificationService::TYPE_SUPPLIER_OVERDUE);
 
             if (!$alreadyNotified) {
@@ -68,6 +75,8 @@ class CheckOverduePiutang extends Command
         // Check near due supplier piutang (3 hari sebelum jatuh tempo)
         if ($notifyNearDue) {
             $nearDueDate = $today->copy()->addDays(3);
+
+            $this->loadNotifiedIds(PiutangNotificationService::TYPE_SUPPLIER_NEAR_DUE, $today);
 
             $nearDueSupplierPiutangs = CatatanPiutang::with('supplier')
                 ->where('status', '!=', 'lunas')
@@ -93,6 +102,8 @@ class CheckOverduePiutang extends Command
         // Check Piutang Pabrik (Invoice Penagihan)
         // ==========================================
         $this->info('Checking pabrik (klien) piutang...');
+
+        $this->loadNotifiedIds(PiutangNotificationService::TYPE_PABRIK_OVERDUE, $today);
 
         // Get overdue pabrik piutang
         $overduePabrikInvoices = InvoicePenagihan::with(['pengiriman.klien', 'pembayaranPabrik'])
@@ -121,6 +132,8 @@ class CheckOverduePiutang extends Command
         // Check near due pabrik piutang
         if ($notifyNearDue) {
             $nearDueDate = $today->copy()->addDays(3);
+
+            $this->loadNotifiedIds(PiutangNotificationService::TYPE_PABRIK_NEAR_DUE, $today);
 
             $nearDuePabrikInvoices = InvoicePenagihan::with(['pengiriman.klien', 'pembayaranPabrik'])
                 ->where('status', '!=', 'paid')
@@ -166,17 +179,52 @@ class CheckOverduePiutang extends Command
     }
 
     /**
+     * Load all today's notified model IDs for a given type in ONE query,
+     * and cache the result in memory for the rest of this run.
+     *
+     * This replaces the old approach of running a LIKE query per row
+     * inside the foreach loop (N+1 problem — this was the main cause
+     * of the slowdown, since `data LIKE '%...%'` can't use an index
+     * and forces a full table scan on every single call).
+     */
+    private function loadNotifiedIds(string $type, Carbon $today): array
+    {
+        if (isset($this->notifiedCache[$type])) {
+            return $this->notifiedCache[$type];
+        }
+
+        $rows = DB::table('notifications')
+            ->where('type', $type)
+            ->whereDate('created_at', $today)
+            ->pluck('data');
+
+        $ids = [];
+
+        foreach ($rows as $raw) {
+            $decoded = json_decode($raw, true);
+
+            if (!is_array($decoded)) {
+                continue;
+            }
+
+            if (isset($decoded['piutang_id'])) {
+                $ids[(int) $decoded['piutang_id']] = true;
+            }
+
+            if (isset($decoded['invoice_id'])) {
+                $ids[(int) $decoded['invoice_id']] = true;
+            }
+        }
+
+        return $this->notifiedCache[$type] = $ids;
+    }
+
+    /**
      * Check if notification already sent today for specific piutang.
+     * Now an O(1) in-memory lookup instead of a DB query.
      */
     private function hasNotifiedToday(int $modelId, string $type): bool
     {
-        return DB::table('notifications')
-            ->where('type', $type)
-            ->whereDate('created_at', Carbon::today())
-            ->where(function ($query) use ($modelId) {
-                $query->where('data', 'like', '%"piutang_id":' . $modelId . '%')
-                      ->orWhere('data', 'like', '%"invoice_id":' . $modelId . '%');
-            })
-            ->exists();
+        return isset($this->notifiedCache[$type][$modelId]);
     }
 }

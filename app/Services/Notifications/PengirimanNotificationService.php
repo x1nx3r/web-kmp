@@ -46,9 +46,22 @@ class PengirimanNotificationService extends BaseNotificationService
      */
     public static function notifyPendingPengirimanReminder(): int
     {
-        // Hitung pengiriman pending dan menunggu verifikasi
-        $pendingCount = Pengiriman::whereIn('status', ['pending', 'menunggu_verifikasi'])->count();
-        
+        // ---------------------------------------------------------------
+        // FIX: previously this ran 3 separate COUNT queries:
+        //   1. count() for total pending + menunggu_verifikasi
+        //   2. count() for status = pending only
+        //   3. count() for status = menunggu_verifikasi only
+        // All 3 are now derived from a SINGLE groupBy('status') query.
+        // ---------------------------------------------------------------
+        $statusCounts = Pengiriman::whereIn('status', ['pending', 'menunggu_verifikasi'])
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $pendingOnly = (int) ($statusCounts['pending'] ?? 0);
+        $menungguVerifikasi = (int) ($statusCounts['menunggu_verifikasi'] ?? 0);
+        $pendingCount = $pendingOnly + $menungguVerifikasi;
+
         if ($pendingCount === 0) {
             return 0;
         }
@@ -59,10 +72,6 @@ class PengirimanNotificationService extends BaseNotificationService
             ->orderBy('tanggal_kirim', 'asc')
             ->limit(5)
             ->get();
-
-        // Hitung per status
-        $pendingOnly = Pengiriman::where('status', 'pending')->count();
-        $menungguVerifikasi = Pengiriman::where('status', 'menunggu_verifikasi')->count();
 
         // Format pesan dengan detail pengiriman
         $pengirimanList = $pengirimans->map(function($pengiriman) {

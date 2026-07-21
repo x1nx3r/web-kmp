@@ -110,11 +110,27 @@ class FixOrphanedPengirimanDetails extends Command
             return $record->{$relationName}->order_id ?? 'unknown';
         });
 
+        // ---------------------------------------------------------------
+        // FIX: previously OrderDetail::where('order_id', $orderId)->first()
+        // was run INSIDE the foreach loop -> one query per distinct
+        // order_id (N+1 problem).
+        //
+        // Now we collect all distinct order_ids first, then fetch all
+        // the active order_details for those orders in a SINGLE query,
+        // keyed by order_id for O(1) lookup inside the loop below.
+        // ---------------------------------------------------------------
+        $orderIds = $grouped->keys()->filter(fn ($id) => $id !== 'unknown')->values();
+
+        $activeDetailsByOrder = OrderDetail::whereIn('order_id', $orderIds)
+            ->get()
+            ->groupBy('order_id')
+            ->map(fn ($details) => $details->first()); // first active detail per order
+
         $fixes = [];
         $unfixable = 0;
 
         foreach ($grouped as $orderId => $records) {
-            $activeDetail = OrderDetail::where('order_id', $orderId)->first();
+            $activeDetail = $orderId !== 'unknown' ? ($activeDetailsByOrder[$orderId] ?? null) : null;
             $deletedIds = $records->pluck("{$relationName}.id")->unique()->implode(', ');
 
             if ($activeDetail) {
@@ -141,14 +157,24 @@ class FixOrphanedPengirimanDetails extends Command
             return [0, $unfixable];
         }
 
-        // Apply fixes in a transaction
+        // ---------------------------------------------------------------
+        // Apply fixes in a transaction. Grouped by target order_detail_id
+        // so records sharing the same target are updated with a single
+        // whereIn(...)->update(...) call instead of one UPDATE per row.
+        // ---------------------------------------------------------------
         DB::beginTransaction();
         try {
             $updated = 0;
-            foreach ($fixes as $recordId => $targetOrderDetailId) {
-                $modelClass::where('id', $recordId)
+
+            $fixesByTarget = collect($fixes)->groupBy(fn ($targetId) => $targetId);
+
+            foreach ($fixesByTarget as $targetOrderDetailId => $group) {
+                $recordIds = $group->keys()->all();
+
+                $modelClass::whereIn('id', $recordIds)
                     ->update([$fkColumn => $targetOrderDetailId]);
-                $updated++;
+
+                $updated += count($recordIds);
             }
 
             DB::commit();

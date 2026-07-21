@@ -92,22 +92,33 @@ class SaveTargetOmsetSnapshot extends Command
     
     /**
      * Save monthly snapshots
+     *
+     * FIX: previously this ran ONE query per month in a for-loop (up to
+     * 12 separate join+sum queries). We now run a SINGLE query that
+     * aggregates all months at once (GROUP BY month), then loop over
+     * the already-fetched results in PHP to call saveSnapshot() per
+     * month. This turns up to 12 DB round-trips into 1.
      */
     private function saveMonthlySnapshots($targetOmset, $year)
     {
         $this->info("  📆 Saving monthly snapshots...");
         
-        $saved = 0;
         $currentMonth = Carbon::now()->month;
-        
-        // Save snapshots for all months up to current month
+
+        // Single aggregated query for all months up to current month
+        $monthlyTotals = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
+            ->where('pengiriman.status', 'berhasil')
+            ->whereYear('pengiriman.updated_at', $year)
+            ->whereMonth('pengiriman.updated_at', '<=', $currentMonth)
+            ->selectRaw('MONTH(pengiriman.updated_at) as bulan, SUM(invoice_penagihan.amount_after_refraksi) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan');
+
+        $saved = 0;
+
         for ($bulan = 1; $bulan <= $currentMonth; $bulan++) {
-            $actualOmset = InvoicePenagihan::join('pengiriman', 'invoice_penagihan.pengiriman_id', '=', 'pengiriman.id')
-                ->where('pengiriman.status', 'berhasil')
-                ->whereYear('pengiriman.updated_at', $year)
-                ->whereMonth('pengiriman.updated_at', $bulan)
-                ->sum('invoice_penagihan.amount_after_refraksi') ?? 0;
-            
+            $actualOmset = (float) ($monthlyTotals[$bulan] ?? 0);
+
             $targetOmset->saveSnapshot(
                 $actualOmset,
                 'monthly',
@@ -115,10 +126,10 @@ class SaveTargetOmsetSnapshot extends Command
                 null,
                 'System'
             );
-            
+
             $monthName = Carbon::create($year, $bulan, 1)->format('F');
             $this->line("    {$monthName}: Rp " . number_format($actualOmset, 0, ',', '.'));
-            
+
             $saved++;
         }
         

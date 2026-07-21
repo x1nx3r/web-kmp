@@ -24,7 +24,7 @@
         startPolling() {
             this.pollInterval = setInterval(() => {
                 this.fetchNotifications();
-            }, 60000);
+            }, 15000);
         },
 
         async fetchNotifications() {

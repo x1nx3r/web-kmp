@@ -43,13 +43,29 @@ class BaseNotificationService
 
     public static function sendToMany($users, string $type, array $data): int
     {
-        $count = 0;
+        $rows = [];
+        $now = now();
         foreach ($users as $user) {
-            if (static::send($user, $type, $data)) {
-                $count++;
-            }
+            $rows[] = [
+                "id" => Str::uuid()->toString(),
+                "type" => $type,
+                "notifiable_type" => User::class,
+                "notifiable_id" => $user->id,
+                "data" => json_encode($data),
+                "read_at" => null,
+                "created_at" => $now,
+                "updated_at" => $now,
+            ];
         }
-        return $count;
+        if (empty($rows)) return 0;
+
+        DB::table("notifications")->insert($rows); // 1 query untuk semua user
+
+        foreach ($users as $user) {
+            Cache::forget("notif_list_{$user->id}");
+            Cache::forget("unread_notif_count_{$user->id}");
+        }
+        return count($rows);
     }
 
     public static function sendToRole(string $role, string $type, array $data): int

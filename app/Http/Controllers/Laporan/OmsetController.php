@@ -20,18 +20,6 @@ use Illuminate\Support\Facades\Auth;
 
 class OmsetController extends Controller
 {
-    /**
-     * Helper: exclude pengiriman yang invoice aktifnya berstatus "digabung".
-     *
-     * FIX (konsistensi dgn Margin): sebelumnya pengiriman dengan invoice_penagihan_id NULL
-     * SELALU dimasukkan (asumsi tidak ada invoice sama sekali, pakai fallback PO). Padahal
-     * pengiriman itu bisa saja punya invoice LAMA (match via invoice_penagihan.pengiriman_id)
-     * yang justru berstatus 'digabung' (sudah di-merge ke invoice lain) — datanya semestinya
-     * sudah terhitung lewat pengiriman lain yang invoice_penagihan_id-nya menunjuk ke invoice
-     * gabungan tsb. Kalau tetap dimasukkan pakai fallback PO di sini, akan double count.
-     * Sekarang pengiriman dengan invoice_penagihan_id NULL baru dimasukkan kalau TIDAK ada
-     * invoice lama yang berstatus 'digabung' untuknya.
-     */
     private function applyValidInvoiceFilter($query)
     {
         return $query->where(function ($q) {
@@ -92,18 +80,7 @@ class OmsetController extends Controller
         ) as invoice_gross';
     }
 
-    /**
-     * FIX (konsistensi dgn Margin): helper terpusat untuk join invoice_penagihan + gross
-     * totals ke query pengiriman, dengan fallback saat pengiriman.invoice_penagihan_id NULL.
-     * Sebelumnya join invoice HANYA lewat pengiriman.invoice_penagihan_id (equi-join biasa) —
-     * untuk pengiriman yang kolom ini belum ter-backfill, join gagal total sehingga omsetExpr()
-     * selalu jatuh ke fallback harga PO mentah (SUM qty*harga_jual PO), walau invoice asli
-     * (dengan amount_after_refraksi yang sudah dipotong refraksi) sebenarnya ada dan valid.
-     * Ini yang membuat Omset & Evaluasi Procurement berbeda dari Margin (yang sudah punya
-     * fallback serupa di level PHP). Sekarang join invoice memakai OR condition: match via
-     * invoice_penagihan_id kalau ada, ATAU match via invoice_penagihan.pengiriman_id kalau
-     * invoice_penagihan_id NULL dan invoice lama itu bukan hasil merge (status != 'digabung').
-     */
+   
     private function joinInvoiceData($query)
     {
         return $query
@@ -118,21 +95,7 @@ class OmsetController extends Controller
             ->leftJoin(DB::raw($this->invoiceGrossSubquery()), 'pengiriman.invoice_penagihan_id', '=', 'invoice_gross.invoice_penagihan_id');
     }
 
-    /**
-     * Ekspresi omset per pengiriman.
-     *
-     * FIX (konsistensi dgn Margin): sebelumnya WHEN pertama mensyaratkan
-     * `MAX(invoice_gross.gross_invoice_total) > 0` sekaligus jadi syarat penentu apakah
-     * amount_after_refraksi invoice dipakai sama sekali. Padahal invoice tunggal (bukan hasil
-     * merge) TIDAK PERNAH punya baris di invoice_gross (subquery itu hanya diisi kalau
-     * invoice_penagihan_id kolom pengiriman ter-set), sehingga gross_invoice_total-nya 0 dan
-     * CASE jatuh ke ELSE (harga PO mentah) — walau invoice_penagihan sudah match & valid lewat
-     * fallback pengiriman_id di atas. Sekarang logikanya diselaraskan dgn PHP di Margin:
-     *  1. Tidak ada invoice sama sekali -> fallback harga PO (SUM qty*harga_jual PO).
-     *  2. Ada invoice, gross > 0 (berarti hasil merge) -> distribusi proporsional.
-     *  3. Ada invoice, gross = 0 (invoice tunggal/non-merge) -> pakai amount invoice APA ADANYA
-     *     (amount_after_refraksi, fallback subtotal), TANPA dikalikan rasio apapun.
-     */
+   
     private function omsetExpr(): \Illuminate\Database\Query\Expression
     {
         return DB::raw('
@@ -167,6 +130,55 @@ class OmsetController extends Controller
         return $q->get()->sum('omset_pengiriman');
     }
 
+    
+    /**
+     * Ambil seluruh omset_pengiriman + tanggal_kirim untuk satu tahun, dalam satu query.
+     * Return: Collection of stdClass{ id, tanggal_kirim, omset_pengiriman }
+     */
+    private function fetchYearlyOmsetRows($year)
+    {
+        $q = DB::table('pengiriman');
+        $q = $this->joinInvoiceData($q);
+        $q = $q->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
+            ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
+            ->whereIn('pengiriman.status', ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'])
+            ->whereNull('pengiriman.deleted_at')
+            ->whereYear('pengiriman.tanggal_kirim', $year);
+
+        $this->applyValidInvoiceFilter($q);
+
+        return $q->select('pengiriman.id', 'pengiriman.tanggal_kirim', $this->omsetExpr())
+            ->groupBy('pengiriman.id', 'pengiriman.tanggal_kirim')
+            ->get();
+    }
+
+    /**
+     * Sum omset dari collection hasil fetchYearlyOmsetRows(), difilter secara in-memory
+     * berdasarkan bulan dan/atau rentang tanggal. Menggantikan panggilan $sumOmset() yang
+     * sebelumnya melakukan query SQL baru untuk tiap filter.
+     */
+    private function sumOmsetFromRows($rows, ?int $month = null, ?Carbon $start = null, ?Carbon $end = null): float
+    {
+        $total = 0.0;
+        foreach ($rows as $row) {
+            if ($row->tanggal_kirim === null) {
+                continue;
+            }
+            $tgl = Carbon::parse($row->tanggal_kirim);
+            if ($month !== null && $tgl->month !== $month) {
+                continue;
+            }
+            if ($start !== null && $tgl->lt($start)) {
+                continue;
+            }
+            if ($end !== null && $tgl->gt($end)) {
+                continue;
+            }
+            $total += (float) $row->omset_pengiriman;
+        }
+        return $total;
+    }
+
     public function index(Request $request)
     {
         $title     = 'Omset';
@@ -182,7 +194,7 @@ class OmsetController extends Controller
             $selectedYearTarget = $availableYearsTarget[0] ?? Carbon::now()->year;
         }
 
-        // ===== Helper closure: base query dengan join standar =====
+        // ===== Helper closure: base query dengan join standar (masih dipakai di luar blok berat) =====
         $baseOmsetQuery = function () {
             $q = DB::table('pengiriman');
             $q = $this->joinInvoiceData($q);
@@ -207,42 +219,42 @@ class OmsetController extends Controller
         $heavyBlockResult = \Illuminate\Support\Facades\Cache::remember($cacheKeyIndex, 120, function () use (
             $baseOmsetQuery, $sumOmset, $selectedYearTarget
         ) {
+        $nowYear  = Carbon::now()->year;
+        $nowMonth = Carbon::now()->month;
+
+        // OPTIMIZATION: ambil semua data omset tahun `selectedYearTarget` (dan tahun berjalan
+        // kalau berbeda) dalam 1-2 query saja, lalu semua sum bulanan/mingguan di bawah ini
+        // dihitung dari collection ini di memory — bukan query SQL berulang.
+        $yearlyRowsSelected = $this->fetchYearlyOmsetRows($selectedYearTarget);
+        $yearlyRowsNow      = ($selectedYearTarget == $nowYear)
+            ? $yearlyRowsSelected
+            : $this->fetchYearlyOmsetRows($nowYear);
+
         // ========== TOTAL OMSET (all time) ==========
+        // Tetap 1 query all-time terpisah karena mencakup seluruh tahun, bukan hanya tahun terpilih.
         $totalOmsetSistem = $sumOmset($baseOmsetQuery());
         $totalOmsetManual = OmsetManual::sum('omset_manual') ?? 0;
         $totalOmset       = $totalOmsetSistem + $totalOmsetManual;
 
         // ========== SUMMARY CARDS (SELECTED YEAR TARGET) ==========
-        $omsetTahunIniSistemSummary = $sumOmset(
-            $baseOmsetQuery()->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-        );
+        $omsetTahunIniSistemSummary = $this->sumOmsetFromRows($yearlyRowsSelected);
         $omsetTahunIniManualSummary = OmsetManual::where('tahun', $selectedYearTarget)->sum('omset_manual') ?? 0;
         $omsetTahunIniSummary       = $omsetTahunIniSistemSummary + $omsetTahunIniManualSummary;
 
-        $omsetBulanIniSistemSummary = $sumOmset(
-            $baseOmsetQuery()
-                ->whereYear('pengiriman.tanggal_kirim', Carbon::now()->year)
-                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
-        );
-        $omsetBulanIniManualSummary = OmsetManual::where('tahun', Carbon::now()->year)
-            ->where('bulan', Carbon::now()->month)
+        $omsetBulanIniSistemSummary = $this->sumOmsetFromRows($yearlyRowsNow, $nowMonth);
+        $omsetBulanIniManualSummary = OmsetManual::where('tahun', $nowYear)
+            ->where('bulan', $nowMonth)
             ->value('omset_manual') ?? 0;
         $omsetBulanIniSummary = $omsetBulanIniSistemSummary + $omsetBulanIniManualSummary;
 
         // ========== TARGET ANALYSIS (SELECTED YEAR) ==========
-        $omsetSistemTahunIni = $sumOmset(
-            $baseOmsetQuery()->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-        );
-        $omsetManualTahunIni = OmsetManual::where('tahun', $selectedYearTarget)->sum('omset_manual') ?? 0;
+        $omsetSistemTahunIni = $omsetTahunIniSistemSummary; // sama persis dgn summary di atas
+        $omsetManualTahunIni = $omsetTahunIniManualSummary;
         $omsetTahunIni       = $omsetSistemTahunIni + $omsetManualTahunIni;
 
-        $omsetSistemBulanIni = $sumOmset(
-            $baseOmsetQuery()
-                ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-                ->whereMonth('pengiriman.tanggal_kirim', Carbon::now()->month)
-        );
+        $omsetSistemBulanIni = $this->sumOmsetFromRows($yearlyRowsSelected, $nowMonth);
         $omsetManualBulanIni = OmsetManual::where('tahun', $selectedYearTarget)
-            ->where('bulan', Carbon::now()->month)
+            ->where('bulan', $nowMonth)
             ->value('omset_manual') ?? 0;
         $omsetBulanIni = $omsetSistemBulanIni + $omsetManualBulanIni;
 
@@ -280,8 +292,11 @@ class OmsetController extends Controller
             $endOfWeek = $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
         }
 
-        $omsetSistemMingguIni = $sumOmset(
-            $baseOmsetQuery()->whereBetween('pengiriman.tanggal_kirim', [$startOfWeek->startOfDay(), $endOfWeek->endOfDay()])
+        $omsetSistemMingguIni = $this->sumOmsetFromRows(
+            $yearlyRowsSelected,
+            null,
+            $startOfWeek->copy()->startOfDay(),
+            $endOfWeek->copy()->endOfDay()
         );
         $omsetManualMingguIni = $omsetManualBulanIni / 4;
         $omsetMingguIni       = $omsetSistemMingguIni + $omsetManualMingguIni;
@@ -290,13 +305,9 @@ class OmsetController extends Controller
         $bulanSekarang        = Carbon::now()->month;
         $sisaTargetSebelumnya = 0;
 
-        if ($selectedYearTarget == Carbon::now()->year) {
+        if ($selectedYearTarget == $nowYear) {
             for ($b = 1; $b < $bulanSekarang; $b++) {
-                $omsetSistemBulanLalu = $sumOmset(
-                    $baseOmsetQuery()
-                        ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-                        ->whereMonth('pengiriman.tanggal_kirim', $b)
-                );
+                $omsetSistemBulanLalu = $this->sumOmsetFromRows($yearlyRowsSelected, $b);
                 $omsetManualBulanLalu = OmsetManual::where('tahun', $selectedYearTarget)
                     ->where('bulan', $b)
                     ->value('omset_manual') ?? 0;
@@ -313,13 +324,16 @@ class OmsetController extends Controller
         // Target mingguan adjusted (carry forward mingguan)
         $sisaTargetMingguanSebelumnya = 0;
 
-        if ($selectedYearTarget == Carbon::now()->year) {
+        if ($selectedYearTarget == $nowYear) {
             for ($w = 1; $w < $currentWeekOfMonth; $w++) {
                 $weekStart = $w == 1 ? $startOfMonth->copy() : $startOfMonth->copy()->addDays(($w - 1) * 7);
                 $weekEnd   = $w == 4 ? $startOfMonth->copy()->endOfMonth() : $weekStart->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
 
-                $omsetSistemWeek = $sumOmset(
-                    $baseOmsetQuery()->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                $omsetSistemWeek = $this->sumOmsetFromRows(
+                    $yearlyRowsSelected,
+                    null,
+                    $weekStart->copy()->startOfDay(),
+                    $weekEnd->copy()->endOfDay()
                 );
                 $omsetManualWeek              = $omsetManualBulanIni / 4;
                 $omsetTotalWeek               = $omsetSistemWeek + $omsetManualWeek;
@@ -336,15 +350,15 @@ class OmsetController extends Controller
         $progressTahun  = $targetTahunan          > 0 ? ($omsetTahunIni  / $targetTahunan)          * 100 : 0;
 
         // ========== REKAP BULANAN ==========
+        // OPTIMIZATION: sebelumnya loop ini melakukan 1 query per bulan (12x) + 1 query per
+        // minggu (hingga 4x per bulan = 48x) = bisa 60 query SQL. Sekarang semua sum diambil
+        // dari $yearlyRowsSelected (1 query di atas), filter in-memory per bulan/minggu.
+        // Hasil angka akhir identik dengan versi sebelumnya.
         $rekapBulanan        = [];
         $sisaTargetAkumulasi = 0;
 
         for ($bulan = 1; $bulan <= 12; $bulan++) {
-            $omsetSistem = $sumOmset(
-                $baseOmsetQuery()
-                    ->whereYear('pengiriman.tanggal_kirim', $selectedYearTarget)
-                    ->whereMonth('pengiriman.tanggal_kirim', $bulan)
-            );
+            $omsetSistem = $this->sumOmsetFromRows($yearlyRowsSelected, $bulan);
 
             $omsetManualData = OmsetManual::where('tahun', $selectedYearTarget)->where('bulan', $bulan)->first();
             $omsetManual     = $omsetManualData ? (float)$omsetManualData->omset_manual : 0;
@@ -383,8 +397,11 @@ class OmsetController extends Controller
 
                 if ($weekStart > $endDate) break;
 
-                $omsetSistemMinggu = $sumOmset(
-                    $baseOmsetQuery()->whereBetween('pengiriman.tanggal_kirim', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                $omsetSistemMinggu = $this->sumOmsetFromRows(
+                    $yearlyRowsSelected,
+                    null,
+                    $weekStart->copy()->startOfDay(),
+                    $weekEnd->copy()->endOfDay()
                 );
                 $omsetMinggu           = $omsetSistemMinggu + $omsetManualPerMinggu;
                 $targetMingguIniFlat   = $targetMingguanBaseFlat;
@@ -669,8 +686,13 @@ class OmsetController extends Controller
                     return (object)['purchasing_id' => $items->first()->purchasing_id, 'total' => $items->sum('omset_pengiriman')];
                 })->values();
 
-                return $omsetProcurementData->map(function ($item) {
-                    $purchasing = \App\Models\User::find($item->purchasing_id);
+                // OPTIMIZATION (fix N+1): sebelumnya User::find() dipanggil satu-satu di dalam
+                // map(). Sekarang di-batch pakai whereIn sekali, baru di-lookup dari array.
+                $purchasingIds = $omsetProcurementData->pluck('purchasing_id')->filter()->unique()->values()->all();
+                $purchasingMap = \App\Models\User::whereIn('id', $purchasingIds)->get()->keyBy('id');
+
+                return $omsetProcurementData->map(function ($item) use ($purchasingMap) {
+                    $purchasing = $purchasingMap->get($item->purchasing_id);
                     return ['nama' => $purchasing ? $purchasing->nama : 'Unknown', 'total' => floatval($item->total ?? 0)];
                 })->filter(fn($item) => $item['total'] > 0)->values();
             });
@@ -728,8 +750,12 @@ class OmsetController extends Controller
             return (object)['purchasing_id' => $items->first()->purchasing_id, 'total' => $items->sum('omset_pengiriman')];
         })->values();
 
-        $omsetProcurement = $omsetProcurementDataGrouped->map(function ($item) {
-            $purchasing = \App\Models\User::find($item->purchasing_id);
+        // OPTIMIZATION (fix N+1): batch fetch users sekali, ganti User::find() per item.
+        $purchasingIdsNonAjax = $omsetProcurementDataGrouped->pluck('purchasing_id')->filter()->unique()->values()->all();
+        $purchasingMapNonAjax = \App\Models\User::whereIn('id', $purchasingIdsNonAjax)->get()->keyBy('id');
+
+        $omsetProcurement = $omsetProcurementDataGrouped->map(function ($item) use ($purchasingMapNonAjax) {
+            $purchasing = $purchasingMapNonAjax->get($item->purchasing_id);
             return ['purchasing_id' => $item->purchasing_id, 'nama' => $purchasing ? $purchasing->nama : 'Unknown', 'total' => floatval($item->total ?? 0)];
         })->filter(fn($item) => $item['total'] > 0)->values();
 

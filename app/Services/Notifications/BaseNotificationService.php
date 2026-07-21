@@ -4,6 +4,7 @@ namespace App\Services\Notifications;
 
 use App\Models\User;
 use Illuminate\Support\Collection;
+
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +12,24 @@ use Illuminate\Support\Str;
 
 class BaseNotificationService
 {
+    /**
+     * In-memory cache of active users per role, scoped to a single
+     * request/command run.
+     *
+     * FIX (N+1): sendToRole() used to run `User::where('role', $role)->get()`
+     * every single time it was called. Callers that loop over many rows
+     * and call sendToRole() per row (e.g. PiutangNotificationService looping
+     * over N overdue piutang, each notifying 2 roles) turned this into
+     * 2*N identical queries per run, even though the user list for a given
+     * role does not change during that run.
+     *
+     * We now fetch the user list once per role and reuse it for the rest
+     * of the request/command lifecycle.
+     *
+     * Structure: [role => Collection<User>]
+     */
+    private static array $roleUsersCache = [];
+
     public static function send(User $user, string $type, array $data): ?string
     {
         try {
@@ -68,10 +87,64 @@ class BaseNotificationService
         return count($rows);
     }
 
+    /**
+     * Send a notification to all active users with a given role.
+     *
+     * FIX (N+1): the user list per role is now fetched once and cached
+     * in-memory for the duration of the request/command run, instead of
+     * re-querying `User::where('role', $role)->get()` on every call.
+     * This matters a lot for callers that invoke sendToRole() inside a
+     * loop (e.g. one call per overdue piutang/invoice row).
+     *
+     * Note: this cache is static and process-lifetime only (safe for
+     * queue workers / CLI commands that run once and exit; for long-lived
+     * workers processing multiple unrelated jobs, consider resetting it
+     * between jobs if role membership can change mid-run).
+     */
     public static function sendToRole(string $role, string $type, array $data): int
     {
-        $users = User::where("role", $role)->where("status", "aktif")->get();
-        return static::sendToMany($users, $type, $data);
+        return static::sendToMany(static::getCachedUsersByRole($role), $type, $data);
+    }
+
+    /**
+     * Get all active users for a given role, cached in-memory for the
+     * duration of the request/command run.
+     *
+     * Exposed publicly (not just used internally by sendToRole()) so that
+     * callers who need custom filtering on top of "all users with role X"
+     * (e.g. excluding the user who triggered the change) can still avoid
+     * re-querying the same role membership from the DB every time they're
+     * called in a loop. Filter the returned Collection in memory instead
+     * of adding a WHERE clause, so the cached result stays reusable across
+     * different callers/filters within the same run.
+     *
+     * Example:
+     *   $marketing = BaseNotificationService::getCachedUsersByRole('marketing');
+     *   if ($excludeId) {
+     *       $marketing = $marketing->reject(fn ($u) => $u->id === $excludeId);
+     *   }
+     */
+    public static function getCachedUsersByRole(string $role): Collection
+    {
+        if (!isset(self::$roleUsersCache[$role])) {
+            self::$roleUsersCache[$role] = User::where("role", $role)
+                ->where("status", "aktif")
+                ->get();
+        }
+
+        return self::$roleUsersCache[$role];
+    }
+
+    /**
+     * Clear the in-memory role->users cache.
+     *
+     * Useful for long-running processes (queue workers, scheduler daemons)
+     * where role membership could change between jobs, or in tests that
+     * need a fresh lookup.
+     */
+    public static function clearRoleUsersCache(): void
+    {
+        self::$roleUsersCache = [];
     }
 
     public static function getUnreadCount(User $user): int

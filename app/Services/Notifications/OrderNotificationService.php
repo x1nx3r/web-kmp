@@ -410,14 +410,26 @@ class OrderNotificationService extends BaseNotificationService
             "is_automatic" => $changedBy === null,
         ];
 
-        // Get marketing users except the one who made the change
-        $changedById = $changedBy?->id;
-        $marketingUsers = \App\Models\User::where("role", "marketing")
-            ->where("status", "aktif")
-            ->when($changedById, function ($query) use ($changedById) {
-                $query->where("id", "!=", $changedById);
-            })
-            ->get();
+        // ---------------------------------------------------------------
+        // FIX (N+1): previously this ran `User::where('role','marketing')
+        // ->where('status','aktif')->get()` directly, bypassing
+        // BaseNotificationService's per-request role cache. Callers that
+        // invoke notifyPriorityEscalated()/notifyPriorityChanged() in a
+        // loop over many changed orders (e.g. EscalateOrderPriorities
+        // console command) re-ran this identical query once per order.
+        //
+        // We now reuse the same in-memory role cache as sendToRole(), via
+        // getCachedUsersByRole(), and just filter out the changing user in
+        // PHP instead of adding a WHERE clause. This keeps the cached
+        // result reusable across calls with different $changedBy values.
+        // ---------------------------------------------------------------
+        $marketingUsers = static::getCachedUsersByRole("marketing");
+
+        if ($changedBy) {
+            $marketingUsers = $marketingUsers->reject(
+                fn($user) => $user->id === $changedBy->id,
+            );
+        }
 
         return static::sendToMany(
             $marketingUsers,
@@ -486,13 +498,19 @@ class OrderNotificationService extends BaseNotificationService
             "po_end_date" => $order->po_end_date,
         ];
 
-        $changedById = $changedBy?->id;
-        $marketingUsers = \App\Models\User::where("role", "marketing")
-            ->where("status", "aktif")
-            ->when($changedById, function ($query) use ($changedById) {
-                $query->where("id", "!=", $changedById);
-            })
-            ->get();
+        // ---------------------------------------------------------------
+        // FIX (N+1): see identical note in notifyPriorityEscalated() above.
+        // EscalateOrderPriorities console command calls this once per
+        // changed order, so without caching this was N identical queries
+        // for `User::where('role','marketing')...` per run.
+        // ---------------------------------------------------------------
+        $marketingUsers = static::getCachedUsersByRole("marketing");
+
+        if ($changedBy) {
+            $marketingUsers = $marketingUsers->reject(
+                fn($user) => $user->id === $changedBy->id,
+            );
+        }
 
         return static::sendToMany(
             $marketingUsers,

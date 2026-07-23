@@ -45,6 +45,10 @@ class OmsetController extends Controller
      * Subquery invoice — di-join lewat pengiriman.invoice_penagihan_id, dengan FALLBACK ke
      * invoice_penagihan.pengiriman_id kalau kolom invoice_penagihan_id belum ter-backfill.
      *
+     * FIX (konsistensi dgn Margin): kolom `items` (JSON breakdown per-pengiriman) ditambahkan
+     * di sini supaya omsetExpr() bisa mengambil nilai `amount` per pengiriman LANGSUNG dari
+     * JSON, bukan merekonstruksi lewat rasio proporsional (lihat komentar di omsetExpr()).
+     *
      * FIX (konsistensi dgn Margin): kolom pengiriman_id & status ditambahkan supaya join
      * fallback (lihat joinInvoiceData()) bisa mencocokkan invoice lama & memvalidasi statusnya.
      */
@@ -55,16 +59,18 @@ class OmsetController extends Controller
                    pengiriman_id,
                    status,
                    subtotal,
-                   amount_after_refraksi
+                   amount_after_refraksi,
+                   items
             FROM invoice_penagihan
         ) as invoice_penagihan';
     }
 
     /**
-     * Subquery total gross sales (qty * harga_jual) per invoice_penagihan_id, dihitung dari
-     * SELURUH pengiriman yang tergabung pada invoice yang sama — bukan hanya pengiriman yang
-     * lolos filter query utama — supaya rasio proporsional tetap akurat walau ada filter
-     * tanggal/status tambahan di query utama.
+     * Subquery total gross sales (qty * harga_jual) per invoice_penagihan_id.
+     *
+     * FIX: sejak omsetExpr() tidak lagi memakai rasio (lihat di bawah), subquery ini murni
+     * dipertahankan sebagai FALLBACK TERAKHIR untuk kasus tidak ada invoice sama sekali.
+     * Tidak dipakai lagi untuk menghitung proporsi/distribusi omset.
      */
     private function invoiceGrossSubquery(): string
     {
@@ -80,7 +86,7 @@ class OmsetController extends Controller
         ) as invoice_gross';
     }
 
-   
+
     private function joinInvoiceData($query)
     {
         return $query
@@ -95,19 +101,67 @@ class OmsetController extends Controller
             ->leftJoin(DB::raw($this->invoiceGrossSubquery()), 'pengiriman.invoice_penagihan_id', '=', 'invoice_gross.invoice_penagihan_id');
     }
 
-   
+
+    /**
+     * FIX BUG RASIO (sama seperti MarginController::hitungHargaBeliJual() /
+     * findInvoiceItemForPengiriman()): rumus lama merekonstruksi omset per pengiriman lewat
+     * rasio proporsional:
+     *   (qty*harga_jual pengiriman ini) / (gross seluruh pengiriman dalam invoice yang sama)
+     *   x amount_after_refraksi/subtotal invoice
+     * Rumus ini HANYA benar kalau markup/adjustment manual per pengiriman dalam satu invoice
+     * gabungan seragam — kenyataannya tidak (mis. ada pengiriman dengan markup +Rp100/kg, ada
+     * yang tidak), sehingga hasilnya "diratakan" secara matematis dan menyimpang dari angka
+     * riil yang sebenarnya diinput saat invoice dibuat.
+     *
+     * FIX: kolom `invoice_penagihan.items` (JSON) sudah menyimpan breakdown final PER
+     * PENGIRIMAN (item_name/description berisi no_pengiriman, `amount` = nilai final yang
+     * ditagih, sudah termasuk markup/adjustment manual per shipment). Di sini kita cari elemen
+     * array yang match dengan `pengiriman.no_pengiriman` pakai JSON_TABLE, lalu ambil
+     * `amount`-nya LANGSUNG — tanpa rasio/proporsi apa pun. Ini otomatis benar untuk invoice
+     * tunggal maupun gabungan (merge), karena tiap pengiriman selalu match ke elemen array-nya
+     * sendiri. Dilakukan murni di SQL (dalam expression aggregate yang sama), sehingga TIDAK
+     * menambah query per baris (tidak ada N+1) — jumlah query tetap identik dengan sebelumnya.
+     *
+     * Urutan fallback (dari paling akurat ke paling kasar):
+     *   1. Tidak ada invoice valid sama sekali -> SUM(qty_kirim * harga_jual) dari Purchase
+     *      Order (order_details.harga_jual), seperti perilaku sebelumnya.
+     *   2. Ada invoice & ketemu item JSON yang match no_pengiriman -> pakai `amount` item itu
+     *      apa adanya (INI SUMBER UTAMA yang benar, menggantikan hasil rasio lama).
+     *   3. Ada invoice tapi item JSON tidak ketemu/tidak valid (mis. invoice lama sebelum
+     *      format `items` per-pengiriman dipakai) -> fallback ke amount_after_refraksi/subtotal
+     *      invoice secara UTUH (bukan dibagi rasio lagi seperti sebelumnya).
+     *
+     * CATATAN KOMPATIBILITAS: JSON_TABLE butuh MySQL 8.0.19+ / MariaDB 10.6+. Kalau versi DB
+     * project di bawah itu, expression ini akan gagal saat dieksekusi dan harus diganti dengan
+     * pendekatan hybrid (post-processing di PHP setelah ->get(), meniru
+     * MarginController::findInvoiceItemForPengiriman()). Mohon verifikasi versi DB sebelum
+     * deploy.
+     */
     private function omsetExpr(): \Illuminate\Database\Query\Expression
     {
-        return DB::raw('
+        return DB::raw("
             CASE
                 WHEN COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0)) IS NULL
                     THEN SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
-                WHEN MAX(invoice_gross.gross_invoice_total) > 0
-                    THEN (SUM(pengiriman_details.qty_kirim * order_details.harga_jual) / MAX(invoice_gross.gross_invoice_total))
-                         * COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
-                ELSE COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
+                ELSE COALESCE(
+                    (
+                        SELECT jt.amount
+                        FROM JSON_TABLE(
+                            MAX(invoice_penagihan.items),
+                            '$[*]' COLUMNS (
+                                item_name   VARCHAR(255) PATH '$.item_name',
+                                description TEXT         PATH '$.description',
+                                amount      DECIMAL(18,2) PATH '$.amount'
+                            )
+                        ) AS jt
+                        WHERE jt.item_name LIKE CONCAT('%', pengiriman.no_pengiriman, '%')
+                           OR jt.description LIKE CONCAT('%', pengiriman.no_pengiriman, '%')
+                        LIMIT 1
+                    ),
+                    COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
+                )
             END as omset_pengiriman
-        ');
+        ");
     }
 
     /**

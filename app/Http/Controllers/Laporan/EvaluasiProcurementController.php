@@ -126,17 +126,12 @@ class EvaluasiProcurementController extends Controller
             )
             ->groupBy('fd.forecast_id');
 
-        // Subquery pendukung: total gross sales per invoice_penagihan_id (utk merged invoice)
-        $invoiceGrossSub = DB::table('pengiriman as p2')
-            ->join('pengiriman_details as pd2', 'pd2.pengiriman_id', '=', 'p2.id')
-            ->join('order_details as od2', 'od2.id', '=', 'pd2.purchase_order_bahan_baku_id')
-            ->whereNotNull('p2.invoice_penagihan_id')
-            ->whereNull('p2.deleted_at')
-            ->select(
-                'p2.invoice_penagihan_id',
-                DB::raw('SUM(pd2.qty_kirim * od2.harga_jual) as gross_invoice_total')
-            )
-            ->groupBy('p2.invoice_penagihan_id');
+        // FIX BUG RASIO (sama seperti MarginController / OmsetController::omsetExpr()):
+        // subquery invoiceGrossSub (rata-rata proporsional per invoice gabungan) TIDAK LAGI
+        // dipakai untuk MENGHITUNG realisasi_amount — hanya dipertahankan sbg dokumentasi
+        // historis di komentar. Realisasi sekarang diambil LANGSUNG dari JSON `items` per
+        // pengiriman (lihat $pengirimanOmsetSub di bawah), bukan dari rasio
+        // (qty*harga_jual pengiriman ini) / (gross seluruh pengiriman dalam invoice yang sama).
 
         // FIX (konsistensi dgn Margin & Omset): join invoice_penagihan sebelumnya HANYA lewat
         // p.invoice_penagihan_id (equi-join biasa). Untuk pengiriman yang kolom ini belum
@@ -155,7 +150,6 @@ class EvaluasiProcurementController extends Controller
                            ->where('ip.status', '!=', 'digabung');
                      });
             })
-            ->leftJoinSub($invoiceGrossSub, 'ig', 'ig.invoice_penagihan_id', '=', 'p.invoice_penagihan_id')
             ->leftJoin('pengiriman_details as pd', 'p.id', '=', 'pd.pengiriman_id')
             ->leftJoin('order_details as od', 'pd.purchase_order_bahan_baku_id', '=', 'od.id')
             ->whereNull('p.deleted_at')
@@ -167,21 +161,56 @@ class EvaluasiProcurementController extends Controller
                 'p.catatan as p_catatan',
                 'p.total_harga_kirim as p_total_harga_kirim',
                 'p.total_qty_kirim as p_total_qty_kirim',
-                // FIX: logika CASE diselaraskan dgn Margin/Omset —
-                //  1. Tidak ada invoice sama sekali -> fallback harga PO.
-                //  2. Ada invoice, gross > 0 (hasil merge) -> distribusi proporsional.
-                //  3. Ada invoice, gross = 0 (invoice tunggal/non-merge, termasuk hasil
-                //     fallback pengiriman_id di atas) -> pakai amount invoice APA ADANYA.
-                DB::raw('
+                // FIX BUG RASIO (identik dgn MarginController::hitungHargaBeliJual() /
+                // findInvoiceItemForPengiriman() dan OmsetController::omsetExpr()): rumus
+                // lama merekonstruksi realisasi_amount lewat rasio proporsional
+                //   (qty*harga_jual pengiriman ini) / (gross seluruh pengiriman dalam invoice)
+                //   x amount_after_refraksi/subtotal invoice
+                // yang HANYA benar kalau markup/adjustment manual per pengiriman dalam satu
+                // invoice gabungan seragam — kenyataannya tidak, sehingga hasilnya "diratakan"
+                // dan menyimpang dari angka riil yang diinput saat invoice dibuat.
+                //
+                // FIX: `ip.items` (JSON) menyimpan breakdown final PER PENGIRIMAN
+                // (item_name/description berisi no_pengiriman, `amount` = nilai final yang
+                // ditagih, sudah termasuk markup manual per shipment). Di sini kita cari
+                // elemen array yang match dengan `p.no_pengiriman` lewat JSON_TABLE, lalu
+                // ambil `amount`-nya LANGSUNG — tanpa rasio/proporsi apa pun. Ini otomatis
+                // benar untuk invoice tunggal maupun gabungan (merge). Dilakukan murni di SQL
+                // dalam expression aggregate yang sama, sehingga TIDAK menambah query per
+                // baris pengiriman (tidak ada N+1) — jumlah query tetap identik.
+                //
+                // Urutan fallback:
+                //   1. Tidak ada invoice sama sekali -> SUM(qty_kirim * harga_jual) dari PO.
+                //   2. Ada invoice & ketemu item JSON yang match no_pengiriman -> pakai
+                //      `amount` item itu apa adanya.
+                //   3. Ada invoice tapi item JSON tidak ketemu/tidak valid (invoice lama
+                //      sebelum format `items` per-pengiriman dipakai) -> fallback ke
+                //      amount_after_refraksi/subtotal invoice secara UTUH.
+                //
+                // CATATAN KOMPATIBILITAS: JSON_TABLE butuh MySQL 8.0.19+ / MariaDB 10.6+.
+                DB::raw("
                     CASE
                         WHEN COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0)) IS NULL
                             THEN SUM(pd.qty_kirim * od.harga_jual)
-                        WHEN MAX(ig.gross_invoice_total) > 0
-                            THEN (SUM(pd.qty_kirim * od.harga_jual) / MAX(ig.gross_invoice_total))
-                                 * COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0))
-                        ELSE COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0))
+                        ELSE COALESCE(
+                            (
+                                SELECT jt.amount
+                                FROM JSON_TABLE(
+                                    MAX(ip.items),
+                                    '$[*]' COLUMNS (
+                                        item_name   VARCHAR(255) PATH '$.item_name',
+                                        description TEXT         PATH '$.description',
+                                        amount      DECIMAL(18,2) PATH '$.amount'
+                                    )
+                                ) AS jt
+                                WHERE jt.item_name LIKE CONCAT('%', p.no_pengiriman, '%')
+                                   OR jt.description LIKE CONCAT('%', p.no_pengiriman, '%')
+                                LIMIT 1
+                            ),
+                            COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0))
+                        )
                     END as realisasi_amount
-                '),
+                "),
                 DB::raw('COALESCE(MAX(ip.qty_after_refraksi), SUM(pd.qty_kirim)) as realisasi_qty')
             )
             ->groupBy(

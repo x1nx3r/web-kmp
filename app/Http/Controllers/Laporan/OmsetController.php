@@ -80,7 +80,37 @@ class OmsetController extends Controller
         ) as invoice_gross';
     }
 
-   
+    /**
+     * PRIORITAS 1 (samakan dgn MarginController::hitungHargaBeliJual()) — snapshot amount
+     * per-pengiriman dari kolom JSON invoice_penagihan.items[]. Ini nilai final yang sudah
+     * termasuk kemungkinan override manual dari fitur "Edit Harga Jual & Refraksi Per
+     * Pengiriman" (WithInvoiceCalculations::updateRefraksiPerItem()), dan merupakan nilai riil
+     * yang sudah ditagihkan ke customer. Kalau baris ini ketemu (item_amount IS NOT NULL),
+     * dipakai APA ADANYA — mengalahkan semua fallback proporsional/gross di bawahnya.
+     *
+     * Catatan performa: JSON_TABLE butuh MySQL >= 8.0.4 / MariaDB >= 10.6. Kalau versi server
+     * di bawah itu, ganti pendekatan ini dengan precompute peta no_pengiriman => amount di
+     * layer PHP (looping invoice_penagihan.items yang sudah di-decode), bukan raw SQL JSON_TABLE.
+     */
+    private function invoiceItemAmountSubquery(): string
+    {
+        return "(
+            SELECT ip.id as invoice_penagihan_id,
+                   TRIM(SUBSTRING(jt.item_name, LENGTH('Pengiriman ') + 1)) as no_pengiriman,
+                   jt.amount as item_amount
+            FROM invoice_penagihan ip
+            JOIN JSON_TABLE(
+                COALESCE(ip.items, '[]'),
+                '$[*]' COLUMNS (
+                    item_name VARCHAR(255) PATH '$.item_name',
+                    amount    DECIMAL(18,2) PATH '$.amount'
+                )
+            ) as jt
+            WHERE jt.item_name LIKE 'Pengiriman %'
+        ) as invoice_item_amount";
+    }
+
+
     private function joinInvoiceData($query)
     {
         return $query
@@ -92,14 +122,21 @@ class OmsetController extends Controller
                            ->where('invoice_penagihan.status', '!=', 'digabung');
                      });
             })
-            ->leftJoin(DB::raw($this->invoiceGrossSubquery()), 'pengiriman.invoice_penagihan_id', '=', 'invoice_gross.invoice_penagihan_id');
+            ->leftJoin(DB::raw($this->invoiceGrossSubquery()), 'pengiriman.invoice_penagihan_id', '=', 'invoice_gross.invoice_penagihan_id')
+            // PRIORITAS 1: snapshot invoice.items[] per pengiriman (lihat invoiceItemAmountSubquery()).
+            ->leftJoin(DB::raw($this->invoiceItemAmountSubquery()), function ($join) {
+                $join->on('pengiriman.invoice_penagihan_id', '=', 'invoice_item_amount.invoice_penagihan_id')
+                     ->on('pengiriman.no_pengiriman', '=', 'invoice_item_amount.no_pengiriman');
+            });
     }
 
-   
+
     private function omsetExpr(): \Illuminate\Database\Query\Expression
     {
         return DB::raw('
             CASE
+                WHEN MAX(invoice_item_amount.item_amount) IS NOT NULL
+                    THEN MAX(invoice_item_amount.item_amount)
                 WHEN COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0)) IS NULL
                     THEN SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                 WHEN MAX(invoice_gross.gross_invoice_total) > 0
@@ -686,8 +723,7 @@ class OmsetController extends Controller
                     return (object)['purchasing_id' => $items->first()->purchasing_id, 'total' => $items->sum('omset_pengiriman')];
                 })->values();
 
-                // OPTIMIZATION (fix N+1): sebelumnya User::find() dipanggil satu-satu di dalam
-                // map(). Sekarang di-batch pakai whereIn sekali, baru di-lookup dari array.
+                // Fix N+1: batch fetch users sekali pakai whereIn, baru di-lookup dari array.
                 $purchasingIds = $omsetProcurementData->pluck('purchasing_id')->filter()->unique()->values()->all();
                 $purchasingMap = \App\Models\User::whereIn('id', $purchasingIds)->get()->keyBy('id');
 
@@ -750,7 +786,7 @@ class OmsetController extends Controller
             return (object)['purchasing_id' => $items->first()->purchasing_id, 'total' => $items->sum('omset_pengiriman')];
         })->values();
 
-        // OPTIMIZATION (fix N+1): batch fetch users sekali, ganti User::find() per item.
+        // Fix N+1: batch fetch users sekali, ganti User::find() per item.
         $purchasingIdsNonAjax = $omsetProcurementDataGrouped->pluck('purchasing_id')->filter()->unique()->values()->all();
         $purchasingMapNonAjax = \App\Models\User::whereIn('id', $purchasingIdsNonAjax)->get()->keyBy('id');
 
@@ -1247,6 +1283,10 @@ class OmsetController extends Controller
         }
     }
 
+    /**
+     * Batch version — hitung omset SEMUA user_id dalam SATU query group-by, lalu di-map di
+     * memory. Menghindari N+1 dari calculateProcurementOmset() yang dipanggil per user.
+     */
     private function calculateProcurementOmsetBatch(array $userIds, $tahun, $bulan = null, $minggu = null): array
     {
         if (empty($userIds)) {
@@ -1291,6 +1331,11 @@ class OmsetController extends Controller
         return $result;
     }
 
+    /**
+     * @deprecated Dipertahankan untuk backward-compat kalau ada pemanggil lain di luar file
+     * ini, tapi jangan dipanggil di dalam loop per-user — pakai calculateProcurementOmsetBatch()
+     * supaya tidak N+1.
+     */
     private function calculateProcurementOmset($userId, $tahun, $bulan = null, $minggu = null)
     {
         $query = DB::table('pengiriman');

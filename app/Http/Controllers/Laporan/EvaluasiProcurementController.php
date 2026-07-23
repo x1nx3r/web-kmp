@@ -138,6 +138,31 @@ class EvaluasiProcurementController extends Controller
             )
             ->groupBy('p2.invoice_penagihan_id');
 
+        // PRIORITAS 1 (samakan dgn MarginController::hitungHargaBeliJual() & OmsetController) —
+        // snapshot amount per-pengiriman dari kolom JSON invoice_penagihan.items[]. Ini nilai
+        // final yang sudah termasuk kemungkinan override manual dari fitur "Edit Harga Jual &
+        // Refraksi Per Pengiriman" (WithInvoiceCalculations::updateRefraksiPerItem()), dan
+        // merupakan nilai riil yang sudah ditagihkan ke customer.
+        //
+        // Catatan performa: JSON_TABLE butuh MySQL >= 8.0.4 / MariaDB >= 10.6. Kalau versi
+        // server di bawah itu, ganti pendekatan ini dengan precompute peta
+        // no_pengiriman => amount di layer PHP (looping invoice_penagihan.items yang sudah
+        // di-decode), bukan raw SQL JSON_TABLE.
+        $invoiceItemAmountSub = "(
+            SELECT ip.id as invoice_penagihan_id,
+                   TRIM(SUBSTRING(jt.item_name, LENGTH('Pengiriman ') + 1)) as no_pengiriman,
+                   jt.amount as item_amount
+            FROM invoice_penagihan ip
+            JOIN JSON_TABLE(
+                COALESCE(ip.items, '[]'),
+                '$[*]' COLUMNS (
+                    item_name VARCHAR(255) PATH '$.item_name',
+                    amount    DECIMAL(18,2) PATH '$.amount'
+                )
+            ) as jt
+            WHERE jt.item_name LIKE 'Pengiriman %'
+        )";
+
         // FIX (konsistensi dgn Margin & Omset): join invoice_penagihan sebelumnya HANYA lewat
         // p.invoice_penagihan_id (equi-join biasa). Untuk pengiriman yang kolom ini belum
         // ter-backfill (NULL), join gagal total, sehingga realisasi_amount selalu jatuh ke
@@ -156,6 +181,11 @@ class EvaluasiProcurementController extends Controller
                      });
             })
             ->leftJoinSub($invoiceGrossSub, 'ig', 'ig.invoice_penagihan_id', '=', 'p.invoice_penagihan_id')
+            // PRIORITAS 1: snapshot invoice.items[] per pengiriman (lihat $invoiceItemAmountSub).
+            ->leftJoinSub($invoiceItemAmountSub, 'iia', function ($join) {
+                $join->on('iia.invoice_penagihan_id', '=', 'p.invoice_penagihan_id')
+                     ->on('iia.no_pengiriman', '=', 'p.no_pengiriman');
+            })
             ->leftJoin('pengiriman_details as pd', 'p.id', '=', 'pd.pengiriman_id')
             ->leftJoin('order_details as od', 'pd.purchase_order_bahan_baku_id', '=', 'od.id')
             ->whereNull('p.deleted_at')
@@ -168,12 +198,16 @@ class EvaluasiProcurementController extends Controller
                 'p.total_harga_kirim as p_total_harga_kirim',
                 'p.total_qty_kirim as p_total_qty_kirim',
                 // FIX: logika CASE diselaraskan dgn Margin/Omset —
+                //  0. Ada snapshot invoice.items[] (iia.item_amount) -> pakai apa adanya
+                //     (prioritas tertinggi, termasuk override manual per pengiriman).
                 //  1. Tidak ada invoice sama sekali -> fallback harga PO.
                 //  2. Ada invoice, gross > 0 (hasil merge) -> distribusi proporsional.
                 //  3. Ada invoice, gross = 0 (invoice tunggal/non-merge, termasuk hasil
                 //     fallback pengiriman_id di atas) -> pakai amount invoice APA ADANYA.
                 DB::raw('
                     CASE
+                        WHEN MAX(iia.item_amount) IS NOT NULL
+                            THEN MAX(iia.item_amount)
                         WHEN COALESCE(NULLIF(MAX(ip.amount_after_refraksi), 0), NULLIF(MAX(ip.subtotal), 0)) IS NULL
                             THEN SUM(pd.qty_kirim * od.harga_jual)
                         WHEN MAX(ig.gross_invoice_total) > 0

@@ -56,47 +56,50 @@ class MarginController extends Controller
         $hasValidInvoice   = $invoiceRow && $invoiceRow->status !== 'digabung';
         $invoiceIdResolved = $invoiceRow->id ?? null;
 
+        // ===== HARGA JUAL PER KG =====
+        // SELALU dari order_details.harga_jual (harga acuan/PO), apa adanya, tidak peduli ada
+        // invoice atau override manual. Sum SEMUA pengirimanDetails (bukan cuma detail pertama)
+        // supaya rata-rata tertimbang benar kalau satu pengiriman punya multi bahan baku.
+        $qtyJual = $toFloat($p->pengirimanDetails->sum('qty_kirim'));
+        $grossOrderDetail = $toFloat($p->pengirimanDetails->sum(
+            fn($d) => $toFloat($d->qty_kirim) * $toFloat(optional($d->orderDetail)->harga_jual)
+        ));
+        if ($qtyJual > 0 && $grossOrderDetail > 0) {
+            $hargaJualPerKg = $grossOrderDetail / $qtyJual;
+        }
+
+        // ===== TOTAL JUAL =====
+        // Mengikuti INVOICE (snapshot invoice.items[].amount per pengiriman, termasuk override
+        // manual dari WithInvoiceCalculations::updateRefraksiPerItem()), karena ini nilai riil
+        // yang ditagihkan ke customer. Kalau tidak ada invoice valid, fallback ke hitungan
+        // order_details (qty x harga_jual) sebagai estimasi berbasis PO.
         if ($hasValidInvoice) {
-            $amountAfter = $toFloat($invoiceRow->amount_after_refraksi);
-            $amountJual  = $amountAfter > 0 ? $amountAfter : $toFloat($invoiceRow->subtotal);
+            $itemAmount = $invoiceData['itemAmounts'][$invoiceIdResolved][$p->no_pengiriman] ?? null;
 
-            $grossInvoiceTotal = $toFloat($invoiceData['grossTotals'][$invoiceIdResolved] ?? 0);
-            $grossPengiriman   = $toFloat($p->pengirimanDetails->sum(
-                fn($d) => $toFloat($d->qty_kirim) * $toFloat(optional($d->orderDetail)->harga_jual)
-            ));
-
-            if ($grossInvoiceTotal > 0 && $amountJual > 0) {
-                // Distribusi proporsional (menangani merged invoice sekaligus invoice tunggal,
-                // karena rasio = 1 saat pengiriman ini satu-satunya pemilik invoice tersebut).
-                $ratio              = $grossPengiriman / $grossInvoiceTotal;
-                $totalHargaJualItem = $ratio * $amountJual;
+            if ($itemAmount !== null) {
+                $totalHargaJualItem = $itemAmount;
+                $sumberHargaJual    = 'Invoice Penagihan';
             } else {
-                // Invoice tunggal (tidak ketemu di grossTotals karena bukan hasil query batch
-                // by invoice_penagihan_id, mis. kasus fallback relasi di atas) -> pakai penuh.
-                $totalHargaJualItem = $amountJual;
+                // Fallback safety net: data lama sebelum fitur item-per-pengiriman ada, atau
+                // item_name tidak match no_pengiriman -> distribusi proporsional dari gross
+                // order_details seperti sebelumnya.
+                $amountAfter = $toFloat($invoiceRow->amount_after_refraksi);
+                $amountJual  = $amountAfter > 0 ? $amountAfter : $toFloat($invoiceRow->subtotal);
+
+                $grossInvoiceTotal = $toFloat($invoiceData['grossTotals'][$invoiceIdResolved] ?? 0);
+
+                if ($grossInvoiceTotal > 0 && $amountJual > 0) {
+                    $ratio              = $grossOrderDetail / $grossInvoiceTotal;
+                    $totalHargaJualItem = $ratio * $amountJual;
+                } else {
+                    $totalHargaJualItem = $amountJual;
+                }
+
+                $sumberHargaJual = 'Invoice Penagihan (fallback proporsional)';
             }
-
-            // Qty sisi jual selalu memakai qty fisik milik pengiriman ini sendiri (basis yang
-            // sama dengan qty sisi beli), supaya perbandingan harga/kg jual vs beli konsisten.
-            $qtyJual = $toFloat($p->pengirimanDetails->sum('qty_kirim'));
-
-            if ($qtyJual > 0 && $totalHargaJualItem > 0) {
-                $hargaJualPerKg = $totalHargaJualItem / $qtyJual;
-            }
-
-            $sumberHargaJual = 'Invoice Penagihan';
-
         } else {
-            // FIX: sum SEMUA pengirimanDetails, bukan cuma $detail (detail pertama saja).
-            $totalHargaJualItem = $toFloat($p->pengirimanDetails->sum(
-                fn($d) => $toFloat($d->qty_kirim) * $toFloat(optional($d->orderDetail)->harga_jual)
-            ));
-            $qtyJualPO = $toFloat($p->pengirimanDetails->sum('qty_kirim'));
-
-            if ($qtyJualPO > 0 && $totalHargaJualItem > 0) {
-                $hargaJualPerKg  = $totalHargaJualItem / $qtyJualPO;
-                $sumberHargaJual = 'Purchase Order';
-            }
+            $totalHargaJualItem = $grossOrderDetail;
+            $sumberHargaJual    = 'Purchase Order';
         }
 
         // ===== HARGA BELI ===== (tidak berubah)
@@ -183,11 +186,12 @@ class MarginController extends Controller
     }
 
     /**
-     * Ambil data invoice_penagihan (row lengkap) dan total gross sales per invoice sekaligus
-     * dalam 1-2 query batch (menghindari N+1), untuk seluruh pengiriman yang butuh dihitung.
-     * Dipakai oleh hitungHargaBeliJual() untuk resolusi & distribusi proporsional merged invoice.
+     * Ambil data invoice_penagihan (row lengkap), total gross sales per invoice (fallback), dan
+     * peta amount per-pengiriman dari invoice.items[] (source of truth utama), sekaligus dalam
+     * 1-2 query batch (menghindari N+1), untuk seluruh pengiriman yang butuh dihitung.
+     * Dipakai oleh hitungHargaBeliJual() untuk resolusi harga jual per pengiriman.
      *
-     * @return array{invoices: \Illuminate\Support\Collection, grossTotals: \Illuminate\Support\Collection}
+     * @return array{invoices: \Illuminate\Support\Collection, grossTotals: \Illuminate\Support\Collection, itemAmounts: \Illuminate\Support\Collection}
      */
     private function loadInvoiceDataForPengirimanList($pengirimanList): array
     {
@@ -199,7 +203,7 @@ class MarginController extends Controller
             ->all();
 
         if (empty($invoiceIds)) {
-            return ['invoices' => collect(), 'grossTotals' => collect()];
+            return ['invoices' => collect(), 'grossTotals' => collect(), 'itemAmounts' => collect()];
         }
 
         $invoices = DB::table('invoice_penagihan')
@@ -207,6 +211,27 @@ class MarginController extends Controller
             ->get()
             ->keyBy('id');
 
+        // Peta: invoice_id => [no_pengiriman => amount] dari snapshot invoice.items[].
+        // item_name disimpan dengan format "Pengiriman {no_pengiriman}" saat invoice dibuat
+        // (lihat ApprovalPenagihan::prepareInvoiceItems()) dan amount-nya bisa saja sudah
+        // dioverride manual lewat WithInvoiceCalculations::updateRefraksiPerItem().
+        $itemAmounts = collect();
+        foreach ($invoices as $invId => $inv) {
+            $items = json_decode($inv->items ?? '[]', true) ?: [];
+            $map   = [];
+            foreach ($items as $item) {
+                $itemName = $item['item_name'] ?? '';
+                if (str_starts_with($itemName, 'Pengiriman ')) {
+                    $noPengiriman = trim(substr($itemName, strlen('Pengiriman ')));
+                    $map[$noPengiriman] = floatval($item['amount'] ?? 0);
+                }
+            }
+            if (!empty($map)) {
+                $itemAmounts[$invId] = $map;
+            }
+        }
+
+        // Fallback lama, dipakai hanya kalau item tidak ketemu di itemAmounts (data lama / kasus tak terduga).
         $grossTotals = DB::table('pengiriman as p2')
             ->join('pengiriman_details as pd2', 'pd2.pengiriman_id', '=', 'p2.id')
             ->join('order_details as od2', 'od2.id', '=', 'pd2.purchase_order_bahan_baku_id')
@@ -217,7 +242,7 @@ class MarginController extends Controller
             ->get()
             ->pluck('gross_total', 'invoice_penagihan_id');
 
-        return ['invoices' => $invoices, 'grossTotals' => $grossTotals];
+        return ['invoices' => $invoices, 'grossTotals' => $grossTotals, 'itemAmounts' => $itemAmounts];
     }
 
     private function prosesMarginData($pengirimanList, bool $withMeta = false): array

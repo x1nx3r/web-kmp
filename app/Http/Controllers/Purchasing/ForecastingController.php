@@ -246,7 +246,7 @@ class ForecastingController extends Controller
         }
     }
 
-    public function kirimForecast($id)
+    public function kirimForecast(Request $request, $id)
     {
         $forecast = Forecast::select('id', 'purchasing_id')->find($id);
         if (!$forecast) return response()->json(['success' => false, 'message' => 'Forecast tidak ditemukan'], 404);
@@ -283,17 +283,24 @@ class ForecastingController extends Controller
                 'updated_at' => $timestamp
             ]);
             
-            $pengirimanDetails = $forecast->forecastDetails->map(fn($detail) => [
-                'pengiriman_id' => $pengirimanId,
-                'purchase_order_bahan_baku_id' => $detail->purchase_order_bahan_baku_id,
-                'bahan_baku_supplier_id' => $detail->bahan_baku_supplier_id,
-                'qty_kirim' => 0,
-                'harga_satuan' => 0,
-                'total_harga' => 0,
-                'catatan_detail' => $detail->catatan_detail,
-                'created_at' => $timestamp->format('Y-m-d H:i:s'),
-                'updated_at' => $timestamp->format('Y-m-d H:i:s')
-            ])->toArray();
+            $platNomorMap = $request->input('plat_nomor', []);
+            $pengirimanDetails = $forecast->forecastDetails->map(function ($detail) use ($pengirimanId, $timestamp, $platNomorMap) {
+                $platNomor = $platNomorMap[$detail->id] ?? null;
+                $platNomor = is_string($platNomor) ? trim($platNomor) : null;
+
+                return [
+                    'pengiriman_id' => $pengirimanId,
+                    'purchase_order_bahan_baku_id' => $detail->purchase_order_bahan_baku_id,
+                    'bahan_baku_supplier_id' => $detail->bahan_baku_supplier_id,
+                    'qty_kirim' => 0,
+                    'harga_satuan' => 0,
+                    'total_harga' => 0,
+                    'catatan_detail' => $detail->catatan_detail,
+                    'plat_nomor_truk' => $platNomor !== '' ? $platNomor : null,
+                    'created_at' => $timestamp->format('Y-m-d H:i:s'),
+                    'updated_at' => $timestamp->format('Y-m-d H:i:s')
+                ];
+            })->toArray();
 
             if (!empty($pengirimanDetails)) {
                 DB::table('pengiriman_details')->insert($pengirimanDetails);

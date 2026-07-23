@@ -20,6 +20,7 @@ class PengirimanDetail extends Model
         'harga_satuan',
         'total_harga',
         'catatan_detail',
+        'plat_nomor_truk',
     ];
 
     protected $casts = [

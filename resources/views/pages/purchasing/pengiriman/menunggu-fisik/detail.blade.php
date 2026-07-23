@@ -194,6 +194,7 @@
                         <tr class="bg-gray-50">
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bahan Baku</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Dikirim</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plat Nomor</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Satuan</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga</th>
                         </tr>
@@ -220,6 +221,12 @@
                                             -
                                         @endif
                                     </div>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <span class="inline-flex items-center">
+                                        <i class="fas fa-truck-moving text-gray-400 mr-1.5 text-xs"></i>
+                                        {{ $detail->plat_nomor_truk ?? '-' }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ number_format($detail->qty_kirim ?? 0, 3, ',', '.') }} kg

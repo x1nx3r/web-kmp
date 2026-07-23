@@ -499,6 +499,7 @@ class PengirimanController extends Controller
             "details.*.qty_kirim" => "required|numeric|min:0",
             "details.*.harga_satuan" => "nullable|numeric|min:0",
             "details.*.total_harga" => "nullable|numeric|min:0",
+            "details.*.plat_nomor_truk" => "nullable|string|max:50",
         ];
     }
 
@@ -593,6 +594,28 @@ class PengirimanController extends Controller
                     "qty_kirim" => $detail["qty_kirim"],
                     "harga_satuan" => $hargaSatuan,
                     "total_harga" => $totalHarga,
+                ]);
+            }
+            $platNomor = isset($detail['plat_nomor_truk']) ? trim((string) $detail['plat_nomor_truk']) : null;
+            $platNomor = ($platNomor !== '' ) ? $platNomor : null;
+
+            if ($existingDetail) {
+                $existingDetail->update([
+                    "purchase_order_bahan_baku_id" => $poDetailId,
+                    "qty_kirim" => $detail["qty_kirim"],
+                    "harga_satuan" => $hargaSatuan,
+                    "total_harga" => $totalHarga,
+                    "plat_nomor_truk" => $platNomor,
+                ]);
+            } else {
+                PengirimanDetail::create([
+                    "pengiriman_id" => $pengiriman->id,
+                    "purchase_order_bahan_baku_id" => $poDetailId,
+                    "bahan_baku_supplier_id" => $detail["bahan_baku_supplier_id"],
+                    "qty_kirim" => $detail["qty_kirim"],
+                    "harga_satuan" => $hargaSatuan,
+                    "total_harga" => $totalHarga,
+                    "plat_nomor_truk" => $platNomor,
                 ]);
             }
         }
@@ -762,6 +785,7 @@ class PengirimanController extends Controller
                 "details" => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->map(fn($detail) => [
                     "bahan_baku" => $detail->bahanBakuSupplier->nama ?? "-",
                     "supplier" => $detail->bahanBakuSupplier->supplier->nama ?? "-",
+                    "plat_nomor_truk" => $detail->plat_nomor_truk ?? "-",
                     "qty_kirim" => $detail->qty_kirim,
                     "harga_satuan" => $detail->harga_satuan,
                     "total_harga" => $detail->total_harga,
@@ -867,6 +891,7 @@ class PengirimanController extends Controller
             "details" => $pengiriman->pengirimanDetails ? $pengiriman->pengirimanDetails->map(fn($detail) => [
                 "bahan_baku" => $detail->bahanBakuSupplier->nama ?? "-",
                 "supplier" => $detail->bahanBakuSupplier->supplier->nama ?? "-",
+                "plat_nomor_truk" => $detail->plat_nomor_truk ?? "-",
                 "qty_kirim" => $detail->qty_kirim,
                 "harga_satuan" => $detail->harga_satuan,
                 "total_harga" => $detail->total_harga,

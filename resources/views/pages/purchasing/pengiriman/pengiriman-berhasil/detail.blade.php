@@ -237,6 +237,7 @@ function populateDetailModalBerhasil(pengiriman) {
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bahan Baku</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plat Nomor</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Kirim</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Satuan</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Harga</th>
@@ -247,6 +248,9 @@ function populateDetailModalBerhasil(pengiriman) {
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${detail.bahan_baku}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${detail.supplier}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <i class="fas fa-truck-moving text-gray-400 mr-1.5 text-xs"></i>${detail.plat_nomor_truk || '-'}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${parseFloat(detail.qty_kirim).toLocaleString('id-ID', {minimumFractionDigits: 3})} kg</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp ${parseFloat(detail.harga_satuan).toLocaleString('id-ID')}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Rp ${parseFloat(detail.total_harga).toLocaleString('id-ID')}</td>

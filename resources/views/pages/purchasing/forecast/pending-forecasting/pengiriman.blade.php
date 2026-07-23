@@ -1,7 +1,7 @@
 {{-- Modal Pengiriman --}}
 <div id="pengirimanModal" class="fixed inset-0 overflow-y-auto h-full w-full z-[10000] hidden">
     <div class="relative min-h-screen flex items-center justify-center py-6 px-4">
-        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg border border-gray-200">
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl border border-gray-200">
             {{-- Modal Header --}}
             <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-green-500 rounded-t-xl">
                 <div class="flex items-center space-x-3">
@@ -20,8 +20,27 @@
             </div>
 
             {{-- Modal Content --}}
-            <div class="p-4 relative">
-                {{-- Loading Overlay --}}
+            <div class="p-4 relative max-h-[80vh] overflow-y-auto">
+                {{-- Loading State --}}
+                <div id="pengirimanModalLoading" class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-green-500 mb-3"></div>
+                    <p class="text-sm text-gray-500">Memuat detail forecast...</p>
+                </div>
+
+                {{-- Error State --}}
+                <div id="pengirimanModalError" class="hidden text-center py-8">
+                    <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-base font-medium text-gray-900 mb-1">Gagal Memuat Data</h3>
+                    <p class="text-sm text-gray-500 mb-4">Terjadi kesalahan saat memuat detail forecast.</p>
+                    <button type="button" onclick="retryLoadPengirimanDetail()" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm">
+                        <i class="fas fa-redo mr-2"></i>Coba Lagi
+                    </button>
+                </div>
+
+                {{-- Loading Overlay (saat submit) --}}
                 <div id="pengirimanFormLoading" class="absolute inset-0 bg-white bg-opacity-75 items-center justify-center z-10 hidden rounded-lg">
                     <div class="text-center">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-2"></div>
@@ -29,7 +48,8 @@
                     </div>
                 </div>
                 
-                <form id="pengirimanForm" class="space-y-4">
+                {{-- Main Content --}}
+                <form id="pengirimanForm" class="space-y-4 hidden">
                     @csrf
                     <input type="hidden" id="pengirimanForecastId" name="forecast_id">
 
@@ -76,6 +96,22 @@
                         </div>
                     </div>
 
+                    {{-- Bahan Baku + Plat Nomor Truk Section --}}
+                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="p-3 bg-gray-50 border-b border-gray-200">
+                            <h5 class="flex items-center text-xs font-semibold text-gray-800">
+                                <i class="fas fa-truck-loading text-gray-600 mr-2"></i>
+                                Detail Bahan Baku & Plat Nomor Truk
+                            </h5>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Isi plat nomor truk untuk masing-masing bahan baku (opsional).
+                            </p>
+                        </div>
+                        <div id="pengirimanDetailsContainer" class="overflow-x-auto">
+                            {{-- Diisi oleh JavaScript --}}
+                        </div>
+                    </div>
+
                     {{-- Note Section --}}
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <div class="flex items-start space-x-2">
@@ -86,7 +122,7 @@
                                 <h5 class="text-xs font-semibold text-blue-800 mb-1">Catatan Penting</h5>
                                 <ul class="text-xs text-blue-700 space-y-1">
                                     <li>• Data pengiriman akan dibuat dengan status <strong>pending</strong></li>
-                                    <li>• Detail pengiriman akan kosong untuk diisi nanti</li>
+                                    <li>• Qty dan harga pengiriman akan kosong untuk diisi nanti</li>
                                     <li>• Forecast akan berubah status menjadi <strong>sukses</strong></li>
                                 </ul>
                             </div>
@@ -137,87 +173,150 @@ if (typeof currentPengirimanForecastData === 'undefined') {
     var currentPengirimanForecastData = null;
 }
 
-// Open pengiriman modal
+// Open pengiriman modal — always fetches fresh data (mirip forecastDetailModal)
 function openPengirimanModal(forecastData) {
     const modal = document.getElementById('pengirimanModal');
-    
-    // Ensure modal is attached to body to avoid container issues
+
     if (modal.parentElement !== document.body) {
         document.body.appendChild(modal);
     }
-    
-    // Show modal
+
     modal.classList.remove('hidden');
-    
-    // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
-    
-    // Store forecast data
+
     currentPengirimanForecastData = forecastData;
-    
-    // Populate modal with forecast data
-    populatePengirimanModal(forecastData);
+
+    // Reset UI state
+    document.getElementById('pengirimanModalLoading').classList.remove('hidden');
+    document.getElementById('pengirimanModalError').classList.add('hidden');
+    document.getElementById('pengirimanForm').classList.add('hidden');
+
+    fetchPengirimanDetail(forecastData.id);
+}
+
+// Fetch fresh forecast detail (reuse endpoint yang sudah ada)
+function fetchPengirimanDetail(forecastId) {
+    const loading = document.getElementById('pengirimanModalLoading');
+    const errorEl = document.getElementById('pengirimanModalError');
+    const form = document.getElementById('pengirimanForm');
+
+    loading.classList.remove('hidden');
+    errorEl.classList.add('hidden');
+    form.classList.add('hidden');
+
+    fetch(`/procurement/forecasting/${forecastId}/detail`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.forecast) {
+            currentPengirimanForecastData = data.forecast;
+            populatePengirimanModal(data.forecast);
+            loading.classList.add('hidden');
+            form.classList.remove('hidden');
+        } else {
+            loading.classList.add('hidden');
+            errorEl.classList.remove('hidden');
+        }
+    })
+    .catch(() => {
+        loading.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+    });
+}
+
+function retryLoadPengirimanDetail() {
+    if (currentPengirimanForecastData && currentPengirimanForecastData.id) {
+        fetchPengirimanDetail(currentPengirimanForecastData.id);
+    }
 }
 
 // Populate pengiriman modal with forecast data
 function populatePengirimanModal(data) {
     try {
-        // Set hidden forecast ID
         document.getElementById('pengirimanForecastId').value = data.id || '';
-        
-        // Update modal subtitle
         document.getElementById('pengirimanModalSubtitle').textContent = `Forecast: ${data.no_forecast || 'N/A'}`;
-        
-        // Populate forecast info summary with proper data handling
         document.getElementById('pengirimanNoForecast').textContent = data.no_forecast || 'N/A';
-        
-        // Handle klien data - the data comes as formatted string from controller
         document.getElementById('pengirimanKlien').textContent = data.klien || 'N/A';
-        
-        // Handle total qty - the data comes as formatted string from controller
         document.getElementById('pengirimanTotalQty').textContent = data.total_qty || '0';
-        
-        // Handle total harga - the data comes as formatted string from controller
         document.getElementById('pengirimanTotalHarga').textContent = data.total_harga || 'Rp 0';
-        
+
+        renderPengirimanDetailsTable(data.details || []);
     } catch (error) {
         showPengirimanToast('Gagal memuat data forecast', 'error');
     }
+}
+
+// Render tabel bahan baku dengan input plat nomor truk per baris
+function renderPengirimanDetailsTable(details) {
+    const container = document.getElementById('pengirimanDetailsContainer');
+
+    if (!details || details.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-500 p-4">Tidak ada detail bahan baku.</p>';
+        return;
+    }
+
+    let rows = details.map((detail, index) => `
+        <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+            <td class="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">${index + 1}</td>
+            <td class="px-3 py-2 text-xs font-medium text-gray-900">${detail.bahan_baku || 'N/A'}</td>
+            <td class="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">${detail.qty || '0'}</td>
+            <td class="px-3 py-2">
+                <input type="text"
+                       name="plat_nomor[${detail.id}]"
+                       placeholder="Opsional"
+                       class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-green-200 focus:border-green-500">
+            </td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <table class="min-w-full">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">No.</th>
+                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Bahan Baku</th>
+                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Qty</th>
+                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Plat Nomor Truk</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                ${rows}
+            </tbody>
+        </table>
+    `;
 }
 
 // Close pengiriman modal
 function closePengirimanModal() {
     const modal = document.getElementById('pengirimanModal');
     modal.classList.add('hidden');
-    
-    // Restore body scroll
     document.body.style.overflow = '';
-    
-    // Reset form
     document.getElementById('pengirimanForm').reset();
+    document.getElementById('pengirimanDetailsContainer').innerHTML = '';
     currentPengirimanForecastData = null;
 }
 
 // Handle form submission
 document.addEventListener('DOMContentLoaded', function() {
     const pengirimanForm = document.getElementById('pengirimanForm');
-    
+
     if (pengirimanForm) {
         pengirimanForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
-            // Direct submit without additional validation since no input fields required
             submitPengiriman();
         });
     }
-    
-    // Move modal to body when DOM is ready
+
     const pengirimanModal = document.getElementById('pengirimanModal');
     if (pengirimanModal && pengirimanModal.parentElement !== document.body) {
         document.body.appendChild(pengirimanModal);
     }
-    
-    // Close modal when clicking outside
+
     if (pengirimanModal) {
         pengirimanModal.addEventListener('click', function(e) {
             if (e.target === pengirimanModal) {
@@ -231,52 +330,45 @@ document.addEventListener('DOMContentLoaded', function() {
 function submitPengiriman() {
     const submitBtn = document.getElementById('submitPengirimanBtn');
     const loadingOverlay = document.getElementById('pengirimanFormLoading');
-    
-    // Check if required elements exist
+
     if (!submitBtn) {
         showPengirimanToast('Terjadi kesalahan pada form. Silakan refresh halaman.', 'error');
         return;
     }
-    
+
     const originalText = submitBtn.innerHTML;
-    
-    // Show loading state immediately
+
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
     submitBtn.disabled = true;
-    
-    // Show loading overlay if it exists
+
     if (loadingOverlay) {
         loadingOverlay.classList.remove('hidden');
         loadingOverlay.classList.add('flex');
     }
-    
-    // Validate forecast data
+
     if (!currentPengirimanForecastData?.id) {
         resetPengirimanFormState(submitBtn, loadingOverlay, originalText);
         showPengirimanToast('Data forecast tidak valid. Silakan refresh halaman.', 'error');
         return;
     }
-    
-    // Get CSRF token
+
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (!csrfToken) {
         resetPengirimanFormState(submitBtn, loadingOverlay, originalText);
         showPengirimanToast('CSRF token tidak ditemukan. Silakan refresh halaman.', 'error');
         return;
     }
-    
-    // Prepare form data
-    const formData = new FormData();
-    formData.append('_token', csrfToken);
-    
-    // Show immediate feedback
+
+    // Prepare form data — termasuk plat_nomor[detail_id] dari semua input
+    const formData = new FormData(document.getElementById('pengirimanForm'));
+    formData.set('_token', csrfToken);
+
     showPengirimanToast('Memproses pengiriman forecast...', 'warning');
-    
-    // Add a manual timeout using Promise.race
+
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
     });
-    
+
     const fetchPromise = fetch(`/procurement/forecasting/${currentPengirimanForecastData?.id}/kirim`, {
         method: 'POST',
         body: formData,
@@ -285,49 +377,39 @@ function submitPengiriman() {
             'Accept': 'application/json'
         }
     });
-    
-    // Race between fetch and timeout
+
     Promise.race([fetchPromise, timeoutPromise])
     .then(response => {
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
         return response.json();
     })
     .then(data => {
-        // Reset UI elements
         resetPengirimanFormState(submitBtn, loadingOverlay, originalText);
-        
+
         if (data.success) {
-            // Show success message
             showPengirimanToast(`Forecast "${currentPengirimanForecastData?.no_forecast}" berhasil dikirim!`, 'success');
-            
-            // Close modal immediately
+
             setTimeout(() => {
                 closePengirimanModal();
-                
-                // Close detail modal if open
+
                 const detailModal = document.getElementById('forecastDetailModal');
                 if (detailModal && !detailModal.classList.contains('hidden')) {
                     closeForecastDetailModal();
                 }
-                
-                // Refresh page
+
                 window.location.reload();
-            }, 1500); // Reduced delay
+            }, 1500);
         } else {
-            // Show error message from server
             if (data.message) {
                 showPengirimanToast(data.message, 'error');
             }
         }
     })
     .catch(error => {
-        // Reset UI elements
         resetPengirimanFormState(submitBtn, loadingOverlay, originalText);
-        
-        // Handle specific error types only
+
         if (error.message.includes('Request timeout')) {
             showPengirimanToast('Request timeout. Silakan coba lagi.', 'error');
         } else if (error.name === 'AbortError') {
@@ -350,7 +432,7 @@ function resetPengirimanFormState(submitBtn, loadingOverlay, originalText) {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     }
-    
+
     if (loadingOverlay) {
         loadingOverlay.classList.add('hidden');
         loadingOverlay.classList.remove('flex');
@@ -363,11 +445,9 @@ function showPengirimanToast(message, type = 'success') {
     const icon = document.getElementById('pengirimanToastIcon');
     const messageEl = document.getElementById('pengirimanToastMessage');
     const toastContainer = toast.querySelector('div');
-    
-    // Set message
+
     messageEl.textContent = message;
-    
-    // Set icon and color based on type
+
     switch (type) {
         case 'success':
             icon.className = 'fas fa-check-circle text-green-500';
@@ -382,30 +462,24 @@ function showPengirimanToast(message, type = 'success') {
             toastContainer.className = 'bg-white border-l-4 border-yellow-500 p-4 shadow-lg rounded-md max-w-sm';
             break;
     }
-    
-    // Show toast
+
     toast.classList.remove('hidden');
-    
-    // Auto hide after 5 seconds
+
     setTimeout(() => {
         hidePengirimanToast();
     }, 5000);
 }
 
-// Hide pengiriman toast notification
 function hidePengirimanToast() {
     document.getElementById('pengirimanToast').classList.add('hidden');
 }
 
-// Handle escape key for pengiriman modal
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         const pengirimanModal = document.getElementById('pengirimanModal');
         const batalModal = document.getElementById('batalPengirimanModal');
-        
-        // Close pengiriman modal if it's open and no other modal is open
+
         if (pengirimanModal && !pengirimanModal.classList.contains('hidden')) {
-            // Only close if batal modal is not also open
             if (!batalModal || batalModal.classList.contains('hidden')) {
                 closePengirimanModal();
             }
@@ -415,7 +489,6 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 <style>
-/* Modal styles for pengiriman - Ensure highest priority */
 #pengirimanModal {
     backdrop-filter: blur(4px);
     position: fixed !important;
@@ -426,7 +499,6 @@ document.addEventListener('keydown', function(e) {
     bottom: 0 !important;
 }
 
-/* Ensure modal content is properly positioned */
 #pengirimanModal > div {
     position: relative;
     z-index: 10001;
@@ -434,13 +506,11 @@ document.addEventListener('keydown', function(e) {
     height: 100%;
 }
 
-/* Modal content container */
 #pengirimanModal .relative.bg-white {
     position: relative;
     z-index: 10002;
 }
 
-/* Animation for pengiriman modal */
 #pengirimanModal > div > div {
     animation: pengirimanModalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -456,7 +526,6 @@ document.addEventListener('keydown', function(e) {
     }
 }
 
-/* Pengiriman toast animation */
 #pengirimanToast {
     animation: pengirimanToastSlideIn 0.3s ease-out;
 }
@@ -472,29 +541,26 @@ document.addEventListener('keydown', function(e) {
     }
 }
 
-/* Enhanced shadows for pengiriman modal */
 #pengirimanModal .shadow-2xl {
     box-shadow: 0 25px 50px -12px rgba(34, 197, 94, 0.25);
 }
 
-/* Responsive adjustments for pengiriman modal */
 @media (max-width: 640px) {
     #pengirimanModal > div {
         width: 90%;
         margin: 0.5rem;
         padding: 0;
     }
-    
+
     .grid.grid-cols-2 {
         grid-template-columns: 1fr;
     }
-    
+
     .flex.gap-2 {
         flex-direction: column;
     }
 }
 
-/* Loading spinner for pengiriman modal */
 #submitPengirimanBtn .fa-spinner {
     animation: spin 1s linear infinite;
 }

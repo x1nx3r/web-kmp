@@ -312,7 +312,7 @@
                         <i class="fas fa-boxes text-orange-600 mr-2 text-sm"></i>
                         <span class="text-sm sm:text-base">Detail Barang Pengiriman</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mt-1 ml-6">Atur qty kirim dan harga beli untuk setiap barang</p>
+                    <p class="text-xs text-gray-500 mt-1 ml-6">Atur qty kirim, plat nomor truk, dan harga beli untuk setiap barang</p>
                     
                     
                 </div>
@@ -399,6 +399,20 @@
                                         <!-- Supplier name - visible on mobile -->
                                         <div class="text-xs text-gray-500 mt-1 sm:hidden">
                                             {{ $detail->bahanBakuSupplier->supplier->nama ?? 'Unknown Supplier' }}
+                                        </div>
+
+                                        <!-- Plat Nomor Truk - selalu tampil, nempel di bawah nama bahan baku (bukan kolom sendiri) -->
+                                        <div class="mt-2">
+                                            <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">
+                                                <i class="fas fa-truck-moving mr-1"></i>Plat Nomor
+                                            </label>
+                                            <input type="text" 
+                                                   name="details[{{ $index }}][plat_nomor_truk]" 
+                                                   value="{{ old('details.' . $index . '.plat_nomor_truk', $detail->plat_nomor_truk ?? '') }}"
+                                                   placeholder="cth: B 1234 XYZ"
+                                                   maxlength="50"
+                                                   class="plat-nomor-input w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {{ !$canEdit ? 'bg-gray-50 cursor-not-allowed' : 'bg-white' }}"
+                                                   {{ !$canEdit ? 'readonly' : '' }}>
                                         </div>
                                     </td>
                                     

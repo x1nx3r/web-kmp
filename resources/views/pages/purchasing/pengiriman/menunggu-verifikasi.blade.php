@@ -293,6 +293,21 @@
                                                         @endif
                                                     </span>
                                                 @endif
+                                                @php
+                                                    $platNomorList = $pengiriman->pengirimanDetails
+                                                        ? $pengiriman->pengirimanDetails->pluck('plat_nomor_truk')->filter()->unique()->values()
+                                                        : collect();
+                                                @endphp
+                                                @if($platNomorList->isNotEmpty())
+                                                    <span class="flex items-center gap-1 flex-wrap">
+                                                        <i class="fas fa-truck-moving text-yellow-600"></i>
+                                                        @foreach($platNomorList as $plat)
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px] font-medium border border-gray-200">
+                                                                {{ $plat }}
+                                                            </span>
+                                                        @endforeach
+                                                    </span>
+                                                @endif
                                             </div>
                                             
                                         

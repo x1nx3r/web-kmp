@@ -132,6 +132,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">PO & PIC</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Detail</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Plat Nomor</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -163,6 +164,24 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <div>{{ $pengiriman->tanggal_kirim ? \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d M Y') : '-' }}</div>
                                     <div class="text-xs">{{ $pengiriman->hari_kirim ?? '-' }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    @php
+                                        $platNomorList = $pengiriman->pengirimanDetails
+                                            ? $pengiriman->pengirimanDetails->pluck('plat_nomor_truk')->filter()->unique()->values()
+                                            : collect();
+                                    @endphp
+                                    @if($platNomorList->isNotEmpty())
+                                        <div class="flex flex-wrap gap-1">
+                                            @foreach($platNomorList as $plat)
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-medium border border-gray-200">
+                                                    <i class="fas fa-truck-moving mr-1 text-gray-400"></i>{{ $plat }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-gray-400">-</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex flex-col gap-1">

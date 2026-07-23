@@ -15,6 +15,10 @@ class RiwayatOrder extends Component
 {
     use WithPagination;
 
+    // Role yang boleh melakukan Create/Update/Delete (CUD).
+    // Role lain otomatis read-only.
+    private const MANAGE_ROLES = ['direktur', 'marketing'];
+
     // Search and Filter Properties
     public $search = "";
     public $statusFilter = "";
@@ -39,6 +43,10 @@ class RiwayatOrder extends Component
     public $cancelReason = "";
     public $expandedOrders = []; // Track which orders are expanded to show suppliers
 
+    // Dihitung sekali di mount(), dipakai di blade supaya tidak
+    // memanggil auth()->user()->... berulang kali per baris order.
+    public $canManage = false;
+
     protected $queryString = [
         "search" => ["except" => ""],
         "statusFilter" => ["except" => ""],
@@ -60,6 +68,34 @@ class RiwayatOrder extends Component
         if (empty($this->selectedYear)) {
             $this->selectedYear = now()->year;
         }
+
+        $this->canManage = $this->userCanManage();
+    }
+
+    /**
+     * Cek apakah user yang login boleh melakukan aksi CUD (Create/Update/Delete).
+     * Hanya Direktur dan Marketing yang diperbolehkan. Role lain read-only.
+     */
+    private function userCanManage(): bool
+    {
+        $user = auth()->user();
+        return $user && in_array($user->role, self::MANAGE_ROLES, true);
+    }
+
+    /**
+     * Guard bersama untuk setiap method yang mengubah data.
+     * Mengembalikan false + flash error kalau user tidak berhak.
+     */
+    private function authorizeManage(): bool
+    {
+        if (!$this->userCanManage()) {
+            session()->flash(
+                'error',
+                'Anda tidak memiliki akses untuk melakukan aksi ini. Hanya Direktur dan Marketing yang dapat mengelola order.'
+            );
+            return false;
+        }
+        return true;
     }
 
     public function updatingSearch()
@@ -158,6 +194,7 @@ class RiwayatOrder extends Component
 
     public function toggleOrderExpansion($orderId)
     {
+        // Read-only action, semua role boleh lihat detail supplier.
         if (in_array($orderId, $this->expandedOrders)) {
             $this->expandedOrders = array_diff($this->expandedOrders, [
                 $orderId,
@@ -172,6 +209,10 @@ class RiwayatOrder extends Component
      */
     public function confirmDelete($orderId)
     {
+        if (!$this->authorizeManage()) {
+            return;
+        }
+
         $this->orderToDelete = $orderId;
         $this->showDeleteModal = true;
     }
@@ -184,27 +225,16 @@ class RiwayatOrder extends Component
 
     public function deleteOrder()
     {
+        if (!$this->authorizeManage()) {
+            $this->showDeleteModal = false;
+            $this->orderToDelete = null;
+            return;
+        }
+
         try {
             $order = Order::with(['orderDetails', 'forecasts', 'pengiriman', 'consultations', 'winner'])->findOrFail($this->orderToDelete);
 
-            // Authorization: Only Marketing and Direktur can delete
             $user = auth()->user();
-            $allowedRoles = ['direktur', 'manager_marketing', 'staff_marketing'];
-            
-            if (!in_array($user->role, $allowedRoles)) {
-                session()->flash('error', 'Anda tidak memiliki akses untuk menghapus order! Hanya Direktur dan tim Marketing yang dapat menghapus order.');
-                $this->showDeleteModal = false;
-                $this->orderToDelete = null;
-                return;
-            }
-
-            // For staff marketing, can only delete own orders
-            if ($user->role === 'staff_marketing' && $order->created_by !== $user->id) {
-                session()->flash('error', 'Anda hanya dapat menghapus order yang Anda buat sendiri!');
-                $this->showDeleteModal = false;
-                $this->orderToDelete = null;
-                return;
-            }
 
             $orderNumber = $order->po_number ?? $order->no_order;
 
@@ -213,7 +243,7 @@ class RiwayatOrder extends Component
             $pengirimanCount = $order->pengiriman()->count();
 
             // Soft-delete the order (cascade soft-delete happens in Order model's boot() method)
-            // This archives: forecasts, forecast_details, pengiriman, pengiriman_details, 
+            // This archives: forecasts, forecast_details, pengiriman, pengiriman_details,
             // order_details, order_suppliers, consultations, winner
             $order->delete();
 
@@ -242,7 +272,7 @@ class RiwayatOrder extends Component
         } catch (\Exception $e) {
             \Log::error('Error in deleteOrder: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
+
             session()->flash('error', 'Gagal menghapus order: ' . $e->getMessage());
             $this->showDeleteModal = false;
             $this->orderToDelete = null;
@@ -251,6 +281,10 @@ class RiwayatOrder extends Component
 
     public function confirmOrder($orderId)
     {
+        if (!$this->authorizeManage()) {
+            return;
+        }
+
         $order = Order::find($orderId);
         if ($order && $order->status === "draft") {
             $order->confirm();
@@ -260,6 +294,10 @@ class RiwayatOrder extends Component
 
     public function startProcessing($orderId)
     {
+        if (!$this->authorizeManage()) {
+            return;
+        }
+
         $order = Order::find($orderId);
         if ($order && $order->status === "dikonfirmasi") {
             $order->startProcessing();
@@ -269,6 +307,12 @@ class RiwayatOrder extends Component
 
     public function completeOrder($orderId)
     {
+        if (!$this->authorizeManage()) {
+            $this->showCompleteModal = false;
+            $this->orderToComplete = null;
+            return;
+        }
+
         $order = Order::find($orderId);
         if ($order && $order->status === "diproses") {
             $order->complete();
@@ -280,6 +324,10 @@ class RiwayatOrder extends Component
 
     public function confirmComplete($orderId)
     {
+        if (!$this->authorizeManage()) {
+            return;
+        }
+
         $this->orderToComplete = $orderId;
         $this->showCompleteModal = true;
     }
@@ -292,6 +340,10 @@ class RiwayatOrder extends Component
 
     public function cancelOrder($orderId, $reason = null)
     {
+        if (!$this->authorizeManage()) {
+            return;
+        }
+
         // Validate cancel reason
         $this->validate(
             [
@@ -315,6 +367,10 @@ class RiwayatOrder extends Component
 
     public function confirmCancel($orderId)
     {
+        if (!$this->authorizeManage()) {
+            return;
+        }
+
         $this->orderToCancel = $orderId;
         $this->cancelReason = "";
         $this->showCancelModal = true;
@@ -333,6 +389,9 @@ class RiwayatOrder extends Component
             ->with([
                 "klien",
                 "creator",
+                // Dipakai di setiap baris (badge "PO Winner"), harus selalu
+                // di-eager-load supaya tidak N+1.
+                "winner.user",
                 "orderDetails" => function ($query) {
                     $query->with([
                         "bahanBakuKlien",
@@ -474,8 +533,12 @@ class RiwayatOrder extends Component
             ->paginate($this->perPage);
 
         if (!empty($this->expandedOrders)) {
+            // supplier.picPurchasing DAN bahanBakuSupplier dipakai di expanded
+            // view (`$orderSupplier->bahanBakuSupplier->nama`), keduanya
+            // harus ikut di-load supaya tidak N+1 saat expand.
             $orders->load([
                 "orderDetails.orderSuppliers.supplier.picPurchasing",
+                "orderDetails.orderSuppliers.bahanBakuSupplier",
             ]);
         }
 

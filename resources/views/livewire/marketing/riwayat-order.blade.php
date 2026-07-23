@@ -483,7 +483,7 @@
                                                     <span class="font-semibold text-gray-900">{{ number_format($detail->contract_qty, 0) }}</span>
                                                     {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
                                                     Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}
-                                                    
+
                                                     @if($detail->is_shrunk)
                                                         <div class="text-[10px] text-orange-600 font-medium">
                                                             Tersisa: {{ number_format($detail->qty, 0) }} {{ $detail->bahanBakuKlien->satuan ?? 'unit' }}
@@ -531,7 +531,7 @@
                                                             <span class="font-semibold text-gray-900">{{ number_format($detail->contract_qty, 0) }}</span>
                                                             {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×
                                                             Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}
-                                                            
+
                                                             @if($detail->is_shrunk)
                                                                 <span class="ml-2 text-[11px] px-1.5 py-0.5 bg-orange-50 text-orange-600 border border-orange-100 rounded font-medium">
                                                                     Tersisa: {{ number_format($detail->qty, 0) }}
@@ -631,14 +631,14 @@
                                     <i class="fas fa-eye mr-1"></i>
                                     Lihat Detail
                                 </a>
-                                @if(in_array($order->status, ['draft', 'dikonfirmasi', 'diproses']) && (auth()->user()->isMarketing() || auth()->user()->isDirektur()))
+                                @if(in_array($order->status, ['draft', 'dikonfirmasi', 'diproses']) && $canManage)
                                     <a href="{{ route('orders.edit', $order) }}" class="text-green-600 hover:text-green-800 text-sm font-medium">
                                         <i class="fas fa-edit mr-1"></i>
                                         Edit
                                     </a>
                                 @endif
                             </div>
-                            @if(auth()->user()->isMarketing() || auth()->user()->isDirektur())
+                            @if($canManage)
                             <div class="flex items-center space-x-2">
                                 @if($order->status === 'draft')
                                     <button
@@ -666,7 +666,7 @@
                                     </button>
                                 @endif
 
-                                {{-- Tombol Hapus muncul di SEMUA status --}}
+                                {{-- Tombol Hapus muncul di SEMUA status, untuk Direktur & Marketing --}}
                                 <button
                                     wire:click="confirmDelete({{ $order->id }})"
                                     class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"

@@ -387,52 +387,28 @@ class ForecastingController extends Controller
 
         try {
             DB::beginTransaction();
-            $forecast = Forecast::with(['forecastDetails'])->lockForUpdate()->find($id);
+            $forecast = Forecast::lockForUpdate()->find($id);
             
             if ($forecast->status !== 'pending') {
                 return response()->json(['success' => false, 'message' => 'Hanya forecast pending yang dapat dibatalkan'], 400);
             }
 
             $timestamp = now();
-            $noPengiriman = 'BATAL-' . $forecast->id . '-' . $timestamp->format('ymdHis');
-            $catatan = $request->alasan_batal . ' | Dibatalkan pada: ' . $timestamp->format('d M Y H:i');
-            
-            $pengirimanId = DB::table('pengiriman')->insertGetId([
-                'purchase_order_id' => $forecast->purchase_order_id,
-                'purchasing_id' => $forecast->purchasing_id,
-                'forecast_id' => $forecast->id,
-                'no_pengiriman' => $noPengiriman,
-                'tanggal_kirim' => $forecast->tanggal_forecast,
-                'hari_kirim' => $forecast->hari_kirim_forecast,
-                'total_qty_kirim' => null,
-                'total_harga_kirim' => null,
+            $catatan = $forecast->catatan
+                ? $forecast->catatan . "\n\n" . $request->alasan_batal . ' | ' . $timestamp->format('d M Y H:i')
+                : $request->alasan_batal . ' | ' . $timestamp->format('d M Y H:i');
+
+            DB::table('forecasts')->where('id', $forecast->id)->update([
                 'status' => 'gagal',
                 'catatan' => $catatan,
-                'created_at' => $timestamp,
                 'updated_at' => $timestamp
             ]);
-            
-            $pengirimanDetails = $forecast->forecastDetails->map(fn($detail) => [
-                'pengiriman_id' => $pengirimanId,
-                'purchase_order_bahan_baku_id' => $detail->purchase_order_bahan_baku_id,
-                'bahan_baku_supplier_id' => $detail->bahan_baku_supplier_id,
-                'qty_kirim' => null,
-                'harga_satuan' => null,
-                'total_harga' => null,
-                'catatan_detail' => "PEMBATALAN - Qty Forecast: {$detail->qty_forecast}, Harga Forecast: Rp " . number_format($detail->harga_satuan_forecast, 0, ',', '.') . ($detail->catatan_detail ? " | {$detail->catatan_detail}" : ""),
-                'created_at' => $timestamp->format('Y-m-d H:i:s'),
-                'updated_at' => $timestamp->format('Y-m-d H:i:s')
-            ])->toArray();
-
-            if (!empty($pengirimanDetails)) DB::table('pengiriman_details')->insert($pengirimanDetails);
-            
-            DB::table('forecasts')->where('id', $forecast->id)->update(['status' => 'gagal', 'updated_at' => $timestamp]);
             
             DB::commit();
             return response()->json([
                 'success' => true,
                 'message' => "Forecast {$forecast->no_forecast} berhasil dibatalkan",
-                'data' => ['forecast_id' => $forecast->id, 'pengiriman_id' => $pengirimanId, 'no_forecast' => $forecast->no_forecast, 'no_pengiriman' => $noPengiriman]
+                'data' => ['forecast_id' => $forecast->id, 'no_forecast' => $forecast->no_forecast]
             ]);
         } catch (\Exception $e) {
             DB::rollback();

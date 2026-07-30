@@ -58,7 +58,43 @@ class RiwayatOrder extends Component
         "selectedYear" => ["except" => ""],
         "showAllOrders" => ["except" => true],
     ];
+    private function normalizeBahanBakuName(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') return '';
 
+        $lower = mb_strtolower($name, 'UTF-8');
+
+        $aliases = [
+            'Biscuit Meal' => [
+                'biskuit meal', 'biscuit meal', 'tepung roti',
+                'tepung biskuit', 'bread waste',
+            ],
+            'Copra Low Fat' => [
+                'bungkil copra', 'copra',
+            ],
+            'PKD' => [
+                'palm kernel dry', 'pkd palm kernel dehulized',
+                'palm kernel dehulized', 'pkd',
+            ],
+            'PMM' => [
+                'poultry meat meal', 'poultry meal', 'pmm',
+            ],
+            'Mie Kuning' => [
+                'mie kuning', 'mi kuning', 'noodle broken',
+            ],
+        ];
+
+        foreach ($aliases as $canonical => $keywords) {
+            foreach ($keywords as $kw) {
+                if ($lower === $kw || str_contains($lower, $kw)) {
+                    return $canonical;
+                }
+            }
+        }
+
+        return $name;
+    }
     public function mount()
     {
         // Default to current month/year if not set
@@ -429,11 +465,18 @@ class RiwayatOrder extends Component
                 $query->where("priority", $this->priorityFilter);
             })
             ->when($this->materialFilter, function (Builder $query) {
-                $query->whereHas("orderDetails", function (Builder $q) {
-                    $q->whereHas("bahanBakuKlien", function (Builder $bq) {
-                        $bq->whereRaw("LOWER(nama) = ?", [
-                            strtolower($this->materialFilter),
-                        ]);
+                // materialFilter sekarang berisi nama KANONIK (hasil normalisasi),
+                // jadi perlu cari semua nama mentah yang ter-normalize ke kanonik itu.
+                $matchingRawNames = \Illuminate\Support\Facades\DB::table("bahan_baku_klien")
+                    ->select("nama")
+                    ->distinct()
+                    ->pluck("nama")
+                    ->filter(fn($n) => $this->normalizeBahanBakuName($n) === $this->materialFilter)
+                    ->values();
+
+                $query->whereHas("orderDetails", function (Builder $q) use ($matchingRawNames) {
+                    $q->whereHas("bahanBakuKlien", function (Builder $bq) use ($matchingRawNames) {
+                        $bq->whereIn("nama", $matchingRawNames);
                     });
                 });
             })
@@ -613,16 +656,26 @@ class RiwayatOrder extends Component
             "kliens" => \Illuminate\Support\Facades\Cache::remember("riwayat-order-kliens", 3600, fn() => Klien::orderBy("nama")->get(["id", "nama", "cabang"])),
             // Provide a deduplicated, case-insensitive list of material names.
             // We return only the material names (string) so the select will use the name as the value.
-            "materials" => \Illuminate\Support\Facades\DB::table(
-                "bahan_baku_klien",
-            )
-                ->selectRaw("MIN(nama) as nama")
-                ->when($this->klienFilter, function ($q) {
-                    $q->where("klien_id", $this->klienFilter);
-                })
-                ->groupBy(\Illuminate\Support\Facades\DB::raw("LOWER(nama)"))
-                ->orderByRaw("LOWER(nama)")
-                ->pluck("nama"),
+            "materials" => \Illuminate\Support\Facades\Cache::remember(
+                "riwayat-order-materials-" . ($this->klienFilter ?: 'all'),
+                3600,
+                function () {
+                    $rawNames = \Illuminate\Support\Facades\DB::table("bahan_baku_klien")
+                        ->select("nama")
+                        ->when($this->klienFilter, function ($q) {
+                            $q->where("klien_id", $this->klienFilter);
+                        })
+                        ->distinct()
+                        ->pluck("nama");
+
+                    return $rawNames
+                        ->map(fn($n) => $this->normalizeBahanBakuName($n))
+                        ->filter()
+                        ->unique()
+                        ->sort(fn($a, $b) => strcasecmp($a, $b))
+                        ->values();
+                }
+            ),
             "availableYears" => $this->getAvailableYears(),
             "currentMonthName" => $this->getMonthName($this->selectedMonth),
         ])->layout("layouts.app");

@@ -88,27 +88,13 @@ class DashboardService
             $omsetManualTahunIni = OmsetManual::where('tahun', $currentYear)->sum('omset_manual') ?? 0;
             $omsetTahunIni       = $omsetSistemTahunIni + $omsetManualTahunIni;
 
-            // ========== TARGET ADJUSTED (carry forward bulanan) ==========
-            // Sebelumnya loop ini menjalankan 1 query berat per iterasi bulan (hingga 11×).
-            // Kini hanya 1 query gabungan untuk seluruh bulan sebelum bulan berjalan, dan
-            // hasilnya di-bucket per bulan di PHP sebelum loop carry-forward dijalankan.
-            // Rumus carry-forward di dalam loop TIDAK diubah sama sekali.
-            $omsetSistemPerBulanLalu = self::getOmsetSistemPerBulanSebelum($currentYear, $currentMonth, $omsetExpr);
-            $omsetManualPerBulanLalu = self::getOmsetManualPerBulanSebelum($currentYear, $currentMonth);
-
-            $sisaTargetSebelumnya = 0;
-
-            for ($b = 1; $b < $currentMonth; $b++) {
-                $omsetSistemBulanLalu = $omsetSistemPerBulanLalu[$b] ?? 0;
-                $omsetManualBulanLalu = $omsetManualPerBulanLalu[$b] ?? 0;
-                $omsetTotalBulanLalu  = $omsetSistemBulanLalu + $omsetManualBulanLalu;
-                $targetBulanLalu      = $targetBulanan + $sisaTargetSebelumnya;
-                $selisihBulanLalu     = $omsetTotalBulanLalu - $targetBulanLalu;
-                $sisaTargetSebelumnya = $selisihBulanLalu < 0 ? abs($selisihBulanLalu) : 0;
-            }
-
-            $targetBulananAdjusted = $targetBulanan + $sisaTargetSebelumnya;
+            // ========== TARGET (FLAT, TANPA CARRY-FORWARD) ==========
+            // Sebelumnya target bulanan/mingguan disesuaikan (di-carry-forward) berdasarkan
+            // kekurangan target bulan-bulan sebelumnya dalam tahun berjalan. Sekarang target
+            // dipakai flat langsung dari target_bulanan tanpa penyesuaian apa pun.
+            $targetBulananAdjusted  = $targetBulanan;
             $targetMingguanAdjusted = $targetBulanan / 4;
+
             $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;
             $progressBulan  = $targetBulananAdjusted  > 0 ? ($omsetBulanIni  / $targetBulananAdjusted)  * 100 : 0;
             $progressTahun  = $targetTahunan          > 0 ? ($omsetTahunIni  / $targetTahunan)          * 100 : 0;
@@ -261,66 +247,6 @@ class DashboardService
             NULLIF(MAX(invoice_penagihan.subtotal), 0),
             SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
         ) as omset_pengiriman');
-    }
-
-    /**
-     * Ambil total omset sistem per bulan (kunci = nomor bulan) untuk seluruh bulan
-     * SEBELUM $currentMonth pada tahun $year, dalam SATU query.
-     *
-     * Menggantikan query-in-loop pada carry-forward bulanan. Karena setiap
-     * pengiriman.id hanya memiliki satu tanggal_kirim (satu bulan), GROUP BY
-     * pengiriman.id pada query gabungan ini tidak pernah mencampur dua bulan
-     * berbeda — sehingga SUM per bulan hasil bucketing PHP di bawah ini identik
-     * dengan hasil query per-bulan yang terpisah pada versi sebelumnya.
-     *
-     * @return array<int, float> [bulan => total_omset]
-     */
-    private static function getOmsetSistemPerBulanSebelum(int $year, int $currentMonth, $omsetExpr): array
-    {
-        if ($currentMonth <= 1) {
-            return [];
-        }
-
-        $query = self::baseOmsetQuery()
-            ->whereYear('pengiriman.tanggal_kirim', $year)
-            ->whereMonth('pengiriman.tanggal_kirim', '<', $currentMonth);
-
-        self::applyValidInvoiceFilter($query);
-
-        $rows = $query
-            ->select('pengiriman.id', DB::raw('MAX(pengiriman.tanggal_kirim) as tanggal_kirim'), $omsetExpr)
-            ->groupBy('pengiriman.id')
-            ->get();
-
-        $result = [];
-        foreach ($rows as $row) {
-            $bulan = Carbon::parse($row->tanggal_kirim)->month;
-            $result[$bulan] = ($result[$bulan] ?? 0) + $row->omset_pengiriman;
-        }
-
-        return $result;
-    }
-
-    /**
-     * Ambil total omset manual per bulan (kunci = nomor bulan) untuk seluruh bulan
-     * SEBELUM $currentMonth pada tahun $year, dalam SATU query (pluck).
-     *
-     * Menggantikan pemanggilan OmsetManual::where(...)->value(...) yang sebelumnya
-     * dijalankan satu-per-satu di dalam loop bulanan. Hasil lookup per bulan
-     * (dengan fallback 0 bila tidak ditemukan) identik dengan versi sebelumnya.
-     *
-     * @return array<int, float> [bulan => omset_manual]
-     */
-    private static function getOmsetManualPerBulanSebelum(int $year, int $currentMonth): array
-    {
-        if ($currentMonth <= 1) {
-            return [];
-        }
-
-        return OmsetManual::where('tahun', $year)
-            ->where('bulan', '<', $currentMonth)
-            ->pluck('omset_manual', 'bulan')
-            ->all();
     }
 
     private static function applyValidInvoiceFilter($query)

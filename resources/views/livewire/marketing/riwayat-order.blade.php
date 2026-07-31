@@ -478,7 +478,7 @@
                                                 <i class="fas fa-box text-purple-600 text-sm"></i>
                                             </div>
                                             <div>
-                                                <div class="font-medium text-gray-900">{{ $detail->bahanBakuKlien->nama }}</div>
+                                                <div class="font-medium text-gray-900">{{ $detail->nama_material_po }}</div>
                                                 <div class="text-sm text-gray-600">
                                                     <span class="font-semibold text-gray-900">{{ number_format($detail->contract_qty, 0) }}</span>
                                                     {{ $detail->bahanBakuKlien->satuan ?? 'unit' }} ×

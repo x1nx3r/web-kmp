@@ -113,64 +113,20 @@ class DashboardController extends Controller
      *
      * @return array{week: int, startOfMonth: Carbon}
      */
-    private function getCurrentWeekOfMonth(): array
-    {
-        $today        = Carbon::now();
-        $dayOfMonth   = $today->day;
-        $startOfMonth = Carbon::now()->startOfMonth();
-
-        if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
-            $week = 1;
-        } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
-            $week = 2;
-        } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
-            $week = 3;
-        } else {
-            $week = 4;
-        }
-
-        return ['week' => $week, 'startOfMonth' => $startOfMonth];
-    }
-
-    /**
-     * Satu sumber kebenaran untuk rumus penentuan minggu berjalan (nomor minggu + rentang
-     * tanggal). Rumus ini sebelumnya ditulis ulang secara identik di getDefaultWeekRange(),
-     * downloadMarginMingguIniPdf(), dan downloadMarginMingguIniExcel(). Hasil perhitungan
-     * TIDAK berubah dari versi sebelumnya.
-     *
-     * @return array{week: int, start: Carbon, end: Carbon}
-     */
     private function resolveCurrentWeek(): array
     {
-        ['week' => $currentWeekOfMonth, 'startOfMonth' => $startOfMonth] = $this->getCurrentWeekOfMonth();
+        $today = Carbon::now();
 
-        $startOfWeek = $currentWeekOfMonth === 1
-            ? $startOfMonth->copy()
-            : $startOfMonth->copy()->addDays(($currentWeekOfMonth - 1) * 7);
-
-        $endOfWeek = $currentWeekOfMonth === 4
-            ? $startOfMonth->copy()->endOfMonth()
-            : $startOfWeek->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
+        $startOfWeek = $today->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $endOfWeek   = $today->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
         return [
-            'week'  => $currentWeekOfMonth,
+            'week'  => $startOfWeek->isoWeek(), // hanya dipakai untuk label/nama file
             'start' => $startOfWeek,
             'end'   => $endOfWeek,
         ];
     }
 
-    /**
-     * Daftar relasi eager-load yang dibutuhkan oleh hitungMarginDariPengiriman().
-     *
-     * Sebelumnya, query margin "bulan ini" (di index() dan PDF) hanya memuat sebagian relasi
-     * ini (tanpa purchasing, order.klien, order.winner.user) padahal hitungMarginDariPengiriman()
-     * selalu mengakses relasi-relasi tersebut — artinya query itu memicu lazy-load N+1 secara
-     * diam-diam. Menyatukan daftar relasi di satu tempat dan memakainya secara konsisten
-     * menghilangkan N+1 tersebut TANPA mengubah data yang dihasilkan (nilai relasi yang diakses
-     * tetap sama, hanya cara pengambilannya yang lebih efisien).
-     *
-     * @return array<int, string>
-     */
     private function marginEagerLoadRelations(): array
     {
         return [

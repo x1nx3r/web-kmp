@@ -380,8 +380,8 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
             DB::raw('COALESCE(po.p_tanggal_kirim, forecasts.tanggal_forecast) as display_tanggal'),
             'po.pengiriman_id',
             'po.p_tanggal_kirim as pengiriman_tanggal_kirim',
-            'po.p_status        as pengiriman_status',
-            'po.p_catatan       as pengiriman_catatan',
+            DB::raw("COALESCE(po.p_status, forecasts.status) as pengiriman_status"),
+            DB::raw("COALESCE(po.p_catatan, forecasts.catatan) as pengiriman_catatan"),
             'po.p_total_harga_kirim as pengiriman_total_harga_kirim',
             'po.p_total_qty_kirim   as pengiriman_total_qty_kirim',
             'po.realisasi_amount',
@@ -392,8 +392,13 @@ class EvaluasiProcurementExport implements FromArray, WithColumnWidths, WithTitl
         ->whereRaw('COALESCE(po.p_tanggal_kirim, forecasts.tanggal_forecast) between ? and ?', [$this->startDate, $this->endDate]);
 
         if ($this->status) {
-            $query->whereNotNull('po.pengiriman_id')
-                  ->where('po.p_status', $this->status);
+            $query->where(function ($q) {
+                $q->where('po.p_status', $this->status)
+                ->orWhere(function ($q2) {
+                    $q2->whereNull('po.pengiriman_id')
+                        ->where('forecasts.status', $this->status);
+                });
+            });
         }
         if ($this->purchasing) {
             $query->where('forecasts.purchasing_id', $this->purchasing);

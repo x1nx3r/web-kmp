@@ -192,8 +192,6 @@ class ApprovePembayaran extends Component
             ];
         }
 
-        // Refraksi dihitung ulang berbasis HARGA JUAL, bukan ambil dari approval->amount_after_refraksi
-        // (approval->amount_after_refraksi itu basis HARGA BELI, dipakai untuk pembayaran ke supplier — beda konteks)
         $refraksiType = $this->approval->refraksi_type;
         $refraksiValue = floatval($this->approval->refraksi_value ?? 0);
         $refraksiAmount = 0;
@@ -211,8 +209,7 @@ class ApprovePembayaran extends Component
         }
 
         $subtotal = $totalSellingPrice - $refraksiAmount;
-        $expensesTotal = floatval($this->approval->additional_expenses_total ?? 0);
-        $finalTotal = max(0, $subtotal + $expensesTotal);
+        $finalTotal = max(0, $subtotal);
 
         $invoice = InvoicePenagihan::create([
             'pengiriman_id' => $pengiriman->id,
@@ -223,7 +220,7 @@ class ApprovePembayaran extends Component
             'customer_address' => $pengiriman->purchaseOrder->klien->alamat_lengkap ?? '-',
             'items' => $items,
             'subtotal' => $finalTotal,
-            'additional_expenses_total' => $expensesTotal,
+            'additional_expenses_total' => 0,
             'total_amount' => $finalTotal,
             'status' => 'pending',
             'created_by' => $userId,
@@ -237,8 +234,7 @@ class ApprovePembayaran extends Component
         ]);
 
         $pengiriman->update(['invoice_penagihan_id' => $invoice->id]);
-        foreach ($this->approval->expenses as $e) $invoice->expenses()->create($e->only(['type', 'amount']));
-        
+
         $approvalPenagihan = ApprovalPenagihan::create(['pengiriman_id' => $pengiriman->id, 'invoice_id' => $invoice->id, 'status' => 'pending']);
         if ($approvalPenagihan) ApprovalPenagihanNotificationService::notifyPendingApproval($approvalPenagihan);
     }

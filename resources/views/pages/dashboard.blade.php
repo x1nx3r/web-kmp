@@ -2,6 +2,28 @@
 @section('title', 'Dashboard - Kamil Maju Persada')
 @section('content')
 
+@php
+    /**
+     * Helper format angka jadi Rupiah dengan satuan M/Jt otomatis.
+     * Dipakai di seluruh halaman ini supaya format konsisten — sebelumnya beberapa
+     * tempat (terutama bagian "Kurang/Lebih" di card Progress) langsung dibagi
+     * 1000000 tanpa cek nilai >= 1 miliar, jadi angka miliar tertulis mis. "1.800,00Jt"
+     * padahal seharusnya "1,80M".
+     */
+    function formatRupiah($value): string
+    {
+        $value = (float) $value;
+
+        if ($value >= 1000000000) {
+            return 'Rp ' . number_format($value / 1000000000, 2, ',', '.') . 'M';
+        } elseif ($value >= 1000000) {
+            return 'Rp ' . number_format($value / 1000000, 2, ',', '.') . 'Jt';
+        }
+
+        return 'Rp ' . number_format($value, 2, ',', '.');
+    }
+@endphp
+
 <div class="container mx-auto py-6 space-y-6">
     {{-- Header --}}
     <x-welcome-banner title="Dashboard" subtitle="Lihat Ringkasan Mingguan" icon="fas fa-tachometer-alt" />
@@ -56,13 +78,7 @@
             <div class="bg-gray-50 rounded-lg p-5">
                 <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Realisasi</p>
                 <h3 class="text-3xl font-bold text-gray-900 mb-2">
-                    @if($omsetMingguIni >= 1000000000)
-                        Rp {{ number_format($omsetMingguIni / 1000000000, 2, ',', '.') }}M
-                    @elseif($omsetMingguIni >= 1000000)
-                        Rp {{ number_format($omsetMingguIni / 1000000, 2, ',', '.') }}Jt
-                    @else
-                        Rp {{ number_format($omsetMingguIni, 2, ',', '.') }}
-                    @endif
+                    {{ formatRupiah($omsetMingguIni) }}
                 </h3>
 
                 {{-- Breakdown Sistem & Manual --}}
@@ -71,14 +87,14 @@
                         <span class="text-gray-600 flex items-center">(Sistem)
                         </span>
                         <span class="font-semibold text-gray-700">
-                           Rp {{ number_format($omsetSistemMingguIni / 1000000, 2, ',', '.') }}Jt
+                            {{ formatRupiah($omsetSistemMingguIni) }}
                         </span>
                     </div>
                     <div class="flex items-center justify-between text-xs">
                         <span class="text-gray-600 flex items-center">(Manual)
                         </span>
                         <span class="font-semibold text-gray-700">
-                            Rp {{ number_format($omsetManualMingguIni / 1000000, 2, ',', '.') }}Jt
+                            {{ formatRupiah($omsetManualMingguIni) }}
                         </span>
                     </div>
                 </div>
@@ -104,13 +120,7 @@
             <div class="bg-gray-50 rounded-lg p-5">
                 <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Target Mingguan</p>
                 <h3 class="text-3xl font-bold text-gray-900 mb-3">
-                    @if($targetMingguanAdjusted >= 1000000000)
-                        Rp {{ number_format($targetMingguanAdjusted / 1000000000, 2, ',', '.') }}M
-                    @elseif($targetMingguanAdjusted >= 1000000)
-                        Rp {{ number_format($targetMingguanAdjusted / 1000000, 2, ',', '.') }}Jt
-                    @else
-                        Rp {{ number_format($targetMingguanAdjusted, 2, ',', '.') }}
-                    @endif
+                    {{ formatRupiah($targetMingguanAdjusted) }}
                 </h3>
                 <p class="text-sm text-gray-500">Per minggu</p>
             </div>
@@ -123,11 +133,11 @@
                     <div class="{{ $progressMinggu >= 100 ? 'bg-green-500' : 'bg-blue-500' }} h-full rounded-full" style="width: {{ min($progressMinggu, 100) }}%"></div>
                 </div>
                 <p class="text-sm text-gray-500">
-                    @if($targetMingguanAdjusted > $omsetMingguIni)
-                        Kurang Rp {{ number_format(($targetMingguanAdjusted - $omsetMingguIni) / 1000000, 2, ',', '.') }}Jt
-                    @else
-                        Lebih Rp {{ number_format(($omsetMingguIni - $targetMingguanAdjusted) / 1000000, 2, ',', '.') }}Jt
-                    @endif
+                    @php
+                        $selisihMinggu = abs($targetMingguanAdjusted - $omsetMingguIni);
+                        $labelSelisihMinggu = $targetMingguanAdjusted > $omsetMingguIni ? 'Kurang' : 'Lebih';
+                    @endphp
+                    {{ $labelSelisihMinggu }} {{ formatRupiah($selisihMinggu) }}
                 </p>
             </div>
         </div>
@@ -144,13 +154,7 @@
                 <h3 class="text-sm text-gray-500">Outstanding PO</h3>
             </div>
             <p class="text-2xl font-bold text-gray-900 mb-1">
-                @if($totalOutstanding >= 1000000000)
-                    Rp {{ number_format($totalOutstanding / 1000000000, 2, ',', '.') }}M
-                @elseif($totalOutstanding >= 1000000)
-                    Rp {{ number_format($totalOutstanding / 1000000, 2, ',', '.') }}Jt
-                @else
-                    Rp {{ number_format($totalOutstanding, 2, ',', '.') }}
-                @endif
+                {{ formatRupiah($totalOutstanding) }}
             </p>
             <p class="text-sm text-gray-500">{{ number_format($poBerjalan, 0, ',', '.') }} PO Berjalan</p>
         </div>
@@ -164,23 +168,17 @@
                 <h3 class="text-sm text-gray-500">Omset Bulan Ini</h3>
             </div>
             <p class="text-2xl font-bold text-gray-900 mb-1">
-                @if($omsetBulanIni >= 1000000000)
-                    Rp {{ number_format($omsetBulanIni / 1000000000, 2, ',', '.') }}M
-                @elseif($omsetBulanIni >= 1000000)
-                    Rp {{ number_format($omsetBulanIni / 1000000, 2, ',', '.') }}Jt
-                @else
-                    Rp {{ number_format($omsetBulanIni, 2, ',', '.') }}
-                @endif
+                {{ formatRupiah($omsetBulanIni) }}
             </p>
 
             {{-- Breakdown Sistem & Manual --}}
             <div class="flex items-center gap-2 mt-2 mb-1 text-xs text-gray-600">
                 <span class="inline-flex items-center gap-1" title="Omset dari sistem">
-                    (Sistem) {{ number_format($omsetSistemBulanIni / 1000000, 2, ',', '.') }}Jt
+                    (Sistem) {{ formatRupiah($omsetSistemBulanIni) }}
                 </span>
                 <span class="text-gray-300">|</span>
                 <span class="inline-flex items-center gap-1" title="Omset manual">
-                    (Manual) {{ number_format($omsetManualBulanIni / 1000000, 2, ',', '.') }}Jt
+                    (Manual) {{ formatRupiah($omsetManualBulanIni) }}
                 </span>
             </div>
 
@@ -196,13 +194,7 @@
             </div>
             <p class="text-2xl font-bold text-gray-900 mb-1">{{ number_format($orderBulanIni, 0, ',', '.') }}</p>
             <p class="text-sm text-gray-500">
-                @if($nilaiOrderBulanIni >= 1000000000)
-                    Rp {{ number_format($nilaiOrderBulanIni / 1000000000, 2, ',', '.') }}M
-                @elseif($nilaiOrderBulanIni >= 1000000)
-                    Rp {{ number_format($nilaiOrderBulanIni / 1000000, 2, ',', '.') }}Jt
-                @else
-                    Rp {{ number_format($nilaiOrderBulanIni, 2, ',', '.') }}
-                @endif
+                {{ formatRupiah($nilaiOrderBulanIni) }}
             </p>
     </div>
     </div>
@@ -406,7 +398,7 @@
                     <div>
                         <p class="text-sm text-gray-600 mb-1">Total Nilai Margin Minggu Ini</p>
                         <p class="text-2xl font-bold {{ $totalMarginMingguIni >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            Rp {{ number_format($totalMarginMingguIni, 2, ',', '.') }}
+                            {{ formatRupiah($totalMarginMingguIni) }}
                         </p>
                     </div>
                     <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -457,7 +449,7 @@
                                 <td class="px-4 py-3 text-gray-700">{{ $item['supplier'] }}</td>
                                 <td class="px-4 py-3 text-gray-700">{{ $item['bahan_baku'] }}</td>
                                 <td class="px-4 py-3 text-right font-semibold {{ $item['margin'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    Rp {{ number_format($item['margin'], 2, ',', '.') }}
+                                    {{ formatRupiah($item['margin']) }}
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium

@@ -46,9 +46,6 @@ class MarginController extends Controller
             ? ($invoiceData['invoices'][$p->invoice_penagihan_id] ?? null)
             : null;
 
-        // FIX: invoice_penagihan_id belum ter-backfill utk pengiriman ini, tapi invoice lama
-        // yang match langsung lewat pengiriman_id (relasi invoicePenagihan, sudah di-eager-load
-        // di buildQuery()) masih ada dan bukan hasil merge -> aman dipakai apa adanya.
         if (!$invoiceRow && $p->invoicePenagihan && $p->invoicePenagihan->status !== 'digabung') {
             $invoiceRow = $p->invoicePenagihan;
         }
@@ -56,23 +53,12 @@ class MarginController extends Controller
         $hasValidInvoice   = $invoiceRow && $invoiceRow->status !== 'digabung';
         $invoiceIdResolved = $invoiceRow->id ?? null;
 
-        // ===== HARGA JUAL PER KG =====
-        // SELALU dari order_details.harga_jual (harga acuan/PO), apa adanya, tidak peduli ada
-        // invoice atau override manual. Sum SEMUA pengirimanDetails (bukan cuma detail pertama)
-        // supaya rata-rata tertimbang benar kalau satu pengiriman punya multi bahan baku.
+        // Qty jual dipakai untuk gross order detail (fallback proporsional) dan pembagi harga/kg
         $qtyJual = $toFloat($p->pengirimanDetails->sum('qty_kirim'));
         $grossOrderDetail = $toFloat($p->pengirimanDetails->sum(
             fn($d) => $toFloat($d->qty_kirim) * $toFloat(optional($d->orderDetail)->harga_jual)
         ));
-        if ($qtyJual > 0 && $grossOrderDetail > 0) {
-            $hargaJualPerKg = $grossOrderDetail / $qtyJual;
-        }
 
-        // ===== TOTAL JUAL =====
-        // Mengikuti INVOICE (snapshot invoice.items[].amount per pengiriman, termasuk override
-        // manual dari WithInvoiceCalculations::updateRefraksiPerItem()), karena ini nilai riil
-        // yang ditagihkan ke customer. Kalau tidak ada invoice valid, fallback ke hitungan
-        // order_details (qty x harga_jual) sebagai estimasi berbasis PO.
         if ($hasValidInvoice) {
             $itemAmount = $invoiceData['itemAmounts'][$invoiceIdResolved][$p->no_pengiriman] ?? null;
 
@@ -80,9 +66,6 @@ class MarginController extends Controller
                 $totalHargaJualItem = $itemAmount;
                 $sumberHargaJual    = 'Invoice Penagihan';
             } else {
-                // Fallback safety net: data lama sebelum fitur item-per-pengiriman ada, atau
-                // item_name tidak match no_pengiriman -> distribusi proporsional dari gross
-                // order_details seperti sebelumnya.
                 $amountAfter = $toFloat($invoiceRow->amount_after_refraksi);
                 $amountJual  = $amountAfter > 0 ? $amountAfter : $toFloat($invoiceRow->subtotal);
 
@@ -100,6 +83,10 @@ class MarginController extends Controller
         } else {
             $totalHargaJualItem = $grossOrderDetail;
             $sumberHargaJual    = 'Purchase Order';
+        }
+
+        if ($qtyJual > 0 && $totalHargaJualItem > 0) {
+            $hargaJualPerKg = $totalHargaJualItem / $qtyJual;
         }
 
         // ===== HARGA BELI ===== (tidak berubah)

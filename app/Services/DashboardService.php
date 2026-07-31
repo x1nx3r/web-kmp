@@ -40,20 +40,6 @@ class DashboardService
             $targetBulanan  = $targetOmset->target_bulanan  ?? 0;
             $targetTahunan  = $targetOmset->target_tahunan  ?? 0;
 
-            $today        = Carbon::now();
-            $dayOfMonth   = $today->day;
-            $startOfMonth = Carbon::now()->startOfMonth();
-
-            if ($dayOfMonth >= 1 && $dayOfMonth <= 7) {
-                $currentWeekOfMonth = 1;
-            } elseif ($dayOfMonth >= 8 && $dayOfMonth <= 14) {
-                $currentWeekOfMonth = 2;
-            } elseif ($dayOfMonth >= 15 && $dayOfMonth <= 21) {
-                $currentWeekOfMonth = 3;
-            } else {
-                $currentWeekOfMonth = 4;
-            }
-
             $omsetExpr = self::omsetExpression();
 
             // ========== OMSET MINGGU INI ==========
@@ -122,28 +108,7 @@ class DashboardService
             }
 
             $targetBulananAdjusted = $targetBulanan + $sisaTargetSebelumnya;
-            $targetMingguanBase    = $targetBulananAdjusted / 4;
-
-            // Target mingguan adjusted (carry forward mingguan)
-            // Sebelumnya loop ini menjalankan 1 query berat per iterasi minggu (hingga 3×).
-            // Kini hanya 1 query gabungan untuk minggu-minggu sebelum minggu berjalan pada
-            // bulan ini, di-bucket per minggu di PHP. Rumus carry-forward TIDAK diubah.
-            $weekBoundaries          = self::getWeekBoundariesBefore($startOfMonth, $currentWeekOfMonth);
-            $omsetSistemPerWeekLalu  = self::getOmsetSistemPerWeek($weekBoundaries, $omsetExpr);
-
-            $sisaTargetMingguanSebelumnya = 0;
-
-            for ($w = 1; $w < $currentWeekOfMonth; $w++) {
-                $omsetSistemWeek               = $omsetSistemPerWeekLalu[$w] ?? 0;
-                $omsetManualWeek               = $omsetManualBulanIni / 4;
-                $omsetTotalWeek                = $omsetSistemWeek + $omsetManualWeek;
-                $targetWeek                    = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
-                $selisihWeek                   = $omsetTotalWeek - $targetWeek;
-                $sisaTargetMingguanSebelumnya  = $selisihWeek < 0 ? abs($selisihWeek) : 0;
-            }
-
-            $targetMingguanAdjusted = $targetMingguanBase + $sisaTargetMingguanSebelumnya;
-
+            $targetMingguanAdjusted = $targetBulanan / 4;
             $progressMinggu = $targetMingguanAdjusted > 0 ? ($omsetMingguIni / $targetMingguanAdjusted) * 100 : 0;
             $progressBulan  = $targetBulananAdjusted  > 0 ? ($omsetBulanIni  / $targetBulananAdjusted)  * 100 : 0;
             $progressTahun  = $targetTahunan          > 0 ? ($omsetTahunIni  / $targetTahunan)          * 100 : 0;
@@ -358,86 +323,6 @@ class DashboardService
             ->all();
     }
 
-    /**
-     * Hitung rentang tanggal (start, end) untuk setiap nomor minggu SEBELUM
-     * $currentWeekOfMonth pada bulan berjalan. Rumus pembagian minggu
-     * (1-7 / 8-14 / 15-21 / 22-akhir) TIDAK diubah dari versi sebelumnya.
-     *
-     * @return array<int, array{0: Carbon, 1: Carbon}> [minggu => [start, end]]
-     */
-    private static function getWeekBoundariesBefore(Carbon $startOfMonth, int $currentWeekOfMonth): array
-    {
-        $boundaries = [];
-
-        for ($w = 1; $w < $currentWeekOfMonth; $w++) {
-            $weekStartLoop = $w == 1 ? $startOfMonth->copy() : $startOfMonth->copy()->addDays(($w - 1) * 7);
-            $weekEndLoop   = $w == 4 ? $startOfMonth->copy()->endOfMonth() : $weekStartLoop->copy()->addDays(6)->min($startOfMonth->copy()->endOfMonth());
-
-            $boundaries[$w] = [$weekStartLoop, $weekEndLoop];
-        }
-
-        return $boundaries;
-    }
-
-    /**
-     * Ambil total omset sistem per minggu (kunci = nomor minggu) untuk seluruh
-     * rentang minggu pada $weekBoundaries, dalam SATU query.
-     *
-     * Menggantikan query-in-loop pada carry-forward mingguan. $weekBoundaries
-     * adalah partisi tanggal yang tidak tumpang tindih (non-overlapping), sehingga
-     * bucketing tiap baris ke minggu yang tepat menghasilkan SUM per minggu yang
-     * identik dengan hasil query per-minggu yang terpisah pada versi sebelumnya.
-     *
-     * @param  array<int, array{0: Carbon, 1: Carbon}>  $weekBoundaries
-     * @return array<int, float> [minggu => total_omset]
-     */
-    private static function getOmsetSistemPerWeek(array $weekBoundaries, $omsetExpr): array
-    {
-        if (empty($weekBoundaries)) {
-            return [];
-        }
-
-        $firstWeek = array_key_first($weekBoundaries);
-        $lastWeek  = array_key_last($weekBoundaries);
-
-        $rangeStart = $weekBoundaries[$firstWeek][0];
-        $rangeEnd   = $weekBoundaries[$lastWeek][1];
-
-        $query = self::baseOmsetQuery()
-            ->whereBetween('pengiriman.tanggal_kirim', [$rangeStart->copy()->startOfDay(), $rangeEnd->copy()->endOfDay()]);
-
-        self::applyValidInvoiceFilter($query);
-
-        $rows = $query
-            ->select('pengiriman.id', DB::raw('MAX(pengiriman.tanggal_kirim) as tanggal_kirim'), $omsetExpr)
-            ->groupBy('pengiriman.id')
-            ->get();
-
-        $result = [];
-        foreach ($rows as $row) {
-            $rowDate = Carbon::parse($row->tanggal_kirim);
-
-            foreach ($weekBoundaries as $week => [$start, $end]) {
-                if ($rowDate->between($start, $end, true)) {
-                    $result[$week] = ($result[$week] ?? 0) + $row->omset_pengiriman;
-                    break;
-                }
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Helper: tambahkan kondisi exclude pengiriman yang semua invoice-nya berstatus "digabung".
-     * Pengiriman tanpa invoice sama sekali tetap dimasukkan (pakai fallback qty * harga_jual).
-     *
-     * Catatan: method ini juga terdapat di App\Http\Controllers\DashboardController dengan
-     * implementasi identik. Duplikasi ini TIDAK dihapus dalam refactoring ini karena
-     * menggabungkannya memerlukan perubahan simultan pada file Controller di luar cakupan
-     * permintaan refactor saat ini. Direkomendasikan sebagai tindak lanjut terpisah, misalnya
-     * dipindahkan menjadi Eloquent scope pada Model Pengiriman agar dipakai bersama.
-     */
     private static function applyValidInvoiceFilter($query)
     {
         return $query->where(function ($q) {

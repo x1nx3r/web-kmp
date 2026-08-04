@@ -396,4 +396,107 @@ class ApprovalPenagihan extends Component
     {
         $this->reset(['showDetailModal', 'showCreateInvoiceModal', 'selectedData', 'selectedShipment', 'selectedShipments', 'isMergedInvoice', 'notes', 'approvalHistory']);
     }
+
+    public function updateTotalHargaJual()
+    {
+        $this->validate([
+            'totalHargaJualForm' => 'required|numeric|min:0',
+        ], [
+            'totalHargaJualForm.required' => 'Total harga jual harus diisi',
+            'totalHargaJualForm.numeric' => 'Total harga jual harus berupa angka',
+            'totalHargaJualForm.min' => 'Total harga jual tidak boleh negatif',
+        ]);
+
+        if (!$this->selectedData || !$this->selectedData->invoice) {
+            session()->flash('error', 'Data invoice tidak ditemukan');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $invoice = $this->selectedData->invoice;
+            $user = Auth::user();
+
+            // Store old values for history
+            $oldSubtotal = $invoice->subtotal;
+            $oldTotal = $invoice->total_amount;
+
+            $newSubtotal = floatval($this->totalHargaJualForm);
+
+            // --- Propagate new subtotal into items JSON ---
+            // The subtotal is the sum of item amounts. Redistribute proportionally
+            // so that details[].harga_jual, details[].total, unit_price, and amount
+            // all stay consistent with what the invoice PDF renders.
+            $items = $invoice->items ?? [];
+            $oldItemsTotal = collect($items)->sum('amount');
+
+            if ($oldItemsTotal > 0 && count($items) > 0) {
+                foreach ($items as &$item) {
+                    $ratio           = floatval($item['amount']) / $oldItemsTotal;
+                    $newItemAmount   = round($newSubtotal * $ratio, 3);
+                    $item['amount']  = $newItemAmount;
+                    $item['unit_price'] = $newItemAmount;
+
+                    // Back-propagate into details[]: recalculate total & harga_jual per detail
+                    if (!empty($item['details'])) {
+                        $totalQty = collect($item['details'])->sum('qty');
+                        $newHargaJual = $totalQty > 0 ? round($newItemAmount / $totalQty, 3) : 0;
+
+                        foreach ($item['details'] as &$detail) {
+                            $detail['harga_jual'] = $newHargaJual;
+                            $detail['total']      = round($detail['qty'] * $newHargaJual, 3);
+                        }
+                        unset($detail);
+                    }
+                }
+                unset($item);
+
+                $invoice->items = $items;
+            }
+            // --- End items propagation ---
+
+            // Update subtotal
+            $invoice->subtotal = $newSubtotal;
+
+            // Recalculate total with tax
+            $invoice->tax_amount = $invoice->subtotal * ($invoice->tax_percentage / 100);
+            $invoice->total_amount = $invoice->subtotal + $invoice->tax_amount - $invoice->discount_amount;
+            $invoice->save();
+
+            // Collect changes
+            $changes = [
+                'before' => [
+                    'subtotal' => number_format($oldSubtotal, 2, ',', '.'),
+                    'total_amount' => number_format($oldTotal, 2, ',', '.'),
+                ],
+                'after' => [
+                    'subtotal' => number_format($invoice->subtotal, 2, ',', '.'),
+                    'total_amount' => number_format($invoice->total_amount, 2, ',', '.'),
+                ],
+            ];
+
+            // Save history
+            ApprovalHistory::create([
+                'approval_type' => 'penagihan',
+                'approval_id' => $this->selectedData->id,
+                'pengiriman_id' => $this->selectedData->pengiriman_id,
+                'invoice_id' => $invoice->id,
+                'role' => $this->getUserRole($user),
+                'user_id' => $user->id,
+                'action' => 'edited',
+                'changes' => $changes,
+                'notes' => 'Update total harga jual dari Rp ' . number_format($oldSubtotal, 0, ',', '.') .
+                          ' menjadi Rp ' . number_format($invoice->subtotal, 0, ',', '.'),
+            ]);
+
+            DB::commit();
+            session()->flash('message', 'Total harga jual berhasil diupdate');
+
+            // Reload data
+            $this->showDetail($this->selectedData->id);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Gagal update total harga jual: ' . $e->getMessage());
+        }
+    }
 }

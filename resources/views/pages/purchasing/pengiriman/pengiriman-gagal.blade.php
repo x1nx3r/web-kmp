@@ -70,11 +70,8 @@
                         </label>
                         <select id="filterPurchasingGagal" name="filter_purchasing_gagal" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-red-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                             <option value="">Semua PIC</option>
-                            @php
-                                $purchasingOptions = collect($pengirimanGagal->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
-                            @endphp
-                            @foreach($purchasingOptions as $id => $nama)
-                                <option value="{{ $id }}" {{ request('filter_purchasing_gagal') == $id ? 'selected' : '' }}>{{ $nama }}</option>
+                            @foreach($purchasingOptions as $id => $name)
+                                <option value="{{ $id }}" {{ request('filter_purchasing_fisik') == $id ? 'selected' : '' }}>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -132,6 +129,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">PO & PIC</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Detail</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Plat Nomor</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -163,6 +161,24 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <div>{{ $pengiriman->tanggal_kirim ? \Carbon\Carbon::parse($pengiriman->tanggal_kirim)->format('d M Y') : '-' }}</div>
                                     <div class="text-xs">{{ $pengiriman->hari_kirim ?? '-' }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    @php
+                                        $platNomorList = $pengiriman->pengirimanDetails
+                                            ? $pengiriman->pengirimanDetails->pluck('plat_nomor_truk')->filter()->unique()->values()
+                                            : collect();
+                                    @endphp
+                                    @if($platNomorList->isNotEmpty())
+                                        <div class="flex flex-wrap gap-1">
+                                            @foreach($platNomorList as $plat)
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-medium border border-gray-200">
+                                                    <i class="fas fa-truck-moving mr-1 text-gray-400"></i>{{ $plat }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-gray-400">-</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -391,6 +407,7 @@ function populateDetailModalGagal(pengiriman) {
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bahan Baku</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plat Nomor</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty Kirim</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga Satuan</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
@@ -401,6 +418,7 @@ function populateDetailModalGagal(pengiriman) {
                                 <tr>
                                     <td class="px-4 py-3 text-sm text-gray-900">${detail.bahan_baku || '-'}</td>
                                     <td class="px-4 py-3 text-sm text-gray-500">${detail.supplier || '-'}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-700">${detail.plat_nomor_truk && detail.plat_nomor_truk !== '-' ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-medium border border-gray-200"><i class="fas fa-truck-moving mr-1 text-gray-400"></i>${detail.plat_nomor_truk}</span>` : '-'}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900 font-medium">${detail.qty_kirim || '0'} kg</td>
                                     <td class="px-4 py-3 text-sm text-gray-900">Rp ${Number(detail.harga_satuan || 0).toLocaleString('id-ID')}</td>
                                     <td class="px-4 py-3 text-sm text-gray-900 font-medium">Rp ${Number(detail.total_harga || 0).toLocaleString('id-ID')}</td>

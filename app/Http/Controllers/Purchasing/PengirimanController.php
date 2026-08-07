@@ -24,6 +24,15 @@ class PengirimanController extends Controller
     /* ======================================================================
      * PRIVATE HELPERS (BUSINESS LOGIC & SHARED FUNCTIONS)
      * ====================================================================== */
+    private function getPurchasingOptionsForPengiriman()
+    {
+        return \App\Models\User::whereIn(
+                'id',
+                Pengiriman::whereNotNull('purchasing_id')->distinct()->pluck('purchasing_id')
+            )
+            ->orderBy('nama')
+            ->pluck('nama', 'id');
+    }
 
     private function authorizeAction(?Pengiriman $pengiriman = null, bool $enforcePic = true): ?array
     {
@@ -297,8 +306,11 @@ class PengirimanController extends Controller
             }
         }
 
+        $purchasingOptions = $this->getPurchasingOptionsForPengiriman();
+
         return view("pages.purchasing.pengiriman", compact(
-            "pengirimanMasuk", "menungguVerifikasi", "menungguFisik", "pengirimanBerhasil", "pengirimanGagal"
+            "pengirimanMasuk", "menungguVerifikasi", "menungguFisik", "pengirimanBerhasil", "pengirimanGagal",
+            "purchasingOptions"
         ));
     }
 
@@ -708,29 +720,46 @@ class PengirimanController extends Controller
         }
     }
 
-    public function batalPengiriman(Request $request)
+     public function batalPengiriman(Request $request)
     {
         $pengirimanId = $request->input('pengiriman_id');
         $pengiriman = $pengirimanId ? Pengiriman::find($pengirimanId) : null;
         
         $authError = $this->authorizeAction($pengiriman, true);
         if ($authError) return response()->json($authError, 403);
-
+ 
         try {
             $validatedData = $request->validate([
                 "pengiriman_id" => "required|exists:pengiriman,id",
                 "catatan" => "required|string|max:1000",
                 "alasan_batal" => "required|string|max:500",
+                // nopol per-detail, key = pengiriman_detail id
+                "nopol_batal" => "nullable|array",
+                "nopol_batal.*" => "nullable|string|max:50",
             ]);
-
+ 
             DB::beginTransaction();
-
+ 
             $newCatatan = $validatedData["alasan_batal"] . "\n [Dibatalkan pada: " . now()->format("d M Y H:i") . "]";
             $pengiriman->update(["catatan" => $newCatatan, "status" => "gagal"]);
+ 
+            if (!empty($validatedData["nopol_batal"])) {
+                foreach ($validatedData["nopol_batal"] as $detailId => $nopol) {
+                    $nopol = trim((string) $nopol);
+                    if ($nopol === '') continue;
+ 
+                    PengirimanDetail::where('id', $detailId)
+                        ->where('pengiriman_id', $pengiriman->id) 
+                        ->update(['plat_nomor_truk' => $nopol]);
+                }
+            }
+ 
             $this->restoreOrderDetailQty($pengiriman);
-
+ 
             DB::commit();
-
+ 
+            $pengiriman->load('pengirimanDetails');
+ 
             return response()->json([
                 "success" => true,
                 "message" => "Pengiriman berhasil dibatalkan",

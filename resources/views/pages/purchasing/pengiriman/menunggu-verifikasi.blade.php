@@ -71,17 +71,8 @@
                         </label>
                         <select id="filterPurchasingVerifikasi" name="filter_purchasing_verifikasi" class="w-full py-2 px-3 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-white transition-all duration-200 text-sm">
                             <option value="">Semua Procurement</option>
-                            @php
-                                $purchasingOptions = collect();
-                                foreach($menungguVerifikasi->items() ?? [] as $item) {
-                                    if($item->purchasing && $item->purchasing->nama) {
-                                        $purchasingOptions->put($item->purchasing->id, $item->purchasing->nama);
-                                    }
-                                }
-                                $purchasingOptions = $purchasingOptions->unique()->filter();
-                            @endphp
                             @foreach($purchasingOptions as $id => $name)
-                                <option value="{{ $id }}" {{ request('filter_purchasing_verifikasi') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                <option value="{{ $id }}" {{ request('filter_purchasing_fisik') == $id ? 'selected' : '' }}>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

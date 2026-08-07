@@ -75,17 +75,8 @@
                         </label>
                         <select id="filterPurchasing" name="filter_purchasing" class="w-full py-2 px-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white transition-all duration-200 text-sm">
                             <option value="">Semua Procurement</option>
-                            @php
-                                $purchasingOptions = collect();
-                                foreach($pengirimanMasuk->items() ?? [] as $item) {
-                                    if($item->purchasing && $item->purchasing->nama) {
-                                        $purchasingOptions->put($item->purchasing->id, $item->purchasing->nama);
-                                    }
-                                }
-                                $purchasingOptions = $purchasingOptions->unique()->filter();
-                            @endphp
                             @foreach($purchasingOptions as $id => $name)
-                                <option value="{{ $id }}" {{ request('filter_purchasing') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                <option value="{{ $id }}" {{ request('filter_purchasing_fisik') == $id ? 'selected' : '' }}>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

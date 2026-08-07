@@ -98,6 +98,37 @@
                             <p class="text-xs text-gray-500" id="alasan-counter">0/500</p>
                         </div>
                     </div>
+
+                    {{-- Nopol Kendaraan (per item barang) --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-truck-moving mr-1"></i>
+                            No. Polisi Kendaraan <span class="text-gray-400 font-normal">(Opsional, per item)</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mb-2">Data ini akan disimpan langsung ke kolom nopol setiap item barang, bukan ke catatan.</p>
+
+                        @if($pengiriman->pengirimanDetails && $pengiriman->pengirimanDetails->isNotEmpty())
+                            <div class="space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                @foreach($pengiriman->pengirimanDetails as $detail)
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 min-w-0">
+                                            <span class="text-xs text-gray-600 truncate block">
+                                                {{ $detail->bahanBakuSupplier->nama ?? 'Bahan Baku' }}
+                                            </span>
+                                        </div>
+                                        <input type="text"
+                                               name="nopol_batal[{{ $detail->id }}]"
+                                               value="{{ old('nopol_batal.' . $detail->id, $detail->plat_nomor_truk) }}"
+                                               maxlength="50"
+                                               placeholder="cth: B 1234 XYZ"
+                                               class="w-40 sm:w-48 px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="text-sm text-gray-400 italic">Belum ada detail barang untuk pengiriman ini.</p>
+                        @endif
+                    </div>
                 </div>
 
                 {{-- Warning --}}
@@ -129,7 +160,7 @@
             <button type="button" onclick="submitBatalPengiriman()" 
                     class="px-8 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold shadow-md hover:shadow-lg">
                 <i class="fas fa-ban mr-2"></i>
-                Batalkan Pengiriman
+                Pengiriman Tolak
             </button>
         </div>
     </div>
@@ -162,7 +193,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Note: submitBatalPengiriman and closeBatalModal functions are defined globally in pengiriman-masuk.blade.php
 </script>
-#submitBatalBtn .fa-spinner {
-    animation: spin 1s linear infinite;
-}
-</style>

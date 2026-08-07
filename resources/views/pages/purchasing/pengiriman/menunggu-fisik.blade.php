@@ -70,15 +70,6 @@
                         </label>
                         <select id="filterPurchasingFisik" name="filter_purchasing_fisik" class="w-full py-2 px-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 bg-white transition-all duration-200 text-sm">
                             <option value="">Semua Procurement</option>
-                            @php
-                                $purchasingOptions = collect();
-                                foreach($menungguFisik->items() ?? [] as $item) {
-                                    if($item->purchasing && $item->purchasing->nama) {
-                                        $purchasingOptions->put($item->purchasing->id, $item->purchasing->nama);
-                                    }
-                                }
-                                $purchasingOptions = $purchasingOptions->unique()->filter();
-                            @endphp
                             @foreach($purchasingOptions as $id => $name)
                                 <option value="{{ $id }}" {{ request('filter_purchasing_fisik') == $id ? 'selected' : '' }}>{{ $name }}</option>
                             @endforeach

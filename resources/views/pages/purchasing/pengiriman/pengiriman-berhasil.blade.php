@@ -70,11 +70,8 @@
                         </label>
                         <select id="filterPurchasingBerhasil" name="filter_purchasing_berhasil" class="w-full py-2 sm:py-3 px-2 sm:px-4 border-2 border-green-200 rounded-lg focus:ring-2 sm:focus:ring-4 focus:ring-green-200 focus:border-green-500 bg-white transition-all duration-200 text-xs sm:text-sm">
                             <option value="">Semua PIC</option>
-                            @php
-                                $purchasingOptions = collect($pengirimanBerhasil->items() ?? [])->pluck('purchasing.nama', 'purchasing.id')->unique()->filter();
-                            @endphp
-                            @foreach($purchasingOptions as $id => $nama)
-                                <option value="{{ $id }}" {{ request('filter_purchasing_berhasil') == $id ? 'selected' : '' }}>{{ $nama }}</option>
+                            @foreach($purchasingOptions as $id => $name)
+                                <option value="{{ $id }}" {{ request('filter_purchasing_fisik') == $id ? 'selected' : '' }}>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

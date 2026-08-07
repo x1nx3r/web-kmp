@@ -97,32 +97,27 @@ class OrderController extends Controller
         $request->validate([
             "klien_id" => "required|exists:kliens,id",
             "tanggal_order" => "required|date",
-            // Accept new priority values (zero-downtime): rendah, sedang, tinggi
             "priority" => "required|in:rendah,sedang,tinggi",
             "po_number" => "nullable|string|max:50",
             "po_start_date" => "nullable|date",
             "po_end_date" => "nullable|date|after_or_equal:po_start_date",
             "catatan" => "nullable|string",
             "order_details" => "required|array|min:1",
-            "order_details.*.bahan_baku_klien_id" =>
-                "required|exists:bahan_baku_klien,id",
+            "order_details.*.bahan_baku_klien_id" => "required|exists:bahan_baku_klien,id",
+            "order_details.*.nama_material_po" => "nullable|string|max:255", 
             "order_details.*.qty" => "required|numeric|min:0.01",
             "order_details.*.satuan" => "required|string|max:20",
             "order_details.*.harga_jual" => "required|numeric|min:0",
             "order_details.*.spesifikasi_khusus" => "nullable|string",
             "order_details.*.catatan" => "nullable|string",
-            "order_details.*.recommended_supplier_id" =>
-                "nullable|exists:suppliers,id",
-            "order_details.*.recommended_bahan_baku_supplier_id" =>
-                "nullable|exists:bahan_baku_supplier,id",
+            "order_details.*.recommended_supplier_id" => "nullable|exists:suppliers,id",
+            "order_details.*.recommended_bahan_baku_supplier_id" => "nullable|exists:bahan_baku_supplier,id",
         ]);
 
         $order = Order::create([
             "klien_id" => $request->klien_id,
             "created_by" => AuthFallbackService::id(),
             "tanggal_order" => $request->tanggal_order,
-            // Write into the legacy enum column `priority`. This controller is now aligned
-            // with the surgical migration plan that updates the enum in-place.
             "priority" => $request->priority,
             "po_number" => $request->po_number,
             "po_start_date" => $request->po_start_date,
@@ -133,6 +128,7 @@ class OrderController extends Controller
         foreach ($request->order_details as $detail) {
             $detailModel = $order->orderDetails()->create([
                 "bahan_baku_klien_id" => $detail["bahan_baku_klien_id"],
+                "nama_material_po" => $detail["nama_material_po"] ?? null, // <-- TAMBAHAN
                 "qty" => $detail["qty"],
                 "satuan" => $detail["satuan"],
                 "harga_jual" => $detail["harga_jual"],
@@ -147,7 +143,6 @@ class OrderController extends Controller
             $this->applyRecommendedSupplierFromPayload($detailModel, $detail);
         }
 
-        // Calculate totals
         $order->calculateTotals();
 
         return redirect()
@@ -409,13 +404,12 @@ class OrderController extends Controller
             "orderDetails.orderSuppliers.bahanBakuSupplier",
         ])->findOrFail($id);
 
-        // Allow editing for draft, confirmed, and processing orders
-        if (!in_array($order->status, ["draft", "dikonfirmasi", "diproses"])) {
+        if (!in_array($order->status, ["draft", "dikonfirmasi", "diproses", "selesai"])) {
             return redirect()
                 ->route("orders.show", $order->id)
                 ->with(
                     "error",
-                    "Hanya order dengan status draft, dikonfirmasi, atau diproses yang dapat diedit.",
+                    "Order dengan status ini tidak dapat diedit.",
                 );
         }
 
@@ -429,43 +423,44 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        // Allow updating for draft, confirmed, and processing orders
-        if (!in_array($order->status, ["draft", "dikonfirmasi", "diproses"])) {
+        if (!in_array($order->status, ["draft", "dikonfirmasi", "diproses", "selesai"])) {
             return redirect()
                 ->route("orders.show", $order->id)
                 ->with(
                     "error",
-                    "Hanya order dengan status draft, dikonfirmasi, atau diproses yang dapat diupdate.",
+                    "Order dengan status ini tidak dapat diupdate.",
                 );
         }
+
+        // Order "selesai" = mode terkunci: hanya field non-krusial yang boleh berubah
+        $isLocked = $order->status === "selesai";
 
         $request->validate([
             "klien_id" => "required|exists:kliens,id",
             "tanggal_order" => "required|date",
-            // Accept new priority values (zero-downtime): rendah, sedang, tinggi
             "priority" => "required|in:rendah,sedang,tinggi",
             "po_number" => "nullable|string|max:50",
             "po_start_date" => "nullable|date",
             "po_end_date" => "nullable|date|after_or_equal:po_start_date",
             "catatan" => "nullable|string",
             "order_details" => "required|array|min:1",
-            "order_details.*.bahan_baku_klien_id" =>
-                "required|exists:bahan_baku_klien,id",
+            // Saat locked, wajib kirim id detail yang mau diupdate
+            "order_details.*.id" => $isLocked ? "required|exists:order_details,id" : "nullable|exists:order_details,id",
+            "order_details.*.bahan_baku_klien_id" => "required|exists:bahan_baku_klien,id",
+            "order_details.*.nama_material_po" => "nullable|string|max:255",
             "order_details.*.qty" => "required|numeric|min:0.01",
             "order_details.*.satuan" => "required|string|max:20",
             "order_details.*.harga_jual" => "required|numeric|min:0",
             "order_details.*.spesifikasi_khusus" => "nullable|string",
             "order_details.*.catatan" => "nullable|string",
-            "order_details.*.recommended_supplier_id" =>
-                "nullable|exists:suppliers,id",
-            "order_details.*.recommended_bahan_baku_supplier_id" =>
-                "nullable|exists:bahan_baku_supplier,id",
+            "order_details.*.recommended_supplier_id" => "nullable|exists:suppliers,id",
+            "order_details.*.recommended_bahan_baku_supplier_id" => "nullable|exists:bahan_baku_supplier,id",
         ]);
 
+        // Field level-order: aman diubah kapan pun, termasuk saat order "selesai"
         $order->update([
             "klien_id" => $request->klien_id,
             "tanggal_order" => $request->tanggal_order,
-            // Update the legacy `priority` enum column directly (surgical migration path).
             "priority" => $request->priority,
             "po_number" => $request->po_number,
             "po_start_date" => $request->po_start_date,
@@ -473,32 +468,52 @@ class OrderController extends Controller
             "catatan" => $request->catatan,
         ]);
 
-        // Delete existing details and create new ones
-        $order->orderDetails()->delete();
+        if ($isLocked) {
+            // ORDER SELESAI: HANYA update field non-krusial pada detail yang SUDAH ADA.
+            // qty, harga_jual, bahan_baku_klien_id, dan supplier TIDAK disentuh sama sekali
+            // supaya data historis pengiriman/forecast/margin tidak rusak.
+            foreach ($request->order_details as $detailPayload) {
+                $detail = $order->orderDetails()->find($detailPayload["id"] ?? null);
+                if (!$detail) {
+                    continue; // detail baru diabaikan — tidak boleh nambah item ke order selesai
+                }
 
-        foreach ($request->order_details as $detail) {
-            $detailModel = $order->orderDetails()->create([
-                "bahan_baku_klien_id" => $detail["bahan_baku_klien_id"],
-                "qty" => $detail["qty"],
-                "satuan" => $detail["satuan"],
-                "harga_jual" => $detail["harga_jual"],
-                "total_harga" => $detail["qty"] * $detail["harga_jual"],
-                "status" => "menunggu",
-                "spesifikasi_khusus" => $detail["spesifikasi_khusus"] ?? null,
-                "catatan" => $detail["catatan"] ?? null,
-            ]);
+                $detail->update([
+                    "nama_material_po" => $detailPayload["nama_material_po"] ?? null,
+                    "spesifikasi_khusus" => $detailPayload["spesifikasi_khusus"] ?? null,
+                    "catatan" => $detailPayload["catatan"] ?? null,
+                ]);
+            }
+        } else {
+            // ALUR NORMAL (draft/dikonfirmasi/diproses): delete-and-recreate seperti semula
+            $order->orderDetails()->delete();
 
-            $detailModel->populateSupplierOptions();
+            foreach ($request->order_details as $detail) {
+                $detailModel = $order->orderDetails()->create([
+                    "bahan_baku_klien_id" => $detail["bahan_baku_klien_id"],
+                    "nama_material_po" => $detail["nama_material_po"] ?? null,
+                    "qty" => $detail["qty"],
+                    "satuan" => $detail["satuan"],
+                    "harga_jual" => $detail["harga_jual"],
+                    "total_harga" => $detail["qty"] * $detail["harga_jual"],
+                    "status" => "menunggu",
+                    "spesifikasi_khusus" => $detail["spesifikasi_khusus"] ?? null,
+                    "catatan" => $detail["catatan"] ?? null,
+                ]);
 
-            $this->applyRecommendedSupplierFromPayload($detailModel, $detail);
+                $detailModel->populateSupplierOptions();
+
+                $this->applyRecommendedSupplierFromPayload($detailModel, $detail);
+            }
         }
 
-        // Recalculate totals
         $order->calculateTotals();
 
         return redirect()
             ->route("orders.show", $order->id)
-            ->with("success", "Order berhasil diupdate.");
+            ->with("success", $isLocked
+                ? "Catatan order berhasil diperbarui."
+                : "Order berhasil diupdate.");
     }
 
     /**

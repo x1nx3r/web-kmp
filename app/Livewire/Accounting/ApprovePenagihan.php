@@ -95,6 +95,94 @@ class ApprovePenagihan extends Component
         if (empty($this->expenseForm['others'])) $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
     }
 
+    /**
+     * Tambah baris pengeluaran "Lainnya" pada form pengeluaran non-merge (single shipment).
+     * Dipanggil dari tombol "Tambah Baris" di form Pengeluaran Tambahan.
+     */
+    public function addOtherExpenseRow(): void
+    {
+        if (!$this->ensureCanManage()) return;
+        $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+    }
+
+    /**
+     * Hapus baris pengeluaran "Lainnya" pada form pengeluaran non-merge (single shipment).
+     */
+    public function removeOtherExpenseRow($rowIndex): void
+    {
+        if (!$this->ensureCanManage()) return;
+        if (isset($this->expenseForm['others'][$rowIndex])) {
+            array_splice($this->expenseForm['others'], $rowIndex, 1);
+            if (empty($this->expenseForm['others'])) $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+        }
+    }
+
+    /**
+     * Simpan pengeluaran tambahan (truk, kuli, fee, lainnya) untuk invoice non-merge (single shipment).
+     * Dipanggil dari tombol "Simpan Pengeluaran Tambahan".
+     */
+    public function updateExpenses()
+    {
+        if (!$this->ensureCanManage()) return;
+        if (!$this->invoice) { session()->flash('error', 'Data invoice tidak ditemukan'); return; }
+
+        foreach (['truk', 'kuli', 'fee'] as $k) {
+            if (floatval($this->expenseForm[$k] ?? 0) < 0) {
+                session()->flash('error', ucfirst($k) . ' tidak boleh negatif');
+                return;
+            }
+        }
+        foreach (($this->expenseForm['others'] ?? []) as $j => $row) {
+            $amount = floatval($row['amount'] ?? 0);
+            $type = trim((string) ($row['type'] ?? ''));
+            if ($amount < 0) { session()->flash('error', 'Baris #' . ($j + 1) . ': nominal tidak boleh negatif'); return; }
+            if ($amount > 0 && $type === '') { session()->flash('error', 'Baris #' . ($j + 1) . ': nama pengeluaran wajib diisi'); return; }
+        }
+
+        DB::beginTransaction();
+        try {
+            $rows = [];
+            $total = 0;
+
+            foreach (['truk', 'kuli', 'fee'] as $type) {
+                $amount = floatval($this->expenseForm[$type] ?? 0);
+                if ($amount > 0) {
+                    $rows[] = ['type' => $type, 'amount' => $amount];
+                    $total += $amount;
+                }
+            }
+            foreach (($this->expenseForm['others'] ?? []) as $row) {
+                $type = trim((string) ($row['type'] ?? ''));
+                $amount = floatval($row['amount'] ?? 0);
+                if ($type === '' || $amount <= 0) continue;
+                $rows[] = ['type' => $type, 'amount' => $amount];
+                $total += $amount;
+            }
+
+            $this->invoice->expenses()->delete();
+            foreach ($rows as $r) $this->invoice->expenses()->create($r);
+
+            $subtotal = floatval($this->invoice->amount_after_refraksi ?? $this->invoice->subtotal ?? 0);
+            $this->invoice->update([
+                'additional_expenses_total' => $total,
+                'total_amount' => max(0, $subtotal + $total + floatval($this->invoice->tax_amount ?? 0) - floatval($this->invoice->discount_amount ?? 0)),
+            ]);
+
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $this->logInvoiceHistory($this->approval->id, $this->approval->pengiriman_id, $this->invoice->id, 'edited', 'Pengeluaran tambahan diubah');
+            }
+
+            DB::commit();
+            session()->flash('message', 'Pengeluaran tambahan berhasil disimpan');
+            $this->invoice->refresh();
+            $this->loadExpenses();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Update Expenses Error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan pengeluaran: ' . $e->getMessage());
+        }
+    }
+
     public function approve()
     {
         if (!$this->approval || !$this->ensureCanManage()) return;

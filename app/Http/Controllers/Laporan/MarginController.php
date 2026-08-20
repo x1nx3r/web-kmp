@@ -210,7 +210,10 @@ class MarginController extends Controller
                 $itemName = $item['item_name'] ?? '';
                 if (str_starts_with($itemName, 'Pengiriman ')) {
                     $noPengiriman = trim(substr($itemName, strlen('Pengiriman ')));
-                    $map[$noPengiriman] = floatval($item['amount'] ?? 0);
+                    // Pakai nilai bersih (setelah refraksi), konsisten dengan detail pengiriman &
+                    // fallback amount_after_refraksi — bukan gross items[].amount.
+                    $map[$noPengiriman] = floatval($item['amount'] ?? 0)
+                        - floatval($item['refraksi_amount'] ?? 0);
                 }
             }
             if (!empty($map)) {

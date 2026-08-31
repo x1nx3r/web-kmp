@@ -150,14 +150,15 @@ class EvaluasiProcurementController extends Controller
         // di-decode), bukan raw SQL JSON_TABLE.
         $invoiceItemAmountSub = "(
             SELECT ip.id as invoice_penagihan_id,
-                   TRIM(SUBSTRING(jt.item_name, LENGTH('Pengiriman ') + 1)) as no_pengiriman,
-                   jt.amount as item_amount
+                TRIM(SUBSTRING(jt.item_name, LENGTH('Pengiriman ') + 1)) as no_pengiriman,
+                (jt.amount - COALESCE(jt.refraksi_amount, 0)) as item_amount
             FROM invoice_penagihan ip
             JOIN JSON_TABLE(
                 COALESCE(ip.items, '[]'),
                 '$[*]' COLUMNS (
-                    item_name VARCHAR(255) PATH '$.item_name',
-                    amount    DECIMAL(18,2) PATH '$.amount'
+                    item_name       VARCHAR(255)  PATH '$.item_name',
+                    amount          DECIMAL(18,2) PATH '$.amount',
+                    refraksi_amount DECIMAL(18,2) PATH '$.refraksi_amount'
                 )
             ) as jt
             WHERE jt.item_name LIKE 'Pengiriman %'

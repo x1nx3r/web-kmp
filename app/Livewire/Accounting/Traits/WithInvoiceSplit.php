@@ -145,10 +145,10 @@ trait WithInvoiceSplit
                 // Satu-satunya perubahan ke tabel pengiriman: pindah invoice_penagihan_id
                 $pengiriman->update(['invoice_penagihan_id' => $newInvoice->id]);
 
-                // TODO KEPUTUSAN BISNIS (belum dikonfirmasi ke klien):
-                // apakah approval hasil split ikut status invoice asal (di bawah ini),
-                // atau selalu 'pending' supaya diapprove ulang manual?
-                $newApprovalStatus = ($approval && $approval->status === 'completed') ? 'completed' : 'pending';
+                // Approval hasil split SELALU 'pending' -- harus di-approve ulang dari
+                // nol, tidak peduli status invoice asal (completed atau pending).
+                // Konsisten dengan perilaku merge yang juga selalu bikin approval baru pending.
+                $newApprovalStatus = 'pending';
 
                 // Dibuat dulu sebelum logInvoiceHistory, karena approval_id di tabel
                 // approval_history adalah NOT NULL -- tidak bisa diisi null.
@@ -156,10 +156,10 @@ trait WithInvoiceSplit
                     'invoice_id'          => $newInvoice->id,
                     'pengiriman_id'       => $pengiriman->id,
                     'status'              => $newApprovalStatus,
-                    'staff_id'            => $newApprovalStatus === 'completed' ? ($approval->staff_id ?? null) : null,
-                    'manager_id'          => $newApprovalStatus === 'completed' ? ($approval->manager_id ?? null) : null,
-                    'staff_approved_at'   => $newApprovalStatus === 'completed' ? ($approval->staff_approved_at ?? null) : null,
-                    'manager_approved_at' => $newApprovalStatus === 'completed' ? ($approval->manager_approved_at ?? null) : null,
+                    'staff_id'            => null,
+                    'manager_id'          => null,
+                    'staff_approved_at'   => null,
+                    'manager_approved_at' => null,
                 ]);
 
                 $this->logInvoiceHistory(

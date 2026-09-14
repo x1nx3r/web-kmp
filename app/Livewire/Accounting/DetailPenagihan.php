@@ -7,6 +7,7 @@ use App\Models\InvoicePenagihan;
 use App\Models\CompanySetting;
 use App\Livewire\Accounting\Traits\WithInvoiceShared;
 use App\Livewire\Accounting\Traits\WithInvoiceCalculations;
+use App\Livewire\Accounting\Traits\WithInvoiceSplit;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ use Carbon\Carbon;
 
 class DetailPenagihan extends Component
 {
-    use WithInvoiceShared, WithInvoiceCalculations;
+    use WithInvoiceShared, WithInvoiceCalculations, WithInvoiceSplit;
 
     public $approvalId, $approval, $invoice, $pengiriman, $pengirimans, $approvalHistory, $companySetting, $editMode = false, $canManage = false;
     public $expenseForm = ['truk' => 0, 'kuli' => 0, 'fee' => 0, 'others' => []];
@@ -121,6 +122,16 @@ class DetailPenagihan extends Component
             $pdf = Pdf::loadView('pdf.invoice-penagihan', ['invoice' => $this->invoice, 'pengiriman' => $this->pengiriman, 'pengirimans' => $this->pengirimans, 'approval' => $this->approval, 'company' => $this->companySetting])->setPaper('a4', 'portrait');
             return response()->streamDownload(fn() => print($pdf->output()), 'Invoice-' . str_replace(['/', '\\'], '-', $this->invoice->invoice_number) . '.pdf');
         } catch (\Exception $e) { Log::error("PDF Error: " . $e->getMessage()); session()->flash('error', 'Gagal generate PDF'); }
+    }
+
+    /**
+     * Setelah split berhasil, reload halaman detail (invoice ini sudah nonaktif/digabung
+     * statusnya, tapi kita tetap tampilkan detailnya dengan flash message hasil split).
+     */
+    public function splitInvoiceAndReload($invoiceId)
+    {
+        $this->splitInvoice($invoiceId);
+        $this->loadDetail();
     }
 
     public function render()

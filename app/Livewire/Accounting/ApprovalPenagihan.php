@@ -8,6 +8,7 @@ use App\Models\ApprovalPenagihan as ApprovalPenagihanModel;
 use App\Models\CompanySetting;
 use App\Services\Notifications\ApprovalPenagihanNotificationService;
 use App\Livewire\Accounting\Traits\WithInvoiceShared;
+use App\Livewire\Accounting\Traits\WithInvoiceSplit;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ use Livewire\WithPagination;
 
 class ApprovalPenagihan extends Component
 {
-    use WithPagination, WithInvoiceShared;
+    use WithPagination, WithInvoiceShared, WithInvoiceSplit;
 
     public $search = '';
     public $customerFilter = 'all';
@@ -251,6 +252,10 @@ class ApprovalPenagihan extends Component
 
             $items[] = [
                 'item_name' => 'Pengiriman ' . $pengiriman->no_pengiriman,
+                // TAMBAHAN: simpan pengiriman_id eksplisit di tiap item, supaya fitur
+                // split nanti bisa mencocokkan item -> shipment secara pasti (tidak
+                // bergantung pada urutan/posisi index yang rapuh).
+                'pengiriman_id' => $pengiriman->id,
                 'description' => 'No. Pengiriman: ' . $pengiriman->no_pengiriman . '\nTanggal Kirim: ' . $pengiriman->tanggal_kirim->format('d M Y') . '\nTotal Qty: ' . number_format($pengiriman->total_qty_kirim, 2, ',', '.') . ' kg',
                 'quantity' => 1, 'unit' => 'paket', 'unit_price' => $shipmentTotal, 'amount' => $shipmentTotal,
                 'refraksi_type' => $itemRefraksiType, 'refraksi_value' => $itemRefraksiValue, 'refraksi_amount' => 0,
@@ -424,9 +429,6 @@ class ApprovalPenagihan extends Component
             $newSubtotal = floatval($this->totalHargaJualForm);
 
             // --- Propagate new subtotal into items JSON ---
-            // The subtotal is the sum of item amounts. Redistribute proportionally
-            // so that details[].harga_jual, details[].total, unit_price, and amount
-            // all stay consistent with what the invoice PDF renders.
             $items = $invoice->items ?? [];
             $oldItemsTotal = collect($items)->sum('amount');
 
@@ -437,7 +439,6 @@ class ApprovalPenagihan extends Component
                     $item['amount']  = $newItemAmount;
                     $item['unit_price'] = $newItemAmount;
 
-                    // Back-propagate into details[]: recalculate total & harga_jual per detail
                     if (!empty($item['details'])) {
                         $totalQty = collect($item['details'])->sum('qty');
                         $newHargaJual = $totalQty > 0 ? round($newItemAmount / $totalQty, 3) : 0;
@@ -455,15 +456,11 @@ class ApprovalPenagihan extends Component
             }
             // --- End items propagation ---
 
-            // Update subtotal
             $invoice->subtotal = $newSubtotal;
-
-            // Recalculate total with tax
             $invoice->tax_amount = $invoice->subtotal * ($invoice->tax_percentage / 100);
             $invoice->total_amount = $invoice->subtotal + $invoice->tax_amount - $invoice->discount_amount;
             $invoice->save();
 
-            // Collect changes
             $changes = [
                 'before' => [
                     'subtotal' => number_format($oldSubtotal, 2, ',', '.'),
@@ -475,7 +472,6 @@ class ApprovalPenagihan extends Component
                 ],
             ];
 
-            // Save history
             ApprovalHistory::create([
                 'approval_type' => 'penagihan',
                 'approval_id' => $this->selectedData->id,
@@ -492,7 +488,6 @@ class ApprovalPenagihan extends Component
             DB::commit();
             session()->flash('message', 'Total harga jual berhasil diupdate');
 
-            // Reload data
             $this->showDetail($this->selectedData->id);
         } catch (\Exception $e) {
             DB::rollBack();

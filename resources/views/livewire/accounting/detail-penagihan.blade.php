@@ -52,6 +52,27 @@
                                 <i class="fas fa-spinner fa-spin"></i> Generating...
                             </span>
                         </button>
+
+                        {{-- ===== TOMBOL SPLIT / PISAHKAN INVOICE (BARU) =====
+                             Hanya muncul kalau invoice ini gabungan (>1 pengiriman),
+                             belum ada pembayaran masuk, dan punya data items[].
+                             Logicnya ada di trait WithInvoiceSplit. --}}
+                        @if($canManage && $this->canSplitInvoice($invoice))
+                            <button
+                                wire:click="splitInvoiceAndReload({{ $invoice->id }})"
+                                wire:loading.attr="disabled"
+                                wire:confirm="Pisahkan invoice {{ $invoice->invoice_number }} menjadi {{ $pengirimans->count() }} invoice terpisah? Invoice gabungan ini akan ditandai nonaktif (status digabung) dan tidak bisa dipakai lagi. Aksi ini tidak bisa dibatalkan otomatis."
+                                class="px-4 py-2 bg-white text-red-600 rounded-lg hover:bg-red-50 font-medium text-sm flex items-center gap-2 disabled:opacity-50 border border-red-200"
+                            >
+                                <span wire:loading.remove wire:target="splitInvoiceAndReload">
+                                    <i class="fas fa-object-ungroup"></i> Pisahkan Invoice ({{ $pengirimans->count() }})
+                                </span>
+                                <span wire:loading wire:target="splitInvoiceAndReload">
+                                    <i class="fas fa-spinner fa-spin"></i> Memisahkan...
+                                </span>
+                            </button>
+                        @endif
+                        {{-- ===== END TOMBOL SPLIT ===== --}}
                     </div>
                 </div>
             </div>

@@ -215,7 +215,6 @@
         }
 
         .payment-section {
-            margin-top: 40px;
             font-size: 9pt;
             line-height: 1.6;
         }
@@ -236,6 +235,28 @@
             color: white;
             background-color: #1C46F4;
             padding: 15px;
+        }
+
+        /*
+            The bank details + thank-you bar are rendered twice. The hidden copy
+            stays in normal flow and reserves exactly its own height; the visible
+            copy is pinned to the bottom of the last page. Because the reserve is
+            a copy of the block, it always matches the block even if the bank
+            lines or the bar change. No hand-tuned height.
+        */
+        .invoice-footer {
+            padding-bottom: 20px;
+        }
+
+        .invoice-footer--spacer {
+            visibility: hidden;
+        }
+
+        .invoice-footer--pinned {
+            position: absolute;
+            bottom: 0;
+            left: 20px;
+            right: 20px;
         }
     </style>
 </head>
@@ -512,37 +533,16 @@
         </tr>
     </table>
 
-    {{-- Payment Information --}}
-    @php
-        $customerName = $freshKlien->nama ?? $invoice->customer_name ?? '';
-        $isSreeyaSewu = $customerName === 'PT Sreeya Sewu Indonesia';
-    @endphp
-
-    <div class="payment-section">
-        @if($invoice->bank_name)
-            <div style="margin-bottom: 5px;">
-                Pembayaran dapat dilakukan melalui @if($isSreeyaSewu)<strong class="bank-account">MSF</strong>@endif
-            </div>
-            <div>
-                Transfer <strong>Via {{ $invoice->bank_name }}</strong><br>
-                a/n <strong class="bank-account">{{ $invoice->bank_account_name }}</strong><br>
-                No. Rek : <strong class="bank-account">{{ $invoice->bank_account_number }}</strong>
-            </div>
-        @else
-            <div style="margin-bottom: 5px;">
-                Pembayaran dapat dilakukan melalui @if($isSreeyaSewu)<strong class="bank-account">MSF</strong>@endif
-            </div>
-            <div>
-                Transfer <strong>Via Mandiri</strong><br>
-                a/n <strong class="bank-account">PT KAMIL MAJU PERSADA</strong><br>
-                No. Rek : <strong class="bank-account">141-0080998883</strong>
-            </div>
-        @endif
+    {{-- Payment + thank-you footer.
+         Hidden copy: stays in normal flow and reserves exactly the block's own
+         height, so the pinned copy can never overlap the items or signature.
+         Visible copy: pinned to the bottom of the last page. --}}
+    <div class="invoice-footer invoice-footer--spacer" aria-hidden="true">
+        @include('pdf.partials.invoice-footer')
     </div>
 
-    {{-- Footer Thank You --}}
-    <div class="footer-thankyou">
-        Thank You For Your Business!
+    <div class="invoice-footer invoice-footer--pinned">
+        @include('pdf.partials.invoice-footer')
     </div>
 </body>
 </html>

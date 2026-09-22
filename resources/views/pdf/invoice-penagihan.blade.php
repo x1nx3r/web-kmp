@@ -229,7 +229,7 @@
 
         .footer-thankyou {
             text-align: center;
-            margin-top: 50px;
+            margin-top: 20px;
             font-size: 10pt;
             font-weight: bold;
             color: white;
@@ -237,24 +237,9 @@
             padding: 15px;
         }
 
-        /*
-            The bank details + thank-you bar are rendered twice. The hidden copy
-            stays in normal flow and reserves exactly its own height; the visible
-            copy is pinned to the bottom of the last page. Because the reserve is
-            a copy of the block, it always matches the block even if the bank
-            lines or the bar change. No hand-tuned height.
-        */
-        .invoice-footer {
-            padding-bottom: 20px;
-        }
-
-        .invoice-footer--spacer {
-            visibility: hidden;
-        }
-
-        .invoice-footer--pinned {
-            position: absolute;
-            bottom: 0;
+       .invoice-footer {
+            position: fixed;
+            bottom: 10px;
             left: 20px;
             right: 20px;
         }
@@ -533,15 +518,8 @@
         </tr>
     </table>
 
-    {{-- Payment + thank-you footer.
-         Hidden copy: stays in normal flow and reserves exactly the block's own
-         height, so the pinned copy can never overlap the items or signature.
-         Visible copy: pinned to the bottom of the last page. --}}
-    <div class="invoice-footer invoice-footer--spacer" aria-hidden="true">
-        @include('pdf.partials.invoice-footer')
-    </div>
 
-    <div class="invoice-footer invoice-footer--pinned">
+    <div class="invoice-footer">
         @include('pdf.partials.invoice-footer')
     </div>
 </body>

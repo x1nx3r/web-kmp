@@ -5,7 +5,6 @@ namespace App\Services;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Collection;
 use App\Models\TargetOmset;
 use App\Models\OmsetManual;
 use App\Models\OrderDetail;
@@ -15,14 +14,13 @@ use App\Models\Pengiriman;
 class DashboardService
 {
     /**
-     * Status pengiriman yang dianggap "aktif" untuk perhitungan omset.
-     * Sebelumnya ditulis ulang sebagai array literal identik di 6 lokasi pada file ini.
+     * Status pengiriman yang dianggap "aktif".
+     * Satu sumber dengan OmsetPengirimanService supaya konsisten.
      */
-    private const VALID_PENGIRIMAN_STATUSES = ['menunggu_fisik', 'menunggu_verifikasi', 'berhasil'];
+    private const VALID_PENGIRIMAN_STATUSES = OmsetPengirimanService::VALID_STATUSES;
 
     /**
      * Status order yang dihitung sebagai "outstanding PO".
-     * Sebelumnya ditulis ulang sebagai array literal identik di 2 lokasi pada file ini.
      */
     private const OUTSTANDING_ORDER_STATUSES = ['dikonfirmasi', 'diproses'];
 
@@ -40,58 +38,24 @@ class DashboardService
             $targetBulanan  = $targetOmset->target_bulanan  ?? 0;
             $targetTahunan  = $targetOmset->target_tahunan  ?? 0;
 
-            $omsetExpr = self::omsetExpression();
-
             // ========== OMSET MINGGU INI ==========
-            $omsetSistemMingguIniQuery = self::baseOmsetQuery()
-                ->whereBetween('pengiriman.tanggal_kirim', [$weekStart->copy()->startOfDay(), $weekEnd->copy()->endOfDay()]);
-
-            self::applyValidInvoiceFilter($omsetSistemMingguIniQuery);
-
-            $omsetSistemMingguIni = $omsetSistemMingguIniQuery
-                ->select('pengiriman.id', $omsetExpr)
-                ->groupBy('pengiriman.id')
-                ->get()
-                ->sum('omset_pengiriman');
+            // Semua omset sistem dihitung oleh OmsetPengirimanService (sama dengan Evaluasi Procurement).
+            $omsetSistemMingguIni = OmsetPengirimanService::totalOmset($weekStart, $weekEnd);
 
             $omsetManualBulanIni  = OmsetManual::where('tahun', $currentYear)->where('bulan', $currentMonth)->value('omset_manual') ?? 0;
             $omsetManualMingguIni = $omsetManualBulanIni / 4;
             $omsetMingguIni       = $omsetSistemMingguIni + $omsetManualMingguIni;
 
             // ========== OMSET BULAN INI ==========
-            $omsetSistemBulanIniQuery = self::baseOmsetQuery()
-                ->whereYear('pengiriman.tanggal_kirim', $currentYear)
-                ->whereMonth('pengiriman.tanggal_kirim', $currentMonth);
-
-            self::applyValidInvoiceFilter($omsetSistemBulanIniQuery);
-
-            $omsetSistemBulanIni = $omsetSistemBulanIniQuery
-                ->select('pengiriman.id', $omsetExpr)
-                ->groupBy('pengiriman.id')
-                ->get()
-                ->sum('omset_pengiriman');
-
-            $omsetBulanIni = $omsetSistemBulanIni + $omsetManualBulanIni;
+            $omsetSistemBulanIni = OmsetPengirimanService::totalOmsetBulan($currentYear, $currentMonth);
+            $omsetBulanIni       = $omsetSistemBulanIni + $omsetManualBulanIni;
 
             // ========== OMSET TAHUN INI ==========
-            $omsetSistemTahunIniQuery = self::baseOmsetQuery()
-                ->whereYear('pengiriman.tanggal_kirim', $currentYear);
-
-            self::applyValidInvoiceFilter($omsetSistemTahunIniQuery);
-
-            $omsetSistemTahunIni = $omsetSistemTahunIniQuery
-                ->select('pengiriman.id', $omsetExpr)
-                ->groupBy('pengiriman.id')
-                ->get()
-                ->sum('omset_pengiriman');
-
+            $omsetSistemTahunIni = OmsetPengirimanService::totalOmsetTahun($currentYear);
             $omsetManualTahunIni = OmsetManual::where('tahun', $currentYear)->sum('omset_manual') ?? 0;
             $omsetTahunIni       = $omsetSistemTahunIni + $omsetManualTahunIni;
 
             // ========== TARGET (FLAT, TANPA CARRY-FORWARD) ==========
-            // Sebelumnya target bulanan/mingguan disesuaikan (di-carry-forward) berdasarkan
-            // kekurangan target bulan-bulan sebelumnya dalam tahun berjalan. Sekarang target
-            // dipakai flat langsung dari target_bulanan tanpa penyesuaian apa pun.
             $targetBulananAdjusted  = $targetBulanan;
             $targetMingguanAdjusted = $targetBulanan / 4;
 
@@ -182,9 +146,6 @@ class DashboardService
 
     /**
      * Bentuk 1 baris data pengiriman untuk daftar mingguan.
-     *
-     * Sebelumnya array ini ditulis ulang identik (10 baris) di dua cabang kondisi
-     * pada getWeeklyDeliveries(). Struktur dan isi key TIDAK berubah.
      */
     private static function buildDeliveryItem(Pengiriman $pengiriman, int|float $totalQtyForecast, int|float $percentage): array
     {
@@ -200,69 +161,5 @@ class DashboardService
             'status'             => $pengiriman->status,
             'purchasing'         => $pengiriman->purchasing->nama ?? 'N/A',
         ];
-    }
-
-    /**
-     * Query dasar untuk perhitungan omset pengiriman: join subquery invoice,
-     * pengiriman_details, order_details, filter status aktif & belum dihapus.
-     *
-     * Sebelumnya blok join ini ditulis ulang identik di 5 lokasi pada file ini
-     * (mingguan, bulanan, tahunan, loop bulanan, loop mingguan).
-     */
-    private static function baseOmsetQuery(): \Illuminate\Database\Query\Builder
-    {
-        return DB::table('pengiriman')
-            ->leftJoin(DB::raw(self::invoiceSubqueryRaw()), 'pengiriman.id', '=', 'invoice_penagihan.pengiriman_id')
-            ->leftJoin('pengiriman_details', 'pengiriman.id', '=', 'pengiriman_details.pengiriman_id')
-            ->leftJoin('order_details', 'pengiriman_details.purchase_order_bahan_baku_id', '=', 'order_details.id')
-            ->whereIn('pengiriman.status', self::VALID_PENGIRIMAN_STATUSES)
-            ->whereNull('pengiriman.deleted_at');
-    }
-
-    /**
-     * Subquery invoice yang dipakai berulang — sudah sertakan amount_after_refraksi.
-     * Isi SQL TIDAK diubah dari versi sebelumnya, hanya dipindah ke method agar
-     * bisa dipakai bersama oleh baseOmsetQuery().
-     */
-    private static function invoiceSubqueryRaw(): string
-    {
-        return '(
-            SELECT pengiriman_id,
-                   MAX(subtotal) as subtotal,
-                   MAX(amount_after_refraksi) as amount_after_refraksi
-            FROM invoice_penagihan
-            WHERE status != "digabung"
-            GROUP BY pengiriman_id
-        ) as invoice_penagihan';
-    }
-
-    /**
-     * COALESCE omset: prioritas amount_after_refraksi → subtotal → fallback qty×harga_jual.
-     * Isi SQL TIDAK diubah dari versi sebelumnya.
-     */
-    private static function omsetExpression()
-    {
-        return DB::raw('COALESCE(
-            NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0),
-            NULLIF(MAX(invoice_penagihan.subtotal), 0),
-            SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
-        ) as omset_pengiriman');
-    }
-
-    private static function applyValidInvoiceFilter($query)
-    {
-        return $query->where(function ($q) {
-            $q->whereNotExists(function ($sub) {
-                $sub->select(DB::raw(1))
-                    ->from('invoice_penagihan as ip_all')
-                    ->whereColumn('ip_all.pengiriman_id', 'pengiriman.id');
-            })
-            ->orWhereExists(function ($sub) {
-                $sub->select(DB::raw(1))
-                    ->from('invoice_penagihan as ip_valid')
-                    ->whereColumn('ip_valid.pengiriman_id', 'pengiriman.id')
-                    ->where('ip_valid.status', '!=', 'digabung');
-            });
-        });
     }
 }

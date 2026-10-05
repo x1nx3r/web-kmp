@@ -15,12 +15,12 @@
         $value = (float) $value;
 
         if ($value >= 1000000000) {
-            return 'Rp ' . number_format($value / 1000000000, 2, ',', '.') . 'M';
+            return 'Rp ' . number_format($value / 1000000000, 3, ',', '.') . 'M';
         } elseif ($value >= 1000000) {
-            return 'Rp ' . number_format($value / 1000000, 2, ',', '.') . 'Jt';
+            return 'Rp ' . number_format($value / 1000000, 3, ',', '.') . 'Jt';
         }
 
-        return 'Rp ' . number_format($value, 2, ',', '.');
+        return 'Rp ' . number_format($value, 3, ',', '.');
     }
 @endphp
 

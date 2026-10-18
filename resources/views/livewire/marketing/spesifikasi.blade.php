@@ -2,7 +2,7 @@
     {{-- Global Loading Overlay --}}
     <div
         wire:loading
-        wire:target="search,klienFilter,statusFilter,sortBy,clearSearch,clearFilters"
+        wire:target="search,klienFilter,statusFilter,sortBy,clearSearch,clearFilters,exportExcel"
         class="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center"
         style="display: none;"
     >
@@ -344,8 +344,24 @@
                     <i class="fas fa-clipboard-list mr-2 text-purple-600"></i>
                     Daftar Spesifikasi Material
                 </h3>
-                <div class="text-sm text-gray-600">
-                    {{ $materials->total() }} material ditemukan
+                <div class="flex items-center space-x-3">
+                    <div class="text-sm text-gray-600">
+                        {{ $materials->total() }} material ditemukan
+                    </div>
+                    <button
+                        type="button"
+                        wire:click="exportExcel"
+                        wire:loading.attr="disabled"
+                        wire:target="exportExcel"
+                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                        <span wire:loading.remove wire:target="exportExcel">
+                            <i class="fas fa-file-excel mr-2"></i>Export Excel
+                        </span>
+                        <span wire:loading wire:target="exportExcel">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>Menyiapkan...
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>

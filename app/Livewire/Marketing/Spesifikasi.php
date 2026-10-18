@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Marketing;
 
+use App\Exports\SpesifikasiExport;
 use App\Models\BahanBakuKlien;
 use App\Models\Klien;
 use App\Models\RiwayatHargaKlien;
@@ -10,6 +11,7 @@ use App\Services\ReferenceDataService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Spesifikasi extends Component
 {
@@ -123,6 +125,40 @@ class Spesifikasi extends Component
     {
         $this->materialSearch = '';
         $this->resetPage();
+    }
+
+    public function exportExcel()
+    {
+        try {
+            $filters = [];
+            if ($this->search) {
+                $filters[] = 'Pencarian: ' . $this->search;
+            }
+            if ($this->materialSearch) {
+                $filters[] = 'Material: ' . $this->materialSearch;
+            }
+            if ($this->klienFilter) {
+                $klien = Klien::find($this->klienFilter);
+                if ($klien) {
+                    $filters[] = 'Klien: ' . $klien->nama . ($klien->cabang ? " ({$klien->cabang})" : '');
+                }
+            }
+            if ($this->cabangFilter) {
+                $filters[] = 'Lokasi: ' . $this->cabangFilter;
+            }
+            if ($this->statusFilter) {
+                $filters[] = 'Status: ' . ucfirst($this->statusFilter);
+            }
+
+            $materials = $this->getMaterialsQuery()->get();
+
+            return Excel::download(
+                new SpesifikasiExport($materials, $filters),
+                'Spesifikasi_Material_' . now()->format('Ymd_His') . '.xlsx'
+            );
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengekspor data spesifikasi: ' . $e->getMessage());
+        }
     }
 
     // Edit modal methods

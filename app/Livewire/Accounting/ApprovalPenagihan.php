@@ -198,7 +198,7 @@ class ApprovalPenagihan extends Component
             $expenseRows = collect();
             
             $calcData = $this->prepareInvoiceItems($this->selectedShipments, $expenseRows);
-            $totals = $this->calculateFinalTotals($calcData['items'], $calcData['totalSellingPrice'], $expenseRows, $companySetting);
+            $totals = $this->calculateFinalTotals($calcData['items'], $calcData['totalSellingPrice'], $expenseRows);
             
             $invoice = InvoicePenagihan::create(array_merge([
                 'pengiriman_id'  => $this->selectedShipment->id,
@@ -265,7 +265,7 @@ class ApprovalPenagihan extends Component
         return ['items' => $items, 'totalSellingPrice' => $totalSellingPrice];
     }
 
-    private function calculateFinalTotals(&$items, $totalSellingPrice, $expenseRows, $companySetting)
+    private function calculateFinalTotals(&$items, $totalSellingPrice, $expenseRows)
     {
         $totalRefraksiAmount = 0; $totalRefraksiQty = 0; $totalQty = 0;
         foreach ($items as &$item) {
@@ -285,7 +285,6 @@ class ApprovalPenagihan extends Component
         $expensesTotal = $expenseRows->sum('amount');
         $amountAfterRefraksi = $totalSellingPrice - $totalRefraksiAmount;
         $subtotal = $amountAfterRefraksi + $expensesTotal;
-        $taxAmount = $subtotal * ($companySetting->tax_percentage / 100);
 
         return [
             'qty_before_refraksi' => $totalQty,
@@ -295,10 +294,11 @@ class ApprovalPenagihan extends Component
             'refraksi_amount' => $totalRefraksiAmount,
             'additional_expenses_total' => $expensesTotal,
             'subtotal' => $subtotal,
-            'tax_percentage' => $companySetting->tax_percentage,
-            'tax_amount' => $taxAmount,
+            // PPN sengaja tidak dihitung di sini. Akan ditangani fungsi PPN tersendiri.
+            'tax_percentage' => 0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total_amount' => $subtotal + $taxAmount,
+            'total_amount' => $subtotal,
         ];
     }
 

@@ -642,18 +642,16 @@
                                     <span class="font-semibold text-red-500">- Rp {{ number_format($invoice->refraksi_amount, 3, ',', '.') }}</span>
                                 </div>
                             @endif
-                            <div class="px-4 py-3 flex justify-between items-center bg-gray-50">
-                                @php $ppnCardTax = (float) ($invoice->tax_amount ?? 0); @endphp
-                                @if(($invoice->tax_percentage ?? 0) > 0 && $ppnCardTax > 0)
-                                    <div class="px-4 py-3 flex justify-between items-center text-sm border-b border-gray-100">
-                                        <span class="text-gray-600">PPN {{ rtrim(rtrim(number_format((float) $invoice->tax_percentage, 2, '.', ''), '0'), '.') }}%</span>
-                                        <span class="font-semibold text-red-500">+ Rp {{ number_format($ppnCardTax, 3, ',', '.') }}</span>
-                                    </div>
-                                @endif
-                                <div class="px-4 py-3 flex justify-between items-center bg-gray-50">
-                                    <span class="text-sm font-bold text-gray-900">Total Invoice</span>
-                                    <span class="text-base font-bold text-green-600">Rp {{ number_format($invoice->total_amount, 3, ',', '.') }}</span>
+                            @php $ppnCardTax = (float) ($invoice->tax_amount ?? 0); @endphp
+                            @if(($invoice->tax_percentage ?? 0) > 0 && $ppnCardTax > 0)
+                                <div class="px-4 py-3 flex justify-between items-center text-sm border-b border-gray-100">
+                                    <span class="text-gray-600">PPN {{ rtrim(rtrim(number_format((float) $invoice->tax_percentage, 2, '.', ''), '0'), '.') }}%</span>
+                                    <span class="font-semibold text-red-500">+ Rp {{ number_format($ppnCardTax, 3, ',', '.') }}</span>
                                 </div>
+                            @endif
+                            <div class="px-4 py-3 flex justify-between items-center bg-gray-50">
+                                <span class="text-sm font-bold text-gray-900">Total Invoice</span>
+                                <span class="text-base font-bold text-green-600">Rp {{ number_format($invoice->total_amount, 3, ',', '.') }}</span>
                             </div>
                         </div>
                     </div>

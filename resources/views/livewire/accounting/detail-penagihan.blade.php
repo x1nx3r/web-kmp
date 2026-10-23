@@ -1007,9 +1007,16 @@
                              
                                 @endif
 
+                                @if(($invoice->tax_percentage ?? 0) > 0 && ($invoice->tax_amount ?? 0) > 0)
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">PPN {{ rtrim(rtrim(number_format((float) $invoice->tax_percentage, 2, '.', ''), '0'), '.') }}%:</span>
+                                        <span class="font-semibold text-red-600">+ Rp {{ number_format($invoice->tax_amount, 3, ',', '.') }}</span>
+                                    </div>
+                                @endif
+
                                 <div class="border-t pt-2 flex justify-between">
                                     <span class="font-bold text-gray-900">Total:</span>
-                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format(($invoice->subtotal + $invoice->additional_expenses_total), 3, ',', '.') }}</span>
+                                    <span class="font-bold text-lg text-green-600">Rp {{ number_format($invoice->total_amount, 3, ',', '.') }}</span>
                                 </div>
                             </div>
                         </div>

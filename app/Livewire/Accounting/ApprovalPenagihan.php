@@ -457,8 +457,8 @@ class ApprovalPenagihan extends Component
             // --- End items propagation ---
 
             $invoice->subtotal = $newSubtotal;
-            $invoice->tax_amount = $invoice->subtotal * ($invoice->tax_percentage / 100);
-            $invoice->total_amount = $invoice->subtotal + $invoice->tax_amount - $invoice->discount_amount;
+            // PPN tidak dihitung ulang di sini (dikelola hook saving di model, basis amount_after_refraksi).
+            $invoice->total_amount = $invoice->subtotal + ($invoice->tax_amount ?? 0) - ($invoice->discount_amount ?? 0);
             $invoice->save();
 
             $changes = [

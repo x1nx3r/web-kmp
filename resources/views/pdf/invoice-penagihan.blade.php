@@ -490,10 +490,19 @@
                     </tr>
                 </table>
 
+                @if((float) $invoice->tax_percentage > 0)
+                    <table class="summary-row">
+                        <tr>
+                            <td class="summary-label">PPN {{ rtrim(rtrim(number_format((float) $invoice->tax_percentage, 2, '.', ''), '0'), '.') }}%</td>
+                            <td class="summary-value" style="color: #e53935;">Rp {{ number_format($invoice->tax_amount, 2, ',', '.') }}</td>
+                        </tr>
+                    </table>
+                @endif
+
                 <table class="summary-row total-row">
                     <tr>
                         <td class="summary-label">Total Tagihan</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->amount_after_refraksi, 2, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format((float) $invoice->amount_after_refraksi + (float) $invoice->tax_amount, 2, ',', '.') }}</td>
                     </tr>
                 </table>
             </td>

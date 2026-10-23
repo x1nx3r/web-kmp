@@ -55,7 +55,7 @@ class OmsetController extends Controller
                    pengiriman_id,
                    status,
                    subtotal,
-                   amount_after_refraksi
+                   total_amount
             FROM invoice_penagihan
         ) as invoice_penagihan';
     }
@@ -127,12 +127,12 @@ class OmsetController extends Controller
             CASE
                 WHEN MAX(invoice_item_amount.item_amount) IS NOT NULL
                     THEN MAX(invoice_item_amount.item_amount)
-                WHEN COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0)) IS NULL
+                WHEN COALESCE(NULLIF(MAX(invoice_penagihan.total_amount), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0)) IS NULL
                     THEN SUM(pengiriman_details.qty_kirim * order_details.harga_jual)
                 WHEN MAX(invoice_gross.gross_invoice_total) > 0
                     THEN (SUM(pengiriman_details.qty_kirim * order_details.harga_jual) / MAX(invoice_gross.gross_invoice_total))
-                         * COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
-                ELSE COALESCE(NULLIF(MAX(invoice_penagihan.amount_after_refraksi), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
+                         * COALESCE(NULLIF(MAX(invoice_penagihan.total_amount), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
+                ELSE COALESCE(NULLIF(MAX(invoice_penagihan.total_amount), 0), NULLIF(MAX(invoice_penagihan.subtotal), 0))
             END as omset_pengiriman
         ');
     }

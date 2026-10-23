@@ -65,6 +65,31 @@ class InvoicePenagihan extends Model
         'paid_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        // PPN dihitung dari amount_after_refraksi x tax_percentage.
+        // Semua kode lain menghitung total_amount = ... + tax_amount (nilai lama),
+        // jadi di sini cukup koreksi selisih tax lama -> tax baru.
+        static::saving(function (InvoicePenagihan $invoice) {
+            if (!$invoice->isDirty(['amount_after_refraksi', 'tax_percentage'])) return;
+
+            $pct    = (float) ($invoice->tax_percentage ?? 0);
+            $base   = (float) ($invoice->amount_after_refraksi ?? 0);
+            $newTax = $pct > 0 ? round($base * $pct / 100, 2) : 0;
+            $oldTax = $invoice->isDirty('tax_amount')
+                ? (float) $invoice->tax_amount
+                : (float) $invoice->getOriginal('tax_amount');
+
+            $invoice->tax_amount   = $newTax;
+            $invoice->total_amount = max(0, (float) $invoice->total_amount - $oldTax + $newTax);
+        });
+    }
+
+    public function hasPpn(): bool
+    {
+        return (float) $this->tax_percentage > 0;
+    }
+
     /**
      * Relasi ke Pengiriman
      */

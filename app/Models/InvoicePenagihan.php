@@ -46,6 +46,15 @@ class InvoicePenagihan extends Model
         'created_by',
     ];
 
+    /**
+     * Default PPN nonaktif untuk invoice baru, tanpa mengubah default kolom di DB
+     * (tidak perlu migration). Kolom tax_percentage di DB masih default 11.
+     */
+    protected $attributes = [
+        'tax_percentage' => 0,
+        'tax_amount' => 0,
+    ];
+
     protected $casts = [
         'invoice_date' => 'date',
         'due_date' => 'date',
@@ -64,6 +73,67 @@ class InvoicePenagihan extends Model
         'total_amount' => 'decimal:3',
         'paid_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // PPN dihitung dari amount_after_refraksi x tax_percentage.
+        // Semua kode lain menghitung total_amount = ... + tax_amount (nilai lama),
+        // jadi di sini cukup koreksi selisih tax lama -> tax baru.
+        static::saving(function (InvoicePenagihan $invoice) {
+            if (!$invoice->isDirty(['amount_after_refraksi', 'tax_percentage'])) return;
+
+            $pct    = (float) ($invoice->tax_percentage ?? 0);
+
+            // Invoice lama bisa punya tax_percentage = 11 dari default kolom DB
+            // padahal PPN-nya belum pernah diterapkan (tax_amount 0). Jangan
+            // aktifkan PPN otomatis hanya karena amount_after_refraksi berubah
+            // (mis. edit refraksi). PPN hanya dihitung jika persentase diubah
+            // eksplisit atau invoice memang sudah punya tax_amount.
+            if ($pct > 0 && !$invoice->isDirty('tax_percentage') && !$invoice->isDirty('tax_amount') && (float) $invoice->getOriginal('tax_amount') <= 0) {
+                $invoice->tax_amount = 0;
+                return;
+            }
+
+            $base   = (float) ($invoice->amount_after_refraksi ?: $invoice->subtotal ?: 0);
+            $newTax = $pct > 0 ? round($base * $pct / 100, 2) : 0;
+            $oldTax = $invoice->isDirty('tax_amount')
+                ? (float) $invoice->tax_amount
+                : (float) $invoice->getOriginal('tax_amount');
+
+            $invoice->tax_amount   = $newTax;
+            $invoice->total_amount = max(0, (float) $invoice->total_amount - $oldTax + $newTax);
+        });
+    }
+
+    public function hasPpn(): bool
+    {
+        // tax_percentage saja tidak cukup: invoice lama bisa punya 11% dari
+        // default kolom DB tetapi tax_amount masih 0 (PPN tidak pernah dihitung).
+        return (float) $this->tax_percentage > 0 && (float) $this->tax_amount > 0;
+    }
+
+    /**
+     * Terapkan PPN lalu hitung ulang tax_amount & total_amount.
+     *
+     * Dipakai saat user menyimpan PPN. Perhitungan dilakukan eksplisit karena
+     * hook saving() di bawah hanya jalan jika tax_percentage / amount_after_refraksi
+     * dianggap dirty. Kasus umum: invoice lama punya tax_percentage = 11 dari
+     * default kolom DB tetapi tax_amount masih 0, sehingga menyimpan 11% lagi
+     * tidak memicu hook dan data terlihat tidak berubah.
+     */
+    public function applyPpnPercentage(float $pct): void
+    {
+        $pct = max(0, $pct);
+        $base = (float) ($this->amount_after_refraksi ?: $this->subtotal ?: 0);
+        $newTax = $pct > 0 ? round($base * $pct / 100, 2) : 0;
+        $oldTax = (float) ($this->tax_amount ?? 0);
+
+        $this->tax_percentage = $pct;
+        $this->tax_amount = $newTax;
+        $this->total_amount = max(0, (float) ($this->total_amount ?? 0) - $oldTax + $newTax);
+
+        $this->save();
+    }
 
     /**
      * Relasi ke Pengiriman

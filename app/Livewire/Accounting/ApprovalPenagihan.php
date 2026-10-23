@@ -4,6 +4,7 @@ namespace App\Livewire\Accounting;
 
 use App\Models\Pengiriman;
 use App\Models\InvoicePenagihan;
+use App\Models\ApprovalHistory;
 use App\Models\ApprovalPenagihan as ApprovalPenagihanModel;
 use App\Models\CompanySetting;
 use App\Services\Notifications\ApprovalPenagihanNotificationService;
@@ -198,7 +199,7 @@ class ApprovalPenagihan extends Component
             $expenseRows = collect();
             
             $calcData = $this->prepareInvoiceItems($this->selectedShipments, $expenseRows);
-            $totals = $this->calculateFinalTotals($calcData['items'], $calcData['totalSellingPrice'], $expenseRows, $companySetting);
+            $totals = $this->calculateFinalTotals($calcData['items'], $calcData['totalSellingPrice'], $expenseRows);
             
             $invoice = InvoicePenagihan::create(array_merge([
                 'pengiriman_id'  => $this->selectedShipment->id,
@@ -265,7 +266,7 @@ class ApprovalPenagihan extends Component
         return ['items' => $items, 'totalSellingPrice' => $totalSellingPrice];
     }
 
-    private function calculateFinalTotals(&$items, $totalSellingPrice, $expenseRows, $companySetting)
+    private function calculateFinalTotals(&$items, $totalSellingPrice, $expenseRows)
     {
         $totalRefraksiAmount = 0; $totalRefraksiQty = 0; $totalQty = 0;
         foreach ($items as &$item) {
@@ -285,7 +286,6 @@ class ApprovalPenagihan extends Component
         $expensesTotal = $expenseRows->sum('amount');
         $amountAfterRefraksi = $totalSellingPrice - $totalRefraksiAmount;
         $subtotal = $amountAfterRefraksi + $expensesTotal;
-        $taxAmount = $subtotal * ($companySetting->tax_percentage / 100);
 
         return [
             'qty_before_refraksi' => $totalQty,
@@ -295,10 +295,11 @@ class ApprovalPenagihan extends Component
             'refraksi_amount' => $totalRefraksiAmount,
             'additional_expenses_total' => $expensesTotal,
             'subtotal' => $subtotal,
-            'tax_percentage' => $companySetting->tax_percentage,
-            'tax_amount' => $taxAmount,
+            // PPN sengaja tidak dihitung di sini. Akan ditangani fungsi PPN tersendiri.
+            'tax_percentage' => 0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total_amount' => $subtotal + $taxAmount,
+            'total_amount' => $subtotal,
         ];
     }
 
@@ -457,8 +458,10 @@ class ApprovalPenagihan extends Component
             // --- End items propagation ---
 
             $invoice->subtotal = $newSubtotal;
-            $invoice->tax_amount = $invoice->subtotal * ($invoice->tax_percentage / 100);
-            $invoice->total_amount = $invoice->subtotal + $invoice->tax_amount - $invoice->discount_amount;
+            // PPN dihitung dari amount_after_refraksi (di luar pengeluaran tambahan).
+            // Tanpa ini, hook saving tidak jalan dan PPN tetap memakai basis lama.
+            $invoice->amount_after_refraksi = max(0, $newSubtotal - floatval($invoice->additional_expenses_total ?? 0));
+            $invoice->total_amount = $invoice->subtotal + ($invoice->tax_amount ?? 0) - ($invoice->discount_amount ?? 0);
             $invoice->save();
 
             $changes = [
@@ -477,7 +480,7 @@ class ApprovalPenagihan extends Component
                 'approval_id' => $this->selectedData->id,
                 'pengiriman_id' => $this->selectedData->pengiriman_id,
                 'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
+                'role' => $this->getApprovalUserRole(),
                 'user_id' => $user->id,
                 'action' => 'edited',
                 'changes' => $changes,

@@ -26,6 +26,7 @@ class DetailPenagihan extends Component
     public $dateForm = ['invoice_date' => '', 'due_date' => ''];
     public $bankForm = ['bank_name' => '', 'bank_account_number' => '', 'bank_account_name' => ''];
     public $invoiceNumberForm = '', $invoiceNotesForm = '', $selectedBank = null;
+    public $ppnEnabled = false, $ppnPercentage = 11;
 
     public $bankOptions = [
         'mandiri' => ['name' => 'Bank Mandiri', 'account_number' => '141-0080998883', 'account_name' => 'PT. KAMIL MAJU PERSADA'],
@@ -57,6 +58,11 @@ class DetailPenagihan extends Component
             
             $this->selectedBank = null;
             foreach ($this->bankOptions as $key => $bank) if ($bank['account_number'] === $this->invoice->bank_account_number) $this->selectedBank = $key;
+
+            // PPN nonaktif secara default untuk invoice tanpa PPN (tax_amount 0).
+            // Invoice yang PPN-nya benar-benar sudah diterapkan tetap tampil aktif.
+            $this->ppnEnabled = $this->invoice->hasPpn();
+            $this->ppnPercentage = $this->ppnEnabled ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
 
             $this->refraksiPerItem = []; $this->expensePerItem = [];
             foreach ($this->invoice->items ?? [] as $i => $item) {
@@ -114,6 +120,62 @@ class DetailPenagihan extends Component
             $this->logInvoiceHistory($this->approval->id, $this->approval->pengiriman_id, $this->invoice->id, 'edited', 'Update catatan invoice');
             DB::commit(); session()->flash('message', 'Catatan berhasil diupdate'); $this->invoice->refresh();
         } catch (\Exception $e) { DB::rollBack(); Log::error("Update Notes Error: " . $e->getMessage()); session()->flash('error', 'Gagal update catatan'); }
+    }
+
+    public function toggleEditMode()
+    {
+        if (!$this->ensureCanManage()) return;
+        $this->editMode = !$this->editMode;
+    }
+
+    /**
+     * Simpan toggle PPN + persentase manual. tax_amount & total_amount
+     * dihitung ulang otomatis oleh hook saving di model InvoicePenagihan.
+     */
+    public function updatePpn()
+    {
+        if (!$this->ensureCanManage()) return;
+        if (!$this->invoice) return;
+
+        if ($this->ppnEnabled) {
+            $this->validate(['ppnPercentage' => 'required|numeric|min:0.01|max:100'], [
+                'ppnPercentage.required' => 'Persentase PPN wajib diisi',
+                'ppnPercentage.min'      => 'Persentase PPN harus lebih dari 0',
+                'ppnPercentage.max'      => 'Persentase PPN maksimal 100',
+            ]);
+        }
+
+        if ($this->invoice->pembayaranPabrik()->exists()) {
+            session()->flash('error', 'PPN tidak bisa diubah karena invoice sudah memiliki pembayaran.');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $pct = $this->ppnEnabled ? (float) $this->ppnPercentage : 0;
+            $this->invoice->applyPpnPercentage($pct);
+
+            $this->logInvoiceHistory(
+                $this->approval->id,
+                $this->approval->pengiriman_id,
+                $this->invoice->id,
+                'edited',
+                $pct > 0 ? "PPN diaktifkan {$pct}%" : 'PPN dinonaktifkan'
+            );
+
+            DB::commit();
+            $this->invoice->refresh();
+            $this->loadDetail();
+            // loadDetail() mereset toggle ke default nonaktif; setelah user
+            // menyimpan, tampilkan lagi sesuai pilihan yang baru disimpan.
+            $this->ppnEnabled = $pct > 0;
+            $this->ppnPercentage = $pct > 0 ? $pct : ($this->ppnPercentage ?: 11);
+            session()->flash('message', $pct > 0 ? "PPN {$pct}% berhasil diterapkan" : 'PPN dinonaktifkan');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Update PPN Error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan PPN: ' . $e->getMessage());
+        }
     }
 
     public function generatePdf()

@@ -196,7 +196,8 @@ function createGroupedBarChartSupplierDashboard(ctx, labels, datasets) {
                         font: {
                             size: 10
                         },
-                        maxRotation: 45,
+                        autoSkip: false,
+                        maxRotation: 90,
                         minRotation: 45
                     }
                 },

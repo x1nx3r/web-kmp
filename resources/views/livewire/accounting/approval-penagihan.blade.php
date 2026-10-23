@@ -446,7 +446,7 @@
                                 <div class="text-sm font-medium text-gray-900">{{ number_format($totalQty, 3, ',', '.') }} kg</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->subtotal, 3, ',', '.') }}</div>
+                                <div class="text-sm font-semibold text-gray-900">Rp {{ number_format($approval->invoice->total_amount, 3, ',', '.') }}</div>
                             </td>
                             {{-- <td class="px-6 py-4 whitespace-nowrap">
                                 @if($approval->status === 'pending')
@@ -989,10 +989,12 @@
                                 <span class="text-gray-600">Subtotal:</span>
                                 <span class="font-medium">Rp {{ number_format($selectedData->invoice->subtotal, 3, ',', '.') }}</span>
                             </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">PPN ({{ $selectedData->invoice->tax_percentage }}%):</span>
-                                <span class="font-medium">Rp {{ number_format($selectedData->invoice->tax_amount, 3, ',', '.') }}</span>
-                            </div>
+                            @if(($selectedData->invoice->tax_amount ?? 0) > 0)
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">PPN ({{ $selectedData->invoice->tax_percentage }}%):</span>
+                                    <span class="font-medium">Rp {{ number_format($selectedData->invoice->tax_amount, 3, ',', '.') }}</span>
+                                </div>
+                            @endif
                             <div class="border-t pt-2 flex justify-between">
                                 <span class="font-semibold text-gray-900">Total:</span>
                                 <span class="font-bold text-lg text-green-600">Rp {{ number_format($selectedData->invoice->total_amount, 3, ',', '.') }}</span>

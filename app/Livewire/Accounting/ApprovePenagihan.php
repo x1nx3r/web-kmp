@@ -22,6 +22,7 @@ class ApprovePenagihan extends Component
     public $itemRefraksi = [], $refraksiPerItem = [], $expensePerItem = [];
     public $invoiceDate, $dueDate, $invoiceNumber = '', $customerName = '', $customerAddress = '', $customerPhone = '', $customerEmail = '', $invoiceNotes = '';
     public $selectedBank = 'mandiri';
+    public $ppnEnabled = false, $ppnPercentage = 11;
     public $bankOptions = [
         'mandiri' => ['name' => 'Bank Mandiri', 'account_number' => '141-0080998883', 'account_name' => 'PT. KAMIL MAJU PERSADA'],
         'bca' => ['name' => 'BCA', 'account_number' => '429-3468888', 'account_name' => 'PT KAMIL MAJU PERSADA'],
@@ -70,6 +71,47 @@ class ApprovePenagihan extends Component
             $this->invoice->update(['bank_name' => $this->bankOptions['mandiri']['name'], 'bank_account_number' => $this->bankOptions['mandiri']['account_number'], 'bank_account_name' => $this->bankOptions['mandiri']['account_name']]);
         }
         $this->loadExpenses();
+
+        // PPN nonaktif secara default untuk invoice tanpa PPN (tax_amount 0).
+        // Invoice yang PPN-nya benar-benar sudah diterapkan tetap tampil aktif,
+        // supaya nilai yang tersimpan konsisten dengan total & daftar invoice.
+        $this->ppnEnabled = $this->invoice->hasPpn();
+        $this->ppnPercentage = $this->ppnEnabled ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
+    }
+
+    /**
+     * Simpan toggle PPN + persentase manual. tax_amount & total_amount
+     * dihitung ulang otomatis oleh hook saving di model InvoicePenagihan.
+     */
+    public function updatePpn()
+    {
+        if (!$this->ensureCanManage()) return;
+        if ($this->ppnEnabled) {
+            $this->validate(['ppnPercentage' => 'required|numeric|min:0.01|max:100'], [
+                'ppnPercentage.required' => 'Persentase PPN wajib diisi',
+                'ppnPercentage.min' => 'Persentase PPN harus lebih dari 0',
+                'ppnPercentage.max' => 'Persentase PPN maksimal 100',
+            ]);
+        }
+        if ($this->invoice->pembayaranPabrik()->exists()) {
+            session()->flash('error', 'PPN tidak bisa diubah karena invoice sudah memiliki pembayaran.');
+            return;
+        }
+
+        try {
+            $pct = $this->ppnEnabled ? (float) $this->ppnPercentage : 0;
+            $this->invoice->applyPpnPercentage($pct);
+
+            if ($this->editMode && $this->approval->status === 'completed') {
+                $this->logInvoiceHistory($this->approval->id, $this->approval->pengiriman_id, $this->invoice->id, 'edited', $pct > 0 ? "PPN diaktifkan {$pct}%" : 'PPN dinonaktifkan');
+            }
+
+            $this->invoice->refresh();
+            session()->flash('message', $pct > 0 ? "PPN {$pct}% berhasil diterapkan" : 'PPN dinonaktifkan');
+        } catch (\Exception $e) {
+            Log::error('Update PPN Error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan PPN');
+        }
     }
 
     private function syncRefraksiFromPembayaran()

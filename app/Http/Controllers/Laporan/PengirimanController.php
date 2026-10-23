@@ -114,7 +114,7 @@ class PengirimanController extends Controller
             ->select('pengiriman.*', 
                 'orders.po_number',
                 DB::raw('CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.qty_after_refraksi IS NOT NULL THEN invoice_penagihan.qty_after_refraksi ELSE pengiriman.total_qty_kirim END as display_qty'),
-                DB::raw('CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.amount_after_refraksi IS NOT NULL THEN invoice_penagihan.amount_after_refraksi ELSE pengiriman.total_harga_kirim END as display_harga')
+                DB::raw('CASE WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.id IS NOT NULL THEN COALESCE(invoice_penagihan.total_amount, invoice_penagihan.amount_after_refraksi, pengiriman.total_harga_kirim) WHEN pengiriman.status = "'.self::STATUS_BERHASIL.'" AND invoice_penagihan.amount_after_refraksi IS NOT NULL THEN invoice_penagihan.amount_after_refraksi ELSE pengiriman.total_harga_kirim END as display_harga')
             );
             
         $query = $this->applyDateFilter($query, $startDate, $endDate);

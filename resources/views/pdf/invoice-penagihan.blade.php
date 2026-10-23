@@ -470,30 +470,48 @@
         <tr>
             <td class="summary-spacer"></td>
             <td class="summary-content">
-                <table class="summary-row">
-                    <tr>
-                        <td class="summary-label">Total Harga</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->amount_before_refraksi ?? $pengiriman->total_harga_kirim, 2, ',', '.') }}</td>
-                    </tr>
-                </table>
+                @php
+                    $hasRefraksi = ($invoice->refraksi_amount ?? 0) > 0 || ($invoice->refraksi_value ?? 0) > 0;
+                @endphp
 
                 <table class="summary-row">
                     <tr>
-                        <td class="summary-label">Refraksi</td>
-                        <td class="summary-value">
-                            @if($invoice->refraksi_value > 0)
-                                Rp {{ number_format($invoice->refraksi_amount, 2, ',', '.') }}
-                            @else
-                                -
-                            @endif
-                        </td>
+                        <td class="summary-label">Total Harga</td>
+                        <td class="summary-value">Rp {{ number_format($invoice->amount_after_refraksi ?? $invoice->subtotal ?? $pengiriman->total_harga_kirim, 2, ',', '.') }}</td>
                     </tr>
                 </table>
+
+                @if($hasRefraksi)
+                    <table class="summary-row">
+                        <tr>
+                            <td class="summary-label">Refraksi</td>
+                            <td class="summary-value" style="color: #e53935;">- Rp {{ number_format($invoice->refraksi_amount, 2, ',', '.') }}</td>
+                        </tr>
+                    </table>
+                @endif
+
+                @if(($invoice->additional_expenses_total ?? 0) > 0)
+                    <table class="summary-row">
+                        <tr>
+                            <td class="summary-label">Pengeluaran Tambahan</td>
+                            <td class="summary-value" style="color: #e53935;">+ Rp {{ number_format($invoice->additional_expenses_total, 2, ',', '.') }}</td>
+                        </tr>
+                    </table>
+                @endif
+
+                @if((float) $invoice->tax_amount > 0)
+                    <table class="summary-row">
+                        <tr>
+                            <td class="summary-label">PPN {{ rtrim(rtrim(number_format((float) $invoice->tax_percentage, 2, '.', ''), '0'), '.') }}%</td>
+                            <td class="summary-value" style="color: #e53935;">Rp {{ number_format($invoice->tax_amount, 2, ',', '.') }}</td>
+                        </tr>
+                    </table>
+                @endif
 
                 <table class="summary-row total-row">
                     <tr>
                         <td class="summary-label">Total Tagihan</td>
-                        <td class="summary-value">Rp {{ number_format($invoice->amount_after_refraksi, 2, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format((float) $invoice->total_amount, 2, ',', '.') }}</td>
                     </tr>
                 </table>
             </td>

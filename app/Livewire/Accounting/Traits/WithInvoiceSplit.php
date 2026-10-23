@@ -82,7 +82,7 @@ trait WithInvoiceSplit
                 $qtyTotal  = array_sum(array_column($item['details'] ?? [], 'qty'));
                 $subtotal  = $itemAmount - $refraksiAmt;
                 $withExp   = $subtotal + $expensesTotal;
-                $taxAmount = $withExp * (floatval($companySetting->tax_percentage) / 100);
+                // PPN sengaja tidak dihitung di sini. Akan ditangani fungsi PPN tersendiri.
 
                 // FIX: kolom `items` di invoice_penagihan adalah NOT NULL tanpa default,
                 // jadi WAJIB diisi saat create. Invoice hasil split hanya punya 1
@@ -123,10 +123,10 @@ trait WithInvoiceSplit
                     'refraksi_amount'           => $refraksiAmt,
                     'additional_expenses_total' => $expensesTotal,
                     'subtotal'                  => $withExp,
-                    'tax_percentage'            => $companySetting->tax_percentage,
-                    'tax_amount'                => $taxAmount,
+                    'tax_percentage'            => 0,
+                    'tax_amount'                => 0,
                     'discount_amount'           => 0,
-                    'total_amount'              => $withExp + $taxAmount,
+                    'total_amount'              => $withExp,
 
                     // <-- INI YANG SEBELUMNYA HILANG DAN MENYEBABKAN ERROR SQL:
                     // "Field 'items' doesn't have a default value"

@@ -957,7 +957,7 @@
                             <span class="font-medium text-gray-800">Rp {{ number_format($ppnBase, 2, ',', '.') }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-500">PPN {{ $ppnEnabled ? rtrim(rtrim(number_format((float) $ppnPercentage, 2, '.', ''), '0'), '.') . '%' : '' }}</span>
+                            <span class="text-gray-500">PPN {{ $ppnEnabled ? rtrim(rtrim(number_format((float) $ppnPercentage, 2, '.', ''), '0'), '.') . '%' : '(Nonaktif)' }}</span>
                             <span class="font-medium text-red-600">{{ $ppnEnabled ? 'Rp ' . number_format($ppnPreview, 2, ',', '.') : '-' }}</span>
                         </div>
                         <div class="flex justify-between pt-2 border-t border-gray-100">

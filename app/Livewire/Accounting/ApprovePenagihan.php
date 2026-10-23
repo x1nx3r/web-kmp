@@ -72,10 +72,11 @@ class ApprovePenagihan extends Component
         }
         $this->loadExpenses();
 
-        // PPN default nonaktif (tanpa migration / tanpa mengubah data lama).
-        // Nilai tax_percentage di DB tetap dibiarkan, hanya toggle-nya mulai OFF.
-        $this->ppnEnabled = false;
-        $this->ppnPercentage = $this->invoice->hasPpn() ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
+        // PPN nonaktif secara default untuk invoice tanpa PPN (tax_amount 0).
+        // Invoice yang PPN-nya benar-benar sudah diterapkan tetap tampil aktif,
+        // supaya nilai yang tersimpan konsisten dengan total & daftar invoice.
+        $this->ppnEnabled = $this->invoice->hasPpn();
+        $this->ppnPercentage = $this->ppnEnabled ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
     }
 
     /**

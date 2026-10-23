@@ -59,10 +59,10 @@ class DetailPenagihan extends Component
             $this->selectedBank = null;
             foreach ($this->bankOptions as $key => $bank) if ($bank['account_number'] === $this->invoice->bank_account_number) $this->selectedBank = $key;
 
-            // PPN default nonaktif (tanpa migration / tanpa mengubah data lama).
-            // Nilai tax_percentage di DB tetap dibiarkan, hanya toggle-nya mulai OFF.
-            $this->ppnEnabled = false;
-            $this->ppnPercentage = $this->invoice->hasPpn() ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
+            // PPN nonaktif secara default untuk invoice tanpa PPN (tax_amount 0).
+            // Invoice yang PPN-nya benar-benar sudah diterapkan tetap tampil aktif.
+            $this->ppnEnabled = $this->invoice->hasPpn();
+            $this->ppnPercentage = $this->ppnEnabled ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
 
             $this->refraksiPerItem = []; $this->expensePerItem = [];
             foreach ($this->invoice->items ?? [] as $i => $item) {

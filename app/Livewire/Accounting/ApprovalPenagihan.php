@@ -4,6 +4,7 @@ namespace App\Livewire\Accounting;
 
 use App\Models\Pengiriman;
 use App\Models\InvoicePenagihan;
+use App\Models\ApprovalHistory;
 use App\Models\ApprovalPenagihan as ApprovalPenagihanModel;
 use App\Models\CompanySetting;
 use App\Services\Notifications\ApprovalPenagihanNotificationService;
@@ -457,7 +458,9 @@ class ApprovalPenagihan extends Component
             // --- End items propagation ---
 
             $invoice->subtotal = $newSubtotal;
-            // PPN tidak dihitung ulang di sini (dikelola hook saving di model, basis amount_after_refraksi).
+            // PPN dihitung dari amount_after_refraksi (di luar pengeluaran tambahan).
+            // Tanpa ini, hook saving tidak jalan dan PPN tetap memakai basis lama.
+            $invoice->amount_after_refraksi = max(0, $newSubtotal - floatval($invoice->additional_expenses_total ?? 0));
             $invoice->total_amount = $invoice->subtotal + ($invoice->tax_amount ?? 0) - ($invoice->discount_amount ?? 0);
             $invoice->save();
 
@@ -477,7 +480,7 @@ class ApprovalPenagihan extends Component
                 'approval_id' => $this->selectedData->id,
                 'pengiriman_id' => $this->selectedData->pengiriman_id,
                 'invoice_id' => $invoice->id,
-                'role' => $this->getUserRole($user),
+                'role' => $this->getApprovalUserRole(),
                 'user_id' => $user->id,
                 'action' => 'edited',
                 'changes' => $changes,

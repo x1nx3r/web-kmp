@@ -963,8 +963,10 @@
                         <div class="flex justify-between pt-2 border-t border-gray-100">
                             <span class="font-semibold text-gray-700">Total Tagihan</span>
                             @php
-                                // Selaras dengan total_amount di DB: subtotal (termasuk biaya tambahan) - potongan + PPN
-                                $ppnCardTotal = (float) ($invoice->total_amount ?? 0) - (float) ($invoice->tax_amount ?? 0) + $ppnPreview;
+                                // Saat toggle off, tampilkan total aktual dari DB (selaras dengan list).
+                                $ppnCardTotal = $ppnEnabled
+                                    ? (float) ($invoice->total_amount ?? 0) - (float) ($invoice->tax_amount ?? 0) + $ppnPreview
+                                    : (float) ($invoice->total_amount ?? 0);
                             @endphp
                             <span class="font-bold text-green-600">Rp {{ number_format($ppnCardTotal, 2, ',', '.') }}</span>
                         </div>

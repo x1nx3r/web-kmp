@@ -657,7 +657,10 @@
                                 @php
                                     $ppnBase = (float) ($invoice->amount_after_refraksi ?: $invoice->subtotal ?: 0);
                                     $ppnPreview = $ppnEnabled && is_numeric($ppnPercentage) ? round($ppnBase * (float) $ppnPercentage / 100, 2) : 0;
-                                    $ppnCardTotal = (float) ($invoice->total_amount ?? 0) - (float) ($invoice->tax_amount ?? 0) + $ppnPreview;
+                                    // Saat toggle off, tampilkan total aktual dari DB.
+                                    $ppnCardTotal = $ppnEnabled
+                                        ? (float) ($invoice->total_amount ?? 0) - (float) ($invoice->tax_amount ?? 0) + $ppnPreview
+                                        : (float) ($invoice->total_amount ?? 0);
                                 @endphp
 
                                 <div class="p-3 bg-white border border-red-100 rounded-lg space-y-1.5 text-xs mb-3 shadow-xs">

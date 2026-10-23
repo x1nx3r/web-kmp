@@ -72,8 +72,10 @@ class ApprovePenagihan extends Component
         }
         $this->loadExpenses();
 
-        $this->ppnEnabled = $this->invoice->hasPpn();
-        $this->ppnPercentage = $this->ppnEnabled ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
+        // PPN default nonaktif (tanpa migration / tanpa mengubah data lama).
+        // Nilai tax_percentage di DB tetap dibiarkan, hanya toggle-nya mulai OFF.
+        $this->ppnEnabled = false;
+        $this->ppnPercentage = $this->invoice->hasPpn() ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
     }
 
     /**
@@ -97,7 +99,7 @@ class ApprovePenagihan extends Component
 
         try {
             $pct = $this->ppnEnabled ? (float) $this->ppnPercentage : 0;
-            $this->invoice->update(['tax_percentage' => $pct]);
+            $this->invoice->applyPpnPercentage($pct);
 
             if ($this->editMode && $this->approval->status === 'completed') {
                 $this->logInvoiceHistory($this->approval->id, $this->approval->pengiriman_id, $this->invoice->id, 'edited', $pct > 0 ? "PPN diaktifkan {$pct}%" : 'PPN dinonaktifkan');

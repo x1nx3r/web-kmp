@@ -59,8 +59,10 @@ class DetailPenagihan extends Component
             $this->selectedBank = null;
             foreach ($this->bankOptions as $key => $bank) if ($bank['account_number'] === $this->invoice->bank_account_number) $this->selectedBank = $key;
 
-            $this->ppnEnabled = $this->invoice->hasPpn();
-            $this->ppnPercentage = $this->ppnEnabled ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
+            // PPN default nonaktif (tanpa migration / tanpa mengubah data lama).
+            // Nilai tax_percentage di DB tetap dibiarkan, hanya toggle-nya mulai OFF.
+            $this->ppnEnabled = false;
+            $this->ppnPercentage = $this->invoice->hasPpn() ? (float) $this->invoice->tax_percentage : ($this->ppnPercentage ?: 11);
 
             $this->refraksiPerItem = []; $this->expensePerItem = [];
             foreach ($this->invoice->items ?? [] as $i => $item) {
@@ -151,7 +153,7 @@ class DetailPenagihan extends Component
         DB::beginTransaction();
         try {
             $pct = $this->ppnEnabled ? (float) $this->ppnPercentage : 0;
-            $this->invoice->update(['tax_percentage' => $pct]);
+            $this->invoice->applyPpnPercentage($pct);
 
             $this->logInvoiceHistory(
                 $this->approval->id,
@@ -164,6 +166,10 @@ class DetailPenagihan extends Component
             DB::commit();
             $this->invoice->refresh();
             $this->loadDetail();
+            // loadDetail() mereset toggle ke default nonaktif; setelah user
+            // menyimpan, tampilkan lagi sesuai pilihan yang baru disimpan.
+            $this->ppnEnabled = $pct > 0;
+            $this->ppnPercentage = $pct > 0 ? $pct : ($this->ppnPercentage ?: 11);
             session()->flash('message', $pct > 0 ? "PPN {$pct}% berhasil diterapkan" : 'PPN dinonaktifkan');
         } catch (\Exception $e) {
             DB::rollBack();

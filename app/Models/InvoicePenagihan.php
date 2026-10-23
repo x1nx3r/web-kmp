@@ -46,6 +46,15 @@ class InvoicePenagihan extends Model
         'created_by',
     ];
 
+    /**
+     * Default PPN nonaktif untuk invoice baru, tanpa mengubah default kolom di DB
+     * (tidak perlu migration). Kolom tax_percentage di DB masih default 11.
+     */
+    protected $attributes = [
+        'tax_percentage' => 0,
+        'tax_amount' => 0,
+    ];
+
     protected $casts = [
         'invoice_date' => 'date',
         'due_date' => 'date',
@@ -88,6 +97,29 @@ class InvoicePenagihan extends Model
     public function hasPpn(): bool
     {
         return (float) $this->tax_percentage > 0;
+    }
+
+    /**
+     * Terapkan PPN lalu hitung ulang tax_amount & total_amount.
+     *
+     * Dipakai saat user menyimpan PPN. Perhitungan dilakukan eksplisit karena
+     * hook saving() di bawah hanya jalan jika tax_percentage / amount_after_refraksi
+     * dianggap dirty. Kasus umum: invoice lama punya tax_percentage = 11 dari
+     * default kolom DB tetapi tax_amount masih 0, sehingga menyimpan 11% lagi
+     * tidak memicu hook dan data terlihat tidak berubah.
+     */
+    public function applyPpnPercentage(float $pct): void
+    {
+        $pct = max(0, $pct);
+        $base = (float) ($this->amount_after_refraksi ?: $this->subtotal ?: 0);
+        $newTax = $pct > 0 ? round($base * $pct / 100, 2) : 0;
+        $oldTax = (float) ($this->tax_amount ?? 0);
+
+        $this->tax_percentage = $pct;
+        $this->tax_amount = $newTax;
+        $this->total_amount = max(0, (float) ($this->total_amount ?? 0) - $oldTax + $newTax);
+
+        $this->save();
     }
 
     /**

@@ -74,7 +74,7 @@ class InvoicePenagihan extends Model
             if (!$invoice->isDirty(['amount_after_refraksi', 'tax_percentage'])) return;
 
             $pct    = (float) ($invoice->tax_percentage ?? 0);
-            $base   = (float) ($invoice->amount_after_refraksi ?? 0);
+            $base   = (float) ($invoice->amount_after_refraksi ?: $invoice->subtotal ?: 0);
             $newTax = $pct > 0 ? round($base * $pct / 100, 2) : 0;
             $oldTax = $invoice->isDirty('tax_amount')
                 ? (float) $invoice->tax_amount

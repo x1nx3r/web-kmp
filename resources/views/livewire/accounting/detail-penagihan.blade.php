@@ -43,6 +43,13 @@
                         <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                             <i class="fas fa-check-circle mr-2"></i> Completed
                         </span>
+                        @if($canManage)
+                            <button wire:click="toggleEditMode"
+                                    class="px-4 py-2 {{ $editMode ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200' : 'bg-white text-emerald-800 hover:bg-emerald-50' }} rounded-lg font-medium text-sm flex items-center gap-2 transition shadow-sm">
+                                <i class="fas {{ $editMode ? 'fa-check' : 'fa-edit' }}"></i>
+                                <span>{{ $editMode ? 'Selesai Edit' : 'Edit Invoice' }}</span>
+                            </button>
+                        @endif
                         <button wire:click="generatePdf" wire:loading.attr="disabled"
                                 class="px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-green-50 font-medium text-sm flex items-center gap-2 disabled:opacity-50">
                             <span wire:loading.remove wire:target="generatePdf">
@@ -108,6 +115,17 @@
                                         <p class="text-xs text-gray-500">a/n {{ $invoice->bank_account_name }}</p>
                                     @else
                                         <p class="text-sm text-gray-400 italic">Belum dipilih</p>
+                                    @endif
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Status PPN</p>
+                                    @if($invoice->hasPpn())
+                                        <p class="font-semibold text-green-700 flex items-center gap-1">
+                                            <i class="fas fa-check-circle text-green-500"></i>
+                                            Aktif ({{ rtrim(rtrim(number_format((float) $invoice->tax_percentage, 2, '.', ''), '0'), '.') }}%)
+                                        </p>
+                                    @else
+                                        <p class="text-sm text-gray-400 italic">Nonaktif (0%)</p>
                                     @endif
                                 </div>
                                 <div class="col-span-2">
@@ -578,6 +596,100 @@
                                 </div>
                             </div>
                             {{-- ===== END PENGELUARAN TAMBAHAN ===== --}}
+                        @endif
+
+                        {{-- Edit PPN Section --}}
+                        @if($canManage && $editMode)
+                            <div class="bg-red-50/70 border border-red-200 rounded-lg p-6">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="text-sm font-semibold text-gray-800 flex items-center">
+                                        <i class="fas fa-percent text-red-500 mr-2"></i>
+                                        Edit PPN
+                                    </h5>
+                                    @if($invoice->pembayaranPabrik()->exists())
+                                        <span class="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full font-medium flex items-center gap-1">
+                                            <i class="fas fa-lock text-gray-400 text-xs"></i>
+                                            Terkunci (Ada Pembayaran)
+                                        </span>
+                                    @else
+                                        <label for="detail-ppn-toggle" class="relative inline-flex items-center cursor-pointer">
+                                            <input id="detail-ppn-toggle" type="checkbox" wire:model.live="ppnEnabled" class="sr-only peer">
+                                            <div class="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-green-500 transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-5"></div>
+                                            <span class="ml-2.5 text-xs font-semibold {{ $ppnEnabled ? 'text-green-700' : 'text-gray-500' }}">
+                                                {{ $ppnEnabled ? 'Aktif' : 'Nonaktif' }}
+                                            </span>
+                                        </label>
+                                    @endif
+                                </div>
+
+                                @if($invoice->pembayaranPabrik()->exists())
+                                    <div class="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
+                                        <i class="fas fa-exclamation-triangle text-amber-500 flex-shrink-0"></i>
+                                        <span>PPN tidak bisa diubah karena invoice ini sudah memiliki pembayaran dari pabrik.</span>
+                                    </div>
+                                @endif
+
+                                @if($ppnEnabled)
+                                    <div class="mb-3">
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Persentase PPN (%) *</label>
+                                        <div class="relative">
+                                            <input
+                                                id="detail-ppn-percentage"
+                                                type="number"
+                                                step="0.01"
+                                                min="0.01"
+                                                max="100"
+                                                wire:model.live.debounce.400ms="ppnPercentage"
+                                                {{ $invoice->pembayaranPabrik()->exists() ? 'disabled' : '' }}
+                                                class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white disabled:bg-gray-100 disabled:text-gray-500"
+                                                placeholder="11"
+                                            />
+                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
+                                        </div>
+                                        @error('ppnPercentage') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                @else
+                                    <p class="text-xs text-gray-500 mb-3 italic">
+                                        PPN nonaktif (0%). Aktifkan toggle di atas jika invoice ini dikenakan PPN.
+                                    </p>
+                                @endif
+
+                                @php
+                                    $ppnBase = (float) ($invoice->amount_after_refraksi ?: $invoice->subtotal ?: 0);
+                                    $ppnPreview = $ppnEnabled && is_numeric($ppnPercentage) ? round($ppnBase * (float) $ppnPercentage / 100, 2) : 0;
+                                    $ppnCardTotal = (float) ($invoice->total_amount ?? 0) - (float) ($invoice->tax_amount ?? 0) + $ppnPreview;
+                                @endphp
+
+                                <div class="p-3 bg-white border border-red-100 rounded-lg space-y-1.5 text-xs mb-3 shadow-xs">
+                                    <div class="flex justify-between text-gray-600">
+                                        <span>Dasar Pengenaan Pajak (DPP):</span>
+                                        <span class="font-medium text-gray-800">Rp {{ number_format($ppnBase, 2, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-600">
+                                        <span>PPN {{ $ppnEnabled ? rtrim(rtrim(number_format((float) $ppnPercentage, 2, '.', ''), '0'), '.') . '%' : '(Nonaktif)' }}:</span>
+                                        <span class="font-medium text-red-600">{{ $ppnEnabled ? '+ Rp ' . number_format($ppnPreview, 2, ',', '.') : '-' }}</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1.5 border-t border-gray-100 font-semibold text-gray-800">
+                                        <span>Estimasi Total Tagihan:</span>
+                                        <span class="text-green-600 font-bold">Rp {{ number_format($ppnCardTotal, 2, ',', '.') }}</span>
+                                    </div>
+                                </div>
+
+                                @if(!$invoice->pembayaranPabrik()->exists())
+                                    <button
+                                        wire:click="updatePpn"
+                                        wire:loading.attr="disabled"
+                                        class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2"
+                                    >
+                                        <span wire:loading.remove wire:target="updatePpn">
+                                            <i class="fas fa-save mr-1"></i> Update PPN
+                                        </span>
+                                        <span wire:loading wire:target="updatePpn">
+                                            <i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...
+                                        </span>
+                                    </button>
+                                @endif
+                            </div>
                         @endif
 
                         {{-- Edit Invoice Notes Section --}}

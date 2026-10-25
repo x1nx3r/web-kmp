@@ -16,6 +16,7 @@ trait WithPaymentApproval
     public $buktiPembayaran = [];
     public $existingBuktiPembayaran = [];
     public $filesToRemove = [];
+    public $ppnEnabled = false, $ppnPercentage = 11;
 
     protected function ensureCanManage(): bool
     {
@@ -174,6 +175,99 @@ trait WithPaymentApproval
         }
     }
 
+    /**
+     * Simpan toggle PPN + persentase manual pada approval pembayaran.
+     * PPN dihitung dari amount_after_refraksi dan ditambahkan ke total_dibayarkan.
+     * Jika invoice penagihan sudah dibuat dan belum ada pembayaran pabrik,
+     * persentase ikut disinkronkan ke invoice tersebut.
+     */
+    public function updatePpn()
+    {
+        if (!$this->ensureCanManage() || !$this->getApprovalInstance()) return;
+
+        if ($this->ppnEnabled) {
+            $this->validate(['ppnPercentage' => 'required|numeric|min:0.01|max:100'], [
+                'ppnPercentage.required' => 'Persentase PPN wajib diisi',
+                'ppnPercentage.min' => 'Persentase PPN harus lebih dari 0',
+                'ppnPercentage.max' => 'Persentase PPN maksimal 100',
+            ]);
+        }
+
+        DB::beginTransaction();
+        try {
+            $approval = $this->getApprovalInstance();
+            $pct = $this->ppnEnabled ? (float) $this->ppnPercentage : 0;
+            $oldValues = [
+                'tax_percentage' => (float) ($approval->tax_percentage ?? 0),
+                'tax_amount' => (float) ($approval->tax_amount ?? 0),
+                'total_dibayarkan' => (float) ($approval->total_dibayarkan ?? 0),
+            ];
+
+            $approval->applyPpnPercentage($pct);
+            $this->syncPpnToInvoicePenagihan($approval, $pct);
+
+            $this->logHistory(
+                $approval,
+                'ppn',
+                $oldValues,
+                [
+                    'tax_percentage' => (float) $approval->tax_percentage,
+                    'tax_amount' => (float) $approval->tax_amount,
+                    'total_dibayarkan' => (float) $approval->total_dibayarkan,
+                ],
+                $pct > 0 ? "PPN diaktifkan {$pct}%" : 'PPN dinonaktifkan'
+            );
+
+            DB::commit();
+            session()->flash('message', $pct > 0 ? "PPN {$pct}% berhasil diterapkan" : 'PPN dinonaktifkan');
+            $this->reloadComponentData();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Update PPN Pembayaran Error: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan PPN: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Inisialisasi form PPN dari data approval.
+     */
+    protected function loadPpnForm($approval): void
+    {
+        $this->ppnEnabled = $approval->hasPpn();
+        $this->ppnPercentage = $this->ppnEnabled
+            ? (float) $approval->tax_percentage
+            : ($this->ppnPercentage ?: 11);
+    }
+
+    /**
+     * Turunkan persentase PPN ke invoice penagihan (jika sudah dibuat).
+     * Nominal dihitung ulang dari DPP invoice (harga jual), bukan nominal pembayaran.
+     */
+    protected function syncPpnToInvoicePenagihan($approval, float $pct): void
+    {
+        $pengiriman = $approval->pengiriman;
+        if (!$pengiriman) return;
+
+        // Utamakan invoice aktif yang saat ini terpasang di pengiriman
+        // (penting untuk invoice gabungan / hasil split).
+        $invoice = $pengiriman->invoice_penagihan_id
+            ? \App\Models\InvoicePenagihan::find($pengiriman->invoice_penagihan_id)
+            : null;
+
+        if (!$invoice) {
+            $invoice = \App\Models\InvoicePenagihan::where('pengiriman_id', $approval->pengiriman_id)
+                ->where('status', '!=', 'digabung')
+                ->first();
+        }
+
+        if (!$invoice || $invoice->status === 'digabung') return;
+
+        // Jangan ubah invoice yang sudah menerima pembayaran pabrik.
+        if ($invoice->pembayaranPabrik()->exists()) return;
+
+        $invoice->applyPpnPercentage($pct);
+    }
+
     public function updatePiutang()
     {
         if (!$this->ensureCanManage() || !$this->getApprovalInstance()) return;
@@ -292,7 +386,8 @@ trait WithPaymentApproval
         $expensesTotal = floatval($approval->expenses->sum('amount'));
 
         $subtotal = max(0, floatval($amountBefore) - $refraksiAmount + $expensesTotal);
-        $totalDibayarkan = max(0, $subtotal - floatval($approval->piutang_amount ?? 0));
+        $taxAmount = floatval($approval->tax_amount ?? 0);
+        $totalDibayarkan = max(0, $subtotal + $taxAmount - floatval($approval->piutang_amount ?? 0));
 
         $approval->additional_expenses_total = $expensesTotal;
         $approval->subtotal = $subtotal;

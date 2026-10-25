@@ -207,7 +207,7 @@ class PengirimanController extends Controller
 
         $approval->additional_expenses_total = $expensesTotal;
         $approval->subtotal                  = $subtotal;
-        $approval->total_dibayarkan          = $subtotal;
+        $approval->total_dibayarkan          = max(0, $subtotal + floatval($approval->tax_amount ?? 0));
         $approval->save();
     }
 

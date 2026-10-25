@@ -205,6 +205,17 @@
                         <p class="font-semibold text-indigo-700">Rp {{ number_format($subtotal, 3, ',', '.') }}</p>
                     </div>
 
+                    {{-- PPN Pembayaran --}}
+                    @if(($approval->tax_amount ?? 0) > 0)
+                        <div class="flex justify-between items-center py-2 text-sm border-t border-gray-100">
+                            <div>
+                                <p class="text-red-700">PPN {{ rtrim(rtrim(number_format((float) $approval->tax_percentage, 2, '.', ''), '0'), '.') }}%</p>
+                                <p class="text-xs text-gray-400">Dari DPP setelah refraksi</p>
+                            </div>
+                            <p class="font-semibold text-red-600">+ Rp {{ number_format($approval->tax_amount, 3, ',', '.') }}</p>
+                        </div>
+                    @endif
+
                     {{-- Piutang --}}
                     @if($approval->piutang_amount > 0)
                         <div class="flex justify-between items-center py-2 text-sm border-t border-gray-100">
@@ -429,6 +440,76 @@
                             class="w-full px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-lg transition-colors disabled:opacity-50">
                             <span wire:loading.remove wire:target="updateRefraksi"><i class="fas fa-save mr-1.5"></i>Update Refraksi</span>
                             <span wire:loading wire:target="updateRefraksi"><i class="fas fa-spinner fa-spin mr-1.5"></i>Menyimpan...</span>
+                        </button>
+                    </div>
+
+                    {{-- Edit PPN --}}
+                    <div class="bg-white rounded-xl border border-red-200 p-6">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                <i class="fas fa-percent text-red-500"></i>
+                                Edit PPN Pembayaran
+                            </h3>
+                            <label for="pembayaran-ppn-toggle" class="relative inline-flex items-center cursor-pointer">
+                                <input id="pembayaran-ppn-toggle" type="checkbox" wire:model.live="ppnEnabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-green-500 transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-5"></div>
+                                <span class="ml-2.5 text-xs font-semibold {{ $ppnEnabled ? 'text-green-700' : 'text-gray-500' }}">
+                                    {{ $ppnEnabled ? 'Aktif' : 'Nonaktif' }}
+                                </span>
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-4">PPN dihitung dari DPP setelah refraksi dan ditambahkan ke total pembayaran ke supplier.</p>
+
+                        @if($invoicePenagihan && $invoicePenagihan->pembayaranPabrik()->exists())
+                            <div class="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
+                                <i class="fas fa-exclamation-triangle text-amber-500 flex-shrink-0"></i>
+                                <span>Invoice penagihan sudah memiliki pembayaran pabrik, jadi perubahan PPN tidak akan disinkronkan ke penagihan.</span>
+                            </div>
+                        @endif
+
+                        @if($ppnEnabled)
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Persentase PPN (%) *</label>
+                                <div class="relative">
+                                    <input type="number" step="0.01" min="0.01" max="100"
+                                        wire:model.live.debounce.400ms="ppnPercentage"
+                                        class="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white"
+                                        placeholder="11" />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
+                                </div>
+                                @error('ppnPercentage') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                            </div>
+                        @else
+                            <p class="text-xs text-gray-500 mb-3 italic">PPN nonaktif (0%). Aktifkan toggle di atas jika pembayaran ini dikenakan PPN.</p>
+                        @endif
+
+                        @php
+                            $ppnBase = (float) ($approval->amount_after_refraksi ?? 0);
+                            $ppnPreview = $ppnEnabled && is_numeric($ppnPercentage) ? round($ppnBase * (float) $ppnPercentage / 100, 2) : 0;
+                            $ppnCardTotal = $ppnEnabled
+                                ? (float) ($approval->total_dibayarkan ?? 0) - (float) ($approval->tax_amount ?? 0) + $ppnPreview
+                                : (float) ($approval->total_dibayarkan ?? 0);
+                        @endphp
+
+                        <div class="p-3 bg-gray-50 border border-red-100 rounded-lg space-y-1.5 text-xs mb-3">
+                            <div class="flex justify-between text-gray-600">
+                                <span>Dasar Pengenaan Pajak (DPP):</span>
+                                <span class="font-medium text-gray-800">Rp {{ number_format($ppnBase, 2, ',', '.') }}</span>
+                            </div>
+                            <div class="flex justify-between text-gray-600">
+                                <span>PPN {{ $ppnEnabled ? rtrim(rtrim(number_format((float) $ppnPercentage, 2, '.', ''), '0'), '.') . '%' : '(Nonaktif)' }}:</span>
+                                <span class="font-medium text-red-600">{{ $ppnEnabled ? '+ Rp ' . number_format($ppnPreview, 2, ',', '.') : '-' }}</span>
+                            </div>
+                            <div class="flex justify-between pt-1.5 border-t border-gray-100 font-semibold text-gray-800">
+                                <span>Estimasi Total Dibayarkan:</span>
+                                <span class="text-green-600 font-bold">Rp {{ number_format($ppnCardTotal, 2, ',', '.') }}</span>
+                            </div>
+                        </div>
+
+                        <button wire:click="updatePpn" wire:loading.attr="disabled"
+                            class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2">
+                            <span wire:loading.remove wire:target="updatePpn"><i class="fas fa-save mr-1"></i>Update PPN</span>
+                            <span wire:loading wire:target="updatePpn"><i class="fas fa-spinner fa-spin mr-1"></i>Menyimpan...</span>
                         </button>
                     </div>
 

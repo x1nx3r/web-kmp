@@ -60,6 +60,8 @@ class DetailPembayaran extends Component
             else $this->expenseForm['others'][] = ['type' => $type, 'amount' => floatval($e->amount)];
         }
         if (empty($this->expenseForm['others'])) $this->expenseForm['others'][] = ['type' => '', 'amount' => 0];
+
+        $this->loadPpnForm($this->approval);
     }
 
     public function updateTotalHargaBeli()
@@ -70,7 +72,10 @@ class DetailPembayaran extends Component
         DB::beginTransaction();
         try {
             $oldValue = $this->approval->amount_after_refraksi;
-            $this->approval->update(['amount_after_refraksi' => floatval($this->totalHargaBeliForm)]);
+            $this->approval->amount_after_refraksi = floatval($this->totalHargaBeliForm);
+            // Hitung ulang subtotal & total (PPN ikut menyesuaikan lewat hook model).
+            $this->recalculatePembayaranTotals($this->approval);
+            $this->approval->save();
 
             if ($this->editMode && $this->approval->status === 'completed') {
                 $this->logHistory($this->approval, 'total_harga_beli', $oldValue, $this->approval->amount_after_refraksi, 'Updated total harga beli');

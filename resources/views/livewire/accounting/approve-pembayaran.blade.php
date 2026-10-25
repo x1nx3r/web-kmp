@@ -586,6 +586,68 @@
                 <div class="lg:col-span-1">
                     <div class="sticky top-6 space-y-5">
 
+                        {{-- PPN --}}
+                        @php
+                            $ppnBase    = (float) ($approval->amount_after_refraksi ?? 0);
+                            $ppnPreview = $ppnEnabled && is_numeric($ppnPercentage) ? round($ppnBase * (float) $ppnPercentage / 100, 2) : 0;
+                            $ppnCardTotal = $ppnEnabled
+                                ? (float) ($approval->total_dibayarkan ?? 0) - (float) ($approval->tax_amount ?? 0) + $ppnPreview
+                                : (float) ($approval->total_dibayarkan ?? 0);
+                        @endphp
+                        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" wire:key="ppn-pembayaran-{{ $approval->id }}">
+                            <div class="px-5 py-3.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-percent text-red-400 text-sm"></i>
+                                    <h2 class="text-sm font-bold text-gray-800">PPN</h2>
+                                </div>
+                                @if($canManage)
+                                    <label for="ppn-pembayaran-toggle" class="relative inline-flex items-center cursor-pointer">
+                                        <input id="ppn-pembayaran-toggle" type="checkbox" wire:model.live="ppnEnabled" class="sr-only peer">
+                                        <div class="w-10 h-5 bg-gray-200 rounded-full peer-checked:bg-green-500 transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition peer-checked:after:translate-x-5"></div>
+                                    </label>
+                                @else
+                                    <span class="text-xs font-medium {{ $approval->hasPpn() ? 'text-green-600' : 'text-gray-400' }}">
+                                        {{ $approval->hasPpn() ? 'Aktif' : 'Nonaktif' }}
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="p-5">
+                                @if($ppnEnabled && $canManage)
+                                    <label for="ppn-pembayaran-percentage" class="block text-xs text-gray-500 mb-1">Persentase PPN (%)</label>
+                                    <div class="relative">
+                                        <input id="ppn-pembayaran-percentage" type="number" step="0.01" min="0.01" max="100"
+                                            wire:model.live.debounce.400ms="ppnPercentage"
+                                            class="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-green-400 focus:border-transparent focus:bg-white transition">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
+                                    </div>
+                                    @error('ppnPercentage') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                                @endif
+
+                                <div class="mt-3 space-y-1.5 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Dasar Pengenaan (DPP)</span>
+                                        <span class="font-medium text-gray-800">Rp {{ number_format($ppnBase, 2, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">PPN {{ $ppnEnabled ? rtrim(rtrim(number_format((float) $ppnPercentage, 2, '.', ''), '0'), '.') . '%' : '(Nonaktif)' }}</span>
+                                        <span class="font-medium text-red-600">{{ $ppnEnabled ? '+ Rp ' . number_format($ppnPreview, 2, ',', '.') : '-' }}</span>
+                                    </div>
+                                    <div class="flex justify-between pt-2 border-t border-gray-100">
+                                        <span class="font-semibold text-gray-700">Total Dibayarkan</span>
+                                        <span class="font-bold text-green-600">Rp {{ number_format($ppnCardTotal, 2, ',', '.') }}</span>
+                                    </div>
+                                </div>
+
+                                @if($canManage)
+                                    <button wire:click="updatePpn" wire:loading.attr="disabled"
+                                        class="mt-4 w-full px-4 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                        <span wire:loading.remove wire:target="updatePpn"><i class="fas fa-save mr-1.5"></i>Simpan PPN</span>
+                                        <span wire:loading wire:target="updatePpn"><i class="fas fa-spinner fa-spin mr-1.5"></i>Menyimpan...</span>
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+
                         {{-- Ringkasan Pembayaran --}}
                         @php
                             $totalAwal = $pengiriman->total_harga_kirim ?? 0;
@@ -617,6 +679,12 @@
                                     <span class="text-gray-500">Subtotal</span>
                                     <span class="font-semibold text-indigo-700">Rp {{ number_format($subtotal, 3, ',', '.') }}</span>
                                 </div>
+                                @if(($approval->tax_amount ?? 0) > 0)
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-500">PPN {{ rtrim(rtrim(number_format((float) $approval->tax_percentage, 2, '.', ''), '0'), '.') }}%</span>
+                                        <span class="font-semibold text-red-500">+ Rp {{ number_format($approval->tax_amount, 3, ',', '.') }}</span>
+                                    </div>
+                                @endif
                                 <div class="flex justify-between items-center text-sm">
                                     <span class="text-gray-500">Potongan Piutang</span>
                                     <span class="font-semibold text-red-500">- Rp {{ number_format($piutangPotongan, 3, ',', '.') }}</span>

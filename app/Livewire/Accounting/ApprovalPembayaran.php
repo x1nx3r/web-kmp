@@ -84,7 +84,8 @@ class ApprovalPembayaran extends Component
     {
         $this->selectedPengiriman = ApprovalPembayaranModel::with([
             'pengiriman.purchaseOrder.klien', 'pengiriman.forecast', 'pengiriman.purchasing',
-            'pengiriman.details.bahanBakuKlien', 'pengiriman.invoicePenagihan.approvalPenagihan',
+            'pengiriman.pengirimanDetails.bahanBakuSupplier',
+            'pengiriman.invoicePenagihan.approvalPenagihan',
             'catatanPiutang', 'staff', 'manager', 'histories.user'
         ])->findOrFail($approvalId);
 
@@ -102,6 +103,7 @@ class ApprovalPembayaran extends Component
         $this->buktiPembayaran = [];
         $this->filesToRemove = [];
         $this->approvalHistory = $approval->histories()->orderByDesc('created_at')->get();
+        $this->loadPpnForm($approval);
     }
 
     public function closeModal()
@@ -109,6 +111,8 @@ class ApprovalPembayaran extends Component
         $this->reset(['showDetailModal', 'selectedPengiriman', 'notes', 'buktiPembayaran', 'existingBuktiPembayaran', 'filesToRemove', 'approvalHistory']);
         $this->refraksiForm = ['type' => 'qty', 'value' => 0];
         $this->piutangForm = ['catatan_piutang_id' => null, 'amount' => 0, 'notes' => ''];
+        $this->ppnEnabled = false;
+        $this->ppnPercentage = 11;
     }
 
     public function approve()

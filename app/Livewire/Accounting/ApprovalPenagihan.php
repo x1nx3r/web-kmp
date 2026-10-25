@@ -199,7 +199,12 @@ class ApprovalPenagihan extends Component
             $expenseRows = collect();
             
             $calcData = $this->prepareInvoiceItems($this->selectedShipments, $expenseRows);
-            $totals = $this->calculateFinalTotals($calcData['items'], $calcData['totalSellingPrice'], $expenseRows);
+            // PPN mengikuti persentase dari approval pembayaran (default 0/nonaktif),
+            // nominal dihitung dari DPP penagihan (harga jual).
+            $taxPercentage = (float) ($this->selectedShipments
+                ->map(fn($s) => (float) ($s->approvalPembayaran?->tax_percentage ?? 0))
+                ->first(fn($pct) => $pct > 0) ?? 0);
+            $totals = $this->calculateFinalTotals($calcData['items'], $calcData['totalSellingPrice'], $expenseRows, $taxPercentage);
             
             $invoice = InvoicePenagihan::create(array_merge([
                 'pengiriman_id'  => $this->selectedShipment->id,
@@ -266,7 +271,7 @@ class ApprovalPenagihan extends Component
         return ['items' => $items, 'totalSellingPrice' => $totalSellingPrice];
     }
 
-    private function calculateFinalTotals(&$items, $totalSellingPrice, $expenseRows)
+    private function calculateFinalTotals(&$items, $totalSellingPrice, $expenseRows, float $taxPercentage = 0)
     {
         $totalRefraksiAmount = 0; $totalRefraksiQty = 0; $totalQty = 0;
         foreach ($items as &$item) {
@@ -286,6 +291,7 @@ class ApprovalPenagihan extends Component
         $expensesTotal = $expenseRows->sum('amount');
         $amountAfterRefraksi = $totalSellingPrice - $totalRefraksiAmount;
         $subtotal = $amountAfterRefraksi + $expensesTotal;
+        $taxAmount = $taxPercentage > 0 ? round($amountAfterRefraksi * $taxPercentage / 100, 2) : 0;
 
         return [
             'qty_before_refraksi' => $totalQty,
@@ -295,11 +301,11 @@ class ApprovalPenagihan extends Component
             'refraksi_amount' => $totalRefraksiAmount,
             'additional_expenses_total' => $expensesTotal,
             'subtotal' => $subtotal,
-            // PPN sengaja tidak dihitung di sini. Akan ditangani fungsi PPN tersendiri.
-            'tax_percentage' => 0,
-            'tax_amount' => 0,
+            // PPN hanya ikut jika approval pembayaran sumbernya sudah mengaktifkan PPN.
+            'tax_percentage' => $taxPercentage,
+            'tax_amount' => $taxAmount,
             'discount_amount' => 0,
-            'total_amount' => $subtotal,
+            'total_amount' => max(0, $subtotal + $taxAmount),
         ];
     }
 

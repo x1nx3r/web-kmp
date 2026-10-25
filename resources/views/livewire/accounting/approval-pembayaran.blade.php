@@ -214,6 +214,14 @@
                                         <i class="fas fa-arrow-down mr-1"></i>Refraksi: Rp {{ number_format($approval->refraksi_amount, 3, ',', '.') }}
                                     </div>
                                 @endif
+                                @if(($approval->tax_amount ?? 0) > 0)
+                                    <div class="text-xs text-red-600">
+                                        <i class="fas fa-percent mr-1"></i>PPN {{ rtrim(rtrim(number_format((float) $approval->tax_percentage, 2, '.', ''), '0'), '.') }}%: Rp {{ number_format($approval->tax_amount, 3, ',', '.') }}
+                                    </div>
+                                    <div class="text-xs font-semibold text-green-700">
+                                        Total: Rp {{ number_format($approval->total_dibayarkan, 3, ',', '.') }}
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center space-x-2">
@@ -571,6 +579,68 @@
                             </span>
                         </button>
                     </div>
+
+                    {{-- PPN Pembayaran Section --}}
+                    @if($canManage)
+                        @php
+                            $ppnBase = (float) ($selectedPengiriman->amount_after_refraksi ?? 0);
+                            $ppnPreview = $ppnEnabled && is_numeric($ppnPercentage) ? round($ppnBase * (float) $ppnPercentage / 100, 2) : 0;
+                            $ppnCardTotal = $ppnEnabled
+                                ? (float) ($selectedPengiriman->total_dibayarkan ?? 0) - (float) ($selectedPengiriman->tax_amount ?? 0) + $ppnPreview
+                                : (float) ($selectedPengiriman->total_dibayarkan ?? 0);
+                        @endphp
+                        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-center justify-between mb-2">
+                                <h5 class="text-sm font-semibold text-gray-700">
+                                    <i class="fas fa-percent mr-1 text-red-500"></i>
+                                    PPN Pembayaran
+                                </h5>
+                                <label for="modal-ppn-toggle" class="relative inline-flex items-center cursor-pointer">
+                                    <input id="modal-ppn-toggle" type="checkbox" wire:model.live="ppnEnabled" class="sr-only peer">
+                                    <div class="w-10 h-5 bg-gray-200 rounded-full peer-checked:bg-green-500 transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition peer-checked:after:translate-x-5"></div>
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-600 mb-3">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Dihitung dari DPP setelah refraksi dan ditambahkan ke total dibayarkan. Persentase ikut turun ke invoice penagihan.
+                            </p>
+
+                            @if($ppnEnabled)
+                                <div class="mb-3">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Persentase PPN (%)</label>
+                                    <div class="relative">
+                                        <input type="number" step="0.01" min="0.01" max="100"
+                                            wire:model.live.debounce.400ms="ppnPercentage"
+                                            class="block w-full px-3 py-2 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white"
+                                            placeholder="11" />
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
+                                    </div>
+                                    @error('ppnPercentage') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                </div>
+                            @endif
+
+                            <div class="bg-white border border-red-100 rounded p-3 space-y-1.5 text-xs mb-3">
+                                <div class="flex justify-between text-gray-600">
+                                    <span>DPP:</span>
+                                    <span class="font-medium">Rp {{ number_format($ppnBase, 2, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between text-gray-600">
+                                    <span>PPN {{ $ppnEnabled ? rtrim(rtrim(number_format((float) $ppnPercentage, 2, '.', ''), '0'), '.') . '%' : '(Nonaktif)' }}:</span>
+                                    <span class="font-medium text-red-600">{{ $ppnEnabled ? '+ Rp ' . number_format($ppnPreview, 2, ',', '.') : '-' }}</span>
+                                </div>
+                                <div class="flex justify-between pt-1.5 border-t border-gray-100 font-semibold">
+                                    <span>Total Dibayarkan:</span>
+                                    <span class="text-green-600">Rp {{ number_format($ppnCardTotal, 2, ',', '.') }}</span>
+                                </div>
+                            </div>
+
+                            <button wire:click="updatePpn" wire:loading.attr="disabled"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400">
+                                <span wire:loading.remove wire:target="updatePpn"><i class="fas fa-save mr-1"></i>Simpan PPN</span>
+                                <span wire:loading wire:target="updatePpn"><i class="fas fa-spinner fa-spin mr-1"></i>Menyimpan...</span>
+                            </button>
+                        </div>
+                    @endif
 
                     {{-- Edit Bukti Pembayaran Section --}}
                     @if($canManage && ($selectedPengiriman->status !== 'completed' || $editMode))

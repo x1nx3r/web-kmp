@@ -59,6 +59,7 @@ class ApprovePembayaran extends Component
         ];
 
         $this->loadExpensesForm();
+        $this->loadPpnForm($this->approval);
         $this->recalculatePembayaranTotals($this->approval);
     }
 
@@ -209,7 +210,11 @@ class ApprovePembayaran extends Component
         }
 
         $subtotal = $totalSellingPrice - $refraksiAmount;
-        $finalTotal = max(0, $subtotal);
+        // PPN mengikuti persentase yang di-set di approval pembayaran (default 0),
+        // tetapi nominal dihitung ulang dari DPP penagihan (harga jual).
+        $taxPercentage = (float) ($this->approval->tax_percentage ?? 0);
+        $taxAmount = $taxPercentage > 0 ? round($subtotal * $taxPercentage / 100, 2) : 0;
+        $finalTotal = max(0, $subtotal + $taxAmount);
 
         $invoice = InvoicePenagihan::create([
             'pengiriman_id' => $pengiriman->id,
@@ -219,8 +224,10 @@ class ApprovePembayaran extends Component
             'customer_name' => $pengiriman->purchaseOrder->klien->nama ?? 'Customer',
             'customer_address' => $pengiriman->purchaseOrder->klien->alamat_lengkap ?? '-',
             'items' => $items,
-            'subtotal' => $finalTotal,
+            'subtotal' => $subtotal,
             'additional_expenses_total' => 0,
+            'tax_percentage' => $taxPercentage,
+            'tax_amount' => $taxAmount,
             'total_amount' => $finalTotal,
             'status' => 'pending',
             'created_by' => $userId,

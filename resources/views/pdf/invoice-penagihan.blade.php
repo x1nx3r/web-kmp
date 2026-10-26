@@ -490,15 +490,6 @@
                     </table>
                 @endif
 
-                @if(($invoice->additional_expenses_total ?? 0) > 0)
-                    <table class="summary-row">
-                        <tr>
-                            <td class="summary-label">Pengeluaran Tambahan</td>
-                            <td class="summary-value" style="color: #e53935;">+ Rp {{ number_format($invoice->additional_expenses_total, 2, ',', '.') }}</td>
-                        </tr>
-                    </table>
-                @endif
-
                 @if((float) $invoice->tax_amount > 0)
                     <table class="summary-row">
                         <tr>
@@ -508,10 +499,16 @@
                     </table>
                 @endif
 
+                @php
+                    // Pengeluaran tambahan tidak ditampilkan di invoice, jadi nilainya juga
+                    // dikeluarkan dari Total Tagihan agar hasil penjumlahan tetap konsisten.
+                    $totalTagihan = max(0, (float) $invoice->total_amount - (float) ($invoice->additional_expenses_total ?? 0));
+                @endphp
+
                 <table class="summary-row total-row">
                     <tr>
                         <td class="summary-label">Total Tagihan</td>
-                        <td class="summary-value">Rp {{ number_format((float) $invoice->total_amount, 2, ',', '.') }}</td>
+                        <td class="summary-value">Rp {{ number_format($totalTagihan, 2, ',', '.') }}</td>
                     </tr>
                 </table>
             </td>
